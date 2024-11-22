@@ -102,7 +102,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   private int nodeCount = 0;
 
-  public SRStatementGenerator(File mtreeFile, File tagFile, PartialPath databaseFullPath)
+  public SRStatementGenerator(
+      final File mtreeFile, final File tagFile, final PartialPath databaseFullPath)
       throws IOException {
 
     inputStream = Files.newInputStream(mtreeFile.toPath());
@@ -153,13 +154,13 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         try {
           curNode = deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream);
           nodeCount++;
-        } catch (IOException ioe) {
+        } catch (final IOException ioe) {
           lastExcept = ioe;
           try {
             inputStream.close();
             tagFileChannel.close();
 
-          } catch (IOException e) {
+          } catch (final IOException e) {
             lastExcept = e;
           }
           return false;
@@ -182,7 +183,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       if (tagFileChannel != null) {
         tagFileChannel.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       lastExcept = e;
     }
     return false;
@@ -202,17 +203,17 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
   }
 
-  private void cleanMtreeNode(IMNode node) {
+  private void cleanMtreeNode(final IMNode node) {
     final IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
     nodeCount = nodeCount - children.size();
     node.getChildren().clear();
   }
 
   private static IMemMNode deserializeMNode(
-      Deque<IMemMNode> ancestors,
-      Deque<Integer> restChildrenNum,
-      MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
-      InputStream inputStream)
+      final Deque<IMemMNode> ancestors,
+      final Deque<Integer> restChildrenNum,
+      final MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
+      final InputStream inputStream)
       throws IOException {
     final byte type = ReadWriteIOUtils.readByte(inputStream);
     final int childrenNum;
