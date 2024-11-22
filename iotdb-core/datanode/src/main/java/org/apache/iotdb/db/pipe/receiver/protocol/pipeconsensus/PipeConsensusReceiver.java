@@ -660,13 +660,14 @@ public class PipeConsensusReceiver {
     if (region != null) {
       TsFileResource resource = generateTsFileResource(filePath, progressIndex);
       region.loadNewTsFile(resource, true, false);
+    } else {
+      // Data region is null indicates that dr has been removed or migrated. In those cases, there
+      // is no need to replicate data. we just return success to avoid leader keeping retry
+      LOGGER.info(
+          "PipeConsensus-PipeName-{}: skip load tsfile-{} when sealing, because this region has been removed or migrated.",
+          consensusPipeName,
+          filePath);
     }
-    // Data region is null indicates that dr has been removed or migrated. In those cases, there is
-    // no need to replicate data. we just return success to avoid leader keeping retry
-    LOGGER.info(
-        "PipeConsensus-PipeName-{}: skip load tsfile-{} when sealing, because this region has been removed or migrated.",
-        consensusPipeName,
-        filePath);
     return RpcUtils.SUCCESS_STATUS;
   }
 
