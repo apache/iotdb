@@ -346,7 +346,7 @@ public class CNPhysicalPlanGenerator
           case STORAGE_GROUP_MNODE_TYPE:
             name = deserializeDatabaseMNode(bufferedInputStream).getAsMNode().getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(new PipeCreateTablePlan(name, table));
+              planDeque.add(new PipeCreateTablePlan(PathUtils.qualifyDatabaseName(name), table));
             }
             tableSet.clear();
             break;
