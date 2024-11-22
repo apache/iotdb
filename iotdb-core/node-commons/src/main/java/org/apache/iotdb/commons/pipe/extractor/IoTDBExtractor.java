@@ -30,12 +30,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.hasAtLeastOneOption;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.optionsAreAllLegal;
 
@@ -55,36 +51,22 @@ public abstract class IoTDBExtractor implements PipeExtractor {
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
+    final String inclusionString = getInclusionString(validator.getParameters());
+    final String exclusionString = getExclusionString(validator.getParameters());
     validator
         .validate(
             args -> optionsAreAllLegal((String) args),
             "The 'inclusion' string contains illegal path.",
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                    EXTRACTOR_INCLUSION_DEFAULT_VALUE))
+            inclusionString)
         .validate(
             args -> optionsAreAllLegal((String) args),
             "The 'inclusion.exclusion' string contains illegal path.",
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                    EXTRACTOR_EXCLUSION_DEFAULT_VALUE))
+            exclusionString)
         .validate(
             args -> hasAtLeastOneOption((String) args[0], (String) args[1]),
             "The pipe inclusion content can't be empty.",
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                    EXTRACTOR_INCLUSION_DEFAULT_VALUE),
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                    EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+            inclusionString,
+            exclusionString);
   }
 
   @Override

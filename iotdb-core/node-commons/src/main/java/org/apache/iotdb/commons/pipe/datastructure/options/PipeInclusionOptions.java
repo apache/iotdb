@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.datastructure.options;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class PipeInclusionOptions {
 
@@ -124,7 +133,8 @@ public class PipeInclusionOptions {
                     "auth.role.drop", "auth.role.revoke", "auth.user.drop", "auth.user.revoke"))));
   }
 
-  public static boolean hasAtLeastOneOption(String inclusionString, String exclusionString) {
+  public static boolean hasAtLeastOneOption(
+      final String inclusionString, final String exclusionString) {
     try {
       final Set<PartialPath> inclusion = parseOptions(inclusionString);
       final Set<PartialPath> exclusion = parseOptions(exclusionString);
@@ -168,6 +178,33 @@ public class PipeInclusionOptions {
           e);
       return false;
     }
+  }
+
+  public static String getInclusionString(final PipeParameters parameters) {
+    final boolean isTableModel =
+        !parameters
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    return parameters.getStringOrDefault(
+        isTableModel
+            ? Collections.singletonList(SystemConstant.INNER_INCLUSION_KEY)
+            : Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+        isTableModel ? ALL : EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+  }
+
+  public static String getExclusionString(final PipeParameters parameters) {
+    final boolean isTableModel =
+        !parameters
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    // TODO: Support deletion
+    return parameters.getStringOrDefault(
+        isTableModel
+            ? Collections.singletonList(SystemConstant.INNER_EXCLUSION_KEY)
+            : Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+        isTableModel ? "data.delete" : EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
   }
 
   public static Set<PartialPath> parseOptions(final String optionsString)
