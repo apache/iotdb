@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.relational.it.session;
 
-import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -61,8 +61,8 @@ public class IoTDBTableModelSessionIT {
     final String[] table2Names = new String[] {"table2"};
     final String[] table2ttls = new String[] {"6600000"};
 
-    try (final ISession session =
-        EnvFactory.getEnv().getSessionConnectionWithDB("table", "test2")) {
+    try (final ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB("test2")) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");

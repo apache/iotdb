@@ -685,7 +685,7 @@ public class SessionCacheLeaderTest {
       }
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertRelationalTablet(tablet, true);
+        session.insertRelationalTablet(tablet);
         tablet.reset();
       }
       timestamp++;

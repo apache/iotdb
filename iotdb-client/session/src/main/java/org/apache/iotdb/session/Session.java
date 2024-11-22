@@ -71,7 +71,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -434,7 +433,7 @@ public class Session implements ISession {
     this.version = version;
   }
 
-  public Session(Builder builder) {
+  public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -1259,38 +1258,6 @@ public class Session implements ISession {
     }
 
     insertRecord(deviceId, request);
-  }
-
-  /**
-   * insert data in one row to the table model, if you want to improve your performance, please use
-   * insertRecords method or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   */
-  @Override
-  public void insertRelationalRecord(
-      String tableName,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<ColumnType> columnCategories,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request;
-    try {
-      request =
-          filterAndGenTSInsertRecordReq(
-              tableName, time, measurements, types, Arrays.asList(values), false);
-      request.setColumnCategoryies(
-          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
-      request.setIsWriteToTable(true);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
-      return;
-    }
-
-    insertRecord(tableName, request);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
@@ -2755,18 +2722,17 @@ public class Session implements ISession {
   }
 
   /**
-   * insert a relational Tablet
+   * insert a relational Tablet. Note: This method is for internal use only, we do not guarantee
+   * compatibility with subsequent versions.
    *
    * @param tablet data batch
-   * @param sorted deprecated, whether times in Tablet are in ascending order
    */
-  @Override
-  public void insertRelationalTablet(Tablet tablet, boolean sorted)
+  public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableRedirection) {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
-      TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       request.setWriteToTable(true);
       request.setColumnCategories(
           tablet.getColumnTypes().stream()
@@ -2777,17 +2743,6 @@ public class Session implements ISession {
       } catch (RedirectException ignored) {
       }
     }
-  }
-
-  /**
-   * insert a relational Tablet
-   *
-   * @param tablet data batch
-   */
-  @Override
-  public void insertRelationalTablet(Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    insertRelationalTablet(tablet, false);
   }
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
@@ -4180,65 +4135,7 @@ public class Session implements ISession {
     return database;
   }
 
-  public static class Builder {
-
-    private String host = SessionConfig.DEFAULT_HOST;
-    private int rpcPort = SessionConfig.DEFAULT_PORT;
-    private String username = SessionConfig.DEFAULT_USER;
-    private String pw = SessionConfig.DEFAULT_PASSWORD;
-    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
-    private ZoneId zoneId = null;
-    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
-    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    // this field only take effect in write request, nothing to do with any other type requests,
-    // like query, load and so on.
-    // if set to true, it means that we may redirect the write request to its corresponding leader
-    // if set to false, it means that we will only send write request to first available DataNode(it
-    // may be changed while current DataNode is not available, for example, we may retry to connect
-    // to another available DataNode)
-    // so even if enableRedirection is set to false, we may also send write request to another
-    // datanode while encountering retriable errors in current DataNode
-    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet =
-        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
-    private Version version = SessionConfig.DEFAULT_VERSION;
-    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
-
-    // set to true, means that we will start a background thread to fetch all available (Status is
-    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
-    private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
-
-    private boolean useSSL = false;
-    private String trustStore;
-    private String trustStorePwd;
-
-    // max retry count, if set to 0, means that we won't do any retry
-    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
-    // or nodeUrls user specified) to retry, even if enableRedirection is false
-    private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-    private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
-    private String sqlDialect = SessionConfig.SQL_DIALECT;
-
-    private String database;
-
-    public Builder useSSL(boolean useSSL) {
-      this.useSSL = useSSL;
-      return this;
-    }
-
-    public Builder trustStore(String keyStore) {
-      this.trustStore = keyStore;
-      return this;
-    }
-
-    public Builder trustStorePwd(String keyStorePwd) {
-      this.trustStorePwd = keyStorePwd;
-      return this;
-    }
-
-    private List<String> nodeUrls = null;
+  public static class Builder extends AbstractSessionBuilder {
 
     public Builder host(String host) {
       this.host = host;
@@ -4330,14 +4227,28 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
+      return this;
+    }
+
+    public Builder trustStore(String keyStore) {
+      this.trustStore = keyStore;
+      return this;
+    }
+
+    public Builder trustStorePwd(String keyStorePwd) {
+      this.trustStorePwd = keyStorePwd;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
-      Session newSession = new Session(this);
-      return newSession;
+      return new Session(this);
     }
   }
 }
