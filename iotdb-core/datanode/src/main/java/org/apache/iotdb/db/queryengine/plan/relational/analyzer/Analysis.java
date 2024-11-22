@@ -101,6 +101,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
 public class Analysis implements IAnalysis {
 
@@ -820,7 +821,7 @@ public class Analysis implements IAnalysis {
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String database, IDeviceID deviceId, Filter timeFilter) {
     if (dataPartition == null) {
-      return Collections.singletonList(new TRegionReplicaSet());
+      return Collections.singletonList(NOT_ASSIGNED);
     } else {
       return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
     }
