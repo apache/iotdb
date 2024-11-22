@@ -133,6 +133,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private TreePattern treePattern;
   private TablePattern tablePattern;
   private boolean isDbNameCoveredByPattern = false;
+  private boolean isModelDetected = false;
 
   private boolean isHistoricalExtractorEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
@@ -336,10 +337,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.isTreeModelDataAllowedToBeCaptured() && treePattern.coversDb(databaseName)
+            treePattern.coversDb(databaseName)
                 // The database name is prefixed with "root."
-                || tablePattern.isTableModelDataAllowedToBeCaptured()
-                    && tablePattern.coversDb(databaseName.substring(5));
+                && tablePattern.coversDb(databaseName.substring(5));
       }
     }
 
@@ -677,6 +677,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                     && treePattern.mayOverlapWithDevice(deviceID)) {
                   tsfile2IsTableModelMap.computeIfAbsent(
                       resource, (tsFileResource) -> Boolean.FALSE);
+                  updateIsDbNameCoveredByPattern(resource, false);
                   return true;
                 }
               } else {
@@ -687,11 +688,30 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                     && tablePattern.matchesTable(deviceID.getTableName())) {
                   tsfile2IsTableModelMap.computeIfAbsent(
                       resource, (tsFileResource) -> Boolean.TRUE);
+                  updateIsDbNameCoveredByPattern(resource, true);
                   return true;
                 }
               }
               return false;
             });
+  }
+
+  private void updateIsDbNameCoveredByPattern(
+      final TsFileResource resource, final boolean isTableModel) {
+    if (isModelDetected) {
+      return;
+    }
+
+    final String databaseName = resource.getDatabaseName();
+    if (Objects.nonNull(databaseName)) {
+      isDbNameCoveredByPattern =
+          isTableModel
+              ? tablePattern.isTableModelDataAllowedToBeCaptured()
+                  && tablePattern.coversDb(databaseName.substring(5))
+              : treePattern.isTreeModelDataAllowedToBeCaptured()
+                  && treePattern.coversDb(databaseName);
+      isModelDetected = true;
+    }
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
