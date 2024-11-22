@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteNodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,12 +150,9 @@ public class DeletionResource implements PersistentResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer,
-      final String regionId,
-      final Consumer<DeletionResource> removeHook,
-      final boolean isRelational)
+      final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
       throws IOException {
-    AbstractDeleteDataNode node = AbstractDeleteDataNode.deserializeFromDAL(buffer, isRelational);
+    AbstractDeleteDataNode node = DeleteNodeType.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook, regionId);
   }
 

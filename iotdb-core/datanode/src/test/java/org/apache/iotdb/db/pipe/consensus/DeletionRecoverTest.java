@@ -95,7 +95,7 @@ public class DeletionRecoverTest {
   public void testDeletionRecoverTreeModel() throws Exception {
     setUp(false, FAKE_DATA_REGION_IDS[0]);
     Assert.assertEquals(0, deletionResourceManager.getAllDeletionResources().size());
-    deletionResourceManager.recoverForTest(false);
+    deletionResourceManager.recoverForTest();
     Assert.assertEquals(deletionCount, deletionResourceManager.getAllDeletionResources().size());
   }
 
@@ -103,7 +103,7 @@ public class DeletionRecoverTest {
   public void testDeletionRecoverTableModel() throws Exception {
     setUp(true, FAKE_DATA_REGION_IDS[1]);
     Assert.assertEquals(0, deletionResourceManager.getAllDeletionResources().size());
-    deletionResourceManager.recoverForTest(true);
+    deletionResourceManager.recoverForTest();
     Assert.assertEquals(deletionCount, deletionResourceManager.getAllDeletionResources().size());
   }
 }

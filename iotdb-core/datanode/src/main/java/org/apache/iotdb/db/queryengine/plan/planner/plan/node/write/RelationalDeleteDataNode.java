@@ -165,6 +165,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   public ByteBuffer serializeToDAL() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      DeleteNodeType.RELATIONAL_DELETE_NODE.serialize(outputStream);
       serializeAttributes(outputStream);
       progressIndex.serialize(outputStream);
       id.serialize(outputStream);

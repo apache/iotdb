@@ -45,17 +45,14 @@ public class DeletionReader implements Closeable {
   private final File logFile;
   private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
-  private final boolean isRelational;
 
-  public DeletionReader(
-      File logFile, String regionId, Consumer<DeletionResource> removeHook, boolean isRelational)
+  public DeletionReader(File logFile, String regionId, Consumer<DeletionResource> removeHook)
       throws IOException {
     this.logFile = logFile;
     this.regionId = regionId;
     this.fileInputStream = new FileInputStream(logFile);
     this.fileChannel = fileInputStream.getChannel();
     this.removeHook = removeHook;
-    this.isRelational = isRelational;
   }
 
   public List<DeletionResource> readAllDeletions() throws IOException {
@@ -79,7 +76,7 @@ public class DeletionReader implements Closeable {
 
       while (byteBuffer.hasRemaining()) {
         DeletionResource deletionResource =
-            DeletionResource.deserialize(byteBuffer, regionId, removeHook, isRelational);
+            DeletionResource.deserialize(byteBuffer, regionId, removeHook);
         deletions.add(deletionResource);
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);

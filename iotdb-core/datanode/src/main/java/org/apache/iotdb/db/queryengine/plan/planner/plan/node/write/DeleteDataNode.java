@@ -182,6 +182,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
   public ByteBuffer serializeToDAL() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      DeleteNodeType.TREE_DELETE_NODE.serialize(outputStream);
       serializeAttributes(outputStream);
       progressIndex.serialize(outputStream);
       id.serialize(outputStream);
