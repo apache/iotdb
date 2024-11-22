@@ -80,15 +80,16 @@ import static org.junit.Assert.assertEquals;
 public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactionTest {
 
   ICompactionPerformer performer = new FastCompactionPerformer(false);
-
+  CompactionConfigRestorer configRestorer = new CompactionConfigRestorer();
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
+    configRestorer.recordCompactionConfig();
     super.setUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    new CompactionConfigRestorer().restoreCompactionConfig();
+    configRestorer.restoreCompactionConfig();
     super.tearDown();
   }
 
@@ -568,7 +569,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       deleteMap.put(
           deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
           new Pair<>(i * ptNum, i * ptNum + 10));
-      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResource);
@@ -596,7 +596,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
+      Assert.assertNull(seqResources.get(i).getCompactionModFile());
     }
 
     // all mods file of each source file should exist
@@ -640,7 +640,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       deleteMap.put(
           deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
           new Pair<>(i * ptNum, i * ptNum + 10));
-      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
     compactionLogger.close();
@@ -667,7 +666,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
+      Assert.assertNull(seqResources.get(i).getCompactionModFile());
     }
 
     // all mods file of each source file should exist
@@ -716,7 +715,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       deleteMap.put(
           deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
           new Pair<>(i * ptNum, i * ptNum + 10));
-      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResource);
@@ -744,14 +742,10 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                         IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
             .exists());
 
-    // all compaction mods file and old mods file of each source file should not exist
+    // all compaction mods file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
-      Assert.assertFalse(seqResources.get(i).getTotalModSizeInByte() > 0);
+      Assert.assertNull(seqResources.get(i).getCompactionModFile());
     }
-
-    // mods file of the target file should exist
-    Assert.assertTrue(targetResource.anyModFileExists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -1261,7 +1255,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
       Assert.assertNull(resource.getCompactionModFile());
     }
     // the target file should be deleted
