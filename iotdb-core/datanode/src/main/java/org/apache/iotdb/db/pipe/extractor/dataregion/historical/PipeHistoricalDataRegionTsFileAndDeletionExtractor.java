@@ -673,22 +673,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
                   || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
                   || deviceID.getTableName().equals(PATH_ROOT)) {
                 // In case of tree model deviceID
+                updateIsDbNameCoveredByPattern(resource, false);
                 if (treePattern.isTreeModelDataAllowedToBeCaptured()
                     && treePattern.mayOverlapWithDevice(deviceID)) {
                   tsfile2IsTableModelMap.computeIfAbsent(
                       resource, (tsFileResource) -> Boolean.FALSE);
-                  updateIsDbNameCoveredByPattern(resource, false);
                   return true;
                 }
               } else {
                 // In case of table model deviceID
+                updateIsDbNameCoveredByPattern(resource, true);
                 if (tablePattern.isTableModelDataAllowedToBeCaptured()
                     // The database name in resource is prefixed with "root."
                     && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
                     && tablePattern.matchesTable(deviceID.getTableName())) {
                   tsfile2IsTableModelMap.computeIfAbsent(
                       resource, (tsFileResource) -> Boolean.TRUE);
-                  updateIsDbNameCoveredByPattern(resource, true);
                   return true;
                 }
               }
