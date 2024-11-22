@@ -303,7 +303,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList(), null);
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -342,10 +342,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(
-          tableScanNode,
-          splitExpression.getMetadataExpressions(),
-          splitExpression.getTimeColumnName());
+      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -413,7 +410,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions, String timeColumnName) {
+        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
 
       List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -439,8 +436,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+      long cost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, cost);
+      queryContext.setFetchSchemaCost(cost);
 
       if (deviceEntries.isEmpty()) {
         if (analysis.noAggregates()) {
@@ -478,8 +476,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.upsertDataPartition(dataPartition);
         }
 
+        cost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
+        queryContext.setFetchPartitionCost(cost);
       }
     }
 

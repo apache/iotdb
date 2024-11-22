@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -247,5 +248,15 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return statementType.name();
+  }
+
+  @Override
+  public MPPQueryContext getQueryContext() {
+    return context;
+  }
+
+  @Override
+  public IPlanner getPlanner() {
+    return null;
   }
 }

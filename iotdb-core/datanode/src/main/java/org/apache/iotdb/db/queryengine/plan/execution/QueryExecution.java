@@ -267,16 +267,17 @@ public class QueryExecution implements IQueryExecution {
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
   private IAnalysis analyze(MPPQueryContext context) {
-    final long startTime = System.nanoTime();
-    IAnalysis result;
-    try {
-      result = planner.analyze(context);
-    } finally {
-      long analyzeCost = System.nanoTime() - startTime;
-      context.setAnalyzeCost(analyzeCost);
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
-    }
-    return result;
+    return planner.analyze(context);
+    //    final long startTime = System.nanoTime();
+    //    IAnalysis result;
+    //    try {
+    //      result = planner.analyze(context);
+    //    } finally {
+    //      long analyzeCost = System.nanoTime() - startTime;
+    //      context.setAnalyzeCost(analyzeCost);
+    //      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
+    //    }
+    //    return result;
   }
 
   private void schedule() {
@@ -691,6 +692,16 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return analysis.getStatementType();
+  }
+
+  @Override
+  public MPPQueryContext getQueryContext() {
+    return context;
+  }
+
+  @Override
+  public IPlanner getPlanner() {
+    return planner;
   }
 
   public MPPQueryContext getContext() {
