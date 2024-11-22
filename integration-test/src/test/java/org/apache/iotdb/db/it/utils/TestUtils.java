@@ -1004,12 +1004,49 @@ public class TestUtils {
     }
   }
 
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env, final String sql, final int size, final String databaseName) {
+    assertDataSizeEventuallyOnEnv(env, sql, size, 600, databaseName);
+  }
+
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final int size,
+      final long timeoutSeconds,
+      final String dataBaseName) {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (dataBaseName != null) {
+                    statement.execute("use " + dataBaseName);
+                  }
+                  if (sql != null && !sql.isEmpty()) {
+                    TestUtils.assertResultSetSize(executeQueryWithRetry(statement, sql), size);
+                  }
+                } catch (final Exception e) {
+                  Assert.fail(e.getMessage());
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
   public static void assertDataEventuallyOnEnv(
-      BaseEnv env,
-      String sql,
-      String expectedHeader,
-      Set<String> expectedResSet,
-      String dataBaseName) {
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName) {
     assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, dataBaseName);
   }
 
@@ -1034,7 +1071,7 @@ public class TestUtils {
                   if (dataBaseName != null) {
                     statement.execute("use " + dataBaseName);
                   }
-                  if (sql != null && !sql.equals("")) {
+                  if (sql != null && !sql.isEmpty()) {
                     TestUtils.assertResultSetEqual(
                         executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                   }

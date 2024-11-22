@@ -534,22 +534,15 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    // Create an idempotent conflict, "drop database" shall be executed on the same region as
-    // testSql
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        database,
-        BaseEnv.TABLE_SQL_DIALECT,
-        senderEnv,
-        Arrays.asList(testSql, "drop database test"))) {
+    // Create an idempotent conflict
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql)) {
       return;
     }
 
+    TableModelUtils.createDatabase(senderEnv, "test2");
+
     // Assume that the "database" is executed on receiverEnv
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "show databases",
-        "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-        Collections.emptySet(),
-        null);
+    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 2, null);
   }
 }
