@@ -598,7 +598,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreatePipe(CreatePipe node, MPPQueryContext context) {
+  protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     // Inject table model into the extractor attributes
