@@ -398,62 +398,32 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testCreateTableIdempotent() throws Exception {
-    testIdempotent(
-        Collections.singletonList("create role `test`"),
-        "drop role test",
-        "create database root.sg1",
-        "count databases",
-        "count,",
-        Collections.singleton("1,"),
-        null);
+    testTableConfigIdempotent(Collections.emptyList(), "create table test()");
   }
 
   @Test
   public void testAlterTableAddColumnIdempotent() throws Exception {
-    testIdempotent(
-        Collections.singletonList("create role `test`"),
-        "drop role test",
-        "create database root.sg1",
-        "count databases",
-        "count,",
-        Collections.singleton("1,"),
-        null);
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test()"), "alter table test add column a id");
   }
 
   @Test
   public void testAlterTableSetPropertiesIdempotent() throws Exception {
-    testIdempotent(
-        Collections.singletonList("create role `test`"),
-        "drop role test",
-        "create database root.sg1",
-        "count databases",
-        "count,",
-        Collections.singleton("1,"),
-        null);
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test()"),
+        "alter table test set properties ttl=100");
   }
 
   @Test
   public void testAlterTableDropColumnIdempotent() throws Exception {
-    testIdempotent(
-        Collections.singletonList("create role `test`"),
-        "drop role test",
-        "create database root.sg1",
-        "count databases",
-        "count,",
-        Collections.singleton("1,"),
-        null);
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test(a id, b attribute, c int32)"),
+        "alter table test drop column b");
   }
 
   @Test
   public void testDropTableIdempotent() throws Exception {
-    testIdempotent(
-        Collections.singletonList("create role `test`"),
-        "drop role test",
-        "create database root.sg1",
-        "count databases",
-        "count,",
-        Collections.singleton("1,"),
-        null);
+    testTableConfigIdempotent(Collections.singletonList("create table test()"), "drop table test");
   }
 
   private void testIdempotent(
@@ -514,15 +484,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);
   }
 
-  private void testIdempotent(
-      final List<String> beforeSqlList,
-      final String testSql,
-      final String afterSql,
-      final String afterSqlQuery,
-      final String expectedHeader,
-      final Set<String> expectedResSet,
-      final String database)
+  private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
       throws Exception {
+    final String database = "test";
     TableModelUtils.createDatabase(senderEnv, database);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -570,14 +534,22 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    // Create an idempotent conflict, after sql shall be executed on the same region as testSql
+    // Create an idempotent conflict, "drop database" shall be executed on the same region as
+    // testSql
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Arrays.asList(testSql, afterSql))) {
+        database,
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        Arrays.asList(testSql, "drop database test"))) {
       return;
     }
 
-    // Assume that the afterSql is executed on receiverEnv
+    // Assume that the "database" is executed on receiverEnv
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, afterSqlQuery, expectedHeader, expectedResSet, database);
+        receiverEnv,
+        "show databases",
+        "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+        Collections.emptySet(),
+        null);
   }
 }
