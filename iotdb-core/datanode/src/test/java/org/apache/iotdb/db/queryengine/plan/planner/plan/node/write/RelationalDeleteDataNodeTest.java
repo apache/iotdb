@@ -96,7 +96,7 @@ public class RelationalDeleteDataNodeTest {
     assertEquals(relationalDeleteDataNode, planNode);
 
     buffer = relationalDeleteDataNode.serializeToDAL();
-    RelationalDeleteDataNode deserialized = RelationalDeleteDataNode.deserializeFromDAL(buffer);
+    AbstractDeleteDataNode deserialized = DeleteNodeType.deserializeFromDAL(buffer);
     // plan node id is not serialized to DAL, manually set it to pass comparison
     deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
     assertEquals(relationalDeleteDataNode, deserialized);
