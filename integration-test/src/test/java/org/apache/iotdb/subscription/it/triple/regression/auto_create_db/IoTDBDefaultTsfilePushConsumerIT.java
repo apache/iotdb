@@ -32,7 +32,6 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
@@ -48,7 +47,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
@@ -129,9 +130,9 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     }
     session_src.executeNonQueryStatement("flush");
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
-    List<AtomicInteger> rowCounts = new ArrayList<>(deviceCount);
+    List<Set<Long>> rowCounts = new ArrayList<>(deviceCount);
     for (int i = 0; i < deviceCount; i++) {
-      rowCounts.add(new AtomicInteger(0));
+      rowCounts.add(new HashSet<>());
     }
     consumer =
         new SubscriptionPushConsumer.Builder()
@@ -154,17 +155,14 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
                               QueryExpression.create(
                                   Collections.singletonList(paths.get(i)), null));
                       while (dataset.hasNext()) {
-                        rowCounts.get(i).addAndGet(1);
-                        RowRecord next = dataset.next();
-                        //                                System.out.println(format.format(new
-                        // Date())+" "+next.getTimestamp()+","+next.getFields());
+                        rowCounts.get(i).add(dataset.next().getTimestamp());
                       }
                       System.out.println(
                           FORMAT.format(new Date())
                               + " rowCounts_"
                               + i
                               + ":"
-                              + rowCounts.get(i).get());
+                              + rowCounts.get(i).size());
                     }
                   } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -192,7 +190,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 10, devices.get(i) + ".s_0");
+            assertEquals(rowCounts.get(i).size(), 10, devices.get(i) + ".s_0");
           }
         });
     // Unsubscribe
@@ -217,7 +215,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
-            assertEquals(rowCounts.get(i).get(), 25, devices.get(i) + ".s_0");
+            assertEquals(rowCounts.get(i).size(), 25, devices.get(i) + ".s_0");
           }
         });
     System.out.println(FORMAT.format(new Date()) + " onReceived: " + onReceiveCount.get());
