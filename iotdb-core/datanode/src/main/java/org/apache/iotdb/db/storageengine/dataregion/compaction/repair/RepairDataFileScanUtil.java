@@ -97,7 +97,7 @@ public class RepairDataFileScanUtil {
       timeIndex = checkTsFileResource ? getDeviceTimeIndex(resource) : null;
     } catch (IOException e) {
       logger.warn(
-          "Meet error when read tsfile resource file {}",
+          "Meet error when read tsfile resource file {}, it may be repaired after reboot",
           tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX,
           e);
       isBrokenFile = true;
