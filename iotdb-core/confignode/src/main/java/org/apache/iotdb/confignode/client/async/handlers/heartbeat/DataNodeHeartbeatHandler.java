@@ -87,21 +87,25 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
         .getLoadCache()
         .cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp));
 
+    RegionStatus regionStatus = RegionStatus.valueOf(heartbeatResp.getStatus());
+
     heartbeatResp
         .getJudgedLeaders()
         .forEach(
             (regionGroupId, isLeader) -> {
               // Update RegionGroupCache
-              loadManager
-                  .getLoadCache()
-                  .cacheRegionHeartbeatSample(
-                      regionGroupId,
-                      nodeId,
-                      new RegionHeartbeatSample(
-                          heartbeatResp.getHeartbeatTimestamp(),
-                          // Region will inherit DataNode's status
-                          RegionStatus.valueOf(heartbeatResp.getStatus())),
-                      false);
+              if (regionStatus != RegionStatus.Removing) {
+                loadManager
+                    .getLoadCache()
+                    .cacheRegionHeartbeatSample(
+                        regionGroupId,
+                        nodeId,
+                        new RegionHeartbeatSample(
+                            heartbeatResp.getHeartbeatTimestamp(),
+                            // Region will inherit DataNode's status
+                            regionStatus),
+                        false);
+              }
 
               if (((TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
                           && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
