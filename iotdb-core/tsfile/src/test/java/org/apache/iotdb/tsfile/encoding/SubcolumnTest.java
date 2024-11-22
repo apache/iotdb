@@ -1,114 +1,529 @@
 package org.apache.iotdb.tsfile.encoding;
 
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
+
+import org.junit.Test;
+
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
 
 public class SubcolumnTest {
-
-    public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
-        cur_byte[encode_pos] = (byte) (integer >> 24);
-        cur_byte[encode_pos + 1] = (byte) (integer >> 16);
-        cur_byte[encode_pos + 2] = (byte) (integer >> 8);
-        cur_byte[encode_pos + 3] = (byte) (integer);
+    /**
+     * 位宽
+     * 
+     * @param value
+     * @return
+     */
+    public static int bitWidth(int value) {
+        return value == 0 ? 1 : 32 - Integer.numberOfLeadingZeros(value);
     }
 
-    public static int getBitWith(int num) {
-        if (num == 0)
-            return 1;
-        else
-            return 32 - Integer.numberOfLeadingZeros(num);
+    /**
+     * 将 int value 以 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
+     * 
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     * @param value
+     */
+    public static void writeBits(byte[] array, int startBitPosition, int bitWidth, int value) {
+        int bytePosition = startBitPosition / 8;
+        int bitOffset = startBitPosition % 8;
+        int bitsLeft = bitWidth;
+        int bitsWritten = 0;
+
+        while (bitsLeft > 0) {
+            int bitsToWrite = Math.min(8 - bitOffset, bitsLeft);
+            int mask = (1 << bitsToWrite) - 1;
+            int shift = 8 - bitOffset - bitsToWrite;
+            int bits = (value >> (bitsLeft - bitsToWrite)) & mask;
+            array[bytePosition] |= bits << shift;
+
+            bitsLeft -= bitsToWrite;
+            bitsWritten += bitsToWrite;
+            bytePosition++;
+            bitOffset = 0;
+        }
     }
 
-    public static int EncodeBits(int num,
-            int bit_width,
-            int encode_pos,
-            byte[] cur_byte,
-            int[] bit_index_list) {
-        // 找到要插入的位的索引
-        int bit_index = bit_index_list[0];// cur_byte[encode_pos + 1];
+    /**
+     * 从 byte array 的 startBitPosition 比特位置，读取 bitWidth 位宽的 int 值
+     * 
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     * @param signed           1 表示有符号，0 表示无符号
+     * @return
+     */
+    public static int readBits(byte[] array, int startBitPosition, int bitWidth, int signed) {
+        int bytePosition = startBitPosition / 8;
+        int bitOffset = startBitPosition % 8;
+        int bitsLeft = bitWidth;
+        int bitsRead = 0;
+        int value = 0;
 
-        // 计算数值的起始位位置
-        int remaining_bits = bit_width;
+        while (bitsLeft > 0) {
+            int bitsToRead = Math.min(8 - bitOffset, bitsLeft);
+            int mask = (1 << bitsToRead) - 1;
+            int shift = 8 - bitOffset - bitsToRead;
+            int bits = (array[bytePosition] >> shift) & mask;
+            value |= bits << (bitsLeft - bitsToRead);
 
-        while (remaining_bits > 0) {
-            // 计算在当前字节中可以使用的位数
-            int available_bits = bit_index;
-            int bits_to_write = Math.min(available_bits, remaining_bits);
+            bitsLeft -= bitsToRead;
+            bitsRead += bitsToRead;
+            bytePosition++;
+            bitOffset = 0;
+        }
 
-            // 更新 bit_index
-            bit_index = available_bits - bits_to_write;
+        if (signed == 1) {
+            int shift = 32 - bitsRead;
+            value = (value << shift) >> shift;
+        }
 
-            // 计算要写入的位的掩码和数值
-            int mask = (1 << bits_to_write) - 1;
-            int bits = (num >> (remaining_bits - bits_to_write)) & mask;
+        return value;
+    }
 
-            // 写入到当前位置
-            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
-            cur_byte[encode_pos] |= (byte) (bits << bit_index);
+    /**
+     * 将 values 数组中的值，按 bitWidth 位宽，写入 byte array 的 startBitPosition 比特位置
+     * 
+     * @param values
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     */
+    public static void bitPacking(int[] values, byte[] array, int startBitPosition, int bitWidth) {
+        for (int i = 0; i < values.length; i++) {
+            writeBits(array, startBitPosition + i * bitWidth, bitWidth, values[i]);
+        }
+    }
 
-            // 更新位宽和数值
-            remaining_bits -= bits_to_write;
-            if (bit_index == 0) {
-                bit_index = 8;
-                encode_pos++;
+    /**
+     * 从 byte array 的 startBitPosition 比特位置开始，读取 bitWidth 位宽的 int 值，存入数组
+     * 
+     * @param array
+     * @param startBitPosition
+     * @param bitWidth
+     * @param numValues
+     * @return
+     */
+    public static int[] bitUnpacking(byte[] array, int startBitPosition, int bitWidth, int numValues) {
+        int[] values = new int[numValues];
+        for (int i = 0; i < numValues; i++) {
+            values[i] = readBits(array, startBitPosition + i * bitWidth, bitWidth, 0);
+        }
+        return values;
+    }
+
+    public static int[] subcolumn(int[] x, int m) {
+        int x_length = x.length;
+        if (x_length == 0) {
+            return new int[] { 0, 0 };
+        }
+
+        int cMin = m * x_length;
+
+        int betaBest = 0;
+
+        int[] beta_list = new int[] { 7, 5, 3, 2 };
+
+        boolean[] isAllZero = new boolean[m + 1];
+        for (int i = 1; i <= m; i++) {
+            isAllZero[i] = true;
+            for (int j = 0; j < x_length; j++) {
+                if (((x[j] >> (i - 1)) & 1) == 1) {
+                    isAllZero[i] = false;
+                    break;
+                }
             }
         }
-        bit_index_list[0] = bit_index;
-        // cur_byte[encode_pos + 1] = (byte) bit_index;
-        return encode_pos;
+
+        int[][] costLB = new int[m + 1][10];
+
+        for (int l = 1; l <= m; l++) {
+            costLB[l][1] = l * x_length;
+
+            for (int beta : beta_list) {
+                int parts = (l + beta - 1) / beta;
+                for (int p = 1; p <= parts; p++) {
+                    int currentBit = p * beta;
+                    if (currentBit > l) {
+                        currentBit = l;
+                    }
+                    if (isAllZero[currentBit] && currentBit > beta * (p - 1) + 1) {
+                        currentBit--;
+                    }
+                    costLB[l][beta] += x_length * (currentBit - beta * (p - 1));
+                }
+            }
+        }
+
+        for (int beta : beta_list) {
+            if (costLB[m][beta] < cMin) {
+                cMin = costLB[m][beta];
+                betaBest = beta;
+            }
+        }
+
+        if (cMin == m * x_length) {
+            return new int[] { 0, cMin };
+        }
+
+        return new int[] { betaBest, cMin };
     }
 
+    public static int SubcolumnEncoder(int[] list, int startBitPosition, byte[] encoded_result) {
+        int list_length = list.length;
+        int maxValue = 0;
+        for (int i = 0; i < list_length; i++) {
+            if (list[i] > maxValue) {
+                maxValue = list[i];
+            }
+        }
+
+        int m = bitWidth(maxValue);
+
+        int[] subcolumn_cost = subcolumn(list, m);
+        // int l = subcolumn_cost[0];
+        int beta = subcolumn_cost[0];
+
+        writeBits(encoded_result, startBitPosition, 8, m);
+        startBitPosition += 8;
+
+        // System.out.println("m: " + m);
+
+        // writeBits(encoded_result, startBitPosition, 8, l);
+        // startBitPosition += 8;
+
+        // System.out.println("l: " + l);
+
+        writeBits(encoded_result, startBitPosition, 3, beta);
+        startBitPosition += 3;
+
+        // System.out.println("beta: " + beta);
+
+        if (beta == 0) {
+            bitPacking(list, encoded_result, startBitPosition, m);
+            startBitPosition += m * list_length;
+
+            // for (int i = 0; i < list_length; i++) {
+            // System.out.print(list[i] + " ");
+            // }
+            // System.out.println();
+
+            return startBitPosition;
+        }
+
+        int parts = (m + beta - 1) / beta;
+
+        int[] bitsWidthList = new int[parts];
+
+        int[][] bpListList = new int[parts][list_length];
+
+        for (int p = 0; p < parts; p++) {
+            int maxValuePart = 0;
+            for (int i = 0; i < list_length; i++) {
+                bpListList[p][i] = (list[i] >> (p * beta)) & ((1 << beta) - 1);
+                if (bpListList[p][i] > maxValuePart) {
+                    maxValuePart = bpListList[p][i];
+                }
+            }
+            bitsWidthList[p] = bitWidth(maxValuePart);
+        }
+
+        bitPacking(bitsWidthList, encoded_result, startBitPosition, 3);
+        startBitPosition += 3 * parts;
+
+        for (int p = 0; p < parts; p++) {
+            bitPacking(bpListList[p], encoded_result, startBitPosition, bitsWidthList[p]);
+            startBitPosition += bitsWidthList[p] * list_length;
+        }
+
+        return startBitPosition;
+
+    }
+
+    public static int SubcolumnDecoder(byte[] encoded_result, int startBitPosition, int[] list) {
+        int list_length = list.length;
+
+        int m = readBits(encoded_result, startBitPosition, 8, 0);
+        startBitPosition += 8;
+
+        // System.out.println("m: " + m);
+
+        int beta = readBits(encoded_result, startBitPosition, 3, 0);
+        startBitPosition += 3;
+
+        // System.out.println("beta: " + beta);
+
+        if (beta == 0) {
+            int[] new_list = bitUnpacking(encoded_result, startBitPosition, m, list_length);
+            startBitPosition += m * list_length;
+
+            // for (int i = 0; i < list_length; i++) {
+            // System.out.print(new_list[i] + " ");
+            // }
+            // System.out.println();
+
+            System.arraycopy(new_list, 0, list, 0, list_length);
+            // for (int i = 0; i < list_length; i++) {
+            // list[i] = new_list[i];
+            // }
+
+            return startBitPosition;
+        }
+
+        int parts = (m + beta - 1) / beta;
+
+        int[] bitsWidthList = bitUnpacking(encoded_result, startBitPosition, 3, parts);
+        startBitPosition += 3 * parts;
+
+        int[][] bpListList = new int[parts][list_length];
+
+        for (int p = 0; p < parts; p++) {
+            bpListList[p] = bitUnpacking(encoded_result, startBitPosition, bitsWidthList[p], list_length);
+            startBitPosition += bitsWidthList[p] * list_length;
+        }
+
+        for (int i = 0; i < list_length; i++) {
+            // list[i] = 0;
+            for (int p = 0; p < parts; p++) {
+                list[i] |= bpListList[p][i] << (p * beta);
+            }
+        }
+
+        return startBitPosition;
+    }
+
+    public static int BOSEncoder(int[] data, int block_size, byte[] encoded_result) {
+        int data_length = data.length;
+        int startBitPosition = 0;
+
+        writeBits(encoded_result, startBitPosition, 32, data_length);
+        startBitPosition += 32;
+
+        // System.out.println("data_length: " + data_length);
+
+        writeBits(encoded_result, startBitPosition, 32, block_size);
+        startBitPosition += 32;
+
+        // System.out.println("block_size: " + block_size);
+
+        int num_blocks = data_length / block_size;
+
+        // System.out.println("num_blocks: " + num_blocks);
+
+        for (int i = 0; i < num_blocks; i++) {
+            startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
+        }
+
+        int remainder = data_length % block_size;
+
+        if (remainder <= 3) {
+            for (int i = 0; i < remainder; i++) {
+                writeBits(encoded_result, startBitPosition, 32, data[num_blocks * block_size + i]);
+                startBitPosition += 32;
+            }
+        } else {
+            startBitPosition = BOSBlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
+                    encoded_result);
+        }
+
+        return startBitPosition;
+    }
+
+    public static int[] BOSDecoder(byte[] encoded_result) {
+        int startBitPosition = 0;
+
+        int data_length = readBits(encoded_result, startBitPosition, 32, 0);
+        startBitPosition += 32;
+
+        // System.out.println("data_length: " + data_length);
+
+        int block_size = readBits(encoded_result, startBitPosition, 32, 0);
+        startBitPosition += 32;
+
+        // System.out.println("block_size: " + block_size);
+
+        int num_blocks = data_length / block_size;
+
+        int[] data = new int[data_length];
+
+        for (int i = 0; i < num_blocks; i++) {
+            startBitPosition = BOSBlockDecoder(encoded_result, i, block_size, block_size, startBitPosition, data);
+        }
+
+        int remainder = data_length % block_size;
+
+        if (remainder <= 3) {
+            for (int i = 0; i < remainder; i++) {
+                data[num_blocks * block_size + i] = readBits(encoded_result, startBitPosition, 32, 0);
+                startBitPosition += 32;
+            }
+        } else {
+            startBitPosition = BOSBlockDecoder(encoded_result, num_blocks, block_size, remainder,
+                    startBitPosition, data);
+        }
+
+        return data;
+    }
+
+    /**
+     * 将 ts_block 中的数据，减去最小值，得到的结果写入 ts_block_delta
+     * @param ts_block
+     * @param i
+     * @param block_size
+     * @param remaining
+     * @param min_delta
+     * @return
+     */
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
             int block_size,
             int remaining,
             int[] min_delta) {
-        int[] ts_block_delta = new int[remaining - 1];
+        int[] ts_block_delta = new int[remaining];
 
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        int base = i * block_size + 1;
+        int base = i * block_size;
         int end = i * block_size + remaining;
 
-        int tmp_j_1 = ts_block[base - 1];
-        min_delta[0] = tmp_j_1;
-        int j = base;
-        int tmp_j;
-
-        while (j < end) {
-            tmp_j = ts_block[j];
-            int epsilon_v = tmp_j - tmp_j_1;
-            ts_block_delta[j - base] = epsilon_v;
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
+        for (int j = base; j < end; j++) {
+            int cur = ts_block[j];
+            if (cur < value_delta_min) {
+                value_delta_min = cur;
             }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
+            if (cur > value_delta_max) {
+                value_delta_max = cur;
             }
-            tmp_j_1 = tmp_j;
-            j++;
-        }
-        j = 0;
-        end = remaining - 1;
-        while (j < end) {
-            ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
-            j++;
         }
 
-        min_delta[1] = value_delta_min;
-        min_delta[2] = (value_delta_max - value_delta_min);
+        for (int j = base; j < end; j++) {
+            ts_block_delta[j - base] = ts_block[j] - value_delta_min;
+        }
+
+        min_delta[0] = value_delta_min;
 
         return ts_block_delta;
+    }
+
+    public static int BOSBlockEncoder(int[] data, int block_index, int block_size, int remainder,
+            int startBitPosition, byte[] encoded_result) {
+        int[] min_delta = new int[3];
+
+        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
+                remainder, min_delta);
+        
+        // for (int i = 0; i < remainder; i++) {
+        //     System.out.print(data_delta[i] + " ");
+        // }
+        // System.out.println();
+
+        writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
+        startBitPosition += 32;
+
+        startBitPosition = SubcolumnEncoder(data_delta, startBitPosition, encoded_result);
+
+        return startBitPosition;
+    }
+
+    public static int BOSBlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
+            int startBitPosition, int[] data) {
+        int[] min_delta = new int[3];
+
+        min_delta[0] = readBits(encoded_result, startBitPosition, 32, 1);
+        startBitPosition += 32;
+
+        int[] block_data = new int[remainder];
+
+        startBitPosition = SubcolumnDecoder(encoded_result, startBitPosition, block_data);
+
+        for (int i = 0; i < remainder; i++) {
+            data[block_index * block_size + i] = block_data[i] + min_delta[0];
+        }
+
+        return startBitPosition;
+    }
+
+    @Test
+    public void testWriteBits() {
+        System.out.println("testWriteBits");
+        byte[] array1 = new byte[10];
+        writeBits(array1, 3, 8, 211);
+        assert readBits(array1, 3, 8, 0) == 211;
+
+        byte[] array2 = new byte[10];
+        writeBits(array2, 3, 8, 211);
+        System.out.println(readBits(array2, 3, 8, 0));
+
+        writeBits(array2, 16, 8, 232);
+        System.out.println(readBits(array2, 16, 8, 0));
+
+        writeBits(array2, 24, 32, 8321);
+        System.out.println(readBits(array2, 24, 32, 0));
+
+        for (byte b : array2) {
+            System.out.println(Integer.toBinaryString(b & 0xFF));
+        }
+
+        byte[] array3 = new byte[10];
+        writeBits(array3, 4, 5, -6);
+        System.out.println(readBits(array3, 4, 5, 1));
+    }
+
+    @Test
+    public void testBitPacking() {
+        byte[] array = new byte[4];
+        int[] values1 = new int[5];
+        values1[0] = 5;
+        values1[1] = 3;
+        values1[2] = 7;
+        values1[3] = 1;
+        values1[4] = 2;
+        bitPacking(values1, array, 0, 3);
+
+        for (byte b : array) {
+            System.out.println(Integer.toBinaryString(b & 0xFF));
+        }
+
+        int[] values2 = bitUnpacking(array, 0, 3, 5);
+        for (int i = 0; i < values2.length; i++) {
+            System.out.println(values2[i]);
+            assert values1[i] == values2[i];
+        }
+    }
+
+    @Test
+    public void testSubcolumn() {
+        int[] list = new int[8];
+
+        list[0] = 154; // 10011010
+        list[1] = 176; // 10110000
+        list[2] = 179; // 10110011
+        list[3] = 161; // 10100001
+        list[4] = 152; // 10011000
+        list[5] = 184; // 10111000
+        list[6] = 193; // 11000001
+        list[7] = 203; // 11001011
+
+        // int[] result = subcolumn(list, 8);
+        byte[] encoded_result = new byte[8 * 4];
+        int startBitPosition = 0;
+        startBitPosition = SubcolumnEncoder(list, startBitPosition, encoded_result);
+
+        int[] decoded_list = new int[8];
+        startBitPosition = SubcolumnDecoder(encoded_result, 0, decoded_list);
+
+        for (int i = 0; i < 8; i++) {
+            System.out.println(decoded_list[i]);
+            assert list[i] == decoded_list[i];
+        }
     }
 
     public static int getDecimalPrecision(String str) {
@@ -142,12 +557,15 @@ public class SubcolumnTest {
     }
 
     @Test
-    public void BOSOptimalTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/"; // your data path
-        // String parent_dir =
-        // "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "subcolumn/compression_ratio";
-        String input_parent_dir = parent_dir + "elf/src/test/resources/ElfData_Short";
+    public void BOSTest() throws IOException {
+        String parent_dir =
+        "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        // String output_parent_dir =
+        // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources";
+        // String input_parent_dir = parent_dir + "ElfData_Short/";
+        String input_parent_dir = parent_dir + "dataset/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -166,7 +584,9 @@ public class SubcolumnTest {
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/float_ratio.csv"); // 0
+        // output_path_list.add(output_parent_dir + "compress_ratio.csv");
+        // output_path_list.add(output_parent_dir + "subcolumn.csv");
+        output_path_list.add(output_parent_dir + "/subcolumn.csv");
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
@@ -198,6 +618,9 @@ public class SubcolumnTest {
         //// dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
+        // TODO 真正计算时，记得注释掉将下面的内容
+        // repeatTime2 = 1;
+
         // for (int file_i = 1; file_i < 2; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -216,7 +639,6 @@ public class SubcolumnTest {
                     "Encoding Algorithm",
                     "Encoding Time",
                     "Decoding Time",
-                    "Div",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -237,10 +659,14 @@ public class SubcolumnTest {
                 ArrayList<Float> data1 = new ArrayList<>();
                 // ArrayList<Integer> data2 = new ArrayList<>();
 
-                loader.readHeaders();
+                // loader.readHeaders();
                 int max_decimal = 0;
                 while (loader.readRecord()) {
                     String f_str = loader.getValues()[0];
+                    // System.out.println(f_str);
+                    // if (f_str.equals("")) {
+                    // continue;
+                    // }
                     int cur_decimal = getDecimalPrecision(f_str);
                     if (cur_decimal > max_decimal)
                         max_decimal = cur_decimal;
@@ -256,147 +682,81 @@ public class SubcolumnTest {
                     data2_arr[i] = (int) (data1.get(i) * max_mul);
                 }
 
+                // System.out.println("initial data");
+                // for (int i = 0; i < data2_arr.length; i++) {
+                // System.out.print(data2_arr[i] + " ");
+                // }
+                // System.out.println();
+
                 System.out.println(max_decimal);
                 byte[] encoded_result = new byte[data2_arr.length * 4];
 
-                for (int div = 2; div < 11; div++) {
-                    System.out.println(div);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
+                // for (int div = 2; div < 11; div++) {
+                // System.out.println(div);
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
 
-                    int length = 0;
+                int length = 0;
 
-                    long s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        length = SubcolumnEncoder(data2_arr, dataset_block_size.get(file_i), div, encoded_result);
-                    }
-
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += length;
-                    double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-                    // for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    // SubcolumnDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-
-                    String[] record = {
-                            datasetName,
-                            "TS_2DIFF+Sucolumn",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(div),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length = BOSEncoder(data2_arr, dataset_block_size.get(file_i),
+                            encoded_result);
                 }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length / 8;
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                // System.out.println("Decode");
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    // SubcolumnDecoder(encoded_result);
+                    int[] data2_arr_decoded = BOSDecoder(encoded_result);
+
+                    for (int i = 0; i < data2_arr_decoded.length; i++) {
+                        // System.out.print(data2_arr_decoded[i] + " ");
+                        assert data2_arr[i] == data2_arr_decoded[i]
+                                || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+                        // assert data2_arr[i] == data2_arr_decoded[i];
+                        // if (data2_arr_decoded[i] != data2_arr[i]) {
+                        // System.out.println("Error");
+                        // System.out.println(i);
+                        // System.out.println(data2_arr_decoded[i]);
+                        // System.out.println(data2_arr[i]);
+                        // break;
+                        // }
+                    }
+                    // System.out.println();
+
+                    // for (int i = 0; i < data2_arr.length; i++) {
+                    // System.out.print(data2_arr[i] + " ");
+                    // }
+                    // System.out.println();
+                }
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
+
+                String[] record = {
+                        datasetName,
+                        "Subcolumn",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        // String.valueOf(div),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+                // }
 
                 // break;
             }
             writer.close();
         }
     }
-
-    private void SubcolumnDecoder(byte[] encodedResult) {
-
-    }
-
-    private int SubcolumnEncoder(int[] data, int block_size, int div, byte[] encoded_result) {
-        block_size++;
-
-        int length_all = data.length;
-
-        int encode_pos = 0;
-        int2Bytes(length_all, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        int block_num = length_all / block_size;
-        int2Bytes(block_size, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        for (int i = 0; i < block_num; i++) {
-            // int start_encode_pos = encode_pos;
-            encode_pos = PerBlockEncoder(data, i, block_size, block_size, div, encode_pos, encoded_result);
-            // System.out.println(encode_pos-start_encode_pos);
-            // System.out.println("------------------------------------------");
-        }
-
-        int remaining_length = length_all - block_num * block_size;
-        if (remaining_length <= 3) {
-            for (int i = remaining_length; i > 0; i--) {
-                int2Bytes(data[data.length - i], encode_pos, encoded_result);
-                encode_pos += 4;
-            }
-
-        } else {
-
-            int start = block_num * block_size;
-            int remaining = length_all - start;
-            encode_pos = PerBlockEncoder(data, block_num, block_size, remaining, div, encode_pos, encoded_result);
-
-        }
-
-        return encode_pos;
-    }
-
-    private int PerBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int mod, int encodePos,
-            byte[] encodedResult) {
-
-        int[] min_delta = new int[3];
-        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
-
-        block_size = remaining - 1;
-        int max_delta_value = min_delta[2];
-        int res = max_delta_value % mod;
-        int div = max_delta_value / mod;
-        int times_of_max = 1;
-        int cur_tmp = div;
-        while (cur_tmp >= mod) {
-            div = cur_tmp / mod;
-            res = cur_tmp % mod;
-            times_of_max++;
-            cur_tmp = div;
-        }
-        int[][] res_array = new int[times_of_max][block_size];
-        int[] div_array = new int[block_size];
-
-        for (int i = 0; i < block_size; i++) {
-            int value = ts_block_delta[i];
-            res = value % mod;
-            div = value / mod;
-            res_array[0][i] = res;
-            cur_tmp = div;
-            for (int j = 1; j < times_of_max; j++) {
-                div = cur_tmp / mod;
-                res = cur_tmp % mod;
-                res_array[j][i] = res;
-                cur_tmp = div;
-            }
-        }
-        int[] max_bit_width = new int[times_of_max];
-        for (int j = 0; j < times_of_max; j++) {
-            int max_bit_width_cur = getBitWith(res_array[j][0]);
-            for (int i = 1; i < block_size; i++) {
-                if (max_bit_width_cur < getBitWith(res_array[j][i])) {
-                    max_bit_width_cur = getBitWith(res_array[j][i]);
-                }
-            }
-            max_bit_width[j] = max_bit_width_cur;
-        }
-        encodePos += (times_of_max);
-        for (int i = 0; i < times_of_max; i++) {
-            encodePos += (max_bit_width[i] * (block_size / 8));
-        }
-        encodePos += 8;
-
-        return encodePos;
-    }
-
 }
