@@ -122,7 +122,6 @@ public class RepairDataFileScanUtil {
           }
           deviceIdsInTimeIndex.remove(device);
         }
-        deviceIdsInTimeIndex.remove(device);
         MetadataIndexNode metadataIndexNode =
             deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
         TimeRange deviceTimeRangeInResource =
