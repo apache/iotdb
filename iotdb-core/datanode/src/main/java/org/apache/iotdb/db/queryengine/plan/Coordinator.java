@@ -448,11 +448,8 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
 
-        // TODO(beyyes) add fe statistic output
-        IQueryExecution queryExecution1 = queryExecutionMap.get(queryId);
-        if (queryExecution1.getPlanner() != null
-            && queryExecution1.getPlanner().isQueryStatement()) {
-          MPPQueryContext queryContext = queryExecution1.getQueryContext();
+        if (queryExecution.getPlanner() != null && queryExecution.getPlanner().isQueryStatement()) {
+          MPPQueryContext queryContext = queryExecution.getQueryContext();
           fixedScheduledOutputQueryPlanStatistics.recordCost(queryContext);
         }
 
