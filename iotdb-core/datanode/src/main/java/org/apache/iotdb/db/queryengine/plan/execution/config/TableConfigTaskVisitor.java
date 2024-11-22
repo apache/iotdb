@@ -464,7 +464,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
               throw new SemanticException(
                   "ttl value must be 'INF' or a long literal, but now is: " + value);
             }
-            map.put(key, strValue.get());
+            map.put(key, strValue.get().toUpperCase(Locale.ENGLISH));
             continue;
           }
           // TODO: support validation for other properties
