@@ -2722,7 +2722,8 @@ public class Session implements ISession {
   }
 
   /**
-   * insert a relational Tablet
+   * insert a relational Tablet. Note: This method is for internal use only, we do not guarantee
+   * compatibility with subsequent versions.
    *
    * @param tablet data batch
    */

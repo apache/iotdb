@@ -116,6 +116,9 @@ public class TableSessionWrapper implements ITableSession {
         } catch (StatementExecutionException e) {
           LOGGER.warn(
               "Failed to change back database by executing: use {}", sessionPool.database, e);
+          session.close();
+          session = null;
+          return;
         }
       }
       sessionPool.putBack(session);
