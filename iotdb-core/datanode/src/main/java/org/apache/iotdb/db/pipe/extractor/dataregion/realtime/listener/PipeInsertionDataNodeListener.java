@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
@@ -141,7 +141,8 @@ public class PipeInsertionDataNodeListener {
   }
 
   // TODO: record database name in enriched events?
-  public DeletionResource listenToDeleteData(final String regionId, final DeleteDataNode node) {
+  public DeletionResource listenToDeleteData(
+      final String regionId, final AbstractDeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
     if (assigner == null) {
@@ -173,11 +174,6 @@ public class PipeInsertionDataNodeListener {
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
-  }
-
-  public void listenToDeleteData(DeleteDataNode node) {
-    dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

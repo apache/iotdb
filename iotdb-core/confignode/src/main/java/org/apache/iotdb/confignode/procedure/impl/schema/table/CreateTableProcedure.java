@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -141,9 +143,14 @@ public class CreateTableProcedure
                         database.substring(ROOT.length() + 1), table.getTableName()),
                     TABLE_ALREADY_EXISTS.getStatusCode())));
       } else {
+        final TDatabaseSchema schema =
+            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
+        if (schema.isSetTTL() && !table.getPropValue(TsTable.TTL_PROPERTY).isPresent()) {
+          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
         setNextState(CreateTableState.PRE_CREATE);
       }
-    } catch (final MetadataException e) {
+    } catch (final MetadataException | DatabaseNotExistsException e) {
       setFailure(new ProcedureException(e));
     }
   }

@@ -449,9 +449,7 @@ public class LoadTsFileManager {
         if (partitionInfo.getDataRegion().equals(dataRegion)) {
           final TsFileIOWriter writer = entry.getValue();
           if (!dataPartition2ModificationFile.containsKey(partitionInfo)) {
-            File newModificationFile =
-                SystemFileFactory.INSTANCE.getFile(
-                    writer.getFile().getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+            File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
                   "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
@@ -463,7 +461,7 @@ public class LoadTsFileManager {
           }
           ModificationFile modificationFile = dataPartition2ModificationFile.get(partitionInfo);
           writer.flush();
-          deletionData.writeToModificationFile(modificationFile, writer.getFile().length());
+          deletionData.writeToModificationFile(modificationFile);
         }
       }
     }
@@ -538,12 +536,12 @@ public class LoadTsFileManager {
           try {
             final ModificationFile modificationFile = entry.getValue();
             modificationFile.close();
-            final Path modificationFilePath = new File(modificationFile.getFilePath()).toPath();
+            final Path modificationFilePath = modificationFile.getFile().toPath();
             if (Files.exists(modificationFilePath)) {
               Files.delete(modificationFilePath);
             }
           } catch (IOException e) {
-            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFilePath(), e);
+            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
           }
         }
       }

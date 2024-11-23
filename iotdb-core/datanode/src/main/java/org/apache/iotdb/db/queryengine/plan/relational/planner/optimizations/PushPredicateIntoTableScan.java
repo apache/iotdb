@@ -62,10 +62,11 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
+import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -299,68 +300,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitTableScan(TableScanNode tableScanNode, RewriteContext context) {
-      // columnSymbols in TableScanNode may be added suffix in Join situation(such as self join),
-      // in which we need add a new ProjectNode above TableScanNode.
-      boolean hasSuffixInScanNodeColumns = false;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
-        if (!columnSymbol.getName().equals(columnSchema.getName())) {
-          hasSuffixInScanNodeColumns = true;
-          break;
-        }
-      }
-
-      Map<Symbol, Expression> newProjectAssignments = null;
-      if (hasSuffixInScanNodeColumns) {
-        newProjectAssignments = getProjectAssignments(tableScanNode, context);
-      }
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
-        return hasSuffixInScanNodeColumns
-            ? new ProjectNode(
-                queryId.genPlanNodeId(), tableScanNode, new Assignments(newProjectAssignments))
-            : tableScanNode;
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList(), null);
+        return tableScanNode;
       }
 
       // has predicate, deal with split predicate
-      PlanNode result = combineFilterAndScan(tableScanNode, context.inheritedPredicate);
-      return hasSuffixInScanNodeColumns
-          ? new ProjectNode(queryId.genPlanNodeId(), result, new Assignments(newProjectAssignments))
-          : result;
-    }
-
-    private Map<Symbol, Expression> getProjectAssignments(
-        TableScanNode tableScanNode, RewriteContext context) {
-      context.inheritedPredicate =
-          ReplaceSymbolInExpression.transform(
-              context.inheritedPredicate, tableScanNode.getAssignments());
-
-      int size = tableScanNode.getOutputSymbols().size();
-      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
-      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
-      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
-      for (Symbol originalSymbol : tableScanNode.getOutputSymbols()) {
-        ColumnSchema columnSchema = tableScanNode.getAssignments().get(originalSymbol);
-
-        Symbol realSymbol = Symbol.of(columnSchema.getName());
-        newTableScanSymbols.add(realSymbol);
-        newTableScanAssignments.put(realSymbol, columnSchema);
-        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
-        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
-        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
-        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
-          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
-          idAndAttributeIndexMap.remove(originalSymbol);
-          idAndAttributeIndexMap.put(realSymbol, idx);
-        }
-      }
-
-      tableScanNode.setOutputSymbols(newTableScanSymbols);
-      tableScanNode.setAssignments(newTableScanAssignments);
-      return projectAssignments;
+      return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
@@ -375,7 +323,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions);
 
         // extract global time filter and set it to TableScanNode
-        Pair<Expression, Boolean> resultPair = extractGlobalTimeFilter(pushDownPredicate);
+        Pair<Expression, Boolean> resultPair =
+            extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
         if (resultPair.left != null) {
           tableScanNode.setTimePredicate(resultPair.left);
         }
@@ -393,7 +342,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
+      getDeviceEntriesWithDataPartitions(
+          tableScanNode,
+          splitExpression.getMetadataExpressions(),
+          splitExpression.getTimeColumnName());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -412,11 +364,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
       Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
+      String timeColumnName = null;
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
-        if (MEASUREMENT.equals(columnSchema.getColumnCategory())
-            || TIME.equals(columnSchema.getColumnCategory())) {
+        if (TIME.equals(columnSchema.getColumnCategory())) {
+          measurementColumnNames.add(columnSymbol.getName());
+          timeColumnName = columnSymbol.getName();
+        } else if (MEASUREMENT.equals(columnSchema.getColumnCategory())) {
           measurementColumnNames.add(columnSymbol.getName());
         } else {
           idOrAttributeColumnNames.add(columnSymbol.getName());
@@ -442,7 +397,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
 
         return new SplitExpression(
-            metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
+            metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown, timeColumnName);
       }
 
       if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
@@ -454,11 +409,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return new SplitExpression(
-          metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
+          metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown, timeColumnName);
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
+        TableScanNode tableScanNode, List<Expression> metadataExpressions, String timeColumnName) {
 
       List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -475,7 +430,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
-              metadataExpressions,
+              metadataExpressions.stream()
+                  .map(
+                      expression ->
+                          ReplaceSymbolInExpression.transform(
+                              expression, tableScanNode.getAssignments()))
+                  .collect(Collectors.toList()),
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
@@ -808,15 +768,19 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     // expressions can not push down into TableScan, such as `s_1 is null`
     List<Expression> expressionsCannotPushDown;
 
+    @Nullable String timeColumnName;
+
     public SplitExpression(
         List<Expression> metadataExpressions,
         List<Expression> expressionsCanPushDown,
-        List<Expression> expressionsCannotPushDown) {
+        List<Expression> expressionsCannotPushDown,
+        @Nullable String timeColumnName) {
       this.metadataExpressions = requireNonNull(metadataExpressions, "metadataExpressions is null");
       this.expressionsCanPushDown =
           requireNonNull(expressionsCanPushDown, "expressionsCanPushDown is null");
       this.expressionsCannotPushDown =
           requireNonNull(expressionsCannotPushDown, "expressionsCannotPushDown is null");
+      this.timeColumnName = timeColumnName;
     }
 
     public List<Expression> getMetadataExpressions() {
@@ -829,6 +793,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     public List<Expression> getExpressionsCannotPushDown() {
       return this.expressionsCannotPushDown;
+    }
+
+    @Nullable
+    public String getTimeColumnName() {
+      return timeColumnName;
     }
   }
 }

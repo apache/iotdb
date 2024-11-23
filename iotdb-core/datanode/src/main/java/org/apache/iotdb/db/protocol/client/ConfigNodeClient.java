@@ -550,7 +550,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
+  public TSStatus deleteDatabases(final TDeleteDatabasesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteDatabases(req), status -> !updateConfigNodeLeader(status));
   }

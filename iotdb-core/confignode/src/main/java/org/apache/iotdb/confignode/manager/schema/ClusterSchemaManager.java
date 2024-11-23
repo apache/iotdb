@@ -204,7 +204,8 @@ public class ClusterSchemaManager {
   }
 
   /** Alter Database */
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
+  public TSStatus alterDatabase(
+      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
     TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
@@ -232,7 +233,7 @@ public class ClusterSchemaManager {
     }
     if (databaseSchema.isSetMinDataRegionGroupNum()) {
       // Validate alter DataRegionGroupNum
-      int minDataRegionGroupNum =
+      final int minDataRegionGroupNum =
           getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.DataRegion);
       if (databaseSchema.getMinDataRegionGroupNum() <= minDataRegionGroupNum) {
         result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
@@ -259,7 +260,7 @@ public class ClusterSchemaManager {
           databaseSchemaPlan.getSchema().getDataReplicationFactor(),
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       return result;
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
@@ -360,6 +361,7 @@ public class ClusterSchemaManager {
       final String database = databaseSchema.getName();
       final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
+      databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
@@ -1139,15 +1141,16 @@ public class ClusterSchemaManager {
     }
   }
 
-  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+  public void updateTimeSeriesUsage(final Map<Integer, Long> seriesUsage) {
     schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
   }
 
-  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+  public void updateDeviceUsage(final Map<Integer, Long> deviceUsage) {
     schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
   }
 
-  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+  public void updateSchemaQuotaConfiguration(
+      final long seriesThreshold, final long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
@@ -1320,7 +1323,11 @@ public class ClusterSchemaManager {
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
-          updatedTable.addProp(k, v);
+          if (Objects.nonNull(v)) {
+            updatedTable.addProp(k, v);
+          } else {
+            updatedTable.removeProp(k);
+          }
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);

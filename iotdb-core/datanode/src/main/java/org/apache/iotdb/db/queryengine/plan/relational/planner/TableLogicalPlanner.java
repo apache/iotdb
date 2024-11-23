@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevi
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
@@ -64,6 +65,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,11 +80,11 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class TableLogicalPlanner {
-  private static final Logger LOG = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private final MPPQueryContext queryContext;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator;
@@ -89,41 +92,23 @@ public class TableLogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
+  @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
       SymbolAllocator symbolAllocator,
       WarningCollector warningCollector) {
-    this.queryContext = queryContext;
-    this.metadata = metadata;
-    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    this.planOptimizers =
+    this(
+        queryContext,
+        metadata,
+        sessionInfo,
+        symbolAllocator,
+        warningCollector,
         new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers();
+            .getPlanOptimizers());
   }
 
-  // TODO Remove this in later PR because the SymbolAllocator are not transmit
-  @Deprecated
-  @TestOnly
-  public TableLogicalPlanner(
-      MPPQueryContext queryContext,
-      Metadata metadata,
-      SessionInfo sessionInfo,
-      WarningCollector warningCollector) {
-    this.queryContext = queryContext;
-    this.metadata = metadata;
-    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
-    this.symbolAllocator = new SymbolAllocator();
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    this.planOptimizers =
-        new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers();
-  }
-
-  @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
@@ -158,7 +143,6 @@ public class TableLogicalPlanner {
                     analysis,
                     metadata,
                     queryContext,
-                    queryContext.getTypeProvider(),
                     symbolAllocator,
                     queryContext.getQueryId(),
                     warningCollector,
@@ -205,6 +189,9 @@ public class TableLogicalPlanner {
     }
     if (statement instanceof PipeEnriched) {
       return createRelationPlan(analysis, (PipeEnriched) statement);
+    }
+    if (statement instanceof Delete) {
+      return createRelationPlan(analysis, (Delete) statement);
     }
     if (statement instanceof ExplainAnalyze) {
       return planExplainAnalyze((ExplainAnalyze) statement, analysis);
@@ -274,6 +261,10 @@ public class TableLogicalPlanner {
 
   private RelationPlan createRelationPlan(Analysis analysis, Table table) {
     return getRelationPlanner(analysis).process(table, null);
+  }
+
+  private RelationPlan createRelationPlan(Analysis analysis, Delete statement) {
+    return getRelationPlanner(analysis).process(statement, null);
   }
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
@@ -353,7 +344,16 @@ public class TableLogicalPlanner {
             null,
             statement.getColumnHeaderList(),
             null,
-            pushDownLimit);
+            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1);
+
+    // put the column type info into symbolAllocator to generate TypeProvider
+    statement
+        .getColumnHeaderList()
+        .forEach(
+            columnHeader ->
+                symbolAllocator.newSymbol(
+                    columnHeader.getColumnName(),
+                    TypeFactory.getType(columnHeader.getColumnType())));
 
     // Filter
     if (Objects.nonNull(statement.getIdFuzzyPredicate())) {
@@ -386,6 +386,15 @@ public class TableLogicalPlanner {
             statement.getIdFuzzyPredicate(),
             statement.getColumnHeaderList());
 
+    // put the column type info into symbolAllocator to generate TypeProvider
+    statement
+        .getColumnHeaderList()
+        .forEach(
+            columnHeader ->
+                symbolAllocator.newSymbol(
+                    columnHeader.getColumnName(),
+                    TypeFactory.getType(columnHeader.getColumnType())));
+    symbolAllocator.newSymbol(COUNT_DEVICE_HEADER_STRING, LongType.INT64);
     final CountSchemaMergeNode countMergeNode =
         new CountSchemaMergeNode(queryContext.getQueryId().genPlanNodeId());
     countMergeNode.addChild(node);

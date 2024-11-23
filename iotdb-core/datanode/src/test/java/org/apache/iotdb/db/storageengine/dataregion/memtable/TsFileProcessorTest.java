@@ -132,7 +132,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
 
     // query data in memory
@@ -190,7 +190,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
 
     // query data in memory
@@ -274,7 +274,7 @@ public class TsFileProcessorTest {
       for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+        processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
       }
       processor.asyncFlush();
     }
@@ -308,7 +308,7 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
@@ -316,14 +316,14 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
@@ -331,7 +331,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     Assert.assertEquals(1598424, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
@@ -359,7 +359,7 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(1596808, memTable.getTVListsRamCost());
     processor.insertTablet(
@@ -367,49 +367,49 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(100, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(200, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192808, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNodeFors3000ToS6000(300, true),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(6385616, memTable.getTVListsRamCost());
 
     Assert.assertEquals(240000, memTable.getTotalPointsNum());
@@ -418,14 +418,14 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     Assert.assertEquals(6387232, memTable.getTVListsRamCost());
     // Test records
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     Assert.assertEquals(6388848, memTable.getTVListsRamCost());
     Assert.assertEquals(240200, memTable.getTotalPointsNum());
@@ -453,7 +453,7 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     IMemTable memTable = processor.getWorkMemTable();
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     processor.insertTablet(
@@ -461,14 +461,14 @@ public class TsFileProcessorTest {
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     processor.insertTablet(
         genInsertTableNode(200, false),
         Collections.singletonList(new int[] {0, 10}),
         new TSStatus[10],
         true,
-        new long[4]);
+        new long[5]);
     Assert.assertEquals(3192000, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(1440000, memTable.memSize());
@@ -476,7 +476,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     Assert.assertEquals(3193616, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
@@ -502,7 +502,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor1.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor1.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     IMemTable memTable1 = processor1.getWorkMemTable();
 
@@ -525,7 +525,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       insertRowsNode.addOneInsertRowNode(buildInsertRowNodeByTSRecord(record), i - 1);
     }
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
     IMemTable memTable2 = processor2.getWorkMemTable();
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
@@ -536,19 +536,19 @@ public class TsFileProcessorTest {
     TSRecord record = new TSRecord(101, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode1 = buildInsertRowNodeByTSRecord(record);
-    processor1.insert(insertRowNode1, new long[4]);
+    processor1.insert(insertRowNode1, new long[5]);
     record = new TSRecord(101, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode2 = buildInsertRowNodeByTSRecord(record);
-    processor1.insert(insertRowNode2, new long[4]);
+    processor1.insert(insertRowNode2, new long[5]);
     record = new TSRecord(102, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode3 = buildInsertRowNodeByTSRecord(record);
-    processor1.insert(insertRowNode3, new long[4]);
+    processor1.insert(insertRowNode3, new long[5]);
     record = new TSRecord(102, "root.vehicle.d2");
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode4 = buildInsertRowNodeByTSRecord(record);
-    processor1.insert(insertRowNode4, new long[4]);
+    processor1.insert(insertRowNode4, new long[5]);
 
     // insert more rows by insertRows
     insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
@@ -556,7 +556,7 @@ public class TsFileProcessorTest {
     insertRowsNode.addOneInsertRowNode(insertRowNode2, 1);
     insertRowsNode.addOneInsertRowNode(insertRowNode3, 2);
     insertRowsNode.addOneInsertRowNode(insertRowNode4, 3);
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
@@ -568,9 +568,9 @@ public class TsFileProcessorTest {
     insertRowNode1.setMeasurements(new String[1]);
     insertRowNode1.setValues(new String[1]);
     insertRowsNode.addOneInsertRowNode(insertRowNode1, 0);
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
 
-    processor1.insert(insertRowNode1, new long[4]);
+    processor1.insert(insertRowNode1, new long[5]);
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
@@ -597,7 +597,7 @@ public class TsFileProcessorTest {
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       node.setAligned(true);
-      processor1.insert(node, new long[4]);
+      processor1.insert(node, new long[5]);
     }
     IMemTable memTable1 = processor1.getWorkMemTable();
 
@@ -623,7 +623,7 @@ public class TsFileProcessorTest {
       node.setAligned(true);
       insertRowsNode.addOneInsertRowNode(node, i - 1);
     }
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
     IMemTable memTable2 = processor2.getWorkMemTable();
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
@@ -635,22 +635,22 @@ public class TsFileProcessorTest {
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode1 = buildInsertRowNodeByTSRecord(record);
     insertRowNode1.setAligned(true);
-    processor1.insert(insertRowNode1, new long[4]);
+    processor1.insert(insertRowNode1, new long[5]);
     record = new TSRecord(101, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode2 = buildInsertRowNodeByTSRecord(record);
     insertRowNode2.setAligned(true);
-    processor1.insert(insertRowNode2, new long[4]);
+    processor1.insert(insertRowNode2, new long[5]);
     record = new TSRecord(102, deviceId);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode3 = buildInsertRowNodeByTSRecord(record);
     insertRowNode3.setAligned(true);
-    processor1.insert(insertRowNode3, new long[4]);
+    processor1.insert(insertRowNode3, new long[5]);
     record = new TSRecord(102, "root.vehicle.d2");
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode4 = buildInsertRowNodeByTSRecord(record);
     insertRowNode4.setAligned(true);
-    processor1.insert(insertRowNode4, new long[4]);
+    processor1.insert(insertRowNode4, new long[5]);
 
     // insert more rows by insertRows
     insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
@@ -659,7 +659,7 @@ public class TsFileProcessorTest {
     insertRowsNode.addOneInsertRowNode(insertRowNode2, 1);
     insertRowsNode.addOneInsertRowNode(insertRowNode3, 2);
     insertRowsNode.addOneInsertRowNode(insertRowNode4, 3);
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
@@ -672,9 +672,9 @@ public class TsFileProcessorTest {
     insertRowNode1.setValues(new String[1]);
     insertRowsNode.addOneInsertRowNode(insertRowNode1, 0);
     insertRowsNode.setAligned(true);
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
 
-    processor1.insert(insertRowNode1, new long[4]);
+    processor1.insert(insertRowNode1, new long[5]);
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
@@ -703,7 +703,7 @@ public class TsFileProcessorTest {
       if (i <= 50) {
         node.setAligned(true);
       }
-      processor1.insert(node, new long[4]);
+      processor1.insert(node, new long[5]);
     }
     IMemTable memTable1 = processor1.getWorkMemTable();
 
@@ -732,7 +732,7 @@ public class TsFileProcessorTest {
       }
       insertRowsNode.addOneInsertRowNode(node, i - 1);
     }
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
     IMemTable memTable2 = processor2.getWorkMemTable();
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
@@ -764,7 +764,7 @@ public class TsFileProcessorTest {
       if (i <= 50) {
         node.setAligned(true);
       }
-      processor1.insert(node, new long[4]);
+      processor1.insert(node, new long[5]);
     }
     IMemTable memTable1 = processor1.getWorkMemTable();
 
@@ -794,7 +794,7 @@ public class TsFileProcessorTest {
       }
       insertRowsNode.addOneInsertRowNode(node, i - 1);
     }
-    processor2.insertRows(insertRowsNode, new long[4]);
+    processor2.insertRows(insertRowsNode, new long[5]);
     IMemTable memTable2 = processor2.getWorkMemTable();
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
@@ -831,7 +831,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
+      processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
 
     // query data in memory

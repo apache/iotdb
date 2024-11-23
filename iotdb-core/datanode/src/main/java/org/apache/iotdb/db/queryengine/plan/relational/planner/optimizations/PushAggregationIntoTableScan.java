@@ -16,7 +16,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -171,7 +170,9 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
                       hasProject
                               && !(assignments.get(groupingKey) instanceof SymbolReference
                                   || isDateBinFunctionOfTime(
-                                      assignments.get(groupingKey), dateBinFunctionsOfTime))
+                                      assignments.get(groupingKey),
+                                      dateBinFunctionsOfTime,
+                                      tableScanNode))
                           || tableScanNode.isMeasurementOrTimeColumn(groupingKey))
           || dateBinFunctionsOfTime.size() > 1) {
         // If expr except date_bin(time), Measurement column, or Time column appears in
@@ -192,15 +193,16 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     }
 
     private boolean isDateBinFunctionOfTime(
-        Expression expression, List<FunctionCall> dateBinFunctionsOfTime) {
+        Expression expression,
+        List<FunctionCall> dateBinFunctionsOfTime,
+        TableScanNode tableScanNode) {
       if (expression instanceof FunctionCall) {
         FunctionCall function = (FunctionCall) expression;
         if (TableBuiltinScalarFunction.DATE_BIN
                 .getFunctionName()
                 .equals(function.getName().toString())
             && function.getArguments().get(2) instanceof SymbolReference
-            && TimestampOperand.TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-                ((SymbolReference) function.getArguments().get(2)).getName())) {
+            && tableScanNode.isTimeColumn(Symbol.from(function.getArguments().get(2)))) {
           dateBinFunctionsOfTime.add(function);
           return true;
         }
