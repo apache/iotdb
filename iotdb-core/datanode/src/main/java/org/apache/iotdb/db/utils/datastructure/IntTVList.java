@@ -238,14 +238,11 @@ public abstract class IntTVList extends TVList {
           inputSeqRowCount++;
         }
       }
-      if (sorted
-          && (rowCount == 0
-              || (end - start > nullCnt) && time[start - tIdxOffset] > getTime(rowCount - 1))) {
-        seqRowCount += inputSeqRowCount;
-      }
-      if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
-        inputSorted = false;
-      }
+    }
+    if (sorted
+        && (rowCount == 0
+            || (end - start > nullCnt) && time[start - tIdxOffset] > getTime(rowCount - 1))) {
+      seqRowCount += inputSeqRowCount;
     }
 
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
