@@ -79,6 +79,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -514,9 +515,8 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
-    OrderingScheme expectedOrderingSchema = null;
     if (node.isStreamable()) {
-      expectedOrderingSchema = constructOrderingSchema(node.getPreGroupedSymbols());
+      OrderingScheme expectedOrderingSchema = constructOrderingSchema(node.getPreGroupedSymbols());
       context.setExpectedOrderingScheme(expectedOrderingSchema);
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -563,7 +563,6 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitAggregationTableScan(
       AggregationTableScanNode node, PlanContext context) {
-
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
@@ -579,20 +578,28 @@ public class TableDistributedPlanGenerator
     }
 
     if (regionReplicaSetsList.isEmpty()) {
-      regionReplicaSetsList =
-          Collections.singletonList(Collections.singletonList(new TRegionReplicaSet()));
+      regionReplicaSetsList = Collections.singletonList(Collections.singletonList(NOT_ASSIGNED));
     }
 
     Map<TRegionReplicaSet, AggregationTableScanNode> regionNodeMap = new HashMap<>();
-    // Step is SINGLE, has date_bin(time) and device data in more than one region, we need to split
-    // this node into two-stage Aggregation
-    needSplit = needSplit && node.getProjection() != null && node.getStep() == SINGLE;
+    // Step is SINGLE and device data in more than one region, we need to final aggregate the result
+    // from different region here, so split
+    // this node into two-stage
+    needSplit = needSplit && node.getStep() == SINGLE;
     AggregationNode finalAggregation = null;
     if (needSplit) {
       Pair<AggregationNode, AggregationTableScanNode> splitResult =
           split(node, symbolAllocator, queryId);
       finalAggregation = splitResult.left;
       AggregationTableScanNode partialAggregation = splitResult.right;
+
+      // cover case: complete push-down + group by + streamable
+      if (!context.hasSortProperty && finalAggregation.isStreamable()) {
+        OrderingScheme expectedOrderingSchema =
+            constructOrderingSchema(node.getPreGroupedSymbols());
+        context.setExpectedOrderingScheme(expectedOrderingSchema);
+      }
+
       buildRegionNodeMap(node, regionReplicaSetsList, regionNodeMap, partialAggregation);
     } else {
       buildRegionNodeMap(node, regionReplicaSetsList, regionNodeMap, node);
