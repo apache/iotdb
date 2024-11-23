@@ -20,20 +20,34 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 /** To read chunk data in memory. */
 public class MemChunkReader implements IChunkReader, IPointReader {
+  private final ReadOnlyMemChunk readableChunk;
 
   private final IPointReader timeValuePairIterator;
   private final Filter globalTimeFilter;
@@ -42,14 +56,41 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
+  public static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
-    timeValuePairIterator = readableChunk.getPointReader();
+    this.readableChunk = readableChunk;
+    List<TVList> tvLists = new ArrayList<>(readableChunk.getTvListQueryMap().keySet());
+    timeValuePairIterator =
+        new MergeSortTvListIterator(
+            readableChunk.getDataType(),
+            readableChunk.getEncoding(),
+            readableChunk.getFloatPrecision(),
+            tvLists);
     this.globalTimeFilter = globalTimeFilter;
-    // we treat one ReadOnlyMemChunk as one Page
-    this.pageReaderList =
-        Collections.singletonList(
-            new MemPageReader(
-                readableChunk.getTsBlock(), readableChunk.getChunkMetaData(), globalTimeFilter));
+    this.pageReaderList = new ArrayList<>();
+    initAllPageReaders(
+        readableChunk.getChunkMetaData(),
+        readableChunk.getPageStatisticsList(),
+        readableChunk.getPageOffsetsList());
+  }
+
+  private void initAllPageReaders(
+      IChunkMetadata metadata, List<Statistics> pageStats, List<int[]> pageOffsetsList) {
+    Supplier<TsBlock> tsBlockSupplier = new TsBlockSupplier();
+    for (int i = 0; i < pageStats.size(); i++) {
+      MemPageReader pageReader =
+          new MemPageReader(
+              tsBlockSupplier,
+              (MergeSortTvListIterator) timeValuePairIterator,
+              pageOffsetsList.get(i),
+              metadata.getDataType(),
+              metadata.getMeasurementUid(),
+              pageStats.get(i),
+              globalTimeFilter);
+      this.pageReaderList.add(pageReader);
+    }
   }
 
   @Override
@@ -113,5 +154,78 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   @Override
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
+  }
+
+  class TsBlockSupplier implements Supplier<TsBlock> {
+    public TsBlockSupplier() {}
+
+    @Override
+    public TsBlock get() {
+      sortTvLists();
+      return buildTsBlock();
+    }
+
+    private void sortTvLists() {
+      for (Map.Entry<TVList, Integer> entry : readableChunk.getTvListQueryMap().entrySet()) {
+        TVList tvList = entry.getKey();
+        int queryRowCount = entry.getValue();
+        if (!tvList.isSorted() && queryRowCount > tvList.getSeqRowCount()) {
+          tvList.safelySort();
+        }
+      }
+    }
+
+    private TsBlock buildTsBlock() {
+      try {
+        TSDataType tsDataType = readableChunk.getDataType();
+        TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
+        writeValidValuesIntoTsBlock(builder);
+        return builder.build();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    // read one page and write to tsblock
+    private synchronized void writeValidValuesIntoTsBlock(TsBlockBuilder builder)
+        throws IOException {
+      TSDataType tsDataType = readableChunk.getDataType();
+      int[] deleteCursor = {0};
+      int cnt = 0;
+      while (cnt < MAX_NUMBER_OF_POINTS_IN_PAGE && timeValuePairIterator.hasNextTimeValuePair()) {
+        TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
+        if (!isPointDeleted(tvPair.getTimestamp(), readableChunk.getDeletionList(), deleteCursor)) {
+          builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
+          switch (tsDataType) {
+            case BOOLEAN:
+              builder.getColumnBuilder(0).writeBoolean(tvPair.getValue().getBoolean());
+              break;
+            case INT32:
+            case DATE:
+              builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
+              break;
+            case INT64:
+            case TIMESTAMP:
+              builder.getColumnBuilder(0).writeLong(tvPair.getValue().getLong());
+              break;
+            case FLOAT:
+              builder.getColumnBuilder(0).writeFloat(tvPair.getValue().getFloat());
+              break;
+            case DOUBLE:
+              builder.getColumnBuilder(0).writeDouble(tvPair.getValue().getDouble());
+              break;
+            case TEXT:
+            case STRING:
+            case BLOB:
+              builder.getColumnBuilder(0).writeBinary(tvPair.getValue().getBinary());
+              break;
+            default:
+              break;
+          }
+          builder.declarePosition();
+          cnt++;
+        }
+      }
+    }
   }
 }

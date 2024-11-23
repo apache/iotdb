@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.PageMetadata;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
@@ -40,34 +42,48 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class MemPageReader implements IPageReader {
-
-  private final TsBlock tsBlock;
-  private final IChunkMetadata chunkMetadata;
-
+  private TsBlock tsBlock;
+  private final MergeSortTvListIterator mergeSortTvListIterator;
+  private final int[] tvListOffsets;
+  private final Supplier<TsBlock> tsBlockSupplier;
+  private final TSDataType tsDataType;
+  private final PageMetadata pageMetadata;
   private Filter recordFilter;
 
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
-  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter recordFilter) {
-    this.tsBlock = tsBlock;
-    this.chunkMetadata = chunkMetadata;
+  public MemPageReader(
+      Supplier<TsBlock> tsBlockSupplier,
+      MergeSortTvListIterator mergeSortTvListIterator,
+      int[] tvListOffsets,
+      TSDataType tsDataType,
+      String measurementUid,
+      Statistics statistics,
+      Filter recordFilter) {
+    this.tsBlockSupplier = tsBlockSupplier;
+    this.mergeSortTvListIterator = mergeSortTvListIterator;
+    this.tvListOffsets = tvListOffsets;
     this.recordFilter = recordFilter;
+    this.tsDataType = tsDataType;
+    this.pageMetadata = new PageMetadata(measurementUid, tsDataType, statistics);
   }
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-    TSDataType dataType = chunkMetadata.getDataType();
-    BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
+    getTsBlock();
+
+    BatchData batchData = BatchDataFactory.createBatchData(tsDataType, ascending, false);
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
 
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       if (satisfyInfo[i]) {
-        switch (dataType) {
+        switch (tsDataType) {
           case BOOLEAN:
             batchData.putBoolean(
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBoolean(i));
@@ -95,7 +111,7 @@ public class MemPageReader implements IPageReader {
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
             break;
           default:
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+            throw new UnSupportedDataTypeException(String.valueOf(tsDataType));
         }
       }
     }
@@ -104,8 +120,9 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(Collections.singletonList(chunkMetadata.getDataType()));
+    getTsBlock();
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
 
@@ -176,23 +193,23 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public Statistics<? extends Serializable> getStatistics() {
-    return chunkMetadata.getStatistics();
+    return pageMetadata.getStatistics();
   }
 
   @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
-    return chunkMetadata.getTimeStatistics();
+    return pageMetadata.getTimeStatistics();
   }
 
   @Override
   public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
       int measurementIndex) {
-    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+    return pageMetadata.getMeasurementStatistics(measurementIndex);
   }
 
   @Override
   public boolean hasNullValue(int measurementIndex) {
-    return chunkMetadata.hasNullValue(measurementIndex);
+    return pageMetadata.hasNullValue(measurementIndex);
   }
 
   @Override
@@ -213,5 +230,71 @@ public class MemPageReader implements IPageReader {
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     // non-aligned page reader don't need to init TsBlockBuilder at the very beginning
+  }
+
+  private void InitializeOffsets() {
+    if (tvListOffsets != null) {
+      mergeSortTvListIterator.setTVListIteratorOffsets(tvListOffsets);
+    }
+  }
+
+  private void getTsBlock() {
+    if (tsBlock == null) {
+      InitializeOffsets();
+      tsBlock = tsBlockSupplier.get();
+      if (pageMetadata.getStatistics() == null) {
+        initPageMeta();
+      }
+    }
+  }
+
+  private void initPageMeta() {
+    Statistics statistics = Statistics.getStatsByType(tsDataType);
+    updateMetaFromTsBlock(statistics, tsDataType);
+    statistics.setEmpty(tsBlock.isEmpty());
+    pageMetadata.setStatistics(statistics);
+  }
+
+  private void updateMetaFromTsBlock(Statistics statistics, TSDataType dataType) {
+    if (!tsBlock.isEmpty()) {
+      switch (dataType) {
+        case BOOLEAN:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
+          }
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
+          }
+          break;
+        case FLOAT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getFloat(i));
+          }
+          break;
+        case INT32:
+        case DATE:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
+          }
+          break;
+        case INT64:
+        case TIMESTAMP:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
+          }
+          break;
+        case DOUBLE:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getDouble(i));
+          }
+          break;
+        default:
+          // do nothing
+      }
+    }
   }
 }

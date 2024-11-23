@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +72,12 @@ public class QueryContext {
 
   private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
-  public QueryContext() {}
+  // remember accessed tvlists for the query
+  protected final Set<TVList> tvListSet;
+
+  public QueryContext() {
+    this.tvListSet = new HashSet<>();
+  }
 
   public QueryContext(long queryId) {
     this(queryId, false, System.currentTimeMillis(), 0);
@@ -82,6 +89,7 @@ public class QueryContext {
     this.debug = debug;
     this.startTime = startTime;
     this.timeout = timeout;
+    tvListSet = new HashSet<>();
   }
 
   // if the mods file does not exist, do not add it to the cache
@@ -194,5 +202,9 @@ public class QueryContext {
 
   public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
     this.ignoreAllNullRows = ignoreAllNullRows;
+  }
+
+  public void addTvListToSet(Map<TVList, Integer> tvListMap) {
+    tvListSet.addAll(tvListMap.keySet());
   }
 }

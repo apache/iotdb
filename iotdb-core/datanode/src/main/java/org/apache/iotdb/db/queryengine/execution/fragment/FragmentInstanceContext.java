@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -649,6 +650,26 @@ public class FragmentInstanceContext extends QueryContext {
     releaseResource();
   }
 
+  private void releaseTVListOwnedByQuery() {
+    for (TVList tvList : tvListSet) {
+      tvList.lockQueryList();
+      List<QueryContext> queryContextList = tvList.getQueryContextList();
+      try {
+        queryContextList.remove(this);
+        if (tvList.getOwnerQuery() == this) {
+          tvList.setOwnerQuery(null);
+          if (queryContextList.isEmpty()) {
+            tvList.clear();
+          } else {
+            tvList.setOwnerQuery(queryContextList.get(0));
+          }
+        }
+      } finally {
+        tvList.unlockQueryList();
+      }
+    }
+  }
+
   /**
    * All file paths used by this fragment instance must be cleared and thus the usage reference must
    * be decreased.
@@ -668,6 +689,9 @@ public class FragmentInstanceContext extends QueryContext {
       }
       unClosedFilePaths = null;
     }
+
+    // release TVList owned by query
+    releaseTVListOwnedByQuery();
 
     dataRegion = null;
     globalTimeFilter = null;
