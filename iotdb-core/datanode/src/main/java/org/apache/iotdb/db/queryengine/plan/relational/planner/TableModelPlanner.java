@@ -168,7 +168,7 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public ScheduledExecutorService getScheduledExecutorService() {
-    return null;
+    return scheduledExecutor;
   }
 
   @Override
