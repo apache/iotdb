@@ -640,6 +640,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
+      if (((JoinNode) output).isCrossJoin()) {
+        throw new IllegalStateException(
+            "Cross join is not supported in current version, each table must have at least one equiJoinClause");
+      }
+
       JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
       OrderingScheme leftOrderingScheme =
           new OrderingScheme(
