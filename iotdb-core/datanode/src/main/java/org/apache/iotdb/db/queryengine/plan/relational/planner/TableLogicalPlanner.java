@@ -65,11 +65,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.TypeFactory;
-import org.apache.tsfile.enums.TSDataType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -450,7 +448,10 @@ public class TableLogicalPlanner {
             queryContext.getLocalQueryId(),
             queryContext.getTimeOut());
     return new RelationPlan(
-        newRoot, originalQueryPlan.getScope(), originalQueryPlan.getFieldMappings());
+        newRoot,
+        originalQueryPlan.getScope(),
+        originalQueryPlan.getFieldMappings(),
+        Optional.empty());
   }
 
   private enum Stage {
