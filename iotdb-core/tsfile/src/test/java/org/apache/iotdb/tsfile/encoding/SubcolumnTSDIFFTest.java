@@ -142,6 +142,11 @@ public class SubcolumnTSDIFFTest {
             }
         }
 
+        // for (int i = 1; i <= m; i++) {
+        //     System.out.print(isAllZero[i] + " ");
+        // }
+        // System.out.println();
+
         int[][] costLB = new int[m + 1][10];
 
         for (int l = 1; l <= m; l++) {
@@ -317,9 +322,10 @@ public class SubcolumnTSDIFFTest {
 
         // System.out.println("num_blocks: " + num_blocks);
 
-        for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
-        }
+        // for (int i = 0; i < num_blocks; i++) {
+        //     System.out.println("block: " + i);
+        //     startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
+        // }
 
         int remainder = data_length % block_size;
 
@@ -590,7 +596,7 @@ public class SubcolumnTSDIFFTest {
     }
 
     @Test
-    public void BOSTest() throws IOException {
+    public void testBOS() throws IOException {
         String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
@@ -617,9 +623,11 @@ public class SubcolumnTSDIFFTest {
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
+        // dataset_block_size.add(512);
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
         output_path_list.add(output_parent_dir + "/subcolumn_ts2diff.csv");
+        // output_path_list.add(output_parent_dir + "/subcolumn_ts2diff_block512.csv");
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);

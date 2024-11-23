@@ -811,7 +811,7 @@ public class SubcolumnAltRLETest {
     }
 
     @Test
-    public void BOSTest() throws IOException {
+    public void testBOS() throws IOException {
         String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
