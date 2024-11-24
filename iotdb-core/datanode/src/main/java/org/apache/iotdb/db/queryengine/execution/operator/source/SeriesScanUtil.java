@@ -49,6 +49,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TablePageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -1228,7 +1229,10 @@ public class SeriesScanUtil implements Accountable {
       this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
-      this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
+      this.isAligned =
+          data instanceof AlignedPageReader
+              || data instanceof MemAlignedPageReader
+              || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
