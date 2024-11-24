@@ -1035,9 +1035,9 @@ public class SubcolumnTest {
         writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
         startBitPosition += 32;
 
-        // startBitPosition = SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
+        startBitPosition = SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
-        startBitPosition = SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
+        // startBitPosition = SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
 
         return startBitPosition;
     }
@@ -1051,9 +1051,9 @@ public class SubcolumnTest {
 
         int[] block_data = new int[remainder];
 
-        // startBitPosition = SubcolumnBetaBPDecoder(encoded_result, startBitPosition, block_data);
+        startBitPosition = SubcolumnBetaBPDecoder(encoded_result, startBitPosition, block_data);
         // startBitPosition = SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, block_data);
-        startBitPosition = SubcolumnLBPDecoder(encoded_result, startBitPosition, block_data);
+        // startBitPosition = SubcolumnLBPDecoder(encoded_result, startBitPosition, block_data);
 
         for (int i = 0; i < remainder; i++) {
             data[block_index * block_size + i] = block_data[i] + min_delta[0];
@@ -1114,14 +1114,14 @@ public class SubcolumnTest {
     public void testSubcolumn() {
         int[] list = new int[8];
 
-        list[0] = 154; // 10011010
-        list[1] = 176; // 10110000
-        list[2] = 179; // 10110011
-        list[3] = 161; // 10100001
-        list[4] = 152; // 10011000
-        list[5] = 184; // 10111000
-        list[6] = 193; // 11000001
-        list[7] = 203; // 11001011
+        list[0] = 0b10011010; // 154
+        list[1] = 0b10110000; // 176
+        list[2] = 0b10110011; // 179
+        list[3] = 0b10100001; // 161
+        list[4] = 0b10011000; // 152
+        list[5] = 0b10111000; // 184
+        list[6] = 0b11000001; // 193
+        list[7] = 0b11001011; // 203
 
         byte[] encoded_result = new byte[8 * 4];
         int startBitPosition = 0;
@@ -1192,13 +1192,16 @@ public class SubcolumnTest {
         // dataset_name.add("TH-Climate");
         // dataset_name.add("TY-Transport");
         // dataset_name.add("EPM-Education");
+
         input_path_list.add(input_parent_dir);
         dataset_block_size.add(1024);
+
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        // output_path_list.add(output_parent_dir + "subcolumn_beta_bp.csv");
+        output_path_list.add(output_parent_dir + "subcolumn_beta_bp.csv");
         // output_path_list.add(output_parent_dir + "/subcolumn_l_beta_bp.csv");
-        output_path_list.add(output_parent_dir + "/subcolumn_l_bp.csv");
+        // output_path_list.add(output_parent_dir + "/subcolumn_l_bp.csv");
+
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
@@ -1354,6 +1357,7 @@ public class SubcolumnTest {
 
                 String[] record = {
                         datasetName,
+                        // "SubcolumnLBetaBP",
                         "Subcolumn",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
