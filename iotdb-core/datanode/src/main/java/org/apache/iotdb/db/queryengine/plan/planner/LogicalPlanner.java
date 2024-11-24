@@ -27,6 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.optimization.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,6 +38,8 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LogicalPlanner.class);
 
   private final MPPQueryContext context;
   private final List<PlanOptimizer> optimizers =
@@ -54,12 +59,14 @@ public class LogicalPlanner {
 
       long planFinishTime = System.nanoTime();
       context.setLogicalPlanCost(planFinishTime - startTime);
+      LOGGER.info("logical plan cost: {}", planFinishTime - startTime);
 
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
       }
       context.setLogicalOptimizationCost(System.nanoTime() - planFinishTime);
 
+      LOGGER.info("optimize cost: {}", System.nanoTime() - planFinishTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TREE_TYPE, LOGICAL_PLANNER, System.nanoTime() - planFinishTime);
     }

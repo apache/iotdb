@@ -309,6 +309,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ExecutionResult result;
       if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
         Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+        LOGGER.info("parse cost {}", (System.nanoTime() - startTime));
 
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
@@ -343,6 +344,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
             relationSqlParser.createStatement(statement, clientSession.getZoneId());
+        LOGGER.info("parse cost {}", (System.nanoTime() - startTime));
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -371,6 +373,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 metadata,
                 req.getTimeout());
       }
+
+      LOGGER.info("plan cost {}", (System.nanoTime() - startTime));
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -435,6 +439,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (quota != null) {
         quota.close();
       }
+      LOGGER.info("query cost: {}", currentOperationCost);
     }
   }
 

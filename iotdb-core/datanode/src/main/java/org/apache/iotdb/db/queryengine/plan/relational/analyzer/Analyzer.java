@@ -31,6 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +42,8 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANAL
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class Analyzer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(Analyzer.class);
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
@@ -92,6 +97,7 @@ public class Analyzer {
 
     analyzer.analyze(statement);
     if (statement instanceof Query) {
+      LOGGER.info("analyze cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
     }

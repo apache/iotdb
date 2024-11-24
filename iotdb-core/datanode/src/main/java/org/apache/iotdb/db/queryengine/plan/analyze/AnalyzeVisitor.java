@@ -538,6 +538,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.debug("[EndFetchSchema]");
       long schemaFetchCost = System.nanoTime() - startTime;
       context.setFetchSchemaCost(schemaFetchCost);
+      logger.info("device fetch cost: {}", schemaFetchCost);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
     }
@@ -2227,6 +2228,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     } finally {
       long partitionFetchCost = System.nanoTime() - startTime;
+      logger.info("data partition cost: {}", partitionFetchCost);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TREE_TYPE, PARTITION_FETCHER, partitionFetchCost);
       context.setFetchPartitionCost(partitionFetchCost);

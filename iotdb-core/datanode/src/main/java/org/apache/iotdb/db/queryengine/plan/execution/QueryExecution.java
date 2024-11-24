@@ -303,6 +303,7 @@ public class QueryExecution implements IQueryExecution {
 
     if (analysis.isQuery()) {
       long distributionPlanCost = System.nanoTime() - startTime;
+      LOGGER.info("distribution plan cost: {}", distributionPlanCost);
       context.setDistributionPlanCost(distributionPlanCost);
       QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
           TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);

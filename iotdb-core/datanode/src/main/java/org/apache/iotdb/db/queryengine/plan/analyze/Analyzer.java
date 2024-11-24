@@ -25,11 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Analyzer.class);
+
   private final MPPQueryContext context;
 
   private final IPartitionFetcher partitionFetcher;
@@ -52,6 +57,7 @@ public class Analyzer {
     }
 
     if (statement.isQuery()) {
+      LOGGER.info("analyze cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TREE_TYPE, ANALYZER, System.nanoTime() - startTime);
     }

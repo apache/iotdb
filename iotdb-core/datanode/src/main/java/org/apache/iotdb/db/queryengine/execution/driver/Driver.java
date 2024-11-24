@@ -428,6 +428,7 @@ public abstract class Driver implements IDriver {
         value[1] += operatorContext.getNextCalledCount();
       }
       for (Map.Entry<String, long[]> entry : operatorType2TotalCost.entrySet()) {
+        LOGGER.info("driver cost {}: {}", entry.getKey(), entry.getValue());
         QUERY_METRICS.recordOperatorExecutionCost(entry.getKey(), entry.getValue()[0]);
         QUERY_METRICS.recordOperatorExecutionCount(entry.getKey(), entry.getValue()[1]);
       }

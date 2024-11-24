@@ -136,6 +136,7 @@ public class ClusterScheduler implements IScheduler {
       stateMachine.transitionToFailed(e);
       return;
     } finally {
+      logger.info("dispatch cost: {}", System.nanoTime() - startTime);
       QUERY_EXECUTION_METRICS.recordExecutionCost(WAIT_FOR_DISPATCH, System.nanoTime() - startTime);
     }
 

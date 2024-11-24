@@ -64,6 +64,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,6 +81,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class TableLogicalPlanner {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableLogicalPlanner.class);
+
   private final MPPQueryContext queryContext;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator;
@@ -124,6 +128,7 @@ public class TableLogicalPlanner {
     PlanNode planNode = planStatement(analysis, statement);
 
     if (statement instanceof Query) {
+      LOGGER.info("logical plan cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
       startTime = System.nanoTime();
@@ -142,6 +147,7 @@ public class TableLogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
+      LOGGER.info("optimize cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, System.nanoTime() - startTime);
     }

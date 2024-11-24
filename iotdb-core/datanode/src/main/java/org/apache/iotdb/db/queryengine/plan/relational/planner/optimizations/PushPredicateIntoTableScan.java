@@ -61,6 +61,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -120,6 +122,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLit
  * to be adapted.
  */
 public class PushPredicateIntoTableScan implements PlanOptimizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PushPredicateIntoTableScan.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -439,6 +442,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
+      LOGGER.info("device fetch cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
 
@@ -477,7 +481,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         } else {
           analysis.upsertDataPartition(dataPartition);
         }
-
+        LOGGER.info("data partition cost: {}", System.nanoTime() - startTime);
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
       }

@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -38,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dis
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,6 +54,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class TableDistributedPlanner {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableDistributedPlanner.class);
 
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -104,6 +108,7 @@ public class TableDistributedPlanner {
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
     if (analysis.getStatement() instanceof Query) {
+      LOGGER.info("distribution plan cost: {}", System.nanoTime() - startTime);
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
