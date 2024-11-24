@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -638,6 +639,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
                 node.isSpillable());
+      }
+
+      if (((JoinNode) output).isCrossJoin()) {
+        throw new SemanticException(
+            "Cross join is not supported in current version, each table must have at least one equiJoinClause");
       }
 
       JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
