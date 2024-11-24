@@ -311,17 +311,6 @@ public class ImportData extends AbstractDataTool {
             .build();
     options.addOption(opFailedLinesPerFile);
 
-    Option opTypeInfer =
-        Option.builder(TYPE_INFER_ARGS)
-            .longOpt(TYPE_INFER_NAME)
-            .argName(TYPE_INFER_NAME)
-            .numberOfArgs(5)
-            .hasArgs()
-            .valueSeparator(',')
-            .desc("Define type info by option:\"boolean=text,int=long, ... (optional)")
-            .build();
-    options.addOption(opTypeInfer);
-
     Option opTimeZone =
         Option.builder(TIME_ZONE_ARGS)
             .longOpt(TIME_ZONE_NAME)
