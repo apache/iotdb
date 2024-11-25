@@ -486,12 +486,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             parameters.get(ColumnHeaderConstant.TYPE));
     final IoTDBTreePattern treePattern =
         new IoTDBTreePattern(
-            parameters.containsKey(PipeTransferConfigSnapshotSealReq.TREE),
+            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
             parameters.get(ColumnHeaderConstant.PATH_PATTERN));
     final TablePattern tablePattern =
         new TablePattern(
-            parameters.containsKey(PipeTransferConfigSnapshotSealReq.TABLE),
-            parameters.get(ColumnHeaderConstant.DATABASE),
+            parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
+            parameters.get(PipeTransferFileSealReqV2.DATABASE_PATTERN),
             parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {

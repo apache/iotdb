@@ -35,6 +35,9 @@ import java.util.Objects;
 
 public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
+  public static final String DATABASE_PATTERN = "database_pattern";
+  public static final String TREE = "tree";
+  public static final String TABLE = "table";
   protected transient List<String> fileNames;
   protected transient List<Long> fileLengths;
   protected transient Map<String, String> parameters;

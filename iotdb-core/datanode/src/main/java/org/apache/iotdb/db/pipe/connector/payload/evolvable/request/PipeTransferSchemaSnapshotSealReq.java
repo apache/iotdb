@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -45,7 +46,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      final String pattern,
+      final String treePattern,
+      final String tablePatternDatabase,
+      final String tablePatternTable,
+      final boolean isTreeCaptured,
+      final boolean isTableCaptured,
       final String mTreeSnapshotName,
       final long mTreeSnapshotLength,
       final String tLogName,
@@ -54,7 +59,15 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
       final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
-    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
+    parameters.put(DATABASE_PATTERN, tablePatternDatabase);
+    parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
+    if (isTreeCaptured) {
+      parameters.put(IClientSession.SqlDialect.TREE.toString(), "");
+    }
+    if (isTableCaptured) {
+      parameters.put(IClientSession.SqlDialect.TABLE.toString(), "");
+    }
     parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return (PipeTransferSchemaSnapshotSealReq)

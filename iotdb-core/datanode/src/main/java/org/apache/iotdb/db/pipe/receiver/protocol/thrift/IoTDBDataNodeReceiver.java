@@ -63,6 +63,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTablePatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
@@ -142,8 +143,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementTSStatusVisitor();
   private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
-  private static final PipeStatementTreePatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
+  private static final PipeStatementTreePatternParseVisitor STATEMENT_TREE_PATTERN_PARSE_VISITOR =
       new PipeStatementTreePatternParseVisitor();
+  private static final PipeStatementTablePatternParseVisitor STATEMENT_TABLE_PATTERN_PARSE_VISITOR =
+      new PipeStatementTablePatternParseVisitor();
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
           new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
@@ -575,7 +578,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // The statements do not contain AlterLogicalViewStatements
         // Here we apply the statements as many as possible
         // Even if there are failed statements
-        STATEMENT_PATTERN_PARSE_VISITOR
+        STATEMENT_TREE_PATTERN_PARSE_VISITOR
             .process(originalStatement, pattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));

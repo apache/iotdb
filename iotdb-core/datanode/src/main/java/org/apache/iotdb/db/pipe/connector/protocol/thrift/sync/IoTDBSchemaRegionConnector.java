@@ -174,7 +174,11 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           compressIfNeeded(
               PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
                   // The pattern is surely Non-null
-                  snapshotEvent.getTreePatternString(),
+                  snapshotEvent.getTreePattern().getPattern(),
+                  snapshotEvent.getTablePattern().getDatabasePattern(),
+                  snapshotEvent.getTablePattern().getTablePattern(),
+                  snapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+                  snapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
                   mTreeSnapshotFile.getName(),
                   mTreeSnapshotFile.length(),
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
