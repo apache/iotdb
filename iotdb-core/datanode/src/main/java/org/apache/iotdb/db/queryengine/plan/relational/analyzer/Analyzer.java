@@ -67,6 +67,7 @@ public class Analyzer {
   }
 
   public Analysis analyze(Statement statement) {
+    long startTime = System.nanoTime();
     Analysis analysis = new Analysis(statement, parameterLookup);
     Statement innerStatement =
         statement instanceof PipeEnriched
@@ -85,15 +86,15 @@ public class Analyzer {
       analysis.setDatabaseName(session.getDatabaseName().get());
     }
 
-    long startTime = System.nanoTime();
     StatementAnalyzer analyzer =
         statementAnalyzerFactory.createStatementAnalyzer(
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
     if (statement instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
+      long cost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, ANALYZER, cost);
+      context.setAnalyzeCost(cost);
     }
 
     // TODO access control

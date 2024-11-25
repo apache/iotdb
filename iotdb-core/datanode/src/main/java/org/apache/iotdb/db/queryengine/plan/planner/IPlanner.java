@@ -51,4 +51,6 @@ public interface IPlanner {
 
   void setRedirectInfo(
       IAnalysis analysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode);
+
+  boolean isQueryStatement();
 }

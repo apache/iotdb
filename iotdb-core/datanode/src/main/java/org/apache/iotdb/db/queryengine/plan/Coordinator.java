@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.statistics.FixedScheduledOutputQueryPlanStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -139,6 +140,9 @@ public class Coordinator {
 
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
+
+  FixedScheduledOutputQueryPlanStatistics fixedScheduledOutputQueryPlanStatistics =
+      new FixedScheduledOutputQueryPlanStatistics();
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -443,6 +447,12 @@ public class Coordinator {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
+
+        if (queryExecution.getPlanner() != null && queryExecution.getPlanner().isQueryStatement()) {
+          MPPQueryContext queryContext = queryExecution.getQueryContext();
+          fixedScheduledOutputQueryPlanStatistics.recordCost(queryContext);
+        }
+
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -134,8 +135,6 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               distributedPlan.getInstances(),
               context.getQueryType(),
-              executor,
-              writeOperationExecutor,
               scheduledExecutor,
               syncInternalServiceClientManager,
               asyncInternalServiceClientManager);
@@ -200,5 +199,10 @@ public class TreeModelPlanner implements IPlanner {
         }
       }
     }
+  }
+
+  @Override
+  public boolean isQueryStatement() {
+    return statement instanceof QueryStatement;
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOper
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -1835,6 +1837,16 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public String getStatementType() {
+      return null;
+    }
+
+    @Override
+    public MPPQueryContext getQueryContext() {
+      return null;
+    }
+
+    @Override
+    public IPlanner getPlanner() {
       return null;
     }
 

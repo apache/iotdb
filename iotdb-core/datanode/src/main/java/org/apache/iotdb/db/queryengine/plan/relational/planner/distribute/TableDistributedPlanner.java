@@ -104,8 +104,9 @@ public class TableDistributedPlanner {
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
     if (analysis.getStatement() instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      long cost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, cost);
+      mppQueryContext.setDistributionPlanCost(cost);
     }
     return resultDistributedPlan;
   }

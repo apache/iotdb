@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -167,8 +168,6 @@ public class TableModelPlanner implements IPlanner {
               stateMachine,
               distributedPlan.getInstances(),
               context.getQueryType(),
-              executor,
-              writeOperationExecutor,
               scheduledExecutor,
               syncInternalServiceClientManager,
               asyncInternalServiceClientManager);
@@ -226,6 +225,11 @@ public class TableModelPlanner implements IPlanner {
         }
       }
     }
+  }
+
+  @Override
+  public boolean isQueryStatement() {
+    return statement instanceof Query;
   }
 
   public static class NopAccessControl implements AccessControl {}

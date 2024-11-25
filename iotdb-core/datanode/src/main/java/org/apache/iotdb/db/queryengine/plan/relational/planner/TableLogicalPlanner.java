@@ -124,8 +124,9 @@ public class TableLogicalPlanner {
     PlanNode planNode = planStatement(analysis, statement);
 
     if (statement instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
+      long cost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, cost);
+      queryContext.setLogicalPlanCost(cost);
       startTime = System.nanoTime();
 
       for (PlanOptimizer optimizer : planOptimizers) {
@@ -142,8 +143,14 @@ public class TableLogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, System.nanoTime() - startTime);
+
+      cost =
+          System.nanoTime()
+              - startTime
+              - queryContext.getFetchSchemaCost()
+              - queryContext.getFetchPartitionCost();
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, cost);
+      queryContext.setLogicalOptimizationCost(cost);
     }
 
     return new LogicalQueryPlan(queryContext, planNode);
