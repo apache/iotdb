@@ -157,10 +157,9 @@ public class IoTDBDatabaseIT {
 
       // Test create database with properties
       statement.execute(
-          "create database test_prop with (ttl=300, schema_replication_factor=DEFAULT, data_replication_factor=3, time_partition_interval=100000)");
+          "create database test_prop with (ttl=300, schema_region_group_num=DEFAULT, time_partition_interval=100000)");
       databaseNames = new String[] {"test_prop"};
       TTLs = new String[] {"300"};
-      dataReplicaFactors = new int[] {3};
       timePartitionInterval = new int[] {100000};
 
       // show

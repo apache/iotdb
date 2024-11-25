@@ -146,9 +146,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -193,8 +191,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       if (property.isSetToDefault()) {
         switch (key) {
           case TTL_KEY:
-          case SCHEMA_REPLICATION_FACTOR_KEY:
-          case DATA_REPLICATION_FACTOR_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
@@ -218,13 +214,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             break;
           }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
-          break;
-        case SCHEMA_REPLICATION_FACTOR_KEY:
-          schema.setSchemaReplicationFactor(
-              parseIntFromLiteral(value, SCHEMA_REPLICATION_FACTOR_KEY));
-          break;
-        case DATA_REPLICATION_FACTOR_KEY:
-          schema.setDataReplicationFactor(parseIntFromLiteral(value, DATA_REPLICATION_FACTOR_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
@@ -323,18 +312,41 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
 
     // TODO: Place the check at statement analyzer
+    boolean hasTimeColumn = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
+      final TSDataType dataType = getDataType(columnDefinition.getType());
+      if (checkTimeColumnIdempotent(category, columnName, dataType) && !hasTimeColumn) {
+        hasTimeColumn = true;
+        continue;
+      }
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      final TSDataType dataType = getDataType(columnDefinition.getType());
       table.addColumnSchema(
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
     return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  private boolean checkTimeColumnIdempotent(
+      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      if (category == TsTableColumnCategory.TIME
+          && columnName.equals(TsTable.TIME_COLUMN_NAME)
+          && dataType == TSDataType.TIMESTAMP) {
+        return true;
+      } else if (dataType == TSDataType.TIMESTAMP) {
+        throw new SemanticException(
+            "The time column category shall be bounded with column name 'time'.");
+      } else {
+        throw new SemanticException("The time column's type shall be 'timestamp'.");
+      }
+    }
+
+    return false;
   }
 
   @Override
