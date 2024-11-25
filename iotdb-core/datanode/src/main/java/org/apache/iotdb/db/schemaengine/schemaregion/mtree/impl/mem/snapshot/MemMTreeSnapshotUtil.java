@@ -137,20 +137,21 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static void serializeTo(MemMTreeStore store, OutputStream outputStream)
+  private static void serializeTo(final MemMTreeStore store, final OutputStream outputStream)
       throws IOException {
     ReadWriteIOUtils.write(VERSION, outputStream);
     inorderSerialize(store.getRoot(), store, outputStream);
   }
 
   private static void inorderSerialize(
-      IMemMNode root, MemMTreeStore store, OutputStream outputStream) throws IOException {
-    MNodeSerializer serializer = new MNodeSerializer();
+      final IMemMNode root, MemMTreeStore store, final OutputStream outputStream)
+      throws IOException {
+    final MNodeSerializer serializer = new MNodeSerializer();
     if (!root.accept(serializer, outputStream)) {
       throw new IOException(SERIALIZE_ERROR_INFO);
     }
 
-    Deque<IMNodeIterator<IMemMNode>> stack = new ArrayDeque<>();
+    final Deque<IMNodeIterator<IMemMNode>> stack = new ArrayDeque<>();
     stack.push(store.getChildrenIterator(root));
     IMemMNode node;
     IMNodeIterator<IMemMNode> iterator;

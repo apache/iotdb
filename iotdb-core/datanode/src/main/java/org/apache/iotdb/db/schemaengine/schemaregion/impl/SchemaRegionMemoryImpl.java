@@ -369,15 +369,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   @SuppressWarnings("squid:S3776")
   private int initFromLog() throws IOException {
-    File logFile =
+    final File logFile =
         SystemFileFactory.INSTANCE.getFile(
             schemaRegionDirPath + File.separator + SchemaConstant.METADATA_LOG);
 
-    long time = System.currentTimeMillis();
+    final long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
-      int idx;
-      try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
+      final int idx;
+      try (final SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
               SchemaConstant.METADATA_LOG,
@@ -388,7 +388,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             System.currentTimeMillis() - time,
             storageGroupFullPath);
         return idx;
-      } catch (Exception e) {
+      } catch (final Exception e) {
         e.printStackTrace();
         throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
@@ -595,7 +595,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 }
                 try {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
+                } catch (final IOException e) {
                   logger.error(
                       "Failed to recover tagIndex for {} in schemaRegion {}.",
                       storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
