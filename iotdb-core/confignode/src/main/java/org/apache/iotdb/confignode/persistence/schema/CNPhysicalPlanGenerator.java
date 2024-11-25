@@ -70,7 +70,7 @@ import java.util.Stack;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_DEVICE_MNODE_TYPE;
 import static org.apache.iotdb.commons.utils.IOUtils.readAuthString;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
@@ -334,7 +334,7 @@ public class CNPhysicalPlanGenerator
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
-      } else if (type == TABLE_MNODE_TYPE) {
+      } else if (type == TABLE_DEVICE_MNODE_TYPE) {
         tableNode = deserializeTableMNode(inputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
@@ -375,7 +375,7 @@ public class CNPhysicalPlanGenerator
             }
             tableSet.clear();
             break;
-          case TABLE_MNODE_TYPE:
+          case TABLE_DEVICE_MNODE_TYPE:
             tableNode = deserializeTableMNode(bufferedInputStream);
             name = tableNode.getName();
             stack.push(new Pair<>(tableNode, false));

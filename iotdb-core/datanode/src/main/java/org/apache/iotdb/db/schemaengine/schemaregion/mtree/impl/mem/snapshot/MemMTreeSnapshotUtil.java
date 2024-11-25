@@ -62,7 +62,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_DEVICE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
@@ -273,7 +273,7 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
         break;
-      case TABLE_MNODE_TYPE:
+      case TABLE_DEVICE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
         if (ancestors.size() == 1) {
@@ -313,7 +313,7 @@ public class MemMTreeSnapshotUtil {
       try {
         if (node.isDevice()) {
           if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
-            ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
+            ReadWriteIOUtils.write(TABLE_DEVICE_MNODE_TYPE, outputStream);
             final TableDeviceInfo<IMemMNode> tableDeviceInfo =
                 (TableDeviceInfo<IMemMNode>) (node.getAsDeviceMNode().getDeviceInfo());
             serializeBasicMNode(node, outputStream);

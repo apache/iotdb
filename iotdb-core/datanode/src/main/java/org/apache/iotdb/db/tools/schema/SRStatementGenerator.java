@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
@@ -70,7 +71,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -78,7 +78,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_DEVICE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
@@ -120,6 +120,16 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       new MemMTreeSnapshotUtil.MNodeDeserializer();
 
   private int nodeCount = 0;
+
+  // Table device batch
+  // We construct inner batch for better memory utilization and because there's no need to implement
+  // a batch visitor for createOrUpdateDevice alone outside
+  private static final int MAX_SCHEMA_BATCH_SIZE =
+      PipeConfig.getInstance().getPipeSnapshotExecutionMaxBatchSize();
+  private String tableName;
+  private List<Object[]> tableDeviceIdList = new ArrayList<>();
+  private List<String> attributeNameList = null;
+  private List<Object[]> attributeValueList = new ArrayList<>();
 
   public SRStatementGenerator(
       final File mtreeFile,
@@ -248,7 +258,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
     node.getChildren().clear();
   }
 
-  private static IMemMNode deserializeMNode(
+  private IMemMNode deserializeMNode(
       final Deque<IMemMNode> ancestors,
       final Deque<Integer> restChildrenNum,
       final MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
@@ -266,6 +276,9 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       case STORAGE_GROUP_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeStorageGroupMNode(inputStream);
+        if (ancestors.size() == 1) {
+          emitDevice(node.getName());
+        }
         break;
       case ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -283,9 +296,12 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         childrenNum = 0;
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         break;
-      case TABLE_MNODE_TYPE:
+      case TABLE_DEVICE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
+        if (ancestors.size() == 1) {
+          emitDevice(node.getName());
+        }
         break;
       default:
         throw new IOException("Unrecognized MNode type" + type);
@@ -306,14 +322,27 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
     return node;
   }
 
+  private void emitDevice(final String tableName) {
+    statements.add(
+        new CreateOrUpdateDevice(
+            databaseFullPath.getNodes()[1],
+            this.tableName,
+            tableDeviceIdList,
+            attributeNameList,
+            attributeValueList));
+    this.tableName = tableName;
+    this.tableDeviceIdList = new ArrayList<>();
+    this.attributeNameList = null;
+    this.attributeValueList = new ArrayList<>();
+  }
+
   private class MNodeTranslator extends MNodeVisitor<List<Object>, PartialPath> {
 
     @Override
     public List<Object> visitBasicMNode(final IMNode<?> node, final PartialPath path) {
       if (node.isDevice()) {
         // Aligned timeSeries will be created when node pop.
-        return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
-            node, path, deviceAttributeStore);
+        return genActivateTemplateOrUpdateDeviceStatement(node, path);
       }
       return null;
     }
@@ -322,8 +351,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
     public List<Object> visitDatabaseMNode(
         final AbstractDatabaseMNode<?, ? extends IMNode<?>> node, final PartialPath path) {
       if (node.isDevice()) {
-        return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
-            node, path, deviceAttributeStore);
+        return genActivateTemplateOrUpdateDeviceStatement(node, path);
       }
       return null;
     }
@@ -387,38 +415,31 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         return Collections.singletonList(stmt);
       }
     }
-  }
 
-  private static List<Object> genActivateTemplateOrUpdateDeviceStatement(
-      final IMNode<?> node,
-      final PartialPath path,
-      final IDeviceAttributeStore deviceAttributeStore) {
-    final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
-    if (deviceMNode.isUseTemplate()) {
-      return Collections.singletonList(new ActivateTemplateStatement(path));
-    } else if (deviceMNode instanceof TableDeviceInfo
-        && ((TableDeviceInfo<?>) deviceMNode).getAttributePointer() > -1) {
-      final Map<String, Binary> tableAttribute =
-          deviceAttributeStore.getAttribute(
-              ((TableDeviceInfo<?>) deviceMNode).getAttributePointer());
-      final List<String> nameList = new ArrayList<>(tableAttribute.size());
-      final Object[] valueList = new Object[tableAttribute.size()];
-      final AtomicInteger index = new AtomicInteger(0);
-      tableAttribute.forEach(
-          (k, v) -> {
-            nameList.add(k);
-            valueList[index.getAndIncrement()] = v;
-          });
-      return Collections.singletonList(
-          new CreateOrUpdateDevice(
-              path.getNodes()[1],
-              path.getNodes()[2],
-              Collections.singletonList(
-                  Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength())),
-              nameList,
-              Collections.singletonList(valueList)));
+    private List<Object> genActivateTemplateOrUpdateDeviceStatement(
+        final IMNode<?> node, final PartialPath path) {
+      final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+      if (deviceMNode.isUseTemplate()) {
+        return Collections.singletonList(new ActivateTemplateStatement(path));
+      } else if (deviceMNode instanceof TableDeviceInfo
+          && ((TableDeviceInfo<?>) deviceMNode).getAttributePointer() > -1) {
+        final Map<String, Binary> tableAttribute =
+            deviceAttributeStore.getAttribute(
+                ((TableDeviceInfo<?>) deviceMNode).getAttributePointer());
+        if (tableAttribute.isEmpty()) {
+          return null;
+        }
+        if (Objects.isNull(attributeNameList)) {
+          attributeNameList = new ArrayList<>(tableAttribute.keySet());
+        }
+        attributeValueList.add(attributeNameList.stream().map(tableAttribute::get).toArray());
+        tableDeviceIdList.add(Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength()));
+        if (tableDeviceIdList.size() >= MAX_SCHEMA_BATCH_SIZE) {
+          emitDevice(tableName);
+        }
+      }
+      return null;
     }
-    return null;
   }
 
   private Statement genAlignedTimeseriesStatement(final IMNode node, final PartialPath path) {

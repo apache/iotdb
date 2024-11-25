@@ -65,8 +65,8 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExe
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTablePatternParseVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -151,9 +151,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
           new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
-  private final PipeTreeStatementToBatchVisitor batchVisitor = new PipeTreeStatementToBatchVisitor();
-  
-
+  private final PipeTreeStatementToBatchVisitor batchVisitor =
+      new PipeTreeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
