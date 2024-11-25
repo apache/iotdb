@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -64,7 +65,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExe
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTablePatternParseVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -150,7 +151,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeStatementDataTypeConvertExecutionVisitor
       statementDataTypeConvertExecutionVisitor =
           new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
-  private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
+  private final PipeTreeStatementToBatchVisitor batchVisitor = new PipeTreeStatementToBatchVisitor();
+  
+
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
@@ -561,8 +564,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern pattern =
+    final IoTDBTreePattern treePattern =
         new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final TablePattern tablePattern =
+        new TablePattern(
+            parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
+            parameters.get(PipeTransferFileSealReqV2.DATABASE_PATTERN),
+            parameters.get(ColumnHeaderConstant.TABLE_NAME));
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -579,7 +587,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Here we apply the statements as many as possible
         // Even if there are failed statements
         STATEMENT_TREE_PATTERN_PARSE_VISITOR
-            .process(originalStatement, pattern)
+            .process(originalStatement, treePattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement
@@ -588,9 +596,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement)
                 treeOrTableStatement;
 
-        // No need to check the statement type because if the schema region contains table
-        // statement, it will only contain table statement. Then, if we do not extract table, the
-        // whole snapshot is filtered.
+        if (!executionTypes.contains(StatementType.AUTO_CREATE_DEVICE_MNODE)) {
+          continue;
+        }
+
+        STATEMENT_TABLE_PATTERN_PARSE_VISITOR
+            .process(originalStatement, tablePattern)
+            .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
+            .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       }
     }
     batchVisitor.getRemainBatches().stream()
@@ -693,6 +706,32 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
+    try {
+      final TSStatus result =
+          executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return result;
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: Failure status encountered while executing statement {}: {}",
+            receiverId.get(),
+            statement,
+            result);
+        return statement.accept(STATEMENT_STATUS_VISITOR, result);
+      }
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Receiver id = {}: Exception encountered while executing statement {}: ",
+          receiverId.get(),
+          statement,
+          e);
+      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+    }
+  }
+
+  private TSStatus executeStatementAndClassifyExceptions(
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement) {
     try {
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
