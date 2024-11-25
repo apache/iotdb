@@ -340,6 +340,7 @@ public class PipeConsensus implements IConsensus {
           CLASS_NAME,
           peer);
       impl.createConsensusPipeToTargetPeer(peer, impl.getThisNodePeer());
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 3: wait until the coordinator Peer finishes transferring snapshot
       LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
@@ -351,7 +352,6 @@ public class PipeConsensus implements IConsensus {
       // realtime data) after the snapshot progress to target.
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
       impl.notifyAllOtherPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 5: active new Peer to let new Peer receive snapshot
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
