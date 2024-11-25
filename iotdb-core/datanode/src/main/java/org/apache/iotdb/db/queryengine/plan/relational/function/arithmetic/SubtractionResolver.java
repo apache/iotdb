@@ -61,18 +61,14 @@ public class SubtractionResolver {
 
     addCondition(DATE, INT32, DATE);
     addCondition(DATE, INT64, DATE);
-    addCondition(DATE, UNKNOWN, DATE);
 
     addCondition(TIMESTAMP, INT32, TIMESTAMP);
     addCondition(TIMESTAMP, INT64, TIMESTAMP);
-    addCondition(TIMESTAMP, UNKNOWN, TIMESTAMP);
 
     addCondition(UNKNOWN, INT32, INT32);
     addCondition(UNKNOWN, INT64, INT64);
     addCondition(UNKNOWN, FLOAT, FLOAT);
     addCondition(UNKNOWN, DOUBLE, DOUBLE);
-    addCondition(UNKNOWN, DATE, DATE);
-    addCondition(UNKNOWN, TIMESTAMP, TIMESTAMP);
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {

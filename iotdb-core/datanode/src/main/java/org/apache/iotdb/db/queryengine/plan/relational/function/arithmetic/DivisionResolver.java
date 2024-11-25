@@ -22,12 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
-import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class DivisionResolver {
@@ -59,16 +57,10 @@ public class DivisionResolver {
     addCondition(DOUBLE, DOUBLE, DOUBLE);
     addCondition(DOUBLE, UNKNOWN, DOUBLE);
 
-    addCondition(DATE, UNKNOWN, DATE);
-
-    addCondition(TIMESTAMP, UNKNOWN, TIMESTAMP);
-
     addCondition(UNKNOWN, INT32, INT32);
     addCondition(UNKNOWN, INT64, INT64);
     addCondition(UNKNOWN, FLOAT, FLOAT);
     addCondition(UNKNOWN, DOUBLE, DOUBLE);
-    addCondition(UNKNOWN, DATE, DATE);
-    addCondition(UNKNOWN, TIMESTAMP, TIMESTAMP);
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {
