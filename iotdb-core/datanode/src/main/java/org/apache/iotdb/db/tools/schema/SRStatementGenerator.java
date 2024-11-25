@@ -255,6 +255,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private void cleanMTreeNode(final IMNode node) {
     final IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
     nodeCount = nodeCount - children.size();
+    children.values().forEach(child -> schemaRegionStatistics.releaseMemory(child.estimateSize()));
     node.getChildren().clear();
   }
 
@@ -272,13 +273,13 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       case INTERNAL_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeInternalMNode(inputStream);
+        if (ancestors.size() == 1) {
+          emitDevice(node.getName());
+        }
         break;
       case STORAGE_GROUP_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeStorageGroupMNode(inputStream);
-        if (ancestors.size() == 1) {
-          emitDevice(node.getName());
-        }
         break;
       case ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
