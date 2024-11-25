@@ -565,18 +565,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     batchVisitor.clear();
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      final Statement originalStatement = generator.next();
-      if (!executionTypes.contains(originalStatement.getType())) {
-        continue;
-      }
+      final Object treeOrTableStatement = generator.next();
+      if (treeOrTableStatement instanceof Statement) {
+        final Statement originalStatement = (Statement) treeOrTableStatement;
+        if (!executionTypes.contains(originalStatement.getType())) {
+          continue;
+        }
 
-      // The statements do not contain AlterLogicalViewStatements
-      // Here we apply the statements as many as possible
-      // Even if there are failed statements
-      STATEMENT_PATTERN_PARSE_VISITOR
-          .process(originalStatement, pattern)
-          .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
-          .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
+        // The statements do not contain AlterLogicalViewStatements
+        // Here we apply the statements as many as possible
+        // Even if there are failed statements
+        STATEMENT_PATTERN_PARSE_VISITOR
+            .process(originalStatement, pattern)
+            .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
+            .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
+      }
     }
     batchVisitor.getRemainBatches().stream()
         .filter(Optional::isPresent)

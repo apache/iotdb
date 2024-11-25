@@ -209,7 +209,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
+  public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
+      throws MetadataException {
 
     storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();

@@ -26,9 +26,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -40,12 +42,16 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
 
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,6 +62,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
@@ -63,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -74,7 +82,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
-public class SRStatementGenerator implements Iterator<Statement>, Iterable<Statement> {
+public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SRStatementGenerator.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -102,7 +110,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   // Iterable statements
 
-  private final Deque<Statement> statements = new ArrayDeque<>();
+  private final Deque<Object> statements = new ArrayDeque<>();
 
   // Utils
 
@@ -142,8 +150,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     nodeCount++;
   }
 
+  @Nonnull
   @Override
-  public Iterator<Statement> iterator() {
+  public Iterator<Object> iterator() {
     return this;
   }
 
@@ -192,7 +201,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           }
           return false;
         }
-        final List<Statement> stmts =
+        final List<Object> stmts =
             curNode.accept(
                 translator,
                 // skip common database
@@ -220,7 +229,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   }
 
   @Override
-  public Statement next() {
+  public Object next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -297,31 +306,33 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     return node;
   }
 
-  private class MNodeTranslator extends MNodeVisitor<List<Statement>, PartialPath> {
+  private class MNodeTranslator extends MNodeVisitor<List<Object>, PartialPath> {
 
     @Override
-    public List<Statement> visitBasicMNode(final IMNode<?> node, final PartialPath path) {
+    public List<Object> visitBasicMNode(final IMNode<?> node, final PartialPath path) {
       if (node.isDevice()) {
         // Aligned timeSeries will be created when node pop.
-        return SRStatementGenerator.genActivateTemplateStatement(node, path);
+        return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
+            node, path, deviceAttributeStore, databaseFullPath);
       }
       return null;
     }
 
     @Override
-    public List<Statement> visitDatabaseMNode(
+    public List<Object> visitDatabaseMNode(
         final AbstractDatabaseMNode<?, ? extends IMNode<?>> node, final PartialPath path) {
       if (node.isDevice()) {
-        return SRStatementGenerator.genActivateTemplateStatement(node, path);
+        return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
+            node, path, deviceAttributeStore, databaseFullPath);
       }
       return null;
     }
 
     @Override
-    public List<Statement> visitMeasurementMNode(
+    public List<Object> visitMeasurementMNode(
         final AbstractMeasurementMNode<?, ? extends IMNode<?>> node, final PartialPath path) {
       if (node.isLogicalView()) {
-        final List<Statement> statementList = new ArrayList<>();
+        final List<Object> statementList = new ArrayList<>();
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
         final LogicalViewSchema viewSchema =
             (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
@@ -378,10 +389,35 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
   }
 
-  private static List<Statement> genActivateTemplateStatement(
-      final IMNode node, final PartialPath path) {
-    if (node.getAsDeviceMNode().isUseTemplate()) {
+  private static List<Object> genActivateTemplateOrUpdateDeviceStatement(
+      final IMNode<?> node,
+      final PartialPath path,
+      final IDeviceAttributeStore deviceAttributeStore,
+      final PartialPath database) {
+    final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+    if (deviceMNode.isUseTemplate()) {
       return Collections.singletonList(new ActivateTemplateStatement(path));
+    } else if (deviceMNode instanceof TableDeviceInfo
+        && ((TableDeviceInfo<?>) deviceMNode).getAttributePointer() > -1) {
+      final Map<String, Binary> tableAttribute =
+          deviceAttributeStore.getAttribute(
+              ((TableDeviceInfo<?>) deviceMNode).getAttributePointer());
+      final List<String> nameList = new ArrayList<>(tableAttribute.size());
+      final Object[] valueList = new Object[tableAttribute.size()];
+      final AtomicInteger index = new AtomicInteger(0);
+      tableAttribute.forEach(
+          (k, v) -> {
+            nameList.add(k);
+            valueList[index.getAndIncrement()] = v;
+          });
+      return Collections.singletonList(
+          new CreateOrUpdateDevice(
+              database.getNodes()[1],
+              path.getNodes()[2],
+              Collections.singletonList(
+                  Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength())),
+              nameList,
+              Collections.singletonList(valueList)));
     }
     return null;
   }
