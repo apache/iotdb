@@ -203,7 +203,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
 
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
-    pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
+    if (!createPipeRequest.needManuallyStart) {
+      pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
+    }
   }
 
   @Override
