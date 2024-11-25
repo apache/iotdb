@@ -55,7 +55,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
-    if (!(context.getAnalysis().getStatement().isQuery())) {
+    if (!(context.getAnalysis().isQuery())) {
       return plan;
     }
 

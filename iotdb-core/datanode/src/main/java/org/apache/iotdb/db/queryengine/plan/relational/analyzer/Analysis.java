@@ -752,7 +752,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isQuery() {
-    return false;
+    return getStatement().isQuery();
   }
 
   @Override

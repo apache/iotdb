@@ -93,7 +93,7 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
@@ -102,7 +102,7 @@ public class TableDistributedPlanner {
     adjustUpStream(outputNodeWithExchange, planContext);
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
@@ -121,7 +121,7 @@ public class TableDistributedPlanner {
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(
