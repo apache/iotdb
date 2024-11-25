@@ -571,7 +571,17 @@ public class PipeDataNodeThriftRequestTest {
 
     final PipeTransferSchemaSnapshotSealReq req =
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            "root.**", mTreeSnapshotName, 100, tLogName, 10, databaseName, typeString);
+            "root.**",
+            "db",
+            "table",
+            true,
+            true,
+            mTreeSnapshotName,
+            100,
+            tLogName,
+            10,
+            databaseName,
+            typeString);
     final PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 

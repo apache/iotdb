@@ -582,6 +582,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .process(originalStatement, pattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
+      } else if (treeOrTableStatement
+          instanceof org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) {
+        final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement originalStatement =
+            (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement)
+                treeOrTableStatement;
       }
     }
     batchVisitor.getRemainBatches().stream()

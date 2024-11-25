@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -230,7 +229,7 @@ public class SchemaRegionSnapshotParserTest {
             databasePath);
 
     assert statements != null;
-    for (Statement stmt : statements) {
+    for (final Object stmt : statements) {
       CreateTimeSeriesStatement createTimeSeriesStatement = (CreateTimeSeriesStatement) stmt;
       ICreateTimeSeriesPlan plan =
           planMap.get(createTimeSeriesStatement.getPaths().get(0).toString());
@@ -313,7 +312,7 @@ public class SchemaRegionSnapshotParserTest {
                     + SchemaConstant.TAG_LOG_SNAPSHOT),
             database);
     assert statements != null;
-    for (Statement stmt : statements) {
+    for (final Object stmt : statements) {
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
           (CreateAlignedTimeSeriesStatement) stmt;
       Assert.assertEquals(plan.getDevicePath(), createAlignedTimeSeriesStatement.getDevicePath());
@@ -467,7 +466,7 @@ public class SchemaRegionSnapshotParserTest {
             databasePath);
     int count = 0;
     assert statements != null;
-    for (Statement stmt : statements) {
+    for (final Object stmt : statements) {
       if (stmt instanceof ActivateTemplateStatement) {
         ActivateTemplateStatement ATStatement = (ActivateTemplateStatement) stmt;
         IActivateTemplateInClusterPlan plan = planMap.get(ATStatement.getPath().toString());
@@ -707,7 +706,7 @@ public class SchemaRegionSnapshotParserTest {
             }
           }
         };
-    for (Statement stmt : statements) {
+    for (final Object stmt : statements) {
       if (stmt instanceof CreateAlignedTimeSeriesStatement) {
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
             (CreateAlignedTimeSeriesStatement) stmt;
