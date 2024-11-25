@@ -146,9 +146,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -193,8 +191,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       if (property.isSetToDefault()) {
         switch (key) {
           case TTL_KEY:
-          case SCHEMA_REPLICATION_FACTOR_KEY:
-          case DATA_REPLICATION_FACTOR_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
@@ -218,13 +214,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             break;
           }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
-          break;
-        case SCHEMA_REPLICATION_FACTOR_KEY:
-          schema.setSchemaReplicationFactor(
-              parseIntFromLiteral(value, SCHEMA_REPLICATION_FACTOR_KEY));
-          break;
-        case DATA_REPLICATION_FACTOR_KEY:
-          schema.setDataReplicationFactor(parseIntFromLiteral(value, DATA_REPLICATION_FACTOR_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
