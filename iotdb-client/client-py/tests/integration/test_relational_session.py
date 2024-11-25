@@ -37,39 +37,15 @@ def test_session_pool():
 def session_test(use_session_pool=False):
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-
+        config = {
+            "node_urls": [
+                f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+            ]
+        }
         if use_session_pool:
-            # pool_config = PoolConfig(
-            #     db.get_container_host_ip(),
-            #     db.get_exposed_port(6667),
-            #     "root",
-            #     "root",
-            #     None,
-            #     1024,
-            #     "Asia/Shanghai",
-            #     3,
-            #     sql_dialect="table",
-            # )
-            # session_pool = create_session_pool(pool_config, 1, 3000)
-            # session = session_pool.get_session()
-
-            session_pool = TableSessionPool(
-                config={
-                    "node_urls": [
-                        f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
-                    ]
-                }
-            )
+            session_pool = TableSessionPool(**config)
         else:
-            host = db.get_container_host_ip()
-            port = db.get_exposed_port(6667)
-            session = TableSession(
-                config={
-                    "node_urls": [
-                        f"{host}:{port}",
-                    ]
-                }
-            )
+            session = TableSession(**config)
 
         session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
         session.execute_non_query_statement('USE "db1"')
