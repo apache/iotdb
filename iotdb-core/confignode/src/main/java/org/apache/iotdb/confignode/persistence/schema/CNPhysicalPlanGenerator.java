@@ -65,6 +65,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -317,21 +318,32 @@ public class CNPhysicalPlanGenerator
     }
   }
 
+  // NOTE: The stack is reserved for mTree creation, to unify the logic and to get full path
+  // info for schema template set. Do not touch this
   private void generateDatabasePhysicalPlan() {
     try (final BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
       byte type = ReadWriteIOUtils.readByte(bufferedInputStream);
       String name;
+      int childNum;
+      final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+      IConfigMNode databaseMNode;
       IConfigMNode internalMNode;
+      ConfigTableNode tableNode;
 
       if (type == STORAGE_GROUP_MNODE_TYPE) {
-        name = deserializeDatabaseMNode(bufferedInputStream).getName();
+        databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
+        name = databaseMNode.getName();
+        stack.push(new Pair<>(databaseMNode, true));
       } else if (type == TABLE_MNODE_TYPE) {
-        name = deserializeTableMNode(bufferedInputStream).getName();
+        tableNode = deserializeTableMNode(inputStream);
+        name = tableNode.getName();
+        stack.push(new Pair<>(tableNode, false));
       } else {
         internalMNode = deserializeInternalMNode(bufferedInputStream);
         // Child num
         ReadWriteIOUtils.readInt(bufferedInputStream);
         name = internalMNode.getName();
+        stack.push(new Pair<>(internalMNode, false));
       }
 
       final Set<TsTable> tableSet = new HashSet<>();
@@ -341,21 +353,33 @@ public class CNPhysicalPlanGenerator
         switch (type) {
           case INTERNAL_MNODE_TYPE:
             internalMNode = deserializeInternalMNode(bufferedInputStream);
-            // Child num
-            ReadWriteIOUtils.readInt(bufferedInputStream);
+            childNum = ReadWriteIOUtils.readInt(bufferedInputStream);
+            boolean hasDB = false;
+            while (childNum > 0) {
+              hasDB = stack.peek().right;
+              internalMNode.addChild(stack.pop().left);
+              childNum--;
+            }
+            stack.push(new Pair<>(internalMNode, hasDB));
             name = internalMNode.getName();
             break;
           case STORAGE_GROUP_MNODE_TYPE:
-            name = deserializeDatabaseMNode(bufferedInputStream).getAsMNode().getName();
+            databaseMNode = deserializeDatabaseMNode(bufferedInputStream).getAsMNode();
+            while (!stack.isEmpty() && !stack.peek().right) {
+              databaseMNode.addChild(stack.pop().left);
+            }
+            stack.push(new Pair<>(databaseMNode, true));
+            name = databaseMNode.getName();
             for (final TsTable table : tableSet) {
               planDeque.add(new PipeCreateTablePlan(PathUtils.qualifyDatabaseName(name), table));
             }
             tableSet.clear();
             break;
           case TABLE_MNODE_TYPE:
-            final ConfigTableNode node = deserializeTableMNode(bufferedInputStream);
-            name = node.getName();
-            tableSet.add(node.getTable());
+            tableNode = deserializeTableMNode(bufferedInputStream);
+            name = tableNode.getName();
+            stack.push(new Pair<>(tableNode, false));
+            tableSet.add(tableNode.getTable());
             break;
           default:
             logger.error("Unrecognized node type. Cannot deserialize MTree from given buffer");
@@ -396,6 +420,7 @@ public class CNPhysicalPlanGenerator
       return;
     }
     for (final IConfigMNode templateNode : templateNodeList) {
+      System.out.println(templateNode.getFullPath());
       final String templateName = templateTable.get(templateNode.getSchemaTemplateId());
       final CommitSetSchemaTemplatePlan plan =
           new CommitSetSchemaTemplatePlan(templateName, templateNode.getFullPath());
