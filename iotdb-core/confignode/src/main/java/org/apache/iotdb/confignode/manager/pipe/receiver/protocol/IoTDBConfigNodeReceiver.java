@@ -269,7 +269,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DatabaseSchemaPlan) plan).getSchema().getName()))
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setIsTableModel(((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
