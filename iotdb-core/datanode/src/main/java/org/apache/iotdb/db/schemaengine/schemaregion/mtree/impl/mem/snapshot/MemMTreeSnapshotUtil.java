@@ -314,14 +314,14 @@ public class MemMTreeSnapshotUtil {
         if (node.isDevice()) {
           if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
             ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
-            TableDeviceInfo<IMemMNode> tableDeviceInfo =
+            final TableDeviceInfo<IMemMNode> tableDeviceInfo =
                 (TableDeviceInfo<IMemMNode>) (node.getAsDeviceMNode().getDeviceInfo());
             serializeBasicMNode(node, outputStream);
             ReadWriteIOUtils.write(tableDeviceInfo.getAttributePointer(), outputStream);
           } else {
             ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
             serializeBasicMNode(node, outputStream);
-            IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+            final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
             ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
             ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
             ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);

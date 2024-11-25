@@ -132,6 +132,6 @@ public class SchemaRegionSnapshotParser {
               " %s is not allowed, only support %s",
               tagfile.getName(), SchemaConstant.TAG_LOG_SNAPSHOT));
     }
-    return new SRStatementGenerator(mtreefile, tagfile, databasePath);
+    return new SRStatementGenerator(mtreefile, tagfile, databasePath, false);
   }
 }

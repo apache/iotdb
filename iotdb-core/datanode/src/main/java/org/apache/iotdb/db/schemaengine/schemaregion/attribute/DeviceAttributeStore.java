@@ -110,8 +110,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath)
-      throws IOException {
+  public void loadFromSnapshot(final File snapshotDir) throws IOException {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
     if (!snapshot.exists()) {
