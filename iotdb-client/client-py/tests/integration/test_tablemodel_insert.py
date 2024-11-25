@@ -32,7 +32,9 @@ def test_insert_use_tablet():
         db: IoTDBContainer
         session = TableSession(
             config={
-                "node_urls": f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"
+                "node_urls": [
+                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                ]
             }
         )
 
@@ -623,7 +625,9 @@ def test_insert_relational_tablet_use_numpy_tablet():
         db: IoTDBContainer
         session = TableSession(
             config={
-                "node_urls": f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"
+                "node_urls": [
+                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                ]
             }
         )
 
@@ -1106,7 +1110,9 @@ def test_insert_relational_tablet_auto_create():
         db: IoTDBContainer
         session = TableSession(
             config={
-                "node_urls": f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"
+                "node_urls": [
+                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                ]
             }
         )
 

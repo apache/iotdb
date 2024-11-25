@@ -55,13 +55,17 @@ def session_test(use_session_pool=False):
 
             session_pool = TableSessionPool(
                 config={
-                    "node_urls": f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"
+                    "node_urls": [
+                        f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                    ]
                 }
             )
         else:
             session = TableSession(
                 config={
-                    "node_urls": f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"
+                    "node_urls": [
+                        f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                    ]
                 }
             )
 
