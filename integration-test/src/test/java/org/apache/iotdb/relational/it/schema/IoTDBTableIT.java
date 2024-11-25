@@ -535,6 +535,32 @@ public class IoTDBTableIT {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
 
+      // Test time column
+      statement.execute("create table test100 (time time)");
+      statement.execute("create table test101 (time timestamp time)");
+
+      try {
+        statement.execute("create table test102 (time timestamp id)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The time column category shall be bounded with column name 'time'.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test102 (time id)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The time column's type shall be 'timestamp'.", e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test102 (time time, time time)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
+      }
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
