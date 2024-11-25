@@ -21,7 +21,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nonnull;
@@ -154,6 +157,12 @@ public class TableDistributedPlanGenerator
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
+    symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
+    return visitPlan(node, context);
   }
 
   @Override

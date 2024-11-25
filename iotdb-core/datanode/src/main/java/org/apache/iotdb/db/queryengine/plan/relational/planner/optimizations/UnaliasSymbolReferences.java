@@ -13,6 +13,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -258,6 +259,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
 
     @Override
     public PlanAndMappings visitOffset(OffsetNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      return new PlanAndMappings(
+          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          rewrittenSource.getMappings());
+    }
+
+    @Override
+    public PlanAndMappings visitExplainAnalyze(ExplainAnalyzeNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
 
       return new PlanAndMappings(
