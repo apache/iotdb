@@ -47,7 +47,7 @@ class TableSession(object):
         else:
             self.__session = self.__session_pool.get_session()
 
-    def insert(self, tablet: Union[Tablet | NumpyTablet]):
+    def insert(self, tablet: Union[Tablet, NumpyTablet]):
         self.__session.insert_relational_tablet(tablet)
 
     def execute_non_query_statement(self, sql: str):
