@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -36,7 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 
 public class PipeDeleteDataNodeEvent extends EnrichedEvent implements SerializableEvent {
-  private DeleteDataNode deleteDataNode;
+  private AbstractDeleteDataNode deleteDataNode;
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
   private ProgressIndex progressIndex;
@@ -47,12 +48,12 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   }
 
   public PipeDeleteDataNodeEvent(
-      final DeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
+      final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
     this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
-      final DeleteDataNode deleteDataNode,
+      final AbstractDeleteDataNode deleteDataNode,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -73,7 +74,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
 
-  public DeleteDataNode getDeleteDataNode() {
+  public AbstractDeleteDataNode getDeleteDataNode() {
     return deleteDataNode;
   }
 
