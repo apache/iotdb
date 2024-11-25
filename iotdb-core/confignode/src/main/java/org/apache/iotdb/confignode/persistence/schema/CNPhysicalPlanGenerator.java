@@ -99,7 +99,7 @@ public class CNPhysicalPlanGenerator
   private Exception latestException = null;
   private String userName;
 
-  public CNPhysicalPlanGenerator(Path snapshotFilePath, CNSnapshotFileType fileType)
+  public CNPhysicalPlanGenerator(final Path snapshotFilePath, final CNSnapshotFileType fileType)
       throws IOException {
     if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
@@ -112,7 +112,8 @@ public class CNPhysicalPlanGenerator
     inputStream = Files.newInputStream(snapshotFilePath);
   }
 
-  public CNPhysicalPlanGenerator(Path schemaInfoFile, Path templateFile) throws IOException {
+  public CNPhysicalPlanGenerator(final Path schemaInfoFile, final Path templateFile)
+      throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
     templateInputStream = Files.newInputStream(templateFile);
     snapshotFileType = CNSnapshotFileType.SCHEMA;
@@ -159,7 +160,7 @@ public class CNPhysicalPlanGenerator
         templateInputStream.close();
         templateInputStream = null;
       }
-    } catch (IOException ioException) {
+    } catch (final IOException ioException) {
       latestException = ioException;
     }
 
@@ -183,15 +184,15 @@ public class CNPhysicalPlanGenerator
     }
   }
 
-  private void generateUserRolePhysicalPlan(boolean isUser) {
-    try (DataInputStream dataInputStream =
+  private void generateUserRolePhysicalPlan(final boolean isUser) {
+    try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       final Pair<String, Boolean> versionAndName =
           readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
       if (versionAndName == null) {
         return;
       }
-      String user = versionAndName.left;
+      final String user = versionAndName.left;
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorPlan createUser =
@@ -233,7 +234,7 @@ public class CNPhysicalPlanGenerator
   }
 
   private void generateGrantRolePhysicalPlan() {
-    try (DataInputStream roleInputStream =
+    try (final DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
       while (roleInputStream.available() != 0) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
@@ -252,7 +253,8 @@ public class CNPhysicalPlanGenerator
     }
   }
 
-  private void generateGrantSysPlan(String userName, boolean isUser, int sysMask) {
+  private void generateGrantSysPlan(
+      final String userName, final boolean isUser, final int sysMask) {
     for (int i = 0; i < PrivilegeType.getSysPriCount(); i++) {
       if ((sysMask & (1 << i)) != 0) {
         final AuthorPlan plan =
@@ -276,23 +278,23 @@ public class CNPhysicalPlanGenerator
   }
 
   private void generateSetTTLPlan() {
-    try (DataInputStream ttlInputStream =
+    try (final DataInputStream ttlInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int size = ReadWriteIOUtils.readInt(ttlInputStream);
       while (size > 0) {
-        String path = ReadWriteIOUtils.readString(ttlInputStream);
-        long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
+        final String path = ReadWriteIOUtils.readString(ttlInputStream);
+        final long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
         planDeque.add(new SetTTLPlan(PathUtils.splitPathToDetachedNodes(path), ttl));
         size--;
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (final IOException | IllegalPathException e) {
       logger.error("Got exception when deserializing ttl file", e);
       latestException = e;
     }
   }
 
   private void generateGrantPathPlan(
-      String userName, boolean isUser, PartialPath path, int priMask) {
+      final String userName, final boolean isUser, final PartialPath path, final int priMask) {
     for (int pos = 0; pos < PrivilegeType.getPathPriCount(); pos++) {
       if (((1 << pos) & priMask) != 0) {
         final AuthorPlan plan =
@@ -367,7 +369,8 @@ public class CNPhysicalPlanGenerator
   }
 
   private void generateTemplatePlan() {
-    try (BufferedInputStream bufferedInputStream = new BufferedInputStream(templateInputStream)) {
+    try (final BufferedInputStream bufferedInputStream =
+        new BufferedInputStream(templateInputStream)) {
       final ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(bufferedInputStream));
       // Skip id
       ReadWriteIOUtils.readInt(byteBuffer);
