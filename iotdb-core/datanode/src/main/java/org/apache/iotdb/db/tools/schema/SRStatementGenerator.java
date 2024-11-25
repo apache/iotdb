@@ -66,6 +66,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
@@ -243,6 +244,10 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       case LOGICAL_VIEW_MNODE_TYPE:
         childrenNum = 0;
         node = deserializer.deserializeLogicalViewMNode(inputStream);
+        break;
+      case TABLE_MNODE_TYPE:
+        childrenNum = ReadWriteIOUtils.readInt(inputStream);
+        node = deserializer.deserializeTableDeviceMNode(inputStream);
         break;
       default:
         throw new IOException("Unrecognized MNode type" + type);
