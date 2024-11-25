@@ -186,6 +186,9 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           statements.push(stmt);
         }
         cleanMTreeNode(node);
+        if (ancestors.isEmpty()) {
+          emitDevice(tableName);
+        }
         if (!statements.isEmpty()) {
           return true;
         }
