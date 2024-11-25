@@ -69,7 +69,7 @@ class Session(object):
     SUCCESS_STATUS = 200
     MULTIPLE_ERROR = 302
     REDIRECTION_RECOMMEND = 400
-    DEFAULT_FETCH_SIZE = 10000
+    DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
@@ -1609,7 +1609,8 @@ class Session(object):
         error_messages = [
             status.message
             for status in status_list
-            if status.code not in {Session.SUCCESS_STATUS, Session.REDIRECTION_RECOMMEND}
+            if status.code
+            not in {Session.SUCCESS_STATUS, Session.REDIRECTION_RECOMMEND}
         ]
         if error_messages:
             message = f"{Session.MULTIPLE_ERROR}: {'; '.join(error_messages)}"
