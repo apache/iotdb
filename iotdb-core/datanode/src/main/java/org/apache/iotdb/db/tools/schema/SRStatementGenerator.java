@@ -58,6 +58,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -158,8 +159,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           lastExcept = ioe;
           try {
             inputStream.close();
-            tagFileChannel.close();
-
+            if (Objects.nonNull(tagFileChannel)) {
+              tagFileChannel.close();
+            }
           } catch (final IOException e) {
             lastExcept = e;
           }
