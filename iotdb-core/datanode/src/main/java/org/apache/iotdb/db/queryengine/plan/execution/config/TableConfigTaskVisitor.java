@@ -323,9 +323,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
 
     // TODO: Place the check at statement analyzer
+    final boolean hasTimeColumn = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
+      if (checkTimeColumnIdempotent(category, columnName) && !hasTimeColumn) {
+        continue;
+      }
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
@@ -335,6 +339,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
     return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  private boolean checkTimeColumnIdempotent(
+      final TsTableColumnCategory category, final String columnName) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      if (category == TsTableColumnCategory.TIME && columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+        return true;
+      } else {
+        throw new SemanticException(
+            "The time column category shall be bounded with column name 'time'.");
+      }
+    }
+
+    return false;
   }
 
   @Override
