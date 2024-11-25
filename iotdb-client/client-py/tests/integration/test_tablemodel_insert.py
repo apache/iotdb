@@ -30,10 +30,12 @@ from .iotdb_container import IoTDBContainer
 def test_insert_use_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
+        host = db.get_container_host_ip()
+        port = db.get_exposed_port(6667)
         session = TableSession(
             config={
                 "node_urls": [
-                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                    f"{host}:{port}",
                 ]
             }
         )
@@ -623,10 +625,12 @@ def test_insert_use_tablet():
 def test_insert_relational_tablet_use_numpy_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
+        host = db.get_container_host_ip()
+        port = db.get_exposed_port(6667)
         session = TableSession(
             config={
                 "node_urls": [
-                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                    f"{host}:{port}",
                 ]
             }
         )
@@ -1108,10 +1112,12 @@ def test_insert_relational_tablet_use_numpy_tablet():
 def test_insert_relational_tablet_auto_create():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
+        host = db.get_container_host_ip()
+        port = db.get_exposed_port(6667)
         session = TableSession(
             config={
                 "node_urls": [
-                    f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
+                    f"{host}:{port}",
                 ]
             }
         )
