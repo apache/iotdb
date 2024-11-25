@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -43,6 +45,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -56,6 +59,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -359,8 +363,8 @@ public class SchemaEngine {
     return schemaRegionMap == null ? 0 : schemaRegionMap.size();
   }
 
-  public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> deviceNum = new HashMap<>();
+  public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> deviceNum = new HashMap<>();
 
     schemaRegionMap.entrySet().stream()
         .filter(
@@ -375,8 +379,8 @@ public class SchemaEngine {
     return deviceNum;
   }
 
-  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> timeSeriesNum = new HashMap<>();
+  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> timeSeriesNum = new HashMap<>();
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
@@ -386,7 +390,26 @@ public class SchemaEngine {
             entry ->
                 timeSeriesNum.put(
                     entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)));
+                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)
+                        + entry
+                            .getValue()
+                            .getSchemaRegionStatistics()
+                            .getTable2DevicesNumMap()
+                            .entrySet()
+                            .stream()
+                            .map(
+                                tableEntry -> {
+                                  final TsTable table =
+                                      DataNodeTableCache.getInstance()
+                                          .getTable(
+                                              PathUtils.unQualifyDatabaseName(
+                                                  entry.getValue().getDatabaseFullPath()),
+                                              tableEntry.getKey());
+                                  return Objects.nonNull(table)
+                                      ? table.getMeasurementNum() * tableEntry.getValue()
+                                      : 0;
+                                })
+                            .reduce(0L, Long::sum)));
     return timeSeriesNum;
   }
 

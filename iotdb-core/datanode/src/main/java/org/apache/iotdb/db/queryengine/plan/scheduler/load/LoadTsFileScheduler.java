@@ -57,6 +57,8 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -70,6 +72,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -89,6 +92,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -412,6 +416,24 @@ public class LoadTsFileScheduler implements IScheduler {
 
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
+    }
+
+    // if the time index is PlainDeviceTimeIndex, convert it to ArrayDeviceTimeIndex
+    if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
+      final PlainDeviceTimeIndex timeIndex =
+          (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
+      final Map<IDeviceID, Integer> convertedDeviceToIndex = new ConcurrentHashMap<>();
+      for (final Map.Entry<IDeviceID, Integer> entry : timeIndex.getDeviceToIndex().entrySet()) {
+        convertedDeviceToIndex.put(
+            entry.getKey() instanceof StringArrayDeviceID
+                ? entry.getKey()
+                : new StringArrayDeviceID(entry.getKey().toString()),
+            entry.getValue());
+      }
+      node.getTsFileResource()
+          .setTimeIndex(
+              new ArrayDeviceTimeIndex(
+                  convertedDeviceToIndex, timeIndex.getStartTimes(), timeIndex.getEndTimes()));
     }
 
     try {

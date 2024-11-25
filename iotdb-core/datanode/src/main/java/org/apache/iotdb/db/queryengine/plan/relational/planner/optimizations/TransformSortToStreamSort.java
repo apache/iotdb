@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode.isTimeColumn;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -150,8 +150,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
     }
     return orderingScheme.getOrderings().size() == streamSortIndex + 1
-        || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
-            orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
+        || isTimeColumn(orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema);
   }
 
   private static class Context {

@@ -33,7 +33,7 @@ public class CurrentUser extends Expression {
     super(null);
   }
 
-  public CurrentUser(@Nonnull NodeLocation location) {
+  public CurrentUser(@Nonnull final NodeLocation location) {
     super(requireNonNull(location, "location is null"));
   }
 
@@ -43,7 +43,7 @@ public class CurrentUser extends Expression {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitCurrentUser(this, context);
   }
 
@@ -53,7 +53,7 @@ public class CurrentUser extends Expression {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
@@ -64,7 +64,12 @@ public class CurrentUser extends Expression {
   }
 
   @Override
-  public boolean shallowEquals(Node other) {
+  public boolean shallowEquals(final Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.CURRENT_USER;
   }
 }

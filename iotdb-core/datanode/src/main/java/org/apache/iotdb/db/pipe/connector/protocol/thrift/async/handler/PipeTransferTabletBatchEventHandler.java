@@ -121,9 +121,9 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   public void onError(final Exception exception) {
     try {
       LOGGER.warn(
-          "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
-          events.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList()),
-          events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+          "Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
+          events.size(),
+          events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()),
           exception);
     } finally {
       connector.addFailureEventsToRetryQueue(events);

@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -128,15 +128,15 @@ public class PipeTsFileResourceManagerTest {
   }
 
   private void creatModsFile(String modsFilePath) throws IllegalPathException {
-    Modification[] modifications =
-        new Modification[] {
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 2, 1),
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 3, 2, 5),
-          new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
+    ModEntry[] modifications =
+        new ModEntry[] {
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 1),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 2, 5),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 1, Long.MAX_VALUE)
         };
 
     try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
-      for (Modification mod : modifications) {
+      for (ModEntry mod : modifications) {
         mFile.write(mod);
       }
     } catch (IOException e) {

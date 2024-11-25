@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -131,6 +132,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private TreePattern treePattern;
   private TablePattern tablePattern;
+
+  private boolean isModelDetected = false;
+  private boolean isTableModel;
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -152,8 +156,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private volatile boolean hasBeenStarted = false;
 
   private Queue<PersistentResource> pendingQueue;
-
-  private Boolean isListenTableModelDataRegion = null;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -502,6 +504,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private void flushTsFilesForExtraction(
       DataRegion dataRegion, final long startHistoricalExtractionTime) {
     LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+
+    // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
+    // **immediately**, the latter pipe will skip the flush operation.
+    // Since a large number of consensus pipes are not created at the same time, resulting in no
+    // serious waiting for locks. Therefore, the flush operation is always performed for the
+    // consensus pipe, and the lastFlushed timestamp is not updated here.
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      LOGGER.info(
+          "Pipe {}@{}: finish to flush data region, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startHistoricalExtractionTime);
+      return;
+    }
+
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
       final long lastFlushedByPipeTime = DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
       if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
@@ -651,24 +669,34 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             deviceID -> {
-              if (isListenTableModelDataRegion == null) {
-                isListenTableModelDataRegion =
-                    !(deviceID instanceof PlainDeviceID
-                        || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                        || deviceID.getTableName().equals(PATH_ROOT));
+              if (!isModelDetected) {
+                detectModel(resource, deviceID);
+                isModelDetected = true;
               }
-              if (isListenTableModelDataRegion) {
-                // In case of table model deviceID
-                return tablePattern.isTableModelDataAllowedToBeCaptured()
-                    // The database name in resource is prefixed with "root."
-                    && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
-                    && tablePattern.matchesTable(deviceID.getTableName());
-              } else {
-                // In case of tree model deviceID
-                return treePattern.isTreeModelDataAllowedToBeCaptured()
-                    && treePattern.mayOverlapWithDevice(deviceID);
-              }
+
+              return isTableModel
+                  ? (tablePattern.isTableModelDataAllowedToBeCaptured()
+                      // The database name in resource is prefixed with "root."
+                      && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
+                      && tablePattern.matchesTable(deviceID.getTableName()))
+                  : (treePattern.isTreeModelDataAllowedToBeCaptured()
+                      && treePattern.mayOverlapWithDevice(deviceID));
             });
+  }
+
+  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
+    this.isTableModel =
+        !(deviceID instanceof PlainDeviceID
+            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+            || deviceID.getTableName().equals(PATH_ROOT));
+
+    final String databaseName = resource.getDatabaseName();
+    isDbNameCoveredByPattern =
+        isTableModel
+            ? tablePattern.isTableModelDataAllowedToBeCaptured()
+                && tablePattern.coversDb(databaseName.substring(5))
+            : treePattern.isTreeModelDataAllowedToBeCaptured()
+                && treePattern.coversDb(databaseName);
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {

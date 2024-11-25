@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -34,7 +35,8 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MetaProgressIndex extends ProgressIndex {
-
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(MetaProgressIndex.class) + ProgressIndex.LOCK_SIZE;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final long index;
@@ -172,5 +174,10 @@ public class MetaProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "MetaProgressIndex{" + "index=" + index + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -474,11 +473,22 @@ public class RemoveDataNodeHandler {
    */
   public List<TConsensusGroupId> getMigratedDataNodeRegions(TDataNodeLocation removedDataNode) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
-        .filter(
-            replicaSet ->
-                replicaSet.getDataNodeLocations().contains(removedDataNode)
-                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
+        .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(removedDataNode))
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Retrieves all DataNodes related to the specified DataNode.
+   *
+   * @param removedDataNode the DataNode to be removed
+   * @return a set of TDataNodeLocation representing the DataNodes associated with the specified
+   *     DataNode
+   */
+  public Set<TDataNodeLocation> getRelatedDataNodeLocations(TDataNodeLocation removedDataNode) {
+    return configManager.getPartitionManager().getAllReplicaSets().stream()
+        .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(removedDataNode))
+        .flatMap(replicaSet -> replicaSet.getDataNodeLocations().stream())
+        .collect(Collectors.toSet());
   }
 }

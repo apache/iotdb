@@ -397,9 +397,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The TTL should be positive.");
     }
 
-    if (isSystemDatabase) {
-      databaseSchema.setSchemaReplicationFactor(1);
-    } else if (!databaseSchema.isSetSchemaReplicationFactor()) {
+    if (!databaseSchema.isSetSchemaReplicationFactor()) {
       databaseSchema.setSchemaReplicationFactor(configNodeConfig.getSchemaReplicationFactor());
     } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
       errorResp =
@@ -408,9 +406,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The schemaReplicationFactor should be positive.");
     }
 
-    if (isSystemDatabase) {
-      databaseSchema.setDataReplicationFactor(1);
-    } else if (!databaseSchema.isSetDataReplicationFactor()) {
+    if (!databaseSchema.isSetDataReplicationFactor()) {
       databaseSchema.setDataReplicationFactor(configNodeConfig.getDataReplicationFactor());
     } else if (databaseSchema.getDataReplicationFactor() <= 0) {
       errorResp =
@@ -480,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) {
+  public TSStatus alterDatabase(final TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
 
     // TODO: Support alter the following fields
@@ -521,9 +517,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       return errorResp;
     }
 
-    DatabaseSchemaPlan alterPlan =
+    final DatabaseSchemaPlan alterPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
-    TSStatus resp = configManager.alterDatabase(alterPlan);
+    final TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);

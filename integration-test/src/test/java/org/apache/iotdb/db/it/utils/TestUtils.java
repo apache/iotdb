@@ -1009,7 +1009,7 @@ public class TestUtils {
       String expectedHeader,
       Set<String> expectedResSet,
       String dataBaseName) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 300, dataBaseName);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, dataBaseName);
   }
 
   public static void assertDataEventuallyOnEnv(

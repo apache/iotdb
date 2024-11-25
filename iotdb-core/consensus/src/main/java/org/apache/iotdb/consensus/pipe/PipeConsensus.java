@@ -269,7 +269,8 @@ public class PipeConsensus implements IConsensus {
       }
 
       final String path = getPeerDir(groupId);
-      if (!new File(path).mkdirs()) {
+      File consensusDir = new File(path);
+      if (!consensusDir.exists() && !consensusDir.mkdirs()) {
         LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
         throw new ConsensusException(
             String.format("Unable to create consensus dir for group %s", groupId));
@@ -348,7 +349,8 @@ public class PipeConsensus implements IConsensus {
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
     } catch (ConsensusGroupModifyPeerException e) {
       try {
-        LOGGER.info("[{}] add remote peer failed, automatic cleanup side effects...", CLASS_NAME);
+        LOGGER.warn(
+            "[{}] add remote peer failed, automatic cleanup side effects...", CLASS_NAME, e);
 
         // roll back
         impl.notifyPeersToDropConsensusPipe(peer);
@@ -372,6 +374,13 @@ public class PipeConsensus implements IConsensus {
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
 
     try {
+      // let other peers to drop consensus pipes to target
+      LOGGER.info("[{}] notify other peers to drop consensus pipes...", CLASS_NAME);
+      impl.notifyPeersToDropConsensusPipe(peer);
+      KillPoint.setKillPoint(
+          IoTConsensusRemovePeerCoordinatorKillPoints
+              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
+
       // let target peer reject new write
       LOGGER.info("[{}] inactivate peer {}", CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false);
@@ -380,10 +389,6 @@ public class PipeConsensus implements IConsensus {
       // wait its consensus pipes to complete
       LOGGER.info("[{}] wait target peer{} complete transfer...", CLASS_NAME, peer);
       impl.waitTargetPeerToPeersTransmissionCompleted(peer);
-
-      // remove consensus pipes between target peer and other peers
-      LOGGER.info("[{}] notify other peers to drop consensus pipes...", CLASS_NAME);
-      impl.notifyPeersToDropConsensusPipe(peer);
 
       // wait target peer to release all resource
       LOGGER.info("[{}] wait {} to release all resource...", CLASS_NAME, peer);

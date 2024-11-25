@@ -34,8 +34,8 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   protected final PipeConnectorSubtask subtask;
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  private int runningTaskCount;
-  private int registeredTaskCount;
+  protected int runningTaskCount;
+  protected int registeredTaskCount;
 
   public PipeConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor,
