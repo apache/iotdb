@@ -181,6 +181,8 @@ public class TsTable {
     }
   }
 
+  // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
+  // cache won't pollute the newest value
   public long getTableTTL() {
     // Cache for performance
     if (ttlValue < 0) {
