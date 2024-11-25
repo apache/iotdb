@@ -395,7 +395,7 @@ public class PipeConsensusServerImpl {
     }
   }
 
-  public void notifyPeersToCreateConsensusPipes(Peer targetPeer, Peer coordinatorPeer)
+  public void notifyAllOtherPeersToCreateConsensusPipes(Peer targetPeer, Peer coordinatorPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
     for (Peer peer : otherPeers) {
@@ -421,19 +421,6 @@ public class PipeConsensusServerImpl {
             e);
       }
     }
-
-    try {
-      // This node which acts as coordinator will transfer complete historical snapshot to new
-      // target.
-      createConsensusPipeToTargetPeer(targetPeer, thisNode);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "{} cannot create consensus pipe to {}, may because target peer is unknown currently, please manually check!",
-          thisNode,
-          targetPeer,
-          e);
-      throw new ConsensusGroupModifyPeerException(e);
-    }
   }
 
   public synchronized void createConsensusPipeToTargetPeer(
@@ -448,7 +435,11 @@ public class PipeConsensusServerImpl {
       throw new ConsensusGroupModifyPeerException(
           String.format("%s cannot persist peer %s", thisNode, targetPeer), e);
     } catch (Exception e) {
-      LOGGER.warn("{} cannot create consensus pipe to {}", thisNode, targetPeer, e);
+      LOGGER.warn(
+          "{} cannot create consensus pipe to {}, may because target peer is unknown currently, please manually check!",
+          thisNode,
+          targetPeer,
+          e);
       throw new ConsensusGroupModifyPeerException(
           String.format("%s cannot create consensus pipe to %s", thisNode, targetPeer), e);
     }

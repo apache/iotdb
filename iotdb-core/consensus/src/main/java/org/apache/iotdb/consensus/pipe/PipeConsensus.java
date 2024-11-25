@@ -331,19 +331,29 @@ public class PipeConsensus implements IConsensus {
       LOGGER.info("[{}] inactivate new peer: {}", CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false);
 
-      // step 2: notify all the other Peers to create consensus pipes to newPeer
-      // NOTE: For this step, coordinator(thisNode) will transfer its full data snapshot to target,
-      // while other peers will only transmit data(may contain both historical and realtime data)
-      // after the snapshot progress to target.
-      LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
-      impl.notifyPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
+      // step 2. create consensus pipe from current peer to target peer to transfer full data
+      // snapshot.
+      // NOTE: This node which acts as coordinator will transfer complete historical snapshot to new
+      // target.
+      LOGGER.info(
+          "[{}] current peer build consensus pipe to new peer for transferring snapshot: {}",
+          CLASS_NAME,
+          peer);
+      impl.createConsensusPipeToTargetPeer(peer, impl.getThisNodePeer());
 
       // step 3: wait until the coordinator Peer finishes transferring snapshot
       LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
       impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
-      // step 4: active new Peer to let new Peer receive snapshot
+      // step 4: notify all the other Peers to create consensus pipes to newPeer for transferring
+      // the data gap between (snapshot.last, other peers' last].
+      // NOTE: For this step, other peers will only transmit data(may contain both historical and
+      // realtime data) after the snapshot progress to target.
+      LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
+      impl.notifyAllOtherPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
+
+      // step 5: active new Peer to let new Peer receive snapshot
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
