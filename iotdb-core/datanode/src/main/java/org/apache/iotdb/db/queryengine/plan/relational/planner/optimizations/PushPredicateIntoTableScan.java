@@ -439,8 +439,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
+
+      long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+      queryContext.setFetchSchemaCost(schemaFetchCost);
 
       if (deviceEntries.isEmpty()) {
         if (analysis.noAggregates()) {
@@ -478,8 +481,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.upsertDataPartition(dataPartition);
         }
 
+        long fetchPartitionCost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
-            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
+            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, fetchPartitionCost);
+        queryContext.setFetchPartitionCost(fetchPartitionCost);
       }
     }
 

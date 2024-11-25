@@ -91,9 +91,11 @@ public class Analyzer {
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
-    if (statement instanceof Query) {
+    if (statement.isQuery()) {
+      long analyzeCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
+          .recordPlanCost(TABLE_TYPE, ANALYZER, analyzeCost);
+      context.setAnalyzeCost(analyzeCost);
     }
 
     // TODO access control
