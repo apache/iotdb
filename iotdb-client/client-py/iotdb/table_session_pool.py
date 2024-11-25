@@ -36,6 +36,8 @@ class TableSessionPool(object):
         self.__session_pool = SessionPool(
             pool_config, max_pool_size, wait_timeout_in_ms
         )
+        self.__session_pool.sql_dialect = "table"
+        self.__session_pool.database = kwargs.get("database", None)
 
     def get_session(self) -> TableSession:
         return TableSession(config={"__session_pool": self.__session_pool})

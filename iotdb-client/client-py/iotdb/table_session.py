@@ -28,21 +28,20 @@ class TableSession(object):
     def __init__(self, **kwargs):
         self.__session_pool = kwargs.get("__session_pool", None)
         if self.__session_pool is None:
-            __node_urls = kwargs.get("node_urls", ["localhost:6667"])
+            __node_urls = kwargs.get("node_urls", ["127.0.0.1:6667"])
             __username = kwargs.get("username", Session.DEFAULT_USER)
             __password = kwargs.get("password", Session.DEFAULT_PASSWORD)
-            __database = kwargs.get("database", None)
-            __query_timeout_in_ms = kwargs.get("query_timeout_in_ms", 60000)
             __fetch_size = kwargs.get("fetch_size", 5000)
             __zone_id = kwargs.get("zone_id", Session.DEFAULT_ZONE_ID)
             self.__session = Session.init_from_node_urls(
                 __node_urls,
                 __username,
                 __password,
-                __database,
-                __query_timeout_in_ms,
                 __fetch_size,
+                __zone_id,
             )
+            self.__session.sql_dialect = "table"
+            self.__session.database = kwargs.get("database", None)
             self.__session.open(kwargs.get("enable_rpc_compression", False))
         else:
             self.__session = self.__session_pool.get_session()
