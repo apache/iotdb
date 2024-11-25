@@ -215,6 +215,7 @@ public class Analysis implements IAnalysis {
   }
 
   public Statement getStatement() {
+    requireNonNull(root);
     return root;
   }
 

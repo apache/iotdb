@@ -155,4 +155,9 @@ public class Query extends Statement {
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
   }
+
+  @Override
+  public boolean isQuery() {
+    return true;
+  }
 }

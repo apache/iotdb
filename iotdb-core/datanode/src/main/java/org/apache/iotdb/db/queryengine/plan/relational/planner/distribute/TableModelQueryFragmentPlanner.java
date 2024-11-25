@@ -33,8 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
@@ -143,8 +141,7 @@ public class TableModelQueryFragmentPlanner {
         });
 
     final Statement statement = analysis.getStatement();
-    if (statement instanceof Query
-        || statement instanceof ExplainAnalyze
+    if (statement.isQuery()
         || statement instanceof ShowDevice
         || statement instanceof CountDevice) {
       fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());

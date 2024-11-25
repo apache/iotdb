@@ -36,8 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import java.util.Collections;
@@ -95,8 +93,7 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
-    if (analysis.getStatement() instanceof Query
-        || analysis.getStatement() instanceof ExplainAnalyze) {
+    if (analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
@@ -105,7 +102,7 @@ public class TableDistributedPlanner {
     adjustUpStream(outputNodeWithExchange, planContext);
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.getStatement().isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
@@ -124,8 +121,7 @@ public class TableDistributedPlanner {
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
-    if (analysis.getStatement() instanceof Query
-        || analysis.getStatement() instanceof ExplainAnalyze) {
+    if (analysis.getStatement().isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(

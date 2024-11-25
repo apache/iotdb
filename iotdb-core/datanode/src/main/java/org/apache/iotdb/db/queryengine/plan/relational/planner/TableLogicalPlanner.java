@@ -127,7 +127,7 @@ public class TableLogicalPlanner {
     final Statement statement = analysis.getStatement();
     PlanNode planNode = planStatement(analysis, statement);
 
-    if (statement instanceof Query || statement instanceof ExplainAnalyze) {
+    if (statement.isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
       startTime = System.nanoTime();
@@ -210,8 +210,8 @@ public class TableLogicalPlanner {
     // TODO perfect the logic of outputDescriptor
     if (queryContext.isExplainAnalyze()) {
       outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
-      names.add("Explain Analyze");
-      columnHeaders.add(new ColumnHeader("Explain Analyze", TSDataType.TEXT));
+      names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
+      columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
     } else {
       RelationType outputDescriptor = analysis.getOutputDescriptor();
       for (Field field : outputDescriptor.getVisibleFields()) {
