@@ -415,29 +415,29 @@ public class MemMTreeSnapshotUtil {
       return node;
     }
 
-    public IMemMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
+    public IMemMNode deserializeStorageGroupEntityMNode(final InputStream inputStream)
         throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);
       node.getAsDeviceMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.getAsDeviceMNode().setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node;
     }
 
-    public IMemMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+    public IMemMNode deserializeEntityMNode(final InputStream inputStream) throws IOException {
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node.getAsMNode();
     }
 
-    public IMemMNode deserializeTableDeviceMNode(InputStream inputStream) throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
-      TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
+    public IMemMNode deserializeTableDeviceMNode(final InputStream inputStream) throws IOException {
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+      final TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
       tableDeviceInfo.setAttributePointer(ReadWriteIOUtils.readInt(inputStream));
       node.getAsInternalMNode().setDeviceInfo(tableDeviceInfo);
       return node.getAsMNode();

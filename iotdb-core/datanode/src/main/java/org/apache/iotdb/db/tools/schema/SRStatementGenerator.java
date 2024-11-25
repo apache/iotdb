@@ -313,7 +313,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       if (node.isDevice()) {
         // Aligned timeSeries will be created when node pop.
         return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
-            node, path, deviceAttributeStore, databaseFullPath);
+            node, path, deviceAttributeStore);
       }
       return null;
     }
@@ -323,7 +323,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         final AbstractDatabaseMNode<?, ? extends IMNode<?>> node, final PartialPath path) {
       if (node.isDevice()) {
         return SRStatementGenerator.genActivateTemplateOrUpdateDeviceStatement(
-            node, path, deviceAttributeStore, databaseFullPath);
+            node, path, deviceAttributeStore);
       }
       return null;
     }
@@ -392,8 +392,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private static List<Object> genActivateTemplateOrUpdateDeviceStatement(
       final IMNode<?> node,
       final PartialPath path,
-      final IDeviceAttributeStore deviceAttributeStore,
-      final PartialPath database) {
+      final IDeviceAttributeStore deviceAttributeStore) {
     final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
     if (deviceMNode.isUseTemplate()) {
       return Collections.singletonList(new ActivateTemplateStatement(path));
@@ -412,7 +411,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           });
       return Collections.singletonList(
           new CreateOrUpdateDevice(
-              database.getNodes()[1],
+              path.getNodes()[1],
               path.getNodes()[2],
               Collections.singletonList(
                   Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength())),
