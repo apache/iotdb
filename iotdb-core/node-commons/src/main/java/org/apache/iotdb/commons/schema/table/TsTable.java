@@ -67,6 +67,8 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
+  // Cache, avoid string parsing
+  private transient long ttlValue = Long.MIN_VALUE;
   private transient int idNums = 0;
   private transient int measurementNum = 0;
 
@@ -180,11 +182,16 @@ public class TsTable {
   }
 
   public long getTableTTL() {
-    long ttl = getTableTTLInMS();
-    return ttl == Long.MAX_VALUE
-        ? ttl
-        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    // Cache for performance
+    if (ttlValue < 0) {
+      final long ttl = getTableTTLInMS();
+      ttlValue =
+          ttl == Long.MAX_VALUE
+              ? ttl
+              : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                  ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    }
+    return ttlValue;
   }
 
   public long getTableTTLInMS() {
