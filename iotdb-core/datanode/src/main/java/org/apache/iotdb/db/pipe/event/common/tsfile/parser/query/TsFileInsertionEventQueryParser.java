@@ -314,9 +314,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             if (sourceEvent != null) {
               LOGGER.info("innext");
               PipeTsfileToTabletMetrics.getInstance()
-                      .markTabletCount(sourceEvent.getPipeName() + '_' + sourceEvent.getCreationTime(), 1);
-            }
-            else{
+                  .markTabletCount(
+                      new PipeTsfileToTabletMetrics.PipeID(
+                          sourceEvent.getPipeName(),
+                          String.valueOf(sourceEvent.getCreationTime()),
+                          Thread.currentThread().getStackTrace()[3].getMethodName()),
+                      1);
+            } else {
               LOGGER.info("sourceEvent not exists");
             }
             if (!hasNext()) {

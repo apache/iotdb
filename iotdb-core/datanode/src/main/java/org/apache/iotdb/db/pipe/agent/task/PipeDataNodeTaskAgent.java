@@ -278,7 +278,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
         .deregister(pipeName + "_" + creationTime);
-    PipeTsfileToTabletMetrics.getInstance().deregister(pipeName + "_" + creationTime);
+    PipeTsfileToTabletMetrics.getInstance().deregisterPipe(pipeName + "_" + creationTime);
     return true;
   }
 
@@ -295,7 +295,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .deregister(pipeName + "_" + creationTime);
-      PipeTsfileToTabletMetrics.getInstance().deregister(pipeName + "_" + creationTime);
+      PipeTsfileToTabletMetrics.getInstance().deregisterPipe(pipeName + "_" + creationTime);
     }
 
     return true;

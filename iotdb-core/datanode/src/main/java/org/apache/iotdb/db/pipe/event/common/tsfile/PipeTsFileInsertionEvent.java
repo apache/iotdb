@@ -493,7 +493,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       Iterable<TabletInsertionEvent> events = initEventParser().toTabletInsertionEvents();
 
       if (pipeName != null) {
-        final String pipeID = pipeName + "_" + creationTime;
+        final String callerName = Thread.currentThread().getStackTrace()[2].getMethodName();
+        final PipeTsfileToTabletMetrics.PipeID pipeID =
+            new PipeTsfileToTabletMetrics.PipeID(
+                pipeName,
+                String.valueOf(creationTime),
+                callerName.equals("toTabletInsertionEvents")
+                    ? Thread.currentThread().getStackTrace()[3].getMethodName()
+                    : callerName);
+        PipeTsfileToTabletMetrics.getInstance().register(pipeID);
         PipeTsfileToTabletMetrics.getInstance().markTsfileSize(pipeID, tsFile.length());
       }
       return events;

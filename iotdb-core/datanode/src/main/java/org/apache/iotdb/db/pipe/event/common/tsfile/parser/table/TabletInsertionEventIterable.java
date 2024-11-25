@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
@@ -86,9 +85,13 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
         if (sourceEvent != null) {
           LOGGER.info("innext");
           PipeTsfileToTabletMetrics.getInstance()
-              .markTabletCount(sourceEvent.getPipeName() + '_' + sourceEvent.getCreationTime(), 1);
-        }
-        else{
+              .markTabletCount(
+                  new PipeTsfileToTabletMetrics.PipeID(
+                      sourceEvent.getPipeName(),
+                      String.valueOf(sourceEvent.getCreationTime()),
+                      Thread.currentThread().getStackTrace()[3].getMethodName()),
+                  1);
+        } else {
           LOGGER.info("sourceEvent not exists");
         }
         final TabletInsertionEvent next;

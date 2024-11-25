@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -97,7 +96,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
-      PipeTsfileToTabletMetrics.getInstance().register(this);
     }
   }
 

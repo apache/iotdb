@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
-
 import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -68,7 +67,7 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private static final Logger LOGGER =
-          LoggerFactory.getLogger(TsFileInsertionEventScanParser.class);
+      LoggerFactory.getLogger(TsFileInsertionEventScanParser.class);
   private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
@@ -140,9 +139,13 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             if (sourceEvent != null) {
               LOGGER.info("innext");
               PipeTsfileToTabletMetrics.getInstance()
-                      .markTabletCount(sourceEvent.getPipeName() + '_' + sourceEvent.getCreationTime(), 1);
-            }
-            else{
+                  .markTabletCount(
+                      new PipeTsfileToTabletMetrics.PipeID(
+                          sourceEvent.getPipeName(),
+                          String.valueOf(sourceEvent.getCreationTime()),
+                          Thread.currentThread().getStackTrace()[3].getMethodName()),
+                      1);
+            } else {
               LOGGER.info("sourceEvent not exists");
             }
             try {
