@@ -163,8 +163,8 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void setAlias(IMeasurementMNode<IMemMNode> measurementMNode, String alias) {
-    String existingAlias = measurementMNode.getAlias();
+  public void setAlias(final IMeasurementMNode<IMemMNode> measurementMNode, final String alias) {
+    final String existingAlias = measurementMNode.getAlias();
     if (existingAlias == null && alias == null) {
       return;
     }
@@ -186,13 +186,13 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void pin(IMemMNode node) {}
+  public void pin(final IMemMNode node) {}
 
   @Override
-  public void unPin(IMemMNode node) {}
+  public void unPin(final IMemMNode node) {}
 
   @Override
-  public void unPinPath(IMemMNode node) {}
+  public void unPinPath(final IMemMNode node) {}
 
   @Override
   public IMTreeStore<IMemMNode> getWithReentrantReadLock() {
@@ -231,17 +231,17 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void recordTraverserMetric(long costTime) {
+  public void recordTraverserMetric(final long costTime) {
     metric.recordTraverser(costTime);
   }
 
-  private void requestMemory(int size) {
+  private void requestMemory(final int size) {
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
-  public void releaseMemory(int size) {
+  public void releaseMemory(final int size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

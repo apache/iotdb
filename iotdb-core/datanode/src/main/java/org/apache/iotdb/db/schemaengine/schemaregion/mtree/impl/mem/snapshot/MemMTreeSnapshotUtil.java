@@ -309,7 +309,7 @@ public class MemMTreeSnapshotUtil {
   private static class MNodeSerializer extends MNodeVisitor<Boolean, OutputStream> {
 
     @Override
-    public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
+    public Boolean visitBasicMNode(final IMNode<?> node, final OutputStream outputStream) {
       try {
         if (node.isDevice()) {
           if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
@@ -333,7 +333,7 @@ public class MemMTreeSnapshotUtil {
           ReadWriteIOUtils.write(false, outputStream); // for compatibly
         }
         return true;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;
       }
