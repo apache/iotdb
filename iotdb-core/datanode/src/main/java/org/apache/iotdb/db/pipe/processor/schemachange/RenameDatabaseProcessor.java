@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.processor.schemachange;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -77,7 +76,7 @@ public class RenameDatabaseProcessor implements PipeProcessor {
 
   private void resetDataBaseName(Event event, EventCollector eventCollector) throws Exception {
     if (!((event instanceof PipeInsertionEvent)
-        && ((PipeTsFileInsertionEvent) event).isTableModelEvent())) {
+        && ((PipeInsertionEvent) event).isTableModelEvent())) {
       eventCollector.collect(event);
       return;
     }
