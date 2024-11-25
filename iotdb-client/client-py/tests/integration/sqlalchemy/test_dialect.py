@@ -21,7 +21,7 @@ import operator
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.dialects import registry
 
-from iotdb.IoTDBContainer import IoTDBContainer
+from tests.integration.iotdb_container import IoTDBContainer
 
 final_flag = True
 failed_count = 0
