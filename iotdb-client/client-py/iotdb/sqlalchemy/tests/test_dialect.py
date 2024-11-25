@@ -83,7 +83,7 @@ def test_dialect():
             test_fail()
             print_message("test get_columns failed!")
 
-        with Session(engine=eng) as session:
+        with Session(eng) as session:
             session.execute("delete database root.cursor")
             session.execute("delete database root.cursor_s1")
 
