@@ -420,7 +420,6 @@ public class CNPhysicalPlanGenerator
       return;
     }
     for (final IConfigMNode templateNode : templateNodeList) {
-      System.out.println(templateNode.getFullPath());
       final String templateName = templateTable.get(templateNode.getSchemaTemplateId());
       final CommitSetSchemaTemplatePlan plan =
           new CommitSetSchemaTemplatePlan(templateName, templateNode.getFullPath());
