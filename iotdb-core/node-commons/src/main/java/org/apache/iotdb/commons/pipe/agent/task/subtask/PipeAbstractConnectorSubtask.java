@@ -33,7 +33,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 
 public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
@@ -43,7 +43,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   protected PipeConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
-  protected ScheduledExecutorService subtaskCallbackListeningExecutor;
+  protected ExecutorService subtaskCallbackListeningExecutor;
 
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
@@ -62,7 +62,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      final ScheduledExecutorService subtaskCallbackListeningExecutor,
+      final ExecutorService subtaskCallbackListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;

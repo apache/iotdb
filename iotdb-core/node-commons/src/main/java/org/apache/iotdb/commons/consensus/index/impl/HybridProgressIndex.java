@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -40,6 +41,11 @@ import java.util.stream.Collectors;
 
 public class HybridProgressIndex extends ProgressIndex {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(HybridProgressIndex.class) + ProgressIndex.LOCK_SIZE;
+  private static final long ENTRY_SIZE =
+      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+          + RamUsageEstimator.alignObjectSize(Short.BYTES);
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Short, ProgressIndex> type2Index;
@@ -48,11 +54,11 @@ public class HybridProgressIndex extends ProgressIndex {
     this(Collections.emptyMap());
   }
 
-  public HybridProgressIndex(ProgressIndex progressIndex) {
+  public HybridProgressIndex(final ProgressIndex progressIndex) {
     this(Collections.singletonMap(progressIndex.getType().getType(), progressIndex));
   }
 
-  private HybridProgressIndex(Map<Short, ProgressIndex> type2Index) {
+  private HybridProgressIndex(final Map<Short, ProgressIndex> type2Index) {
     this.type2Index = new HashMap<>(type2Index);
   }
 
@@ -61,7 +67,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     lock.readLock().lock();
     try {
       ProgressIndexType.HYBRID_PROGRESS_INDEX.serialize(byteBuffer);
@@ -77,7 +83,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     lock.readLock().lock();
     try {
       ProgressIndexType.HYBRID_PROGRESS_INDEX.serialize(stream);
@@ -93,7 +99,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull final ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
@@ -121,14 +127,14 @@ public class HybridProgressIndex extends ProgressIndex {
     }
   }
 
-  public boolean isGivenProgressIndexAfterSelf(ProgressIndex progressIndex) {
+  public boolean isGivenProgressIndexAfterSelf(final ProgressIndex progressIndex) {
     return type2Index.size() == 1
         && type2Index.containsKey(progressIndex.getType().getType())
         && progressIndex.isAfter(type2Index.get(progressIndex.getType().getType()));
   }
 
   @Override
-  public boolean equals(ProgressIndex progressIndex) {
+  public boolean equals(final ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (!(progressIndex instanceof HybridProgressIndex)) {
@@ -152,7 +158,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (obj == null) {
       return false;
     }
@@ -171,7 +177,8 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
+  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(
+      final ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
       if (progressIndex == null || progressIndex instanceof MinimumProgressIndex) {
@@ -229,7 +236,7 @@ public class HybridProgressIndex extends ProgressIndex {
     }
   }
 
-  public static HybridProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
+  public static HybridProgressIndex deserializeFrom(final ByteBuffer byteBuffer) {
     final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
@@ -240,7 +247,7 @@ public class HybridProgressIndex extends ProgressIndex {
     return hybridProgressIndex;
   }
 
-  public static HybridProgressIndex deserializeFrom(InputStream stream) throws IOException {
+  public static HybridProgressIndex deserializeFrom(final InputStream stream) throws IOException {
     final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
     final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; i++) {
@@ -254,5 +261,12 @@ public class HybridProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "HybridProgressIndex{" + "type2Index=" + type2Index + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + type2Index.size() * ENTRY_SIZE
+        + type2Index.values().stream().map(ProgressIndex::ramBytesUsed).reduce(0L, Long::sum);
   }
 }

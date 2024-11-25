@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
@@ -602,7 +603,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
                               // New region leader may contain un-transferred events
-                              pipeMeta.getTemporaryMeta().markDataNodeUncompleted(newLeader);
+                              ((PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta())
+                                  .markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }

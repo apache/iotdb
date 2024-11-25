@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -68,6 +69,31 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     super();
     this.removedDataNodes = removedDataNodes;
     this.nodeStatusMap = nodeStatusMap;
+  }
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOG.info(
+          "procedureId {}-RemoveDataNodes skips acquiring lock, since upper layer ensures the serial execution.",
+          getProcId());
+      return ProcedureLockState.LOCK_ACQUIRED;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOG.info(
+          "procedureId {}-RemoveDataNodes skips releasing lock, since it hasn't acquire any lock.",
+          getProcId());
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
   }
 
   @Override

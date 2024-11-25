@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -63,6 +64,8 @@ public class TableModelPlanner implements IPlanner {
 
   private final SqlParser sqlParser;
   private final Metadata metadata;
+  private final List<PlanOptimizer> logicalPlanOptimizers;
+  private final List<PlanOptimizer> distributionPlanOptimizers;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
 
   // TODO access control
@@ -90,7 +93,9 @@ public class TableModelPlanner implements IPlanner {
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
           syncInternalServiceClientManager,
       final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-          asyncInternalServiceClientManager) {
+          asyncInternalServiceClientManager,
+      final List<PlanOptimizer> logicalPlanOptimizers,
+      final List<PlanOptimizer> distributionPlanOptimizers) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -99,6 +104,8 @@ public class TableModelPlanner implements IPlanner {
     this.scheduledExecutor = scheduledExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
+    this.logicalPlanOptimizers = logicalPlanOptimizers;
+    this.distributionPlanOptimizers = distributionPlanOptimizers;
   }
 
   @Override
@@ -116,14 +123,20 @@ public class TableModelPlanner implements IPlanner {
   @Override
   public LogicalQueryPlan doLogicalPlan(final IAnalysis analysis, final MPPQueryContext context) {
     return new TableLogicalPlanner(
-            context, metadata, context.getSession(), symbolAllocator, warningCollector)
+            context,
+            metadata,
+            context.getSession(),
+            symbolAllocator,
+            warningCollector,
+            logicalPlanOptimizers)
         .plan((Analysis) analysis);
   }
 
   @Override
   public DistributedQueryPlan doDistributionPlan(
       final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
-    return new TableDistributedPlanner((Analysis) analysis, symbolAllocator, logicalPlan, metadata)
+    return new TableDistributedPlanner(
+            (Analysis) analysis, symbolAllocator, logicalPlan, metadata, distributionPlanOptimizers)
         .plan();
   }
 

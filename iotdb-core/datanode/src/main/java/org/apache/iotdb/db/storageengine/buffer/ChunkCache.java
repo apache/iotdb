@@ -47,7 +47,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_ALL;
+import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_CACHE;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_FILE;
 
 /**
@@ -162,11 +162,13 @@ public class ChunkCache {
     } finally {
       if (chunkLoader.isCacheMiss()) {
         cacheMissAdder.accept(1);
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_CHUNK_FILE, System.nanoTime() - startTime);
       } else {
         cacheHitAdder.accept(1);
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_CHUNK_CACHE, System.nanoTime() - startTime);
       }
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          READ_CHUNK_ALL, System.nanoTime() - startTime);
     }
   }
 

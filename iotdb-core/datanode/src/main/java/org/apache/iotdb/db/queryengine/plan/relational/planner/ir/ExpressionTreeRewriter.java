@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -527,9 +529,9 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
-    protected Expression visitLiteral(Literal node, Context<C> context) {
+    protected Expression visitLiteral(final Literal node, final Context<C> context) {
       if (!context.isDefaultRewrite()) {
-        Expression result =
+        final Expression result =
             rewriter.rewriteLiteral(node, context.get(), ExpressionTreeRewriter.this);
         if (result != null) {
           return result;
@@ -600,6 +602,32 @@ public final class ExpressionTreeRewriter<C> {
 
       if (node.getExpression() != expression || node.getType() != type) {
         return new Cast(expression, type, node.isSafe());
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitCurrentDatabase(final CurrentDatabase node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
+            rewriter.rewriteCurrentDatabase(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      return node;
+    }
+
+    @Override
+    public Expression visitCurrentUser(final CurrentUser node, final Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        final Expression result =
+            rewriter.rewriteCurrentUser(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
       }
 
       return node;
