@@ -68,7 +68,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
-      statement.execute("create database test2 with (ttl=300)");
+      statement.execute("create database test2 with (ttl=3000000)");
 
       // should specify database before create table
       try {
@@ -130,22 +130,22 @@ public class IoTDBTableIT {
       }
 
       // Alter table properties
-      statement.execute("alter table test1.table1 set properties ttl=1");
-      ttls = new String[] {"1"};
+      statement.execute("alter table test1.table1 set properties ttl=1000000");
+      ttls = new String[] {"1000000"};
 
       // Alter non-exist table
       try {
-        statement.execute("alter table test1.nonExist set properties ttl=1");
+        statement.execute("alter table test1.nonExist set properties ttl=1000000");
       } catch (final SQLException e) {
         assertEquals("550: Table 'test1.nonexist' does not exist", e.getMessage());
       }
 
       // If exists
-      statement.execute("alter table if exists test1.nonExist set properties ttl=1");
+      statement.execute("alter table if exists test1.nonExist set properties ttl=1000000");
 
       // Alter non-supported properties
       try {
-        statement.execute("alter table test1.table1 set properties nonSupport=1");
+        statement.execute("alter table test1.table1 set properties nonSupport=1000000");
       } catch (final SQLException e) {
         assertEquals("701: Table property 'nonsupport' is currently not allowed.", e.getMessage());
       }
@@ -291,7 +291,7 @@ public class IoTDBTableIT {
       statement.execute("create table table3()");
 
       tableNames = new String[] {"table3", "table2"};
-      ttls = new String[] {"300", "6600000"};
+      ttls = new String[] {"3000000", "6600000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -310,10 +310,10 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
-      statement.execute("alter table table3 set properties ttl=300");
+      statement.execute("alter table table3 set properties ttl=1000000");
       statement.execute("alter table table3 set properties ttl=DEFAULT");
 
-      // The table3's ttl shall be also 300
+      // The table3's ttl shall be also 3000000
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
