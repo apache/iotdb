@@ -101,6 +101,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean needTransferSnapshot() {
+    // Note: the schema region will transfer snapshot if there are table or tree planNode captured.
+    // However, the schema region can be only tree model or table model, thus the snapshot can be
+    // omitted if the schema region and transferred type's model are mismatched. Actually, the
+    // mismatched subtask is supposed to be trimmed on configNode and will not be created here,
+    // hence there's no need to optimize it here.
     return PipeSchemaRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
   }
 

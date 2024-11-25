@@ -587,6 +587,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement originalStatement =
             (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement)
                 treeOrTableStatement;
+
+        // No need to check the statement type because if the schema region contains table
+        // statement, it will only contain table statement. Then, if we do not extract table, the
+        // whole snapshot is filtered.
       }
     }
     batchVisitor.getRemainBatches().stream()

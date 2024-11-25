@@ -76,6 +76,11 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     // For logical view
     PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
         PlanNodeType.ALTER_LOGICAL_VIEW.getNodeType(), StatementType.ALTER_LOGICAL_VIEW);
+
+    // The table node does not have Statement type, use "auto_create_device" instead
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE.getNodeType(),
+        StatementType.AUTO_CREATE_DEVICE_MNODE);
   }
 
   public PipeSchemaRegionSnapshotEvent() {
