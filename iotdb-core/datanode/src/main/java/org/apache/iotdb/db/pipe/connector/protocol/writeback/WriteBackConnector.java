@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
@@ -30,16 +28,10 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -48,14 +40,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.Objects;
 
 public class WriteBackConnector implements PipeConnector {
@@ -64,8 +54,6 @@ public class WriteBackConnector implements PipeConnector {
 
   private static final String EMPTY_DATABASE = null;
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  private final SqlParser relationalSqlParser = new SqlParser();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -77,6 +65,8 @@ public class WriteBackConnector implements PipeConnector {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     // Do nothing
+    IClientSession iClientSession = new InternalClientSession(WriteBackConnector.class.getName());
+    SESSION_MANAGER.registerSession(iClientSession);
   }
 
   @Override
@@ -136,9 +126,8 @@ public class WriteBackConnector implements PipeConnector {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     final TSStatus status;
-    final boolean isTableModel = pipeInsertNodeTabletInsertionEvent.isTableModelEvent();
     final String dataBaseName =
-        isTableModel
+        pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
             : EMPTY_DATABASE;
     final InsertNode insertNode =
@@ -152,11 +141,12 @@ public class WriteBackConnector implements PipeConnector {
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName))
               .getStatus();
     } else {
-      final InsertBaseStatement statement =
-          PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
-                  insertNode, pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName())
-              .constructStatement();
-      status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeTreeModelStatement(statement);
+      status =
+          PipeDataNodeAgent.receiver()
+              .thrift()
+              .receive(
+                  PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName))
+              .getStatus();
     }
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -182,22 +172,20 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final boolean isTableModel = pipeRawTabletInsertionEvent.isTableModelEvent();
     final String dataBaseName =
-        isTableModel ? pipeRawTabletInsertionEvent.getTableModelDatabaseName() : EMPTY_DATABASE;
-    final InsertBaseStatement statement =
-        PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned(),
-                dataBaseName)
-            .constructStatement();
-    final TSStatus status;
-    if (isTableModel) {
-      status =
-          statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeTableModelStatement(statement);
-    } else {
-      status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeTreeModelStatement(statement);
-    }
+        pipeRawTabletInsertionEvent.isTableModelEvent()
+            ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+            : EMPTY_DATABASE;
+
+    final TSStatus status =
+        PipeDataNodeAgent.receiver()
+            .thrift()
+            .receive(
+                PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
+                    pipeRawTabletInsertionEvent.convertToTablet(),
+                    pipeRawTabletInsertionEvent.isAligned(),
+                    dataBaseName))
+            .getStatus();
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -207,39 +195,8 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private TSStatus executeTreeModelStatement(final InsertBaseStatement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
-            SESSION_MANAGER.requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
-  }
-
-  private TSStatus executeTableModelStatement(final InsertBaseStatement statement) {
-    return Coordinator.getInstance()
-        .executeForTableModel(
-            new PipeEnrichedStatement(statement),
-            relationalSqlParser,
-            SESSION_MANAGER.getCurrSession(),
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                SESSION_MANAGER.getCurrSession(),
-                statement.getDatabaseName().isPresent()
-                    ? statement.getDatabaseName().get()
-                    : EMPTY_DATABASE),
-            "",
-            LocalExecutionPlanner.getInstance().metadata,
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
-  }
-
   @Override
   public void close() throws Exception {
-    // Do nothing
+    SESSION_MANAGER.removeCurrSession();
   }
 }
