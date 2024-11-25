@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -39,7 +37,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -50,12 +47,10 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -70,7 +65,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -556,43 +550,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public List<ByteBuffer> getPipeMetaListWithFilterInvalidConsensusGroup() throws IOException {
-    acquireReadLock();
-    try {
-      final List<ByteBuffer> pipeMetas = new ArrayList<>(pipeMetaKeeper.getPipeMetaCount());
-      for (final PipeMeta meta : pipeMetaKeeper.getPipeMetaList()) {
-        if (meta == null) {
-          // Won't happen
-          continue;
-        }
-        pipeMetas.add(filterInvalidConsensusGroup(meta).serialize());
-      }
-      return pipeMetas;
-    } finally {
-      releaseReadLock();
-    }
-  }
-
   public PipeMeta getPipeMetaByPipeName(final String pipeName) {
     acquireReadLock();
     try {
       return pipeMetaKeeper.getPipeMetaByPipeName(pipeName);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  public PipeMeta getPipeMetaByPipeNameWithFilterInvalidConsensusGroup(final String pipeName) {
-    acquireReadLock();
-    try {
-      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMetaByPipeName(pipeName);
-      if (pipeMeta == null) {
-        throw new PipeException(
-            String.format(
-                "PipeMate of Pipe %s does not exist. Please enter the correct Pipe Name.",
-                pipeName));
-      }
-      return filterInvalidConsensusGroup(pipeMeta);
     } finally {
       releaseReadLock();
     }
@@ -1004,117 +965,5 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public long exceptionStoppedPipeCount() {
     return pipeMetaKeeper.exceptionStoppedPipeCount();
-  }
-
-  //////////////////////////// Filter Invalid Consensus Group ////////////////////////////
-
-  private PipeMeta filterInvalidConsensusGroup(final PipeMeta pipeMeta) {
-    final PipeParameters sourceAttribute = pipeMeta.getStaticMeta().getExtractorParameters();
-    final boolean isCaptureTable = isCaptureTable(sourceAttribute);
-    final boolean isCaptureTree = isCaptureTree(sourceAttribute);
-
-    // only support dataRegion
-    final Map<String, List<TConsensusGroupId>> dataBaseToId =
-        ConfigNode.getInstance()
-            .getConfigManager()
-            .getPartitionManager()
-            .getAllRegionGroupIdMap(TConsensusGroupType.DataRegion);
-
-    if (dataBaseToId == null || dataBaseToId.isEmpty()) {
-      return pipeMeta;
-    }
-
-    final PipeMeta finalPipeMeta;
-    try {
-      finalPipeMeta = pipeMeta.deepCopy4TaskAgent();
-    } catch (Exception ignore) {
-      return pipeMeta;
-    }
-
-    final String dataBasePattern = getDataBasePattern(sourceAttribute);
-    dataBaseToId.forEach(
-        (dataBaseName, tConsensusGroupIds) -> {
-          if (dataBaseName == null
-              || dataBaseName.length() < 4 // Determine whether DataBaseName is legal
-              || tConsensusGroupIds == null
-              || tConsensusGroupIds.isEmpty()) {
-            return;
-          }
-          final boolean isTableModel;
-          try {
-            TDatabaseSchema schema =
-                ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getClusterSchemaManager()
-                    .getDatabaseSchemaByName(dataBaseName);
-            if (schema == null) {
-              return;
-            }
-            isTableModel = schema.isTableModel;
-          } catch (DatabaseNotExistsException ignore) {
-            return;
-          }
-
-          if (isTableModel) {
-            // If the DataBase is a table model, but the Pipe does not capture the table model, or
-            // the DataBase does not match the cleanup
-            if (!isCaptureTable
-                || (dataBaseName.length() >= 5
-                    && !dataBaseName.substring(5).matches(dataBasePattern))
-                || (dataBaseName.length() == 4
-                    && !dataBaseName.substring(4).matches(dataBasePattern))) {
-              clearAllConsensusGroupID(tConsensusGroupIds, finalPipeMeta);
-            }
-          } else {
-            if (!isCaptureTree) {
-              // If the DataBase is a tree model, but the data of the tree model is not captured
-              clearAllConsensusGroupID(tConsensusGroupIds, finalPipeMeta);
-            }
-          }
-        });
-
-    return finalPipeMeta;
-  }
-
-  private void clearAllConsensusGroupID(
-      final List<TConsensusGroupId> tConsensusGroupIds, final PipeMeta finalPipeMeta) {
-    tConsensusGroupIds.forEach(
-        id -> finalPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().remove(id.id));
-  }
-
-  private boolean isCaptureTable(final PipeParameters source) {
-    final boolean isTableMode =
-        source
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
-    return source.getBooleanOrDefault(
-        Arrays.asList(
-            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-        isTableMode);
-  }
-
-  private boolean isCaptureTree(final PipeParameters source) {
-    final boolean isTreeMode =
-        source
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-
-    return source.getBooleanOrDefault(
-        Arrays.asList(
-            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-        isTreeMode);
-  }
-
-  private String getDataBasePattern(final PipeParameters source) {
-    return source.getStringOrDefault(
-        Arrays.asList(
-            PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
-            PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY),
-        ".*");
   }
 }
