@@ -793,7 +793,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
-            isListenTableModelDataRegion,
+            isModelDetected ? isTableModel : null,
             resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
