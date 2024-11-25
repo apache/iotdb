@@ -347,13 +347,13 @@ public class PipeConsensus implements IConsensus {
       impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
       // step 4: notify all the other Peers to create consensus pipes to newPeer for transferring
-      // the data gap between (snapshot.last, other peers' last].
+      // data gap between (snapshot.last, other peers.last].
       // NOTE: For this step, other peers will only transmit data(may contain both historical and
       // realtime data) after the snapshot progress to target.
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
       impl.notifyAllOtherPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
 
-      // step 5: active new Peer to let new Peer receive snapshot
+      // step 5: active new Peer to let new Peer receive client request
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
