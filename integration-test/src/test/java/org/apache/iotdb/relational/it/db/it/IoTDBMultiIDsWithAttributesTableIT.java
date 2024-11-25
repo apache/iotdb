@@ -133,14 +133,22 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "(6,1113,10000003,6,55),(7,1114,10000004,7,60),(8,1115,10000005,8,100),(9,1114,10000001,2,99),(10,1115,10000002,1,95)"
       };
 
-  //  public static void main(String[] args) {
-  //    for (String sql : sql1) {
-  //      System.out.println(sql+";");
-  //    }
-  //    for (String sql : sql2) {
-  //      System.out.println(sql+";");
-  //    }
-  //  }
+  private static final String[] sql5 =
+      new String[] {
+        "create table tableA(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableB(device STRING ID, value INT32 MEASUREMENT)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:01.000', 'd1', 1)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 3)",
+        "flush",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 5)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:07.000', 'd2', 7)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:02.000', 'd1', 20)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 30)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+      };
 
   String[] expectedHeader;
   String[] retArray;
@@ -166,7 +174,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4)) {
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
         for (String sql : sqlList) {
           statement.execute(sql);
         }
@@ -1688,6 +1696,26 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         sql,
         "701: Cross join is not supported in current version, each table must have at least one equiJoinClause",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void innerJoinTest() {
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    sql =
+        "SELECT "
+            + "  t1.time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "FROM "
+            + "  tableA t1 JOIN tableB t2 "
+            + "ON t1.time = t2.time";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,", "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   public static String[] buildHeaders(int length) {
