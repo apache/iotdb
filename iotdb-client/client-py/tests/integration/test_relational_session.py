@@ -44,6 +44,7 @@ def session_test(use_session_pool=False):
         }
         if use_session_pool:
             session_pool = TableSessionPool(**config)
+            session = session_pool.get_session()
         else:
             session = TableSession(**config)
 
