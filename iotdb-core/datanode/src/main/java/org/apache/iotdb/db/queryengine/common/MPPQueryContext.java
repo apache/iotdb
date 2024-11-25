@@ -248,10 +248,16 @@ public class MPPQueryContext {
   }
 
   public long getFetchPartitionCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchPartitionCost();
   }
 
   public long getFetchSchemaCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchSchemaCost();
   }
 

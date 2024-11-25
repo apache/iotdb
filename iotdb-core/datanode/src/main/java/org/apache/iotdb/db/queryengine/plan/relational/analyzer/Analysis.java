@@ -215,6 +215,7 @@ public class Analysis implements IAnalysis {
   }
 
   public Statement getStatement() {
+    requireNonNull(root);
     return root;
   }
 
@@ -751,7 +752,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isQuery() {
-    return false;
+    return getStatement().isQuery();
   }
 
   @Override
