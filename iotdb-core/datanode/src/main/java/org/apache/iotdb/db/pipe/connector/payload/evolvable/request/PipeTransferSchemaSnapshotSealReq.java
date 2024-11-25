@@ -90,7 +90,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      final String pattern,
+      final String treePattern,
+      final String tablePatternDatabase,
+      final String tablePatternTable,
+      final boolean isTreeCaptured,
+      final boolean isTableCaptured,
       final String mTreeSnapshotName,
       final long mTreeSnapshotLength,
       final String tLogName,
@@ -99,7 +103,15 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
       final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
-    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
+    parameters.put(DATABASE_PATTERN, tablePatternDatabase);
+    parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
+    if (isTreeCaptured) {
+      parameters.put(TREE, "");
+    }
+    if (isTableCaptured) {
+      parameters.put(TABLE, "");
+    }
     parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferSchemaSnapshotSealReq()
