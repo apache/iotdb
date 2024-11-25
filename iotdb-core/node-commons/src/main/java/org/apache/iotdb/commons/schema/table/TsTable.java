@@ -49,6 +49,8 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+
 @ThreadSafe
 public class TsTable {
 
@@ -197,7 +199,10 @@ public class TsTable {
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
+    final Optional<String> ttl = getPropValue(TTL_PROPERTY);
+    return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
+        ? Long.parseLong(ttl.get())
+        : Long.MAX_VALUE;
   }
 
   public Optional<String> getPropValue(final String propKey) {
