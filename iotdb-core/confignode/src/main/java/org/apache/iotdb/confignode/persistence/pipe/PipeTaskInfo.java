@@ -1026,7 +1026,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     final PipeMeta finalPipeMeta;
     try {
-      finalPipeMeta = pipeMeta.deepCopy();
+      finalPipeMeta = pipeMeta.deepCopy4TaskAgent();
     } catch (Exception ignore) {
       return pipeMeta;
     }
