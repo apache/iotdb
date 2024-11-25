@@ -507,7 +507,7 @@ public abstract class AbstractOperatePipeProcedureV2
     return env.dropSinglePipeOnDataNodes(pipeName);
   }
 
-  private static PipeMeta copyAndFilterOutNonWorkingDataRegionPipeTasks(PipeMeta originalPipeMeta)
+  public static PipeMeta copyAndFilterOutNonWorkingDataRegionPipeTasks(PipeMeta originalPipeMeta)
       throws IOException {
     final PipeMeta copiedPipeMeta = originalPipeMeta.deepCopy4TaskAgent();
 
