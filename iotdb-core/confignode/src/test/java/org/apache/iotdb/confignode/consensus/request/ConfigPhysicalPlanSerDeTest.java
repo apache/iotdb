@@ -1186,7 +1186,7 @@ public class ConfigPhysicalPlanSerDeTest {
         preCreateTablePlan0.getTable().getColumnNum(),
         preCreateTablePlan1.getTable().getColumnNum());
     Assert.assertEquals(
-        preCreateTablePlan0.getTable().getIdNums(), preCreateTablePlan1.getTable().getIdNums());
+        preCreateTablePlan0.getTable().getIdNum(), preCreateTablePlan1.getTable().getIdNum());
   }
 
   @Test

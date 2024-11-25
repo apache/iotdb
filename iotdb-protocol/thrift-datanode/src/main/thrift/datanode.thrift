@@ -339,14 +339,14 @@ struct TInvalidateColumnCacheReq {
   1: required string database,
   2: required string tableName,
   3: required string columnName,
-  4: required bool isAttributeColumn
+  4: required i32 attributeId
 }
 
 struct TDeleteColumnDataReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName,
   3: required string columnName,
-  4: required bool isAttributeColumn
+  4: required i32 attributeId
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {

@@ -1288,11 +1288,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      if (mTree.preDeleteColumn(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName())) {
-        status.setMessage("");
+      final int attributeId =
+          mTree.preDeleteColumn(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getColumnName());
+      if (attributeId >= 0) {
+        status.setMessage(String.valueOf(attributeId));
       }
       return status;
     } catch (final MetadataException e) {

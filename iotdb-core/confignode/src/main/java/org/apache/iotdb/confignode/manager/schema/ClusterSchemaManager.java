@@ -1234,6 +1234,14 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (Objects.nonNull(originalTable.getColumnSchema(newName))) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_ALREADY_EXISTS,
+              "The new column name " + newName + " already exists"),
+          null);
+    }
+
     expandedTable.renameColumnSchema(oldName, newName);
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);

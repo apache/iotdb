@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.ratis.util.function.TriConsumer;
 import org.apache.tsfile.block.column.Column;
@@ -54,7 +55,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<Integer> attributePointers = new ArrayList<>();
 
   // Only for error log
-  private final List<String> attributeNames;
+  private final int[] attributeIdList;
 
   @SuppressWarnings("squid:S107")
   public DeviceAttributeUpdater(
@@ -67,9 +68,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
       final List<ColumnTransformer> projectOutputTransformerList,
-      final BiFunction<Integer, String, Binary> attributeProvider,
+      final BiFunction<Integer, Integer, Binary> attributeProvider,
       final TriConsumer<String[], Integer, Object[]> attributeUpdater,
-      final List<String> attributeNames) {
+      final int[] attributeIdList) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
@@ -82,7 +83,7 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
     this.projectOutputTransformerList = projectOutputTransformerList;
     this.attributeUpdater = attributeUpdater;
     this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
-    this.attributeNames = attributeNames;
+    this.attributeIdList = attributeIdList;
   }
 
   @Override
@@ -116,7 +117,9 @@ public class DeviceAttributeUpdater extends DeviceUpdater {
         if (Objects.nonNull(o) && !(o instanceof Binary)) {
           throw new MetadataException(
               "Result type mismatch for attribute '"
-                  + attributeNames.get(j)
+                  + DataNodeTableCache.getInstance()
+                      .getTable(database, tableName)
+                      .getAttributeName(attributeIdList[j])
                   + "', expected "
                   + Binary.class
                   + ", actual "

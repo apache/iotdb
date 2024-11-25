@@ -407,6 +407,15 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public Integer tryGetInternAttributeId(
+      final @Nonnull String database, final @Nonnull String tableName, final int attributeId) {
+    try {
+      return databaseTableMap.get(database).get(tableName).getInternAttributeId(attributeId);
+    } catch (final Exception e) {
+      return null;
+    }
+  }
+
   /** Check whether the given path overlap with some table existence. */
   public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(final PartialPath path) {
     readWriteLock.writeLock().lock();

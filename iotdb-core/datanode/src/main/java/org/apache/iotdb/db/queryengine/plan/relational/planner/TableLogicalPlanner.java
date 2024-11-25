@@ -265,7 +265,7 @@ public class TableLogicalPlanner {
             statement.getDatabase(),
             statement.getTable(),
             statement.getDeviceIdList(),
-            statement.getAttributeNameList(),
+            statement.getAttributeIdList(),
             statement.getAttributeValueList());
 
     analysis.setStatement(statement);

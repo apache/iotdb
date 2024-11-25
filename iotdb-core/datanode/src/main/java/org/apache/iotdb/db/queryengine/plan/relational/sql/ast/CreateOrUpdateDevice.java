@@ -33,7 +33,7 @@ public class CreateOrUpdateDevice extends Statement {
 
   private final List<Object[]> deviceIdList;
 
-  private final List<String> attributeNameList;
+  private final int[] attributeIdList;
 
   private final List<Object[]> attributeValueList;
 
@@ -41,14 +41,14 @@ public class CreateOrUpdateDevice extends Statement {
       final String database,
       final String table,
       final List<Object[]> deviceIdList,
-      final List<String> attributeNameList,
+      final int[] attributeIdList,
       final List<Object[]> attributeValueList) {
     super(null);
     this.database = database;
     this.table = table;
     // Truncate the tailing null
     this.deviceIdList = truncateTailingNull(deviceIdList);
-    this.attributeNameList = attributeNameList;
+    this.attributeIdList = attributeIdList;
     this.attributeValueList = attributeValueList;
   }
 
@@ -64,8 +64,8 @@ public class CreateOrUpdateDevice extends Statement {
     return deviceIdList;
   }
 
-  public List<String> getAttributeNameList() {
-    return attributeNameList;
+  public int[] getAttributeIdList() {
+    return attributeIdList;
   }
 
   public List<Object[]> getAttributeValueList() {
@@ -94,13 +94,13 @@ public class CreateOrUpdateDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(table, that.table)
         && Objects.equals(deviceIdList, that.deviceIdList)
-        && Objects.equals(attributeNameList, that.attributeNameList)
+        && Objects.equals(attributeIdList, that.attributeIdList)
         && Objects.equals(attributeValueList, that.attributeValueList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table, deviceIdList, attributeNameList, attributeValueList);
+    return Objects.hash(database, table, deviceIdList, attributeIdList, attributeValueList);
   }
 
   @Override
@@ -115,7 +115,7 @@ public class CreateOrUpdateDevice extends Statement {
         + ", deviceIdList="
         + deviceIdList
         + ", attributeNameList="
-        + attributeNameList
+        + attributeIdList
         + ", attributeValueList="
         + attributeValueList
         + '}';

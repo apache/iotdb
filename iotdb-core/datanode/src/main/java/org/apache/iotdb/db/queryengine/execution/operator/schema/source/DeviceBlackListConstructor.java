@@ -46,7 +46,7 @@ public class DeviceBlackListConstructor extends DeviceUpdater {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
-      final BiFunction<Integer, String, Binary> attributeProvider,
+      final BiFunction<Integer, Integer, Binary> attributeProvider,
       final MemSchemaRegionStatistics regionStatistics) {
     super(
         filterLeafColumnTransformerList,

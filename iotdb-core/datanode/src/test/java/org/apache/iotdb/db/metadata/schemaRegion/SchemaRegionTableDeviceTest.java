@@ -79,15 +79,15 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             .sorted()
             .collect(Collectors.toList()));
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1", "d_1"}, attributeMap);
 
@@ -98,10 +98,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             Collections.singletonList(new String[] {"hebei", "p_1", "d_0"}));
     Assert.assertEquals(
         new Binary("new", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+        deviceSchemaInfoList.get(0).getAttributeValue(1));
     Assert.assertEquals(
         new Binary("monthly", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+        deviceSchemaInfoList.get(0).getAttributeValue(2));
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -110,10 +110,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             Collections.singletonList(new String[] {"hebei", "p_1", "d_1"}));
     Assert.assertEquals(
         new Binary("old", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+        deviceSchemaInfoList.get(0).getAttributeValue(1));
     Assert.assertEquals(
         new Binary("monthly", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+        deviceSchemaInfoList.get(0).getAttributeValue(2));
 
     deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -122,10 +122,10 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             Collections.singletonList(new String[] {"shandong", "p_1", "d_1"}));
     Assert.assertEquals(
         new Binary("old", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("type"));
+        deviceSchemaInfoList.get(0).getAttributeValue(1));
     Assert.assertEquals(
         new Binary("daily", TSFileConfig.STRING_CHARSET),
-        deviceSchemaInfoList.get(0).getAttributeValue("cycle"));
+        deviceSchemaInfoList.get(0).getAttributeValue(2));
   }
 
   @Test
@@ -136,15 +136,15 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final String tableName = "t";
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1", "d_1"}, attributeMap);
 
@@ -196,15 +196,15 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final String tableName = "t";
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", null);
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, null);
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", null, "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     // The null suffix is trimmed
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1"}, attributeMap);
@@ -272,15 +272,15 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final String tableName = "t";
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1", "d_1", "r_1"}, attributeMap);
 
@@ -317,28 +317,28 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final String tableName1 = "t1";
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName1, new String[] {"shandong", "p_1", "d_1", "r_1"}, attributeMap);
 
     String tableName2 = "t2";
 
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName2, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName2, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
-    attributeMap.put("cycle", "daily");
+    attributeMap.put(2, "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName2, new String[] {"shandong", "p_1", "d_1", "r_1"}, attributeMap);
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.ByteArrayOutputStream;
@@ -67,7 +69,13 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
-  private transient int idNums = 0;
+  // We intern the attributeIds to speed up the "dropped column check" in attribute names, and
+  // decouple from java's internal Integer pool. This does not contain any extra information and
+  // shall only be used in table cache.
+  private final Map<Integer, Integer> attributeIdPool = new HashMap<>();
+
+  private transient int idNum = 0;
+  private int attributeNum = 0;
   private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
@@ -102,8 +110,10 @@ public class TsTable {
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        idNums++;
-        idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
+        idNum++;
+        idColumnIndexMap.put(columnSchema.getColumnName(), idNum - 1);
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        ((AttributeColumnSchema) columnSchema).setId(attributeNum++);
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
         measurementNum++;
       }
@@ -118,7 +128,12 @@ public class TsTable {
     try {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
-        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+        final AttributeColumnSchema schema =
+            (AttributeColumnSchema) columnSchemaMap.remove(oldName);
+        columnSchemaMap.put(
+            newName,
+            new AttributeColumnSchema(
+                newName, schema.getDataType(), schema.getProps(), schema.getId()));
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -152,10 +167,10 @@ public class TsTable {
     }
   }
 
-  public int getIdNums() {
+  public int getIdNum() {
     readWriteLock.readLock().lock();
     try {
-      return idNums;
+      return idNum;
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -226,11 +241,55 @@ public class TsTable {
     }
   }
 
+  public int getAttributeId(final String name) {
+    readWriteLock.readLock().lock();
+    try {
+      return ((AttributeColumnSchema) columnSchemaMap.get(name)).getId();
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public String getAttributeName(final int id) {
+    readWriteLock.readLock().lock();
+    try {
+      for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
+            && id == (((AttributeColumnSchema) schema).getId())) {
+          return schema.getColumnName();
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public Integer getInternAttributeId(final @Nonnull Integer attributeId) {
+    readWriteLock.readLock().lock();
+    try {
+      if (attributeIdPool.containsKey(attributeId)) {
+        return attributeIdPool.get(attributeId);
+      }
+      for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE
+            && attributeId.equals(((AttributeColumnSchema) schema).getId())) {
+          final Integer internId = ((AttributeColumnSchema) schema).getId();
+          attributeIdPool.put(internId, internId);
+          return internId;
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public byte[] serialize() {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
       serialize(stream);
-    } catch (IOException ignored) {
+    } catch (final IOException ignored) {
       // won't happen
     }
     return stream.toByteArray();
@@ -243,31 +302,34 @@ public class TsTable {
       TsTableColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);
+    ReadWriteIOUtils.write(attributeNum, stream);
   }
 
-  public static TsTable deserialize(InputStream inputStream) throws IOException {
-    String name = ReadWriteIOUtils.readString(inputStream);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(inputStream);
+  public static TsTable deserialize(final InputStream inputStream) throws IOException {
+    final String name = ReadWriteIOUtils.readString(inputStream);
+    final TsTable table = new TsTable(name);
+    final int columnNum = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(inputStream));
     }
     table.props = ReadWriteIOUtils.readMap(inputStream);
+    table.attributeNum = ReadWriteIOUtils.readInt(inputStream);
     return table;
   }
 
-  public static TsTable deserialize(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(buffer);
+  public static TsTable deserialize(final ByteBuffer buffer) {
+    final String name = ReadWriteIOUtils.readString(buffer);
+    final TsTable table = new TsTable(name);
+    final int columnNum = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(buffer));
     }
     table.props = ReadWriteIOUtils.readMap(buffer);
+    table.attributeNum = ReadWriteIOUtils.readInt(buffer);
     return table;
   }
 
-  public void setProps(Map<String, String> props) {
+  public void setProps(final Map<String, String> props) {
     readWriteLock.writeLock().lock();
     try {
       this.props = props;
@@ -277,7 +339,7 @@ public class TsTable {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return super.equals(o);
   }
 

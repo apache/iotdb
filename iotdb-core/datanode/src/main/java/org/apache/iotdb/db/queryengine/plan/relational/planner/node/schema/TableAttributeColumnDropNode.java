@@ -37,23 +37,23 @@ import java.util.List;
 
 public class TableAttributeColumnDropNode extends PlanNode implements ISchemaRegionPlan {
   private final String tableName;
-  private final String columnName;
+  private final int columnId;
   public static final TableAttributeColumnDropNode MOCK_INSTANCE =
-      new TableAttributeColumnDropNode(new PlanNodeId(""), null, null);
+      new TableAttributeColumnDropNode(new PlanNodeId(""), null, 0);
 
   public TableAttributeColumnDropNode(
-      final PlanNodeId id, final String tableName, final String columnName) {
+      final PlanNodeId id, final String tableName, final int columnId) {
     super(id);
     this.tableName = tableName;
-    this.columnName = columnName;
+    this.columnId = columnId;
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public String getColumnName() {
-    return columnName;
+  public int getColumnId() {
+    return columnId;
   }
 
   @Override
@@ -68,7 +68,7 @@ public class TableAttributeColumnDropNode extends PlanNode implements ISchemaReg
 
   @Override
   public PlanNode clone() {
-    return new TableAttributeColumnDropNode(id, tableName, columnName);
+    return new TableAttributeColumnDropNode(id, tableName, columnId);
   }
 
   @Override
@@ -90,21 +90,21 @@ public class TableAttributeColumnDropNode extends PlanNode implements ISchemaReg
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     getType().serialize(byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
-    ReadWriteIOUtils.write(columnName, byteBuffer);
+    ReadWriteIOUtils.write(columnId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(columnName, stream);
+    ReadWriteIOUtils.write(columnId, stream);
   }
 
   public static TableAttributeColumnDropNode deserialize(final ByteBuffer buffer) {
     final String tableName = ReadWriteIOUtils.readString(buffer);
-    final String columnName = ReadWriteIOUtils.readString(buffer);
+    final int columnId = ReadWriteIOUtils.readInt(buffer);
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TableAttributeColumnDropNode(planNodeId, tableName, columnName);
+    return new TableAttributeColumnDropNode(planNodeId, tableName, columnId);
   }
 
   @Override

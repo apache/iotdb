@@ -78,10 +78,6 @@ public class RenameTableColumnProcedure
           LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
           preRelease(env);
           break;
-        case RENAME_COLUMN_ON_SCHEMA_REGION:
-          LOGGER.info("Rename column to table {}.{} on schema region", database, tableName);
-          // TODO
-          break;
         case RENAME_COLUMN_ON_CONFIG_NODE:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
@@ -124,6 +120,12 @@ public class RenameTableColumnProcedure
     }
   }
 
+  @Override
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    super.preRelease(env);
+    setNextState(RenameTableColumnState.RENAME_COLUMN_ON_CONFIG_NODE);
+  }
+
   private void renameColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
@@ -142,17 +144,17 @@ public class RenameTableColumnProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case PRE_RELEASE:
+          LOGGER.info(
+              "Start rollback pre release info of table {}.{}", database, table.getTableName());
+          rollbackPreRelease(env);
+          break;
         case RENAME_COLUMN_ON_CONFIG_NODE:
           LOGGER.info(
               "Start rollback Renaming column to table {}.{} on configNode",
               database,
               table.getTableName());
           rollbackRenameColumn(env);
-          break;
-        case PRE_RELEASE:
-          LOGGER.info(
-              "Start rollback pre release info of table {}.{}", database, table.getTableName());
-          rollbackPreRelease(env);
           break;
       }
     } finally {

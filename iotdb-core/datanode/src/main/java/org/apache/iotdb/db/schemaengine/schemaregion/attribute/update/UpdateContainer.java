@@ -36,7 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public interface UpdateContainer {
 
   long updateAttribute(
-      final String tableName, final String[] deviceId, final Map<String, Binary> updatedAttributes);
+      final String tableName,
+      final String[] deviceId,
+      final Map<Integer, Binary> updatedAttributes);
 
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
@@ -50,7 +52,7 @@ public interface UpdateContainer {
 
   long invalidate(final String[] pathNodes);
 
-  long invalidate(final String tableName, final String attributeName);
+  long invalidate(final String tableName, final int attributeId);
 
   Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer);
 

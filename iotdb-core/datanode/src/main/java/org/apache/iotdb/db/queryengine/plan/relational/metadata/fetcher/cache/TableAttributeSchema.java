@@ -38,16 +38,18 @@ public class TableAttributeSchema implements IDeviceSchema {
       (int) RamUsageEstimator.shallowSizeOfInstance(TableAttributeSchema.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
-  private final Map<String, Binary> attributeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Binary> attributeMap = new ConcurrentHashMap<>();
 
   public int updateAttribute(
-      final String database, final String tableName, final @Nonnull Map<String, Binary> updateMap) {
+      final String database,
+      final String tableName,
+      final @Nonnull Map<Integer, Binary> updateMap) {
     final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
           if (v != Binary.EMPTY_VALUE) {
             if (!attributeMap.containsKey(k)) {
-              k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
+              k = DataNodeTableCache.getInstance().tryGetInternAttributeId(database, tableName, k);
               // Removing attribute column, do not put cache
               if (Objects.isNull(k)) {
                 return;
@@ -73,7 +75,7 @@ public class TableAttributeSchema implements IDeviceSchema {
     return diff.get();
   }
 
-  public int removeAttribute(final String attribute) {
+  public int removeAttribute(final int attribute) {
     final Binary previousValue = attributeMap.remove(attribute);
     return Objects.nonNull(previousValue)
         ? (int)
@@ -82,7 +84,7 @@ public class TableAttributeSchema implements IDeviceSchema {
         : 0;
   }
 
-  public Map<String, Binary> getAttributeMap() {
+  public Map<Integer, Binary> getAttributeMap() {
     return attributeMap;
   }
 

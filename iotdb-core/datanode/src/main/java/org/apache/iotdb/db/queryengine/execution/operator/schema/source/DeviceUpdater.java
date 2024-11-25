@@ -35,7 +35,7 @@ import java.util.function.BiFunction;
 
 public abstract class DeviceUpdater extends DevicePredicateHandler {
 
-  private final BiFunction<Integer, String, Binary> attributeProvider;
+  private final BiFunction<Integer, Integer, Binary> attributeProvider;
 
   protected DeviceUpdater(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
@@ -43,7 +43,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
-      final BiFunction<Integer, String, Binary> attributeProvider) {
+      final BiFunction<Integer, Integer, Binary> attributeProvider) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,

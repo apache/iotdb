@@ -51,9 +51,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   }
 
   public boolean parseRawExpression(
-      final TsTable tableInstance,
-      final List<String> attributeColumns,
-      final MPPQueryContext context) {
+      final TsTable tableInstance, final int[] attributeColumns, final MPPQueryContext context) {
     if (Objects.isNull(where)) {
       return true;
     }

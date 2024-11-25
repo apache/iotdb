@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -414,8 +414,8 @@ public class StatementAnalyzer {
               .filter(
                   columnSchema ->
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
+              .mapToInt(schema -> ((AttributeColumnSchema) schema).getId())
+              .toArray(),
           queryContext);
 
       final Set<SymbolReference> attributeNames = new HashSet<>();
@@ -440,7 +440,9 @@ public class StatementAnalyzer {
                     attributeNames.add((SymbolReference) parsedColumn);
 
                     return new UpdateAssignment(
-                        parsedColumn,
+                        new LongLiteral(
+                            String.valueOf(
+                                table.getAttributeId(((SymbolReference) parsedColumn).getName()))),
                         analyzeAndRewriteExpression(
                             translationMap, translationMap.getScope(), assignment.getValue()));
                   })
@@ -469,8 +471,8 @@ public class StatementAnalyzer {
               .filter(
                   columnSchema ->
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
+              .mapToInt(schema -> ((AttributeColumnSchema) schema).getId())
+              .toArray(),
           queryContext);
       return null;
     }
@@ -2968,8 +2970,8 @@ public class StatementAnalyzer {
               .filter(
                   columnSchema ->
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
-              .collect(Collectors.toList()),
+              .mapToInt(schema -> ((AttributeColumnSchema) schema).getId())
+              .toArray(),
           queryContext)) {
         // Cache hit
         // Currently we disallow "Or" filter for precise get, thus if it hit cache

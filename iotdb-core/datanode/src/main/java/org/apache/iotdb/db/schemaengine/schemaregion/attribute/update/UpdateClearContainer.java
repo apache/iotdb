@@ -62,7 +62,7 @@ public class UpdateClearContainer implements UpdateContainer {
   public long updateAttribute(
       final String tableName,
       final String[] deviceId,
-      final Map<String, Binary> updatedAttributes) {
+      final Map<Integer, Binary> updatedAttributes) {
     return tableNames.add(tableName) ? RamUsageEstimator.sizeOf(tableName) : 0;
   }
 
@@ -94,7 +94,7 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public long invalidate(final String tableName, final String attributeName) {
+  public long invalidate(final String tableName, final int attributeId) {
     // Do nothing
     return 0;
   }

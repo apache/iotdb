@@ -1696,10 +1696,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
-              req.getDatabase(),
-              req.getTableName(),
-              req.getColumnName(),
-              req.isIsAttributeColumn());
+              req.getDatabase(), req.getTableName(), req.getColumnName(), req.getAttributeId());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
@@ -1711,12 +1708,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getRegionIdList(),
         consensusGroupId ->
-            req.isIsAttributeColumn()
+            req.getAttributeId() >= 0
                 ? new RegionWriteExecutor()
                     .execute(
                         new SchemaRegionId(consensusGroupId.getId()),
                         new TableAttributeColumnDropNode(
-                            new PlanNodeId(""), req.getTableName(), req.getColumnName()))
+                            new PlanNodeId(""), req.getTableName(), req.getAttributeId()))
                     .getStatus()
                 : new RegionWriteExecutor()
                     .execute(

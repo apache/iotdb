@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.commons.schema;
 
-import org.apache.tsfile.utils.Binary;
-
-import javax.annotation.Nonnull;
-
 public class MemUsageUtil {
 
   private MemUsageUtil() {
@@ -31,22 +27,6 @@ public class MemUsageUtil {
 
   public static long computeStringMemUsage(final String value) {
     return estimateStringSize(value);
-  }
-
-  /**
-   * The basic memory occupied by any BasicMNode object.
-   *
-   * <ol>
-   *   <li>MapEntry in parent
-   *       <ol>
-   *         <li>key reference, 8B
-   *         <li>value reference, 8B
-   *         <li>entry size, see ConcurrentHashMap.Node, 28
-   *       </ol>
-   * </ol>
-   */
-  public static long computeKVMemUsageInMap(final String key, final @Nonnull Binary value) {
-    return 40L + estimateStringSize(key) + value.ramBytesUsed();
   }
 
   /**

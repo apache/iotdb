@@ -64,7 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -1385,16 +1385,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           Arrays.stream(node.getDeviceIdList().get(i))
               .map(o -> Objects.nonNull(o) ? o.toString() : null)
               .toArray(String[]::new);
-      final List<String> attributeNameList = node.getAttributeNameList();
+      final int[] attributeIdList = node.getAttributeIdList();
       final Object[] attributeValueList = node.getAttributeValueList().get(i);
 
       mtree.createTableDevice(
           tableName,
           deviceId,
-          () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
+          () -> deviceAttributeStore.createAttribute(attributeIdList, attributeValueList),
           pointer -> {
             updateAttribute(
-                databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
+                databaseName, tableName, deviceId, pointer, attributeIdList, attributeValueList);
             deviceAttributeCacheUpdater.afterUpdate();
           });
     }
@@ -1406,10 +1406,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final String tableName,
       final String[] deviceId,
       final int pointer,
-      final List<String> attributeNameList,
+      final int[] attributeList,
       final Object[] attributeValueList) {
-    final Map<String, Binary> resultMap =
-        deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
+    final Map<Integer, Binary> resultMap =
+        deviceAttributeStore.alterAttribute(pointer, attributeList, attributeValueList);
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
@@ -1501,10 +1501,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             mockTypeProvider,
             metadata);
 
-    final List<String> attributeNames =
+    final int[] attributeNames =
         updateNode.getAssignments().stream()
-            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
-            .collect(Collectors.toList());
+            .mapToInt(assignment -> (int) ((LongLiteral) assignment.getName()).getParsedValue())
+            .toArray();
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     return new DeviceAttributeUpdater(
@@ -1543,10 +1543,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (mtree.dropTableAttribute(
         dropTableAttributeNode.getTableName(),
         pointer ->
-            deviceAttributeStore.removeAttribute(
-                pointer, dropTableAttributeNode.getColumnName()))) {
+            deviceAttributeStore.removeAttribute(pointer, dropTableAttributeNode.getColumnId()))) {
       deviceAttributeCacheUpdater.invalidate(
-          dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnName());
+          dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnId());
       writeToMLog(dropTableAttributeNode);
     }
   }

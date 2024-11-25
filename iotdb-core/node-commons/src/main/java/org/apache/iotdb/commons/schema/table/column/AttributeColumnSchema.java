@@ -24,10 +24,14 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class AttributeColumnSchema extends TsTableColumnSchema {
+
+  private int id;
+
   public AttributeColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
   }
@@ -37,22 +41,47 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
     super(columnName, dataType, props);
   }
 
+  public AttributeColumnSchema(
+      final String columnName,
+      final TSDataType dataType,
+      final Map<String, String> props,
+      final int id) {
+    super(columnName, dataType, props);
+    this.id = id;
+  }
+
+  public void setId(final int id) {
+    this.id = id;
+  }
+
+  public int getId() {
+    return id;
+  }
+
   @Override
   public TsTableColumnCategory getColumnCategory() {
     return TsTableColumnCategory.ATTRIBUTE;
   }
 
+  @Override
+  void serialize(final OutputStream outputStream) throws IOException {
+    super.serialize(outputStream);
+    ReadWriteIOUtils.write(id, outputStream);
+  }
+
   static AttributeColumnSchema deserialize(final InputStream stream) throws IOException {
-    final String columnName = ReadWriteIOUtils.readString(stream);
-    final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
-    return new AttributeColumnSchema(columnName, dataType, props);
+    return new AttributeColumnSchema(
+        ReadWriteIOUtils.readString(stream),
+        ReadWriteIOUtils.readDataType(stream),
+        ReadWriteIOUtils.readMap(stream),
+        ReadWriteIOUtils.readInt(stream));
   }
 
   static AttributeColumnSchema deserialize(final ByteBuffer buffer) {
-    final String columnName = ReadWriteIOUtils.readString(buffer);
-    final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
-    final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
-    return new AttributeColumnSchema(columnName, dataType, props);
+    return new AttributeColumnSchema(
+        ReadWriteIOUtils.readString(buffer),
+        ReadWriteIOUtils.readDataType(buffer),
+        ReadWriteIOUtils.readMap(buffer),
+        ReadWriteIOUtils.readInt(buffer));
   }
 }

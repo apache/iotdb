@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
@@ -234,13 +235,10 @@ public class ConvertSchemaPredicateToFilterVisitor
 
   private SchemaFilter wrapIdOrAttributeFilter(
       final SchemaFilter filter, final String columnName, final Context context) {
-    return context
-            .table
-            .getColumnSchema(columnName)
-            .getColumnCategory()
-            .equals(TsTableColumnCategory.ID)
+    final TsTableColumnSchema schema = context.table.getColumnSchema(columnName);
+    return schema.getColumnCategory().equals(TsTableColumnCategory.ID)
         ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
-        : new AttributeFilter(filter, columnName);
+        : new AttributeFilter(filter, ((AttributeColumnSchema) schema).getId());
   }
 
   public static class Context {

@@ -29,16 +29,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.tsfile.common.conf.TSFileConfig;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry> {
 
-  private final Map<String, Integer> attributeIndexMap = new HashMap<>();
+  private final Map<Integer, Integer> attributeIndexMap = new HashMap<>();
 
-  DeviceInCacheFilterVisitor(final List<String> attributeColumns) {
-    for (int i = 0; i < attributeColumns.size(); i++) {
-      attributeIndexMap.put(attributeColumns.get(i), i);
+  DeviceInCacheFilterVisitor(final int[] attributeIds) {
+    for (int i = 0; i < attributeIds.length; i++) {
+      attributeIndexMap.put(attributeIds[i], i);
     }
   }
 
@@ -65,7 +64,7 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<DeviceEntry>
             StringValueFilterVisitor.getInstance(),
             deviceEntry
                 .getAttributeColumnValues()
-                .get(attributeIndexMap.get(filter.getKey()))
+                .get(attributeIndexMap.get(filter.getId()))
                 .getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

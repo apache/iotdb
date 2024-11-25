@@ -408,12 +408,12 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final String tableName1 = "t1";
 
-    final Map<String, String> attributeMap = new HashMap<>();
-    attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    final Map<Integer, String> attributeMap = new HashMap<>();
+    attributeMap.put(1, "new");
+    attributeMap.put(2, "monthly");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
-    attributeMap.put("type", "old");
+    attributeMap.put(1, "old");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
 
