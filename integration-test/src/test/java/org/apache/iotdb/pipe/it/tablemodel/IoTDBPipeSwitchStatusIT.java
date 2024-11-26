@@ -253,10 +253,10 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelTestIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(
-              0,
-              showPipeResult.stream()
-                      .filter(info -> !info.id.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX))
-                      .count());
+          0,
+          showPipeResult.stream()
+              .filter(info -> !info.id.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX))
+              .count());
 
       status =
           client.createPipe(
