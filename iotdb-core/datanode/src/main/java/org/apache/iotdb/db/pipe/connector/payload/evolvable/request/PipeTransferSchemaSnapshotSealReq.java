@@ -101,6 +101,8 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
       final long mTreeSnapshotLength,
       final String tLogName,
       final long tLogLength,
+      final String attributeSnapshotName,
+      final long attributeSnapshotLength,
       final String databaseName,
       final String typeString)
       throws IOException {
@@ -119,10 +121,10 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
     return new PipeTransferSchemaSnapshotSealReq()
         .convertToTPipeTransferSnapshotSealBytes(
             Objects.nonNull(tLogName)
-                ? Arrays.asList(mTreeSnapshotName, tLogName)
+                ? Arrays.asList(mTreeSnapshotName, tLogName, attributeSnapshotName)
                 : Collections.singletonList(mTreeSnapshotName),
             Objects.nonNull(tLogName)
-                ? Arrays.asList(mTreeSnapshotLength, tLogLength)
+                ? Arrays.asList(mTreeSnapshotLength, tLogLength, attributeSnapshotLength)
                 : Collections.singletonList(mTreeSnapshotLength),
             parameters);
   }

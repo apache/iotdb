@@ -146,6 +146,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     final long creationTime = pipeSchemaRegionSnapshotEvent.getCreationTime();
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
+    final File attributeSnapshotFile = pipeSchemaRegionSnapshotEvent.getAttributeSnapshotFile();
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
     transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
@@ -168,6 +169,8 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             mtreeSnapshotFile.length(),
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
             pipeSchemaRegionSnapshotEvent.getDatabaseName(),
             pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
