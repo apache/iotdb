@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +70,7 @@ public class SchemaRegionSnapshotParser {
   // In schema snapshot path: datanode/consensus/schema_region/47474747-4747-4747-4747-000200000000
   // this func will get schema region id = 47474747-4747-4747-4747-000200000000's latest snapshot.
   // In one schema region, there is only one snapshot unit.
-  public static Pair<Path, Path> getSnapshotPaths(
-      final String schemaRegionId, final boolean isTmp) {
+  public static List<Path> getSnapshotPaths(final String schemaRegionId, final boolean isTmp) {
     final String snapshotPath = CONFIG.getSchemaRegionConsensusDir();
     final File snapshotDir =
         new File(snapshotPath + File.separator + schemaRegionId + File.separator + "sm");
@@ -102,8 +100,10 @@ public class SchemaRegionSnapshotParser {
           SystemFileFactory.INSTANCE.getFile(
               latestSnapshotPath + File.separator + SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
       if (mTreeSnapshot.exists()) {
-        return new Pair<>(
-            mTreeSnapshot.toPath(), tagSnapshot.exists() ? tagSnapshot.toPath() : null);
+        return Arrays.asList(
+            mTreeSnapshot.toPath(),
+            tagSnapshot.exists() ? tagSnapshot.toPath() : null,
+            attributeSnapshot.exists() ? attributeSnapshot.toPath() : null);
       }
     }
     return null;

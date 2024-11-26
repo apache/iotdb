@@ -88,18 +88,31 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeSchemaRegionSnapshotEvent(final int version) {
     // Used for deserialization
-    this(null, null, null);
+    this(null, null, null, null);
     this.version = version;
-  }
-
-  public PipeSchemaRegionSnapshotEvent(
-      final String mTreeSnapshotPath, final String tagLogSnapshotPath, final String databaseName) {
-    this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, 0, null, null, null);
   }
 
   public PipeSchemaRegionSnapshotEvent(
       final String mTreeSnapshotPath,
       final String tagLogSnapshotPath,
+      final String attributeSnapshotPath,
+      final String databaseName) {
+    this(
+        mTreeSnapshotPath,
+        tagLogSnapshotPath,
+        attributeSnapshotPath,
+        databaseName,
+        null,
+        0,
+        null,
+        null,
+        null);
+  }
+
+  public PipeSchemaRegionSnapshotEvent(
+      final String mTreeSnapshotPath,
+      final String tagLogSnapshotPath,
+      final String attributeSnapshotPath,
       final String databaseName,
       final String pipeName,
       final long creationTime,
@@ -115,6 +128,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
+    this.attributeSnapshotPath =
+        Objects.nonNull(attributeSnapshotPath) ? attributeSnapshotPath : "";
     this.databaseName = databaseName;
   }
 
@@ -188,6 +203,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
     return new PipeSchemaRegionSnapshotEvent(
         mTreeSnapshotPath,
         tagLogSnapshotPath,
+        attributeSnapshotPath,
         databaseName,
         pipeName,
         creationTime,
