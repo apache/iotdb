@@ -207,10 +207,6 @@ public class CompactionUtils {
             resource.getTsFile().length(),
             resource.isSeq(),
             resource.getTsFile().getName());
-    if (resource.exclusiveModFileExists()) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
-    }
   }
 
   private static void updateOneTargetMods(TsFileResource targetFile, Set<ModEntry> modifications)
