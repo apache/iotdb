@@ -101,7 +101,7 @@ public class WrappedSegmentTest {
     System.out.println(nsf);
     ByteBuffer nrec = nsf.getRecord("mid1");
     Assert.assertEquals(
-        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: LZ4]",
+        "[measurementNode, alias: mid1als, type: FLOAT, encoding: GORILLA, compressor: LZ4]",
         RecordUtils.buffer2String(nsf.getRecord("mid1")));
     Assert.assertEquals(
         "[entityNode, not aligned, not using template.]",
