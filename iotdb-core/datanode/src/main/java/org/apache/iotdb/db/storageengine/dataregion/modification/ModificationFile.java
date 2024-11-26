@@ -183,10 +183,6 @@ public class ModificationFile implements AutoCloseable {
     return new long[] {levelNum, modNum};
   }
 
-  public long getSize() {
-    return file.length();
-  }
-
   public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
     private InputStream inputStream;
     private ModEntry nextEntry;
