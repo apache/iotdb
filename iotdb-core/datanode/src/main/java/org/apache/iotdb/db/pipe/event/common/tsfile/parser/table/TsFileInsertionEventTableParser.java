@@ -22,19 +22,23 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.read.query.executor.TableQueryExecutor;
+import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
@@ -72,85 +76,72 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return new TabletInsertionEventIterable(
-        filteredTableSchemaIterator,
-        tableQueryExecutor,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        sourceEvent);
-  }
+    return () ->
+        new Iterator<TabletInsertionEvent>() {
 
-  //  @Override
-  //  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-  //    return () ->
-  //        new Iterator<TabletInsertionEvent>() {
-  //
-  //          private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
-  //
-  //          @Override
-  //          public boolean hasNext() {
-  //            while (tabletIterator == null || !tabletIterator.hasNext()) {
-  //              if (!filteredTableSchemaIterator.hasNext()) {
-  //                close();
-  //                return false;
-  //              }
-  //
-  //              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
-  //
-  //              try {
-  //                tabletIterator =
-  //                    new TsFileInsertionEventTableParserTabletIterator(
-  //                        tableQueryExecutor, entry.getKey(), entry.getValue(), startTime,
-  // endTime);
-  //              } catch (final Exception e) {
-  //                close();
-  //                throw new PipeException("failed to create TsFileInsertionDataTabletIterator",
-  // e);
-  //              }
-  //            }
-  //
-  //            return true;
-  //          }
-  //
-  //          @Override
-  //          public TabletInsertionEvent next() {
-  //            if (!hasNext()) {
-  //              close();
-  //              throw new NoSuchElementException();
-  //            }
-  //
-  //            final Tablet tablet = tabletIterator.next();
-  //
-  //            final TabletInsertionEvent next;
-  //            if (!hasNext()) {
-  //              next =
-  //                  new PipeRawTabletInsertionEvent(
-  //                      Boolean.TRUE,
-  //                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
-  //                      tablet,
-  //                      true,
-  //                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-  //                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-  //                      pipeTaskMeta,
-  //                      sourceEvent,
-  //                      true);
-  //              close();
-  //            } else {
-  //              next =
-  //                  new PipeRawTabletInsertionEvent(
-  //                      Boolean.TRUE,
-  //                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
-  //                      tablet,
-  //                      true,
-  //                      sourceEvent != null ? sourceEvent.getPipeName() : null,
-  //                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-  //                      pipeTaskMeta,
-  //                      sourceEvent,
-  //                      false);
-  //            }
-  //            return next;
-  //          }
-  //        };
-  //  }
+          private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
+
+          @Override
+          public boolean hasNext() {
+            while (tabletIterator == null || !tabletIterator.hasNext()) {
+              if (!filteredTableSchemaIterator.hasNext()) {
+                close();
+                return false;
+              }
+
+              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
+
+              try {
+                tabletIterator =
+                    new TsFileInsertionEventTableParserTabletIterator(
+                        tableQueryExecutor, entry.getKey(), entry.getValue(), startTime, endTime);
+              } catch (final Exception e) {
+                close();
+                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
+              }
+            }
+
+            return true;
+          }
+
+          @Override
+          public TabletInsertionEvent next() {
+            if (!hasNext()) {
+              close();
+              throw new NoSuchElementException();
+            }
+
+            final Tablet tablet = tabletIterator.next();
+
+            final TabletInsertionEvent next;
+            if (!hasNext()) {
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      Boolean.TRUE,
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      tablet,
+                      true,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      true);
+              close();
+            } else {
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      Boolean.TRUE,
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      tablet,
+                      true,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      false);
+            }
+            return next;
+          }
+        };
+  }
 }

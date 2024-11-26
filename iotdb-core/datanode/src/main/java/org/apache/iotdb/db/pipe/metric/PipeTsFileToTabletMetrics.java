@@ -38,16 +38,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeTsfileToTabletMetrics implements IMetricSet {
+public class PipeTsFileToTabletMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsfileToTabletMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileToTabletMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, Set<PipeID>> pipeIDSet = new ConcurrentHashMap<>();
-  private final Map<String, Map<String, Rate>> tsFileSizeMap = new ConcurrentHashMap<>();
-  private final Map<String, Map<String, Rate>> tabletCountMap = new ConcurrentHashMap<>();
+  private final Map<PipeID, Rate> tsFileSizeMap = new ConcurrentHashMap<>();
+  private final Map<PipeID, Rate> tabletCountMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -67,36 +67,28 @@ public class PipeTsfileToTabletMetrics implements IMetricSet {
   }
 
   private void createRate(final PipeID pipeID) {
-
-    tsFileSizeMap.putIfAbsent(pipeID.getPipeFullName(), new ConcurrentHashMap<>());
-    tsFileSizeMap
-        .get(pipeID.getPipeFullName())
-        .put(
-            pipeID.getCallerName(),
-            metricService.getOrCreateRate(
-                Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                pipeID.getPipeName(),
-                Tag.CREATION_TIME.toString(),
-                pipeID.getCreationTime(),
-                Tag.FROM.toString(),
-                pipeID.getCallerName()));
-
-    tabletCountMap.putIfAbsent(pipeID.getPipeFullName(), new ConcurrentHashMap<>());
-    tabletCountMap
-        .get(pipeID.getPipeFullName())
-        .put(
-            pipeID.getCallerName(),
-            metricService.getOrCreateRate(
-                Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                pipeID.getPipeName(),
-                Tag.CREATION_TIME.toString(),
-                pipeID.getCreationTime(),
-                Tag.FROM.toString(),
-                pipeID.getCallerName()));
+    tsFileSizeMap.put(
+        pipeID,
+        metricService.getOrCreateRate(
+            Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeID.getPipeName(),
+            Tag.CREATION_TIME.toString(),
+            pipeID.getCreationTime(),
+            Tag.FROM.toString(),
+            pipeID.getCallerName()));
+    tabletCountMap.put(
+        pipeID,
+        metricService.getOrCreateRate(
+            Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeID.getPipeName(),
+            Tag.CREATION_TIME.toString(),
+            pipeID.getCreationTime(),
+            Tag.FROM.toString(),
+            pipeID.getCallerName()));
   }
 
   @Override
@@ -118,34 +110,26 @@ public class PipeTsfileToTabletMetrics implements IMetricSet {
   }
 
   private void removeRate(final PipeID pipeID) {
-    // process event rate
-    final Map<String, Rate> tsFileSizeRates = tsFileSizeMap.get(pipeID.getPipeFullName());
-    if (tsFileSizeRates != null) {
-      tsFileSizeRates.remove(pipeID.getCallerName());
-      metricService.remove(
-          MetricType.RATE,
-          Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
-          Tag.NAME.toString(),
-          pipeID.getPipeName(),
-          Tag.CREATION_TIME.toString(),
-          pipeID.getCreationTime(),
-          Tag.FROM.toString(),
-          pipeID.getCallerName());
-    }
-
-    final Map<String, Rate> tabletCountRates = tabletCountMap.get(pipeID.getPipeFullName());
-    if (tabletCountRates != null) {
-      tabletCountRates.remove(pipeID.getCallerName());
-      metricService.remove(
-          MetricType.RATE,
-          Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
-          Tag.NAME.toString(),
-          pipeID.getPipeName(),
-          Tag.CREATION_TIME.toString(),
-          pipeID.getCreationTime(),
-          Tag.FROM.toString(),
-          pipeID.getCallerName());
-    }
+    tsFileSizeMap.remove(pipeID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        pipeID.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        pipeID.getCreationTime(),
+        Tag.FROM.toString(),
+        pipeID.getCallerName());
+    tabletCountMap.remove(pipeID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
+        Tag.NAME.toString(),
+        pipeID.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        pipeID.getCreationTime(),
+        Tag.FROM.toString(),
+        pipeID.getCallerName());
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -181,53 +165,46 @@ public class PipeTsfileToTabletMetrics implements IMetricSet {
     pipeIDSet.remove(pipeFullName);
   }
 
-  public void markTabletCount(final PipeID pipeID, final long count) {
-    LOGGER.info("Marking Pipe({}) ", pipeID);
+  public void markTsFileSize(final PipeID pipeID, final long size) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    final Map<String, Rate> tabletCountRates = tabletCountMap.get(pipeID.getPipeFullName());
-    if (tabletCountRates == null) {
-      LOGGER.info("Failed to mark tablet count, Pipe({}) does not exist", pipeID);
+    final Rate rate = tsFileSizeMap.get(pipeID);
+    if (rate == null) {
+      LOGGER.info("Failed to mark pipe tsfile size, PipeID({}) does not exist", pipeID);
       return;
     }
-    final Rate rate = tabletCountRates.get(pipeID.getCallerName());
-    if (rate != null) {
-      rate.mark(count);
-    }
+    rate.mark(size);
   }
 
-  public void markTsfileSize(final PipeID pipeID, final long size) {
+  public void markTabletCount(final PipeID pipeID, final long count) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    final Map<String, Rate> tsFileSizeRates = tsFileSizeMap.get(pipeID.getPipeFullName());
-    if (tsFileSizeRates == null) {
-      LOGGER.info("Failed to mark tsfile size, Pipe({}) does not exist", pipeID);
+    final Rate rate = tabletCountMap.get(pipeID);
+    if (rate == null) {
+      LOGGER.info("Failed to mark pipe tablet count, PipeID({}) does not exist", pipeID);
       return;
     }
-    Rate rate = tsFileSizeRates.get(pipeID.getCallerName());
-    if (rate != null) {
-      rate.mark(size);
-    }
+    rate.mark(count);
   }
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeTsfileToTabletMetricsHolder {
+  private static class PipeTsFileToTabletMetricsHolder {
 
-    private static final PipeTsfileToTabletMetrics INSTANCE = new PipeTsfileToTabletMetrics();
+    private static final PipeTsFileToTabletMetrics INSTANCE = new PipeTsFileToTabletMetrics();
 
-    private PipeTsfileToTabletMetricsHolder() {
+    private PipeTsFileToTabletMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeTsfileToTabletMetrics getInstance() {
-    return PipeTsfileToTabletMetrics.PipeTsfileToTabletMetricsHolder.INSTANCE;
+  public static PipeTsFileToTabletMetrics getInstance() {
+    return PipeTsFileToTabletMetrics.PipeTsFileToTabletMetricsHolder.INSTANCE;
   }
 
-  private PipeTsfileToTabletMetrics() {
+  private PipeTsFileToTabletMetrics() {
     // empty constructor
   }
 
@@ -259,23 +236,22 @@ public class PipeTsfileToTabletMetrics implements IMetricSet {
     }
 
     @Override
+    public String toString() {
+      return pipeName + "_" + creationTime + "_" + callerName;
+    }
+
+    @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       PipeID pipeID = (PipeID) o;
-      return pipeName.equals(pipeID.pipeName)
-          && creationTime.equals(pipeID.creationTime)
-          && callerName.equals(pipeID.callerName);
+      return Objects.equals(pipeName, pipeID.pipeName)
+          && Objects.equals(creationTime, pipeID.creationTime)
+          && Objects.equals(callerName, pipeID.callerName);
     }
 
     @Override
     public int hashCode() {
       return Objects.hash(pipeName, creationTime, callerName);
-    }
-
-    @Override
-    public String toString() {
-      return pipeName + "_" + creationTime + "_" + callerName;
     }
   }
 }

@@ -42,7 +42,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().bindTo(metricService);
     PipeDataNodeReceiverMetrics.getInstance().bindTo(metricService);
-    PipeTsfileToTabletMetrics.getInstance().bindTo(metricService);
+    PipeTsFileToTabletMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeReceiverMetrics.getInstance().unbindFrom(metricService);
-    PipeTsfileToTabletMetrics.getInstance().unbindFrom(metricService);
+    PipeTsFileToTabletMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

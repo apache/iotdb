@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
-import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -311,18 +310,6 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                     IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
-            if (sourceEvent != null) {
-              LOGGER.info("innext");
-              PipeTsfileToTabletMetrics.getInstance()
-                  .markTabletCount(
-                      new PipeTsfileToTabletMetrics.PipeID(
-                          sourceEvent.getPipeName(),
-                          String.valueOf(sourceEvent.getCreationTime()),
-                          Thread.currentThread().getStackTrace()[3].getMethodName()),
-                      1);
-            } else {
-              LOGGER.info("sourceEvent not exists");
-            }
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(

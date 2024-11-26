@@ -30,11 +30,12 @@ import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TabletInsertionEventIterable;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeTsfileToTabletMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeTsFileToTabletMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -491,18 +492,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       waitForResourceEnough4Parsing(timeoutMs);
       Iterable<TabletInsertionEvent> events = initEventParser().toTabletInsertionEvents();
-
       if (pipeName != null) {
+        events = new TabletInsertionEventIterable(events, this);
         final String callerName = Thread.currentThread().getStackTrace()[2].getMethodName();
-        final PipeTsfileToTabletMetrics.PipeID pipeID =
-            new PipeTsfileToTabletMetrics.PipeID(
+        final PipeTsFileToTabletMetrics.PipeID pipeID =
+            new PipeTsFileToTabletMetrics.PipeID(
                 pipeName,
                 String.valueOf(creationTime),
                 callerName.equals("toTabletInsertionEvents")
                     ? Thread.currentThread().getStackTrace()[3].getMethodName()
                     : callerName);
-        PipeTsfileToTabletMetrics.getInstance().register(pipeID);
-        PipeTsfileToTabletMetrics.getInstance().markTsfileSize(pipeID, tsFile.length());
+        PipeTsFileToTabletMetrics.getInstance().register(pipeID);
+        PipeTsFileToTabletMetrics.getInstance().markTsFileSize(pipeID, tsFile.length());
       }
       return events;
     } catch (final InterruptedException e) {
