@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCa
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
-import org.apache.iotdb.confignode.manager.load.cache.region.RegionCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -307,8 +306,12 @@ public class LoadCache {
         .ifPresent(group -> group.cacheHeartbeatSample(nodeId, sample, overwrite));
   }
 
-  public RegionCache getRegionCache(TConsensusGroupId regionGroupId, int nodeId) {
-    return regionGroupCacheMap.get(regionGroupId).getRegionCache(nodeId);
+  public RegionStatus getRegionCacheLastSampleStatus(TConsensusGroupId regionGroupId, int nodeId) {
+    return Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .map(regionGroupCache -> regionGroupCache.getRegionCache(nodeId))
+        .map(regionCache -> (RegionHeartbeatSample) regionCache.getLastSample())
+        .map(RegionHeartbeatSample::getStatus)
+        .orElse(RegionStatus.Unknown);
   }
 
   /**

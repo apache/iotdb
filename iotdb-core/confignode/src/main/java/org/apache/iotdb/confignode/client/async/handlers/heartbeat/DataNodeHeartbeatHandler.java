@@ -98,12 +98,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
               RegionStatus nextRegionStatus = regionStatus;
               if (nextRegionStatus == RegionStatus.Removing) {
                 nextRegionStatus =
-                    ((RegionHeartbeatSample)
-                            loadManager
-                                .getLoadCache()
-                                .getRegionCache(regionGroupId, nodeId)
-                                .getLastSample())
-                        .getStatus();
+                    loadManager
+                        .getLoadCache()
+                        .getRegionCacheLastSampleStatus(regionGroupId, nodeId);
               }
 
               // Update RegionGroupCache
