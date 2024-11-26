@@ -127,7 +127,7 @@ public class TableLogicalPlanner {
     final Statement statement = analysis.getStatement();
     PlanNode planNode = planStatement(analysis, statement);
 
-    if (statement.isQuery()) {
+    if (analysis.isQuery()) {
       long logicalPlanCostTime = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, logicalPlanCostTime);
