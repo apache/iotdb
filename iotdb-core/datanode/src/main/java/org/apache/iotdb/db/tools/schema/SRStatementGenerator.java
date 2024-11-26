@@ -328,17 +328,19 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   }
 
   private void emitDevice(final String tableName) {
-    statements.add(
-        new CreateOrUpdateDevice(
-            databaseFullPath.getNodes()[1],
-            this.tableName,
-            tableDeviceIdList,
-            attributeNameList,
-            attributeValueList));
-    this.tableName = tableName;
-    this.tableDeviceIdList = new ArrayList<>();
-    this.attributeNameList = null;
-    this.attributeValueList = new ArrayList<>();
+    if (Objects.nonNull(attributeNameList)) {
+      statements.add(
+          new CreateOrUpdateDevice(
+              databaseFullPath.getNodes()[1],
+              this.tableName,
+              tableDeviceIdList,
+              attributeNameList,
+              attributeValueList));
+      this.tableName = tableName;
+      this.tableDeviceIdList = new ArrayList<>();
+      this.attributeNameList = null;
+      this.attributeValueList = new ArrayList<>();
+    }
   }
 
   private class MNodeTranslator extends MNodeVisitor<List<Object>, PartialPath> {
