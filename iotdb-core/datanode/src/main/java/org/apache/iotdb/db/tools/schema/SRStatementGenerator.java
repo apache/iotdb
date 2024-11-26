@@ -71,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -436,7 +437,14 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         if (Objects.isNull(attributeNameList)) {
           attributeNameList = new ArrayList<>(tableAttribute.keySet());
         }
-        attributeValueList.add(attributeNameList.stream().map(tableAttribute::get).toArray());
+        final List<Object> attributeValues =
+            attributeNameList.stream().map(tableAttribute::remove).collect(Collectors.toList());
+        tableAttribute.forEach(
+            (attributeKey, attributeValue) -> {
+              attributeNameList.add(attributeKey);
+              attributeValues.add(attributeValue);
+            });
+        attributeValueList.add(attributeValues.toArray());
         tableDeviceIdList.add(Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength()));
         if (tableDeviceIdList.size() >= MAX_SCHEMA_BATCH_SIZE) {
           emitDevice(tableName);
