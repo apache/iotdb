@@ -53,7 +53,7 @@ def test_dialect():
         registry.register("iotdb", "iotdb.sqlalchemy.IoTDBDialect", "IoTDBDialect")
         eng = create_engine(url)
 
-        with Session(engine=eng) as session:
+        with Session(eng) as session:
             session.execute("create database root.cursor")
             session.execute("create database root.cursor_s1")
             session.execute(
