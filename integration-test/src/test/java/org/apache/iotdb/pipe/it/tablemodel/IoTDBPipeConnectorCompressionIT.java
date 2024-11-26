@@ -194,6 +194,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
 
+      TableModelUtils.assertCountData("test", "test", 100, senderEnv);
       TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
     }
   }
