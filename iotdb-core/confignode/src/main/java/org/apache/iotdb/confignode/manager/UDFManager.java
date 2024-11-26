@@ -98,8 +98,6 @@ public class UDFManager {
       LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
-
-      udfInformation.setAvailable(true);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
         return new TSStatus(TSStatusCode.CREATE_UDF_ERROR.getStatusCode())
             .setMessage(
@@ -111,7 +109,8 @@ public class UDFManager {
       if (preCreateStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return preCreateStatus;
       }
-
+      udfInformation =
+          new UDFInformation(udfName, req.getClassName(), model, true, isUsingURI, jarName, jarMD5);
       LOGGER.info(
           "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
       final TSStatus dataNodesStatus =

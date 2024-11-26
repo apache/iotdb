@@ -57,9 +57,9 @@ public class UDFInformation {
     this.jarName = jarName;
     this.jarMD5 = jarMD5;
     if (Model.TREE.equals(model)) {
-      this.udfType = available ? UDFType.TREE_EXTERNAL : UDFType.TREE_UNAVAILABLE;
+      this.udfType = available ? UDFType.TREE_AVAILABLE : UDFType.TREE_UNAVAILABLE;
     } else if (Model.TABLE.equals(model)) {
-      this.udfType = available ? UDFType.TABLE_EXTERNAL : UDFType.TABLE_UNAVAILABLE;
+      this.udfType = available ? UDFType.TABLE_AVAILABLE : UDFType.TABLE_UNAVAILABLE;
     } else {
       throw new IllegalArgumentException("Unknown UDF type: " + model);
     }
@@ -123,9 +123,9 @@ public class UDFInformation {
 
   public void setAvailable(boolean available) {
     if (this.udfType.isTreeModel()) {
-      this.udfType = available ? UDFType.TREE_EXTERNAL : UDFType.TREE_UNAVAILABLE;
+      this.udfType = available ? UDFType.TREE_AVAILABLE : UDFType.TREE_UNAVAILABLE;
     } else {
-      this.udfType = available ? UDFType.TABLE_EXTERNAL : UDFType.TABLE_UNAVAILABLE;
+      this.udfType = available ? UDFType.TABLE_AVAILABLE : UDFType.TABLE_UNAVAILABLE;
     }
   }
 

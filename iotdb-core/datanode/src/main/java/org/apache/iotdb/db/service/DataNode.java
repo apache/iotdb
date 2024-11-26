@@ -932,8 +932,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Create instances of udf and do registration
     try {
       for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-        Model model = UDFManagementService.getInstance().checkAndGetModel(udfInformation);
-        UDFManagementService.getInstance().doRegister(model, udfInformation);
+        if (udfInformation.isAvailable()) {
+          Model model = UDFManagementService.getInstance().checkAndGetModel(udfInformation);
+          UDFManagementService.getInstance().doRegister(model, udfInformation);
+        }
       }
     } catch (Exception e) {
       throw new StartupException(e);

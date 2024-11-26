@@ -40,7 +40,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,7 +193,7 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   @TestOnly
-  public Map<Pair<Model, String>, UDFInformation> getRawUDFTable() {
+  public Map<Model, Map<String, UDFInformation>> getRawUDFTable() {
     return udfTable.getTable();
   }
 
