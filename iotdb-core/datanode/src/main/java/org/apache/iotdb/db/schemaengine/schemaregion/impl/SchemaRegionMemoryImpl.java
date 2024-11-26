@@ -240,7 +240,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
             "Total allocated memory for direct buffer will be "
@@ -279,7 +279,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
       isRecovering = false;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error(
           "Cannot recover all schema info from {}, we try to recover as possible as we can",
           schemaRegionDirPath,
@@ -289,7 +289,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
+    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
         logger.info("create database schema folder {}", storageGroupDirPath);
@@ -301,7 +301,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
+    final File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
         logger.info("create schema region folder {}", schemaRegionDirPath);
@@ -342,11 +342,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     if (usingMLog) {
       try {
-        SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
+        final SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
         if (logWriter != null) {
           logWriter.force();
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
     }
@@ -397,10 +397,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-  private int applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader) {
+  private int applyMLog(final SchemaLogReader<ISchemaRegionPlan> mLogReader) {
     int idx = 0;
     ISchemaRegionPlan plan;
-    RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
+    final RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
     RecoverOperationResult operationResult;
     while (mLogReader.hasNext()) {
       try {
@@ -446,7 +446,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = true;
       initialized = false;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
   }
