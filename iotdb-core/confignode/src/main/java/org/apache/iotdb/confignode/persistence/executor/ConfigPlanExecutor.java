@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.executor;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -80,7 +81,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
@@ -471,8 +473,12 @@ public class ConfigPlanExecutor {
         return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case UpdateFunction:
         return udfInfo.updateFunction((UpdateFunctionPlan) physicalPlan);
-      case DropFunction:
-        return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
+      case DropTreeModelFunction:
+        return udfInfo.dropFunction(
+            Model.TREE, ((DropTreeModelFunctionPlan) physicalPlan).getFunctionName());
+      case DropTableModelFunction:
+        return udfInfo.dropFunction(
+            Model.TABLE, ((DropTableModelFunctionPlan) physicalPlan).getFunctionName());
       case AddTriggerInTable:
         return triggerInfo.addTriggerInTable((AddTriggerInTablePlan) physicalPlan);
       case DeleteTriggerInTable:

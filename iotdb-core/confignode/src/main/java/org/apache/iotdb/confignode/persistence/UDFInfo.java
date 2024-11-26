@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
@@ -176,12 +175,10 @@ public class UDFInfo implements SnapshotProcessor {
     return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
-  public TSStatus dropFunction(DropFunctionPlan req) {
-    String udfName = req.getFunctionName();
-    Model model = req.getModel();
-    if (udfTable.containsUDF(model, udfName)) {
-      existedJarToMD5.remove(udfTable.getUDFInformation(model, udfName).getJarName());
-      udfTable.removeUDFInformation(model, udfName);
+  public TSStatus dropFunction(Model model, String functionName) {
+    if (udfTable.containsUDF(model, functionName)) {
+      existedJarToMD5.remove(udfTable.getUDFInformation(model, functionName).getJarName());
+      udfTable.removeUDFInformation(model, functionName);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

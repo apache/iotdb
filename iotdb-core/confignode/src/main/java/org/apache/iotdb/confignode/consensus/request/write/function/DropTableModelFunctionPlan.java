@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.function;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -30,23 +29,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DropFunctionPlan extends ConfigPhysicalPlan {
+public class DropTableModelFunctionPlan extends ConfigPhysicalPlan {
 
-  private Model model;
   private String functionName;
 
-  public DropFunctionPlan() {
-    super(ConfigPhysicalPlanType.DropFunction);
+  public DropTableModelFunctionPlan() {
+    super(ConfigPhysicalPlanType.DropTableModelFunction);
   }
 
-  public DropFunctionPlan(Model model, String functionName) {
-    super(ConfigPhysicalPlanType.DropFunction);
-    this.model = model;
+  public DropTableModelFunctionPlan(String functionName) {
+    super(ConfigPhysicalPlanType.DropTableModelFunction);
     this.functionName = functionName;
-  }
-
-  public Model getModel() {
-    return model;
   }
 
   public String getFunctionName() {
@@ -56,13 +49,11 @@ public class DropFunctionPlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(model.getValue(), stream);
     ReadWriteIOUtils.write(functionName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    model = Model.findByValue(ReadWriteIOUtils.readInt(buffer));
     functionName = ReadWriteIOUtils.readString(buffer);
   }
 
@@ -77,12 +68,12 @@ public class DropFunctionPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    DropFunctionPlan that = (DropFunctionPlan) o;
-    return model.equals(that.model) && Objects.equals(functionName, that.functionName);
+    DropTableModelFunctionPlan that = (DropTableModelFunctionPlan) o;
+    return Objects.equals(functionName, that.functionName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), model, functionName);
+    return Objects.hash(super.hashCode(), functionName);
   }
 }

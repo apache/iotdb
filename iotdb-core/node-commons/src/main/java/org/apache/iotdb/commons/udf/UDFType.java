@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 /** UDFType is an enum class that represents the type of UDF. */
 public enum UDFType {
   TREE_AVAILABLE((byte) 0),
-
   /**
    * TREE_BUILT_IN will not appear in the snapshot file or raft log. It is just a placeholder for
    * some unforeseen circumstances.

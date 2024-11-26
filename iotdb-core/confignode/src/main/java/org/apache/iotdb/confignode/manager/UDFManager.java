@@ -32,7 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.read.function.GetAllFunctio
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
@@ -162,7 +163,15 @@ public class UDFManager {
         return result;
       }
 
-      return configManager.getConsensusManager().write(new DropFunctionPlan(model, functionName));
+      if (Model.TREE.equals(model)) {
+        return configManager
+            .getConsensusManager()
+            .write(new DropTreeModelFunctionPlan(functionName));
+      } else {
+        return configManager
+            .getConsensusManager()
+            .write(new DropTableModelFunctionPlan(functionName));
+      }
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
