@@ -8,6 +8,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.F
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -42,8 +43,7 @@ public class TableWindowOperator implements ProcessOperator {
       WindowFunction windowFunction,
       FrameInfo frameInfo,
       Comparator<SortKey> comparator,
-      int partitionChannel
-  ) {
+      int partitionChannel) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
@@ -133,10 +133,14 @@ public class TableWindowOperator implements ProcessOperator {
     int partitionEnd = partitionStart + 1;
 
     Column partitionColumn = tsBlock.getColumn(partitionChannel);
-    while (partitionEnd < partitionColumn.getPositionCount() && partitionColumn.getObject(partitionEnd).equals(partitionColumn.getObject(partitionStart))) {
+    while (partitionEnd < partitionColumn.getPositionCount()
+        && partitionColumn
+            .getObject(partitionEnd)
+            .equals(partitionColumn.getObject(partitionStart))) {
       partitionEnd++;
 
-      Partition partition = new Partition(tsBlock, partitionStart, partitionEnd, windowFunction, frameInfo);
+      Partition partition =
+          new Partition(tsBlock, partitionStart, partitionEnd, windowFunction, frameInfo);
       partitions.add(partition);
 
       partitionStart = partitionEnd;
@@ -162,9 +166,7 @@ public class TableWindowOperator implements ProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {
-
-  }
+  public void close() throws Exception {}
 
   @Override
   public boolean isFinished() throws Exception {

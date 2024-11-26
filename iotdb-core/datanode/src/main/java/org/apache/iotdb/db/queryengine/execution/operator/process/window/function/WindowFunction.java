@@ -5,5 +5,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 public interface WindowFunction {
   void reset();
 
-  void processRow(TsBlockBuilder builder, int peerGroupStart, int peerGroupEnd, int frameStart, int frameEnd);
+  void processRow(
+      TsBlockBuilder builder, int peerGroupStart, int peerGroupEnd, int frameStart, int frameEnd);
 }

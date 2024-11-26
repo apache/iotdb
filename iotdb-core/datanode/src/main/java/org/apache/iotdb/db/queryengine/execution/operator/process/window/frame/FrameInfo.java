@@ -2,7 +2,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.frame;
 
 public class FrameInfo {
   public enum FrameType {
-    RANGE, ROWS, GROUPS
+    RANGE,
+    ROWS,
+    GROUPS
   }
 
   public enum FrameBoundType {

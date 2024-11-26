@@ -6,6 +6,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.G
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.RangeFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.RowsFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
@@ -46,32 +47,34 @@ public final class Partition {
     switch (frameInfo.getFrameType()) {
       case RANGE:
         if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-          frame = new RangeFrame(
-              frameInfo,
-              partitionStart,
-              partitionEnd,
-              tsBlock,
-              new Frame.Range(0, partitionEnd - partitionStart - 1));
-        }
-        else {
-          frame = new RangeFrame(
-              frameInfo,
-              partitionStart,
-              partitionEnd,
-              tsBlock,
-              new Frame.Range(0, peerGroupEnd - partitionStart - 1));
+          frame =
+              new RangeFrame(
+                  frameInfo,
+                  partitionStart,
+                  partitionEnd,
+                  tsBlock,
+                  new Frame.Range(0, partitionEnd - partitionStart - 1));
+        } else {
+          frame =
+              new RangeFrame(
+                  frameInfo,
+                  partitionStart,
+                  partitionEnd,
+                  tsBlock,
+                  new Frame.Range(0, peerGroupEnd - partitionStart - 1));
         }
         break;
       case ROWS:
         frame = new RowsFrame(frameInfo, partitionStart, partitionEnd, tsBlock);
         break;
       case GROUPS:
-        frame = new GroupsFrame(
-            frameInfo,
-            partitionStart,
-            partitionEnd,
-            tsBlock,
-            peerGroupEnd - partitionStart - 1);
+        frame =
+            new GroupsFrame(
+                frameInfo,
+                partitionStart,
+                partitionEnd,
+                tsBlock,
+                peerGroupEnd - partitionStart - 1);
         break;
       default:
         throw new UnsupportedOperationException("not yet implemented");
@@ -90,46 +93,48 @@ public final class Partition {
     return currentPosition < partitionEnd;
   }
 
-  public void processNextRow(TsBlockBuilder builder)
-  {
-//    checkState(hasNext(), "No more rows in partition");
-//
-//    // copy output channels
-//    builder.declarePosition();
-//    int channel = 0;
-//    while (channel < outputChannels.length) {
-//      pagesIndex.appendTo(outputChannels[channel], currentPosition, builder.getBlockBuilder(channel));
-//      channel++;
-//    }
-//
-//    // check for new peer group
-//    if (currentPosition == peerGroupEnd) {
-//      updatePeerGroup();
-//    }
-//
-//    for (int i = 0; i < windowFunctions.size(); i++) {
-//      WindowFunction windowFunction = windowFunctions.get(i);
-//      Framing.Range range = framings.get(i).getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
-//      windowFunction.processRow(
-//          builder.getBlockBuilder(channel),
-//          peerGroupStart - partitionStart,
-//          peerGroupEnd - partitionStart - 1,
-//          range.getStart(),
-//          range.getEnd());
-//      channel++;
-//    }
+  public void processNextRow(TsBlockBuilder builder) {
+    //    checkState(hasNext(), "No more rows in partition");
+    //
+    //    // copy output channels
+    //    builder.declarePosition();
+    //    int channel = 0;
+    //    while (channel < outputChannels.length) {
+    //      pagesIndex.appendTo(outputChannels[channel], currentPosition,
+    // builder.getBlockBuilder(channel));
+    //      channel++;
+    //    }
+    //
+    //    // check for new peer group
+    //    if (currentPosition == peerGroupEnd) {
+    //      updatePeerGroup();
+    //    }
+    //
+    //    for (int i = 0; i < windowFunctions.size(); i++) {
+    //      WindowFunction windowFunction = windowFunctions.get(i);
+    //      Framing.Range range = framings.get(i).getRange(currentPosition, currentGroupIndex,
+    // peerGroupStart, peerGroupEnd);
+    //      windowFunction.processRow(
+    //          builder.getBlockBuilder(channel),
+    //          peerGroupStart - partitionStart,
+    //          peerGroupEnd - partitionStart - 1,
+    //          range.getStart(),
+    //          range.getEnd());
+    //      channel++;
+    //    }
 
     currentPosition++;
   }
 
-  private void updatePeerGroup()
-  {
-//    currentGroupIndex++;
-//    peerGroupStart = currentPosition;
-//    // find end of peer group
-//    peerGroupEnd = peerGroupStart + 1;
-//    while ((peerGroupEnd < partitionEnd) && pagesIndex.positionNotDistinctFromPosition(peerGroupHashStrategy, peerGroupStart, peerGroupEnd)) {
-//      peerGroupEnd++;
-//    }
+  private void updatePeerGroup() {
+    //    currentGroupIndex++;
+    //    peerGroupStart = currentPosition;
+    //    // find end of peer group
+    //    peerGroupEnd = peerGroupStart + 1;
+    //    while ((peerGroupEnd < partitionEnd) &&
+    // pagesIndex.positionNotDistinctFromPosition(peerGroupHashStrategy, peerGroupStart,
+    // peerGroupEnd)) {
+    //      peerGroupEnd++;
+    //    }
   }
 }
