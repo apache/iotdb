@@ -142,7 +142,9 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
-    return genResult(node, context);
+    List<PlanNode> children = genResult(node.getChild(), context);
+    node.setChild(children.get(0));
+    return Collections.singletonList(node);
   }
 
   @Override
