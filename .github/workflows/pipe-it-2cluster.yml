@@ -51,7 +51,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
-          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000.0))
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -113,7 +113,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
-          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000.0))
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -154,7 +154,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
-          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000.0))
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -236,7 +236,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
-          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000.0))
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -276,7 +276,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
-          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000.0))
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
