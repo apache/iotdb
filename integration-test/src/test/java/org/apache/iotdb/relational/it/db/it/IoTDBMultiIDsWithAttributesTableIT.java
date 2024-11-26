@@ -1704,16 +1704,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // join on
-    //    sql =
-    //        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add,
-    // t2.device, t2.attr2, t2.num, t2.str\n"
-    //            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1'
-    // AND cast(num as double)>0) t1 \n"
-    //            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND
-    // device in ('d1','d2')) t2 \n"
-    //            + "ON t1.time = t2.time \n"
-    //            + "ORDER BY time, t1.device, t2.device";
-    //    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    sql =
+        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
+            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "ON t1.time = t2.time \n"
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
