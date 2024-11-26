@@ -54,9 +54,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final boolean useSSL;
   private final String trustStorePath;
   private final String trustStorePwd;
-  private final Map<TEndPoint, String> failedEndPointsMessage = new ConcurrentHashMap<>();
+
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
+  private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
   private final LoadBalancer loadBalancer;
 
@@ -108,7 +109,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    failedEndPointsMessage.clear();
     // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
@@ -127,21 +127,25 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
     final StringBuilder errorMessage =
         new StringBuilder(
-            "All target servers are not available. Handshake errors with target servers:[");
-    for (final Map.Entry<TEndPoint, String> entry : failedEndPointsMessage.entrySet()) {
+            String.format(
+                "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
       errorMessage
-          .append(" ip: ")
+          .append(" (")
+          .append(" host: ")
           .append(entry.getKey().getIp())
           .append(", port: ")
           .append(entry.getKey().getPort())
           .append(", because: ")
-          .append(entry.getValue());
+          .append(entry.getValue())
+          .append(")");
     }
-    errorMessage.append("]");
-    throw new PipeConnectionException(String.format(errorMessage.toString()));
+    throw new PipeConnectionException(errorMessage.toString());
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
+    endPoint2HandshakeErrorMessage.remove(endPoint);
+
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
 
     if (clientAndStatus.getLeft() != null) {
@@ -222,7 +226,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             client.getIpAddress(),
             client.getPort(),
             resp.getStatus());
-        failedEndPointsMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
+        endPoint2HandshakeErrorMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
@@ -232,13 +236,13 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             client.getPort());
       }
     } catch (Exception e) {
-      failedEndPointsMessage.put(client.getEndPoint(), e.getMessage());
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
           client.getIpAddress(),
           client.getPort(),
           e.getMessage(),
           e);
+      endPoint2HandshakeErrorMessage.put(client.getEndPoint(), e.getMessage());
     }
   }
 
