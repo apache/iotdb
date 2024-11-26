@@ -37,6 +37,8 @@ public class CreateOrUpdateDevice extends Statement {
 
   private final List<Object[]> attributeValueList;
 
+  // The attributeValueList can be shorter than the "attributeNameList"
+  // Which means that the missing attribute values at tail are all null
   public CreateOrUpdateDevice(
       final String database,
       final String table,
