@@ -54,7 +54,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final boolean useSSL;
   private final String trustStorePath;
   private final String trustStorePwd;
-
+  private final Map<TEndPoint, String> failedEndPointsMessage = new ConcurrentHashMap<>();
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
 
@@ -108,6 +108,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
+    failedEndPointsMessage.clear();
     // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
@@ -124,9 +125,20 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         return;
       }
     }
-    throw new PipeConnectionException(
-        String.format(
-            "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    final StringBuilder errorMessage =
+        new StringBuilder(
+            "All target servers are not available. Handshake errors with Target server:[");
+    for (final Map.Entry<TEndPoint, String> entry : failedEndPointsMessage.entrySet()) {
+      errorMessage
+          .append(" ip: ")
+          .append(entry.getKey().getIp())
+          .append(", port: ")
+          .append(entry.getKey().getPort())
+          .append(", because: ")
+          .append(entry.getValue());
+    }
+    errorMessage.append("]");
+    throw new PipeConnectionException(String.format(errorMessage.toString()));
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
@@ -206,10 +218,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Handshake error with target server ip: {}, port: {}, because: {}.",
-            client.getIpAddress(),
-            client.getPort(),
-            resp.getStatus());
+            String.format(
+                "Handshake error with target server ip: %s, port: %s, because: %s.",
+                client.getIpAddress(), client.getPort(), resp.getStatus()));
+        failedEndPointsMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
@@ -219,6 +231,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             client.getPort());
       }
     } catch (Exception e) {
+      failedEndPointsMessage.put(client.getEndPoint(), e.getMessage());
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
           client.getIpAddress(),
