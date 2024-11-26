@@ -134,22 +134,22 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
 
   public SRStatementGenerator(
       final File mtreeFile,
-      final File tagOrAttributeFile,
-      final PartialPath databaseFullPath,
-      final boolean isAttributeFile)
+      final File tagFile,
+      final File attributeFile,
+      final PartialPath databaseFullPath)
       throws IOException {
 
     inputStream = Files.newInputStream(mtreeFile.toPath());
 
-    if (tagOrAttributeFile != null && !isAttributeFile) {
-      tagFileChannel = FileChannel.open(tagOrAttributeFile.toPath(), StandardOpenOption.READ);
+    if (tagFile != null) {
+      tagFileChannel = FileChannel.open(tagFile.toPath(), StandardOpenOption.READ);
     } else {
       tagFileChannel = null;
     }
 
     // TODO: Inner mem-control in deviceAttributeStore
-    if (isAttributeFile) {
-      deviceAttributeStore.loadFromSnapshot(tagOrAttributeFile);
+    if (Objects.nonNull(attributeFile)) {
+      deviceAttributeStore.loadFromSnapshot(attributeFile);
     }
 
     this.databaseFullPath = databaseFullPath;

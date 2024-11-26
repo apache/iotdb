@@ -226,6 +226,7 @@ public class SchemaRegionSnapshotParserTest {
                     + File.separator
                     + snapshotFileName),
             null,
+            null,
             databasePath);
 
     assert statements != null;
@@ -310,6 +311,7 @@ public class SchemaRegionSnapshotParserTest {
                     + "snapshot"
                     + File.separator
                     + SchemaConstant.TAG_LOG_SNAPSHOT),
+            null,
             database);
     assert statements != null;
     for (final Object stmt : statements) {
@@ -462,6 +464,7 @@ public class SchemaRegionSnapshotParserTest {
                     + "snapshot"
                     + File.separator
                     + snapshotFileName),
+            null,
             null,
             databasePath);
     int count = 0;
@@ -688,6 +691,7 @@ public class SchemaRegionSnapshotParserTest {
                     + "snapshot"
                     + File.separator
                     + SchemaConstant.TAG_LOG_SNAPSHOT),
+            null,
             databasePath);
     assert statements != null;
     int count = 0;
