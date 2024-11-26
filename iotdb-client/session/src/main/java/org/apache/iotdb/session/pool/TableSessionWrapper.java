@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.session.pool;
 
-import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
-import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.Session;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,15 +33,15 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * NOTICE: SessionWrapper is specific to the table model.
+ * NOTICE: TableSessionWrapper is specific to the table model.
  *
  * <p>used for SessionPool.getSession need to do some other things like calling
  * cleanSessionAndMayThrowConnectionException in SessionPool while encountering connection exception
  * only need to putBack to SessionPool while closing.
  */
-public class SessionWrapper implements IPooledSession {
+public class TableSessionWrapper implements ITableSession {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SessionWrapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableSessionWrapper.class);
 
   private Session session;
 
@@ -53,42 +49,22 @@ public class SessionWrapper implements IPooledSession {
 
   private final AtomicBoolean closed;
 
-  public SessionWrapper(Session session, SessionPool sessionPool) {
+  protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
     this.sessionPool = sessionPool;
     this.closed = new AtomicBoolean(false);
   }
 
   @Override
-  public Version getVersion() {
-    return session.getVersion();
-  }
-
-  @Override
-  public int getFetchSize() {
-    return session.getFetchSize();
-  }
-
-  @Override
-  public void close() throws IoTDBConnectionException {
-    if (closed.compareAndSet(false, true)) {
-      if (!Objects.equals(session.getDatabase(), sessionPool.database)
-          && sessionPool.database != null) {
-        try {
-          session.executeNonQueryStatement("use " + sessionPool.database);
-        } catch (StatementExecutionException e) {
-          LOGGER.warn(
-              "Failed to change back database by executing: use " + sessionPool.database, e);
-        }
-      }
-      sessionPool.putBack(session);
+  public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      session.insertRelationalTablet(tablet);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(session);
+      closed.set(true);
       session = null;
+      throw e;
     }
-  }
-
-  @Override
-  public String getTimeZone() {
-    return session.getTimeZone();
   }
 
   @Override
@@ -131,67 +107,22 @@ public class SessionWrapper implements IPooledSession {
   }
 
   @Override
-  public String getTimestampPrecision() throws TException {
-    try {
-      return session.getTimestampPrecision();
-    } catch (TException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
+  public void close() throws IoTDBConnectionException {
+    if (closed.compareAndSet(false, true)) {
+      if (!Objects.equals(session.getDatabase(), sessionPool.database)
+          && sessionPool.database != null) {
+        try {
+          session.executeNonQueryStatement("use " + sessionPool.database);
+        } catch (StatementExecutionException e) {
+          LOGGER.warn(
+              "Failed to change back database by executing: use {}", sessionPool.database, e);
+          session.close();
+          session = null;
+          return;
+        }
+      }
+      sessionPool.putBack(session);
       session = null;
-      throw e;
     }
-  }
-
-  @Override
-  public void insertTablet(Tablet tablet)
-      throws StatementExecutionException, IoTDBConnectionException {
-    try {
-      session.insertRelationalTablet(tablet);
-    } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
-    }
-  }
-
-  @Override
-  public boolean isEnableQueryRedirection() {
-    return session.isEnableQueryRedirection();
-  }
-
-  @Override
-  public boolean isEnableRedirection() {
-    return session.isEnableRedirection();
-  }
-
-  @Override
-  public TSBackupConfigurationResp getBackupConfiguration()
-      throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      return session.getBackupConfiguration();
-    } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
-    }
-  }
-
-  @Override
-  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
-    try {
-      return session.fetchAllConnections();
-    } catch (IoTDBConnectionException e) {
-      sessionPool.cleanSessionAndMayThrowConnectionException(session);
-      closed.set(true);
-      session = null;
-      throw e;
-    }
-  }
-
-  @Override
-  public long getQueryTimeout() {
-    return session.getQueryTimeout();
   }
 }

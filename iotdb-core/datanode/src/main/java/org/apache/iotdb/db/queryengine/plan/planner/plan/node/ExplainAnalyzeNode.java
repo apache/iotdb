@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -57,6 +58,16 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     return Collections.singletonList(ColumnHeaderConstant.EXPLAIN_ANALYZE);
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return Collections.singletonList(Symbol.of(ColumnHeaderConstant.EXPLAIN_ANALYZE));
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new ExplainAnalyzeNode(getPlanNodeId(), newChildren.get(0), verbose, queryId, timeout);
   }
 
   @Override

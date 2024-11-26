@@ -100,7 +100,7 @@ public class ModificationFileTest {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     long time = 1000;
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
-      while (modificationFile.getSize() < 1024 * 1024) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
                 new MeasurementPath(new String[] {"root", "sg", "d1"}),
@@ -127,7 +127,7 @@ public class ModificationFileTest {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     long time = 1000;
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
-      while (modificationFile.getSize() < 1024 * 100) {
+      while (modificationFile.getFileLength() < 1024 * 100) {
         modificationFile.write(
             new TreeDeletionEntry(
                 new MeasurementPath(new String[] {"root", "sg", "d1"}),
@@ -149,7 +149,7 @@ public class ModificationFileTest {
   public void testCompact03() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.mods");
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
-      while (modificationFile.getSize() < 1024 * 1024) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
                 new MeasurementPath(new String[] {"root", "sg", "d1"}),
@@ -175,7 +175,7 @@ public class ModificationFileTest {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.mods");
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
       long time = 0;
-      while (modificationFile.getSize() < 1024 * 1024) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
         for (int i = 0; i < 5; i++) {
           modificationFile.write(
               new TreeDeletionEntry(

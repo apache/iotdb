@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -74,30 +75,38 @@ public class ModificationFile implements AutoCloseable {
   public ModificationFile(File file) {
     this.file = file;
     fileExists = file.length() > 0;
+    if (fileExists) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(file.length());
+    }
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(ModEntry entry) throws IOException {
     lock.writeLock().lock();
+    long size = 0;
     try {
       if (fileOutputStream == null) {
         fileOutputStream =
             new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
         channel = FileChannel.open(file.toPath(), CREATE, APPEND);
       }
-      entry.serialize(fileOutputStream);
+      size += entry.serialize(fileOutputStream);
       fileOutputStream.flush();
     } finally {
       lock.writeLock().unlock();
     }
     if (!fileExists) {
       fileExists = true;
+      FileMetrics.getInstance().increaseModFileNum(1);
     }
+    FileMetrics.getInstance().increaseModFileSize(size);
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(Collection<? extends ModEntry> entries) throws IOException {
     lock.writeLock().lock();
+    long size = 0;
     try {
       if (fileOutputStream == null) {
         fileOutputStream =
@@ -105,15 +114,17 @@ public class ModificationFile implements AutoCloseable {
         channel = FileChannel.open(file.toPath(), CREATE, APPEND);
       }
       for (ModEntry entry : entries) {
-        entry.serialize(fileOutputStream);
+        size += entry.serialize(fileOutputStream);
       }
       fileOutputStream.flush();
     } finally {
       lock.writeLock().unlock();
     }
     if (!fileExists) {
+      FileMetrics.getInstance().increaseModFileNum(1);
       fileExists = true;
     }
+    FileMetrics.getInstance().increaseModFileSize(size);
   }
 
   public Iterator<ModEntry> getModIterator(long offset) throws IOException {
@@ -152,7 +163,7 @@ public class ModificationFile implements AutoCloseable {
     return file;
   }
 
-  public long getFileLength() throws IOException {
+  public long getFileLength() {
     lock.readLock().lock();
     try {
       return file.length();
@@ -171,10 +182,6 @@ public class ModificationFile implements AutoCloseable {
     long levelNum = Long.parseLong(split[0]);
     long modNum = Long.parseLong(split[1]);
     return new long[] {levelNum, modNum};
-  }
-
-  public long getSize() {
-    return file.length();
   }
 
   public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
@@ -252,6 +259,8 @@ public class ModificationFile implements AutoCloseable {
   public void remove() throws IOException {
     close();
     FileUtils.deleteFileOrDirectory(file);
+    FileMetrics.getInstance().decreaseModFileNum(1);
+    FileMetrics.getInstance().decreaseModFileSize(getFileLength());
     fileExists = false;
   }
 
@@ -282,8 +291,8 @@ public class ModificationFile implements AutoCloseable {
     return "ModificationFile{" + "file=" + file + '}';
   }
 
-  public void compact() {
-    long originFileSize = getSize();
+  public void compact() throws IOException {
+    long originFileSize = getFileLength();
     if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
       try {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
@@ -308,11 +317,11 @@ public class ModificationFile implements AutoCloseable {
         Files.move(new File(newModsFileName).toPath(), file.toPath());
         LOGGER.info("{} settle successful", file);
 
-        if (getSize() > COMPACT_THRESHOLD) {
+        if (getFileLength() > COMPACT_THRESHOLD) {
           LOGGER.warn(
               "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
               originFileSize,
-              getSize());
+              getFileLength());
         }
       } catch (IOException e) {
         LOGGER.error("remove origin file or rename new mods file error.", e);
