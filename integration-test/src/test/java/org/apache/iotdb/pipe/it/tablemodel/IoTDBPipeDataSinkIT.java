@@ -245,7 +245,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("forwarding-pipe-requests", "false");
 
       processorAttributes.put("processor", "rename-database-processor");
-      processorAttributes.put("rename.database", "test1");
+      processorAttributes.put("processor.new-db-name", "test1");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
