@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.schemachange;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -29,72 +30,72 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_RENAME_DATABASE_NEW_DB_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RenameDatabaseProcessor implements PipeProcessor {
 
-  private String treeModelDataBaseName;
-  private String tableModelDataBaseName;
+  // Currently this processor is only used for table model.
+  // For tree model events, this processor will simply ignore them
+  private String newDatabaseName;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    final String dataBaseName =
-        validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
-    validator.validate(
-        dataBase -> !(dataBase == null || isDatabaseNameInvalid((String) dataBase)),
-        String.format(
-            "Database name validation failed. The provided database name: %s", dataBaseName),
-        dataBaseName);
-    tableModelDataBaseName = dataBaseName;
-    treeModelDataBaseName = PATH_ROOT + PATH_SEPARATOR + dataBaseName;
+    validator.validateRequiredAttribute(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
+    newDatabaseName = validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
+    try {
+      TableConfigTaskVisitor.validateDatabaseName(newDatabaseName);
+    } catch (final Exception e) {
+      throw new PipeException(
+          String.format(
+              "The new database name %s is invalid, it should not contain '%s', "
+                  + "should match the pattern %s, and the length should not exceed %d",
+              newDatabaseName,
+              PATH_SEPARATOR,
+              IoTDBConfig.STORAGE_GROUP_PATTERN,
+              MAX_DATABASE_NAME_LENGTH),
+          e);
+    }
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
-      throws Exception {}
+      throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    resetDataBaseName(tabletInsertionEvent, eventCollector);
+    renameDatabase(tabletInsertionEvent, eventCollector);
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    resetDataBaseName(tsFileInsertionEvent, eventCollector);
+    renameDatabase(tsFileInsertionEvent, eventCollector);
   }
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
-    resetDataBaseName(event, eventCollector);
+    renameDatabase(event, eventCollector);
+  }
+
+  private void renameDatabase(final Event event, final EventCollector eventCollector)
+      throws Exception {
+    // This processor is only used for table model insertion events
+    if (event instanceof PipeInsertionEvent && ((PipeInsertionEvent) event).isTableModelEvent()) {
+      ((PipeInsertionEvent) event).renameTableModelDatabase(newDatabaseName);
+    }
+
+    eventCollector.collect(event);
   }
 
   @Override
-  public void close() throws Exception {}
-
-  private void resetDataBaseName(final Event event, final EventCollector eventCollector)
-      throws Exception {
-    if (!((event instanceof PipeInsertionEvent)
-        && ((PipeInsertionEvent) event).isTableModelEvent())) {
-      eventCollector.collect(event);
-      return;
-    }
-    final PipeInsertionEvent pipeInsertionEvent = (PipeInsertionEvent) event;
-    // We don't need lazy loading here, because TableModeDataBaseName is generated, all databaseName
-    // just reference the same variable, no additional memory
-    pipeInsertionEvent.setTreeModelDatabaseNameAndTableModelDataBase(
-        treeModelDataBaseName, tableModelDataBaseName);
-    eventCollector.collect(pipeInsertionEvent);
-  }
-
-  private boolean isDatabaseNameInvalid(final String dataBaseName) {
-    return dataBaseName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dataBaseName).matches()
-        || dataBaseName.length() > MAX_DATABASE_NAME_LENGTH;
+  public void close() throws Exception {
+    // Do nothing
   }
 }

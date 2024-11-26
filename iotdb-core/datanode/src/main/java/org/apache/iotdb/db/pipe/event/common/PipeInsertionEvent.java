@@ -28,7 +28,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private Boolean isTableModelEvent; // lazy initialization
 
-  private String treeModelDatabaseName;
+  private final String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
@@ -104,9 +104,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         : tableModelDatabaseName;
   }
 
-  public String setTreeModelDatabaseNameAndTableModelDataBase(
-      final String treeModelDatabaseName, final String tableModelDatabaseName) {
+  public void renameTableModelDatabase(final String tableModelDatabaseName) {
     this.tableModelDatabaseName = tableModelDatabaseName;
-    return this.treeModelDatabaseName = treeModelDatabaseName;
   }
 }
