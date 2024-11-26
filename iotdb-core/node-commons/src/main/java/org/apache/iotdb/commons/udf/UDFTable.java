@@ -137,9 +137,10 @@ public class UDFTable {
     }
   }
 
-  // only clear external UDFs
   public void clear() {
-    udfInformationMap.clear();
-    functionToClassMap.clear();
+    udfInformationMap.get(Model.TREE).clear();
+    udfInformationMap.get(Model.TABLE).clear();
+    functionToClassMap.get(Model.TREE).clear();
+    functionToClassMap.get(Model.TABLE).clear();
   }
 }
