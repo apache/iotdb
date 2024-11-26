@@ -24,16 +24,17 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -51,8 +52,13 @@ public class WriteBackConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);
 
-  private static final String EMPTY_DATABASE = null;
+  // Simulate the behavior of the client-to-server communication
+  // for correctly handling data insertion in IoTDBReceiverAgent#receive method
+  private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private IClientSession session;
+
+  private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -63,8 +69,16 @@ public class WriteBackConnector implements PipeConnector {
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    // The receiver will call supplySession, which is not needed in WriteBack.
-    SESSION_MANAGER.registerSession(new InternalClientSession(WriteBackConnector.class.getName()));
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
+    session =
+        new InternalClientSession(
+            String.format(
+                "%s_%s_%s_%s",
+                WriteBackConnector.class.getSimpleName(),
+                environment.getPipeName(),
+                environment.getCreationTime(),
+                environment.getRegionId()));
+    SESSION_MANAGER.registerSession(session);
   }
 
   @Override
@@ -97,13 +111,6 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  @Override
-  public void transfer(final Event event) throws Exception {
-    if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
-      LOGGER.warn("WriteBackConnector does not support transferring generic event: {}.", event);
-    }
-  }
-
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
@@ -123,34 +130,27 @@ public class WriteBackConnector implements PipeConnector {
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    final TSStatus status;
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-            : EMPTY_DATABASE;
-    final InsertNode insertNode =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-    if (Objects.isNull(insertNode)) {
-      status =
-          PipeDataNodeAgent.receiver()
-              .thrift()
-              .receive(
-                  PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName))
-              .getStatus();
-    } else {
-      status =
-          PipeDataNodeAgent.receiver()
-              .thrift()
-              .receive(
-                  PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName))
-              .getStatus();
-    }
+            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
 
+    final TSStatus status =
+        PipeDataNodeAgent.receiver()
+            .thrift()
+            .receive(
+                Objects.isNull(insertNode)
+                    ? PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
+                        pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName)
+                    : PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
+                        insertNode, dataBaseName))
+            .getStatus();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
+              "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, status));
     }
   }
@@ -179,19 +179,26 @@ public class WriteBackConnector implements PipeConnector {
                     pipeRawTabletInsertionEvent.isAligned(),
                     pipeRawTabletInsertionEvent.isTableModelEvent()
                         ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                        : EMPTY_DATABASE))
+                        : TREE_MODEL_DATABASE_NAME_IDENTIFIER))
             .getStatus();
-
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
+              "Write back PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, status));
     }
   }
 
   @Override
+  public void transfer(final Event event) throws Exception {
+    // Ignore the event except TabletInsertionEvent
+  }
+
+  @Override
   public void close() throws Exception {
+    if (session != null) {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+    }
     SESSION_MANAGER.removeCurrSession();
   }
 }
