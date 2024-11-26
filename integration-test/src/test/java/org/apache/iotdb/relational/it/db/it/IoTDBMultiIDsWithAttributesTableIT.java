@@ -152,7 +152,15 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   String[] expectedHeader;
   String[] retArray;
-  String sql;
+  static String sql;
+
+  //  public static void main(String[] args) {
+  //    for (String[] sqlList : Arrays.asList(sql4, sql5)) {
+  //      for (String sql : sqlList) {
+  //        System.out.println(sql);
+  //      }
+  //    }
+  //  }
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -1673,6 +1681,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.002Z,2,Jack,2015-09-24,1002,10000002,语文,1112,90,",
           "1970-01-01T00:00:00.003Z,3,Sam,2014-07-20,1003,10000003,英语,1113,85,",
           "1970-01-01T00:00:00.004Z,4,Lily,2015-03-28,1004,10000004,体育,1114,89,",
+          "1970-01-01T00:00:00.005Z,5,Helen,2016-01-22,1005,10000005,历史,1115,98,",
         };
     sql =
         "select s.time,"
