@@ -45,7 +45,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, Set<PipeID>> pipeIDSet = new ConcurrentHashMap<>();
+  private final Map<String, Set<PipeID>> pipeIDMap = new ConcurrentHashMap<>();
   private final Map<PipeID, Rate> tsFileSizeMap = new ConcurrentHashMap<>();
   private final Map<PipeID, Rate> tabletCountMap = new ConcurrentHashMap<>();
 
@@ -54,9 +54,9 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    final ImmutableSet<String> pipeFullNames = ImmutableSet.copyOf(pipeIDSet.keySet());
+    final ImmutableSet<String> pipeFullNames = ImmutableSet.copyOf(pipeIDMap.keySet());
     for (final String pipeFullName : pipeFullNames) {
-      for (final PipeID pipeID : pipeIDSet.get(pipeFullName)) {
+      for (final PipeID pipeID : pipeIDMap.get(pipeFullName)) {
         createMetrics(pipeID);
       }
     }
@@ -93,15 +93,15 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> pipeFullNames = ImmutableSet.copyOf(pipeIDSet.keySet());
+    final ImmutableSet<String> pipeFullNames = ImmutableSet.copyOf(pipeIDMap.keySet());
     for (final String pipeFullName : pipeFullNames) {
-      for (final PipeID pipeID : pipeIDSet.get(pipeFullName)) {
+      for (final PipeID pipeID : pipeIDMap.get(pipeFullName)) {
         removeMetrics(pipeID);
       }
-      pipeIDSet.remove((pipeFullName));
+      pipeIDMap.remove((pipeFullName));
     }
-    if (!pipeIDSet.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe processor metrics, processor map not empty");
+    if (!pipeIDMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipeTsFileToTablet metrics,  pipeIDMap not empty");
     }
   }
 
@@ -135,34 +135,34 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(@NonNull final PipeID pipeID) {
-    pipeIDSet.putIfAbsent(
+    pipeIDMap.putIfAbsent(
         pipeID.getPipeFullName(), Collections.newSetFromMap(new ConcurrentHashMap<>()));
-    if (pipeIDSet.get(pipeID.getPipeFullName()).add(pipeID) && Objects.nonNull(metricService)) {
+    if (pipeIDMap.get(pipeID.getPipeFullName()).add(pipeID) && Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
 
   public void deregister(final PipeID pipeID) {
-    if (!pipeIDSet.containsKey(pipeID.getPipeFullName())
-        || !pipeIDSet.get(pipeID.getPipeFullName()).contains(pipeID)) {
+    if (!pipeIDMap.containsKey(pipeID.getPipeFullName())
+        || !pipeIDMap.get(pipeID.getPipeFullName()).contains(pipeID)) {
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(pipeID);
     }
-    pipeIDSet.get(pipeID.getPipeFullName()).remove(pipeID);
+    pipeIDMap.get(pipeID.getPipeFullName()).remove(pipeID);
   }
 
   public void deregisterPipe(final String pipeFullName) {
-    if (!pipeIDSet.containsKey(pipeFullName)) {
+    if (!pipeIDMap.containsKey(pipeFullName)) {
       return;
     }
     if (Objects.nonNull(metricService)) {
-      for (PipeID pipeID : pipeIDSet.get(pipeFullName)) {
+      for (PipeID pipeID : pipeIDMap.get(pipeFullName)) {
         removeMetrics(pipeID);
       }
     }
-    pipeIDSet.remove(pipeFullName);
+    pipeIDMap.remove(pipeFullName);
   }
 
   public void markTsFileSize(final PipeID pipeID, final long size) {
