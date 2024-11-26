@@ -50,12 +50,14 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     SEGMENT_EXACT_MATCH,
     AND;
 
-    public void serialize(OutputStream stream) throws IOException {
+    public long serialize(OutputStream stream) throws IOException {
       stream.write((byte) ordinal());
+      return 1;
     }
 
-    public void serialize(ByteBuffer buffer) {
+    public long serialize(ByteBuffer buffer) {
       buffer.put((byte) ordinal());
+      return 1;
     }
 
     public static IDPredicateType deserialize(InputStream stream) throws IOException {
@@ -76,13 +78,13 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
   public abstract boolean matches(IDeviceID deviceID);
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
-    type.serialize(stream);
+  public long serialize(OutputStream stream) throws IOException {
+    return type.serialize(stream);
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    type.serialize(buffer);
+  public long serialize(ByteBuffer buffer) {
+    return type.serialize(buffer);
   }
 
   public static IDPredicate createFrom(ByteBuffer buffer) {
@@ -177,15 +179,17 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     @Override
-    public void serialize(OutputStream stream) throws IOException {
-      super.serialize(stream);
-      deviceID.serialize(stream);
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += deviceID.serialize(stream);
+      return size;
     }
 
     @Override
-    public void serialize(ByteBuffer buffer) {
-      super.serialize(buffer);
-      deviceID.serialize(buffer);
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += deviceID.serialize(buffer);
+      return size;
     }
 
     @Override
@@ -251,17 +255,19 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     @Override
-    public void serialize(OutputStream stream) throws IOException {
-      super.serialize(stream);
-      ReadWriteIOUtils.writeVar(pattern, stream);
-      ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteIOUtils.writeVar(pattern, stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
+      return size;
     }
 
     @Override
-    public void serialize(ByteBuffer buffer) {
-      super.serialize(buffer);
-      ReadWriteIOUtils.writeVar(pattern, buffer);
-      ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteIOUtils.writeVar(pattern, buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
+      return size;
     }
 
     @Override
@@ -334,21 +340,23 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     @Override
-    public void serialize(OutputStream stream) throws IOException {
-      super.serialize(stream);
-      ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
+    public long serialize(OutputStream stream) throws IOException {
+      long size = super.serialize(stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
       for (IDPredicate predicate : predicates) {
-        predicate.serialize(stream);
+        size += predicate.serialize(stream);
       }
+      return size;
     }
 
     @Override
-    public void serialize(ByteBuffer buffer) {
-      super.serialize(buffer);
-      ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
+    public long serialize(ByteBuffer buffer) {
+      long size = super.serialize(buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
       for (IDPredicate predicate : predicates) {
-        predicate.serialize(buffer);
+        size += predicate.serialize(buffer);
       }
+      return size;
     }
 
     @Override
