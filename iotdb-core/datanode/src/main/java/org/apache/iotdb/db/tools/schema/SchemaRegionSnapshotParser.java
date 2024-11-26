@@ -98,6 +98,9 @@ public class SchemaRegionSnapshotParser {
       final File tagSnapshot =
           SystemFileFactory.INSTANCE.getFile(
               latestSnapshotPath + File.separator + SchemaConstant.TAG_LOG_SNAPSHOT);
+      final File attributeSnapshot =
+          SystemFileFactory.INSTANCE.getFile(
+              latestSnapshotPath + File.separator + SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
       if (mTreeSnapshot.exists()) {
         return new Pair<>(
             mTreeSnapshot.toPath(), tagSnapshot.exists() ? tagSnapshot.toPath() : null);

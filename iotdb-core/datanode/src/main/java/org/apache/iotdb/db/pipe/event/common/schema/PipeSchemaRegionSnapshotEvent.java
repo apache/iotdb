@@ -52,7 +52,10 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
   private String mTreeSnapshotPath;
   private String tagLogSnapshotPath;
+  private String attributeSnapshotPath;
   private String databaseName;
+
+  private int version = 2;
 
   private static final Map<Short, StatementType> PLAN_NODE_2_STATEMENT_TYPE_MAP = new HashMap<>();
 
