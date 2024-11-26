@@ -66,7 +66,10 @@ public enum PipeSchemaSerializableEventType {
         event = new PipeSchemaRegionWritePlanEvent();
         break;
       case 2:
-        event = new PipeSchemaRegionSnapshotEvent();
+        event = new PipeSchemaRegionSnapshotEvent(1);
+        break;
+      case 3:
+        event = new PipeSchemaRegionSnapshotEvent(2);
         break;
       default:
         throw new IllegalArgumentException("Invalid event type: " + eventType);
