@@ -532,7 +532,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitDelete(Delete node, Optional<Scope> scope) {
+    protected Scope visitDelete(final Delete node, final Optional<Scope> scope) {
       final Scope ret = Scope.create();
       AnalyzeUtils.analyzeDelete(node, queryContext);
       analysis.setScope(node, ret);
@@ -540,15 +540,15 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
-      Scope ret = node.getInnerStatement().accept(this, scope);
+    protected Scope visitPipeEnriched(final PipeEnriched node, final Optional<Scope> scope) {
+      final Scope ret = node.getInnerStatement().accept(this, scope);
       createAndAssignScope(node, scope);
       analysis.setScope(node, ret);
       return ret;
     }
 
     @Override
-    protected Scope visitLoadTsFile(LoadTsFile node, Optional<Scope> scope) {
+    protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.WRITE);
 
       final long startTime = System.nanoTime();
@@ -569,7 +569,7 @@ public class StatementAnalyzer {
       return createAndAssignScope(node, scope);
     }
 
-    private LoadTsFileAnalyzer getAnalyzer(LoadTsFile loadTsFile) {
+    private LoadTsFileAnalyzer getAnalyzer(final LoadTsFile loadTsFile) {
       if (Objects.equals(loadTsFile.getModel(), LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
         // Load to table-model
         if (Objects.isNull(loadTsFile.getDatabase())) {

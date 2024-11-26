@@ -18,8 +18,10 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -684,23 +686,23 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitInsertRows(InsertRows node, Void context) {
-    InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
-    List<Integer> indices = new ArrayList<>();
-    List<InsertRowNode> insertRowStatements = new ArrayList<>();
+  protected RelationPlan visitInsertRows(final InsertRows node, final Void context) {
+    final InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
+    final List<Integer> indices = new ArrayList<>();
+    final List<InsertRowNode> insertRowStatements = new ArrayList<>();
     for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
       indices.add(i);
       insertRowStatements.add(
           fromInsertRowStatement(insertRowsStatement.getInsertRowStatementList().get(i)));
     }
-    RelationalInsertRowsNode relationalInsertRowsNode =
+    final RelationalInsertRowsNode relationalInsertRowsNode =
         new RelationalInsertRowsNode(idAllocator.genPlanNodeId(), indices, insertRowStatements);
     return new RelationPlan(
         relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override
-  protected RelationPlan visitLoadTsFile(LoadTsFile node, Void context) {
+  protected RelationPlan visitLoadTsFile(final LoadTsFile node, final Void context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < node.getResources().size(); i++) {
       isTableModel.add(node.getModel().equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE));
@@ -714,9 +716,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitPipeEnriched(PipeEnriched node, Void context) {
-    RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
+  protected RelationPlan visitPipeEnriched(final PipeEnriched node, final Void context) {
+    final RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
 
+    // TODO: Deletion
     if (relationPlan.getRoot() instanceof LoadTsFileNode) {
       return relationPlan;
     } else if (relationPlan.getRoot() instanceof InsertNode) {
@@ -726,11 +729,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           Collections.emptyList(),
           outerContext);
     }
-    throw new IllegalStateException("Other WritePlanNode is not supported in current version.");
+    return new RelationPlan(
+        new PipeEnrichedWritePlanNode((WritePlanNode) relationPlan.getRoot()),
+        analysis.getRootScope(),
+        Collections.emptyList(),
+        outerContext);
   }
 
   @Override
-  protected RelationPlan visitDelete(Delete node, Void context) {
+  protected RelationPlan visitDelete(final Delete node, final Void context) {
     return new RelationPlan(
         new RelationalDeleteDataNode(idAllocator.genPlanNodeId(), node),
         analysis.getRootScope(),

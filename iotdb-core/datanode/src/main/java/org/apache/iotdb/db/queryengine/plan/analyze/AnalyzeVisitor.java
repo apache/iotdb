@@ -3004,8 +3004,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
+    final Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
 
     // statement may be changed because of logical view

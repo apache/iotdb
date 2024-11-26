@@ -497,8 +497,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    WritePlanNode node =
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
+    final WritePlanNode node =
         (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
     if (node instanceof LoadTsFileNode) {
@@ -513,7 +513,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  public PlanNode visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {
       isTableModel.add(
