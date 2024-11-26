@@ -87,7 +87,7 @@ public class WrappedSegmentTest {
 
     ByteBuffer recMid01 = sf.getRecord("mid1");
     Assert.assertEquals(
-        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: LZ4]",
+        "[measurementNode, alias: mid1als, type: FLOAT, encoding: GORILLA, compressor: LZ4]",
         RecordUtils.buffer2String(recMid01));
 
     int resInsertNode = sf.insertRecord(rNode.getName(), RecordUtils.node2Buffer(rNode));
