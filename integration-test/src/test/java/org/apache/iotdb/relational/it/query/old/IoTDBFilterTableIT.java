@@ -256,7 +256,7 @@ public class IoTDBFilterTableIT {
         new String[] {"null,", "null,"},
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s2 - null from sg1",
+        "select s1 - null from sg1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);
