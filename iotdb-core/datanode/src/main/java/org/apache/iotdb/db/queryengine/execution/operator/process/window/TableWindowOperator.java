@@ -163,14 +163,15 @@ public class TableWindowOperator implements ProcessOperator {
       }
     }
 
-    return builder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+    return builder.build(
+        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
   }
 
   @Override
   public boolean hasNext() throws Exception {
     return this.inputOperator.hasNext()
         || ((curRow == -1 && !cachedData.isEmpty())
-        || (curRow != -1 && curRow != cachedData.size()));
+            || (curRow != -1 && curRow != cachedData.size()));
   }
 
   @Override

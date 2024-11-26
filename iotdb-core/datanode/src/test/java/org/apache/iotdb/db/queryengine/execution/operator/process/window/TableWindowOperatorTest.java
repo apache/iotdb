@@ -99,8 +99,7 @@ public class TableWindowOperatorTest {
             TsBlockBuilder builder =
                 new TsBlockBuilder(
                     timeArray[index].length,
-                    Arrays.asList(
-                        TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32));
+                    Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32));
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               builder.getColumnBuilder(0).writeLong(timeArray[index][i]);
               builder

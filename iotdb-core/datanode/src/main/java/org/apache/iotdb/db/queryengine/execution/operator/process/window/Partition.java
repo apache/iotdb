@@ -105,7 +105,8 @@ public final class Partition {
       updatePeerGroup();
     }
 
-    Frame.Range range = frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
+    Frame.Range range =
+        frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
     windowFunction.processRow(
         builder.getColumnBuilder(count),
         peerGroupStart - partitionStart,
@@ -118,12 +119,12 @@ public final class Partition {
   }
 
   private void updatePeerGroup() {
-//    currentGroupIndex++;
-//    peerGroupStart = currentPosition;
-//    // find end of peer group
-//    peerGroupEnd = peerGroupStart + 1;
-//    while ((peerGroupEnd < partitionEnd)) {
-//      peerGroupEnd++;
-//    }
+    //    currentGroupIndex++;
+    //    peerGroupStart = currentPosition;
+    //    // find end of peer group
+    //    peerGroupEnd = peerGroupStart + 1;
+    //    while ((peerGroupEnd < partitionEnd)) {
+    //      peerGroupEnd++;
+    //    }
   }
 }
