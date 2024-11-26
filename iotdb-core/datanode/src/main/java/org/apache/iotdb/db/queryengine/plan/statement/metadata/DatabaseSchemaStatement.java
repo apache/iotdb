@@ -39,14 +39,16 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   private PartialPath databasePath;
   private Long ttl = null;
-  private Integer schemaReplicationFactor = null;
-  private Integer dataReplicationFactor = null;
   private Long timePartitionInterval = null;
   private Integer schemaRegionGroupNum = null;
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
 
-  public DatabaseSchemaStatement(DatabaseSchemaStatementType subType) {
+  // Deprecated
+  private Integer schemaReplicationFactor = null;
+  private Integer dataReplicationFactor = null;
+
+  public DatabaseSchemaStatement(final DatabaseSchemaStatementType subType) {
     super();
     this.subType = subType;
     statementType = StatementType.STORAGE_GROUP_SCHEMA;
@@ -60,7 +62,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return databasePath;
   }
 
-  public void setDatabasePath(PartialPath databasePath) {
+  public void setDatabasePath(final PartialPath databasePath) {
     this.databasePath = databasePath;
   }
 
@@ -68,7 +70,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return ttl;
   }
 
-  public void setTtl(Long ttl) {
+  public void setTtl(final Long ttl) {
     this.ttl = ttl;
   }
 
@@ -76,7 +78,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return schemaReplicationFactor;
   }
 
-  public void setSchemaReplicationFactor(Integer schemaReplicationFactor) {
+  public void setSchemaReplicationFactor(final Integer schemaReplicationFactor) {
     this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
@@ -84,7 +86,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return dataReplicationFactor;
   }
 
-  public void setDataReplicationFactor(Integer dataReplicationFactor) {
+  public void setDataReplicationFactor(final Integer dataReplicationFactor) {
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
@@ -92,7 +94,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return timePartitionInterval;
   }
 
-  public void setTimePartitionInterval(Long timePartitionInterval) {
+  public void setTimePartitionInterval(final Long timePartitionInterval) {
     this.timePartitionInterval = timePartitionInterval;
   }
 
@@ -100,7 +102,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return schemaRegionGroupNum;
   }
 
-  public void setSchemaRegionGroupNum(Integer schemaRegionGroupNum) {
+  public void setSchemaRegionGroupNum(final Integer schemaRegionGroupNum) {
     this.schemaRegionGroupNum = schemaRegionGroupNum;
   }
 
@@ -108,7 +110,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return dataRegionGroupNum;
   }
 
-  public void setDataRegionGroupNum(Integer dataRegionGroupNum) {
+  public void setDataRegionGroupNum(final Integer dataRegionGroupNum) {
     this.dataRegionGroupNum = dataRegionGroupNum;
   }
 
@@ -116,12 +118,12 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return enablePrintExceptionLog;
   }
 
-  public void setEnablePrintExceptionLog(boolean enablePrintExceptionLog) {
+  public void setEnablePrintExceptionLog(final boolean enablePrintExceptionLog) {
     this.enablePrintExceptionLog = enablePrintExceptionLog;
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     switch (subType) {
       case CREATE:
         return visitor.visitSetDatabase(this, context);
@@ -142,7 +144,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

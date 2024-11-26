@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 
@@ -91,9 +90,10 @@ public class Analyzer {
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
-    if (statement instanceof Query) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, ANALYZER, System.nanoTime() - startTime);
+    if (statement.isQuery()) {
+      long analyzeCost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, ANALYZER, analyzeCost);
+      context.setAnalyzeCost(analyzeCost);
     }
 
     // TODO access control
