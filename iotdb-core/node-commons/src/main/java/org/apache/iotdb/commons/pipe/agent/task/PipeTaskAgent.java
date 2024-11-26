@@ -29,6 +29,9 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
@@ -81,6 +84,7 @@ public abstract class PipeTaskAgent {
 
     // Help PipeEndPointRateLimiter to check if the pipe is still alive
     PipeEndPointRateLimiter.setTaskAgent(this);
+    PipeEventCommitManager.getInstance().setTaskAgent(this);
   }
 
   ////////////////////////// PipeMeta Lock Control //////////////////////////
@@ -1030,8 +1034,53 @@ public abstract class PipeTaskAgent {
   protected abstract void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException;
 
+  ///////////////////////// Maintain meta info /////////////////////////
+
   public long getPipeCreationTime(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
+  }
+
+  public String getPipeNameWithCreationTime(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null
+        ? pipeName + "_" + creationTime
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getPipeNameWithCreationTime();
+  }
+
+  public CommitterKey getCommitterKey(
+      final String pipeName, final long creationTime, final int regionId, final int restartTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null
+        ? new CommitterKey(pipeName, creationTime, regionId, restartTime)
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+            .getCommitterKey(pipeName, creationTime, regionId, restartTime);
+  }
+
+  public long getFloatingMemoryUsageInByte(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null
+        ? 0
+        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
+  }
+
+  public void addFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta)) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .addFloatingMemoryUsageInByte(sizeInByte);
+    }
+  }
+
+  public void decreaseFloatingMemoryUsageInByte(final String pipeName, final long sizeInByte) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta)) {
+      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
+          .decreaseFloatingMemoryUsageInByte(sizeInByte);
+    }
+  }
+
+  public int getPipeCount() {
+    return pipeMetaKeeper.getPipeMetaCount();
   }
 }

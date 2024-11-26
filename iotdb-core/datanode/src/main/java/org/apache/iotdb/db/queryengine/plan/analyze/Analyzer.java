@@ -52,8 +52,13 @@ public class Analyzer {
     }
 
     if (statement.isQuery()) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, ANALYZER, System.nanoTime() - startTime);
+      long analyzeCost =
+          System.nanoTime()
+              - startTime
+              - context.getFetchSchemaCost()
+              - context.getFetchPartitionCost();
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TREE_TYPE, ANALYZER, analyzeCost);
+      context.setAnalyzeCost(analyzeCost);
     }
     return analysis;
   }

@@ -534,7 +534,13 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneSupportedMathNumericType(argumentTypes)) {
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one argument", functionName));
+        }
+
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",

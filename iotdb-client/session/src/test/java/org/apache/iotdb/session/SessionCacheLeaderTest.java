@@ -689,7 +689,7 @@ public class SessionCacheLeaderTest {
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-        session.insertRelationalTablet(tablet, true);
+        session.insertRelationalTablet(tablet);
         tablet.reset();
       }
       timestamp++;

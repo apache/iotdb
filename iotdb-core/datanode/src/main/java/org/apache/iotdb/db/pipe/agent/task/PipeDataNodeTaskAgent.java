@@ -528,15 +528,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
 
       // Only restart the stream mode pipes for releasing memTables.
-      if (extractors.get(0).isStreamMode()
-          && extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-          && (mayMemTablePinnedCountReachDangerousThreshold()
-              || mayWalSizeReachThrottleThreshold())) {
-        // Extractors of this pipe may be stuck and is pinning too many MemTables.
-        LOGGER.warn(
-            "Pipe {} needs to restart because too many memTables are pinned.",
-            pipeMeta.getStaticMeta());
-        stuckPipes.add(pipeMeta);
+      if (extractors.get(0).isStreamMode()) {
+        if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
+            && (mayMemTablePinnedCountReachDangerousThreshold()
+                || mayWalSizeReachThrottleThreshold())) {
+          // Extractors of this pipe may be stuck and is pinning too many MemTables.
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many memTables are pinned.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        } else if (getFloatingMemoryUsageInByte(pipeName)
+            >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
+                    - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
+                / pipeMetaKeeper.getPipeMetaCount()) {
+          // Extractors of this pipe may have too many insert nodes
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many insertNodes are extracted.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        }
       }
     }
 
@@ -582,7 +592,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     acquireWriteLock();
     try {
       final long startTime = System.currentTimeMillis();
-      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
       handleSinglePipeMetaChanges(originalPipeMeta);
       LOGGER.warn(

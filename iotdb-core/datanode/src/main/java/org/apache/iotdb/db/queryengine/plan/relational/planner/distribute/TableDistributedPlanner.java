@@ -30,12 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import java.util.Collections;
@@ -56,27 +56,35 @@ public class TableDistributedPlanner {
   private final LogicalQueryPlan logicalQueryPlan;
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
+  private final Metadata metadata;
+
+  @TestOnly
+  public TableDistributedPlanner(
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata) {
+    this(
+        analysis,
+        symbolAllocator,
+        logicalQueryPlan,
+        metadata,
+        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers());
+  }
 
   public TableDistributedPlanner(
-      Analysis analysis, SymbolAllocator symbolAllocator, LogicalQueryPlan logicalQueryPlan) {
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata,
+      List<PlanOptimizer> distributedOptimizers) {
     this.analysis = analysis;
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
-            .getPlanOptimizers();
-  }
-
-  @TestOnly
-  public TableDistributedPlanner(Analysis analysis, LogicalQueryPlan logicalQueryPlan) {
-    this.analysis = analysis;
-    this.symbolAllocator = new SymbolAllocator();
-    this.logicalQueryPlan = logicalQueryPlan;
-    this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
-            .getPlanOptimizers();
+    this.optimizers = distributedOptimizers;
+    this.metadata = metadata;
   }
 
   public DistributedQueryPlan plan() {
@@ -85,7 +93,7 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
@@ -94,7 +102,7 @@ public class TableDistributedPlanner {
     adjustUpStream(outputNodeWithExchange, planContext);
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
@@ -113,17 +121,16 @@ public class TableDistributedPlanner {
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(
                 distributedPlan,
                 new PlanOptimizer.Context(
-                    null,
+                    mppQueryContext.getSession(),
                     analysis,
-                    null,
+                    metadata,
                     mppQueryContext,
-                    mppQueryContext.getTypeProvider(),
                     new SymbolAllocator(),
                     mppQueryContext.getQueryId(),
                     NOOP,
@@ -132,7 +139,6 @@ public class TableDistributedPlanner {
     }
 
     // Add all Symbol Types in SymbolAllocator into TypeProvider
-    // TODO Remove redundant logic in LogicalPlan generation or Optimizer
     symbolAllocator
         .getTypes()
         .allTableModelTypes()

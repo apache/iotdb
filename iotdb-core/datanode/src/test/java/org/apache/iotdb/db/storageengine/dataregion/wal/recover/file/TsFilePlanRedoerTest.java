@@ -105,7 +105,7 @@ public class TsFilePlanRedoerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
-    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    File modsFile = ModificationFile.getExclusiveMods(new File(FILE_NAME));
     if (modsFile.exists()) {
       modsFile.delete();
     }
@@ -604,7 +604,7 @@ public class TsFilePlanRedoerTest {
             Long.MAX_VALUE);
 
     // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
-    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    File modsFile = ModificationFile.getExclusiveMods(new File(FILE_NAME));
     assertFalse(modsFile.exists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
     planRedoer.redoDelete(deleteDataNode);

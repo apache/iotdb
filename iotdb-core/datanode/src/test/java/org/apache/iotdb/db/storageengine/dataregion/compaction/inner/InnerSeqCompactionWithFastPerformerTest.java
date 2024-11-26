@@ -1168,30 +1168,30 @@ public class InnerSeqCompactionWithFastPerformerTest {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.anyModFileExists());
       if (i < 2) {
-        Assert.assertEquals(3, resource.getModFile().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(3, resource.getAllModEntries().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else if (i < 3) {
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(2, resource.getAllModEntries().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
-        Assert.assertEquals(1, resource.getModFile().getModifications().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
+        Assert.assertEquals(1, resource.getAllModEntries().size());
+        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
-    Assert.assertTrue(resource.getModFile().exists());
-    Assert.assertEquals(2, resource.getModFile().getModifications().size());
+    Assert.assertTrue(resource.anyModFileExists());
+    Assert.assertEquals(2, resource.getAllModEntries().size());
     Assert.assertFalse(resource.getCompactionModFile().exists());
   }
 }

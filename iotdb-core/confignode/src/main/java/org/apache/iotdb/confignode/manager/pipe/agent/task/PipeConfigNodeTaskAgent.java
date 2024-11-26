@@ -121,7 +121,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
       final PipeMeta pipeMetaFromCoordinator) {
     try {
       return PipeConfigNodeAgent.runtime().isLeaderReady()
-          ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy())
+          ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy4TaskAgent())
           : null;
     } catch (final Exception e) {
       return new TPushPipeMetaRespExceptionMessage(
@@ -152,7 +152,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                   .map(
                       pipeMeta -> {
                         try {
-                          return pipeMeta.deepCopy();
+                          return pipeMeta.deepCopy4TaskAgent();
                         } catch (Exception e) {
                           throw new PipeException("failed to deep copy pipeMeta", e);
                         }

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -39,17 +40,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The {@link PipeTemporaryMetaMetrics} is to calculate the pipe-statistics from the {@link
- * PipeTemporaryMeta}. The class is lock-free and can only read from the thread-safe variables from
- * the {@link PipeTemporaryMeta}.
+ * The {@link PipeTemporaryMetaInCoordinatorMetrics} is to calculate the pipe-statistics from the
+ * {@link PipeTemporaryMeta}. The class is lock-free and can only read from the thread-safe
+ * variables from the {@link PipeTemporaryMeta}.
  */
-public class PipeTemporaryMetaMetrics implements IMetricSet {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTemporaryMetaMetrics.class);
+public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeTemporaryMetaInCoordinatorMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeTemporaryMeta> pipeTemporaryMetaMap = new ConcurrentHashMap<>();
+  private final Map<String, PipeTemporaryMetaInCoordinator> pipeTemporaryMetaMap =
+      new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -64,13 +67,13 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String pipeID) {
-    final PipeTemporaryMeta pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
+    final PipeTemporaryMetaInCoordinator pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
     final String[] pipeNameAndCreationTime = pipeID.split("_");
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
-        PipeTemporaryMeta::getGlobalRemainingEvents,
+        PipeTemporaryMetaInCoordinator::getGlobalRemainingEvents,
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
@@ -79,7 +82,7 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
-        PipeTemporaryMeta::getGlobalRemainingTime,
+        PipeTemporaryMetaInCoordinator::getGlobalRemainingTime,
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
@@ -123,7 +126,8 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   public void register(final PipeMeta pipeMeta) {
     final String taskID =
         pipeMeta.getStaticMeta().getPipeName() + "_" + pipeMeta.getStaticMeta().getCreationTime();
-    pipeTemporaryMetaMap.putIfAbsent(taskID, pipeMeta.getTemporaryMeta());
+    pipeTemporaryMetaMap.putIfAbsent(
+        taskID, (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta());
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
@@ -163,14 +167,15 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
 
   private static class PipeTemporaryMetaMetricsHolder {
 
-    private static final PipeTemporaryMetaMetrics INSTANCE = new PipeTemporaryMetaMetrics();
+    private static final PipeTemporaryMetaInCoordinatorMetrics INSTANCE =
+        new PipeTemporaryMetaInCoordinatorMetrics();
 
     private PipeTemporaryMetaMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeTemporaryMetaMetrics getInstance() {
+  public static PipeTemporaryMetaInCoordinatorMetrics getInstance() {
     return PipeTemporaryMetaMetricsHolder.INSTANCE;
   }
 }

@@ -44,9 +44,14 @@ import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -77,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -131,11 +137,24 @@ public class Coordinator {
 
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
+  private final List<PlanOptimizer> logicalPlanOptimizers;
+  private final List<PlanOptimizer> distributionPlanOptimizers;
+
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.logicalPlanOptimizers =
+        new LogicalOptimizeFactory(
+                new PlannerContext(
+                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+            .getPlanOptimizers();
+    this.distributionPlanOptimizers =
+        new DistributedOptimizeFactory(
+                new PlannerContext(
+                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+            .getPlanOptimizers();
   }
 
   private ExecutionResult execution(
@@ -312,7 +331,9 @@ public class Coordinator {
             writeOperationExecutor,
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            logicalPlanOptimizers,
+            distributionPlanOptimizers);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -373,7 +394,9 @@ public class Coordinator {
             writeOperationExecutor,
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            logicalPlanOptimizers,
+            distributionPlanOptimizers);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -460,5 +483,13 @@ public class Coordinator {
       return queryExecution.getTotalExecutionTime();
     }
     return -1L;
+  }
+
+  public List<PlanOptimizer> getDistributionPlanOptimizers() {
+    return distributionPlanOptimizers;
+  }
+
+  public List<PlanOptimizer> getLogicalPlanOptimizers() {
+    return logicalPlanOptimizers;
   }
 }
