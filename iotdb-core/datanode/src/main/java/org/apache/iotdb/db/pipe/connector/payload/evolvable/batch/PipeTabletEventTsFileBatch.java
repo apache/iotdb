@@ -378,7 +378,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             }
           }
 
-          fileWriter.write(tablet);
+          fileWriter.writeTree(tablet);
         }
       }
     }

@@ -117,13 +117,13 @@ public class TsFileSelfCheckToolTest {
           }
           // write Tablet to TsFile
           if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-            tsFileWriter.write(tablet);
+            tsFileWriter.writeTree(tablet);
             tablet.reset();
           }
         }
         // write Tablet to TsFile
         if (tablet.getRowSize() != 0) {
-          tsFileWriter.write(tablet);
+          tsFileWriter.writeTree(tablet);
           tablet.reset();
         }
       }

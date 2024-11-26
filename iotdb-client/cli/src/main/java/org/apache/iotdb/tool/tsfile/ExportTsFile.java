@@ -464,7 +464,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (deviceFilterSet.contains(tablet.getDeviceId())) {
       tsFileWriter.writeAligned(tablet);
     } else {
-      tsFileWriter.write(tablet);
+      tsFileWriter.writeTree(tablet);
     }
   }
 

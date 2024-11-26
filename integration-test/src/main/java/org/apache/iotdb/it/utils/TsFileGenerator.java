@@ -113,7 +113,7 @@ public class TsFileGenerator implements AutoCloseable {
       // write
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
-          writer.write(tablet);
+          writer.writeTree(tablet);
         } else {
           writer.writeAligned(tablet);
         }
@@ -123,7 +123,7 @@ public class TsFileGenerator implements AutoCloseable {
     // write
     if (tablet.getRowSize() != 0) {
       if (!isAligned) {
-        writer.write(tablet);
+        writer.writeTree(tablet);
       } else {
         writer.writeAligned(tablet);
       }
@@ -159,7 +159,7 @@ public class TsFileGenerator implements AutoCloseable {
       // write
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
-          writer.write(tablet);
+          writer.writeTree(tablet);
         } else {
           writer.writeAligned(tablet);
         }
@@ -169,7 +169,7 @@ public class TsFileGenerator implements AutoCloseable {
     // write
     if (tablet.getRowSize() != 0) {
       if (!isAligned) {
-        writer.write(tablet);
+        writer.writeTree(tablet);
       } else {
         writer.writeAligned(tablet);
       }

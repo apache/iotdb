@@ -113,13 +113,13 @@ public class CompactionValidationTest {
       }
       // write
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-        tsFileWriter.write(tablet);
+        tsFileWriter.writeTree(tablet);
         tablet.reset();
       }
     }
     // write
     if (tablet.getRowSize() != 0) {
-      tsFileWriter.write(tablet);
+      tsFileWriter.writeTree(tablet);
       tablet.reset();
     }
   }

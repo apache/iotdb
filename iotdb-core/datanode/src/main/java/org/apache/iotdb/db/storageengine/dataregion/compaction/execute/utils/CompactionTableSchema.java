@@ -58,7 +58,7 @@ public class CompactionTableSchema extends TableSchema {
     int prefixLength = Math.min(this.columnCategories.size(), idColumnSchemasToMerge.size());
     for (int i = 0; i < prefixLength; i++) {
       IMeasurementSchema idColumnToMerge = idColumnSchemasToMerge.get(i);
-      IMeasurementSchema currentIdColumn = columnSchemas.get(i);
+      IMeasurementSchema currentIdColumn = measurementSchemas.get(i);
       if (!idColumnToMerge.getMeasurementName().equals(currentIdColumn.getMeasurementName())) {
         throw new CompactionTableSchemaNotMatchException(
             "current id column name is "
@@ -73,13 +73,13 @@ public class CompactionTableSchema extends TableSchema {
         idColumnSchemasToMerge.subList(prefixLength, idColumnSchemasToMerge.size());
     for (IMeasurementSchema newIdColumn : newIdColumns) {
       columnCategories.add(ColumnCategory.ID);
-      columnSchemas.add(newIdColumn);
+      measurementSchemas.add(newIdColumn);
     }
   }
 
   public CompactionTableSchema copy() {
     CompactionTableSchema tableSchema = new CompactionTableSchema(this.tableName);
-    tableSchema.columnSchemas = new ArrayList<>(this.columnSchemas);
+    tableSchema.measurementSchemas = new ArrayList<>(this.measurementSchemas);
     tableSchema.columnCategories = new ArrayList<>(this.columnCategories);
     return tableSchema;
   }
