@@ -601,6 +601,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
+      analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
