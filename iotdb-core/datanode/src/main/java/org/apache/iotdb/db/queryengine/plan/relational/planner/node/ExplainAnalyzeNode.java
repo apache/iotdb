@@ -16,12 +16,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -76,31 +73,16 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
         getPlanNodeId(), newChildren.get(0), verbose, queryId, timeout, outputSymbol);
   }
 
+  // ExplainAnalyze should be at the same region as Coordinator all the time. Therefore, there will
+  // be no serialization and deserialization process.
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_EXPLAIN_ANALYZE_NODE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(verbose, byteBuffer);
-    ReadWriteIOUtils.write(queryId, byteBuffer);
-    ReadWriteIOUtils.write(timeout, byteBuffer);
-    Symbol.serialize(outputSymbol, byteBuffer);
+    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_EXPLAIN_ANALYZE_NODE.serialize(stream);
-    ReadWriteIOUtils.write(verbose, stream);
-    ReadWriteIOUtils.write(queryId, stream);
-    ReadWriteIOUtils.write(timeout, stream);
-    Symbol.serialize(outputSymbol, stream);
-  }
-
-  public static ExplainAnalyzeNode deserialize(ByteBuffer byteBuffer) {
-    boolean verbose = ReadWriteIOUtils.readBool(byteBuffer);
-    long queryId = ReadWriteIOUtils.readLong(byteBuffer);
-    long timeout = ReadWriteIOUtils.readLong(byteBuffer);
-    Symbol outputSymbol = Symbol.deserialize(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId, timeout, outputSymbol);
+    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
   }
 
   public boolean isVerbose() {
