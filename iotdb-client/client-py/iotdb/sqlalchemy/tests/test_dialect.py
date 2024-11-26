@@ -22,6 +22,7 @@ from iotdb.IoTDBContainer import IoTDBContainer
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.dialects import registry
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
 
 final_flag = True
 failed_count = 0
@@ -54,16 +55,22 @@ def test_dialect():
         eng = create_engine(url)
 
         with Session(eng) as session:
-            session.execute("create database root.cursor")
-            session.execute("create database root.cursor_s1")
+            session.execute(text("create database root.cursor"))
+            session.execute(text("create database root.cursor_s1"))
             session.execute(
-                "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
+                text(
+                    "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
+                )
             )
             session.execute(
-                "create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE"
+                text(
+                    "create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE"
+                )
             )
             session.execute(
-                "create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE"
+                text(
+                    "create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE"
+                )
             )
 
         insp = inspect(eng)
@@ -84,8 +91,8 @@ def test_dialect():
             print_message("test get_columns failed!")
 
         with Session(eng) as session:
-            session.execute("delete database root.cursor")
-            session.execute("delete database root.cursor_s1")
+            session.execute(text("delete database root.cursor"))
+            session.execute(text("delete database root.cursor_s1"))
 
         # close engine
         eng.dispose()
