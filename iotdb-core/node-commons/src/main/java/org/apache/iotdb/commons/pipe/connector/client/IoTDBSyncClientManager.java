@@ -180,6 +180,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               trustStorePath,
               trustStorePwd));
     } catch (Exception e) {
+      endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
       throw new PipeConnectionException(
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,
