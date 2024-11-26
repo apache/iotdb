@@ -132,8 +132,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private TreePattern treePattern;
   private TablePattern tablePattern;
-  private boolean isDbNameCoveredByPattern = false;
+
   private boolean isModelDetected = false;
+  private boolean isTableModel;
+  private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
@@ -152,8 +154,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean isTerminateSignalSent = false;
 
   private volatile boolean hasBeenStarted = false;
-
-  private final Map<TsFileResource, Boolean> tsfile2IsTableModelMap = new HashMap<>(0);
 
   private Queue<PersistentResource> pendingQueue;
 
@@ -669,49 +669,34 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             deviceID -> {
-              if (deviceID instanceof PlainDeviceID
-                  || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                  || deviceID.getTableName().equals(PATH_ROOT)) {
-                // In case of tree model deviceID
-                updateIsDbNameCoveredByPattern(resource, false);
-                if (treePattern.isTreeModelDataAllowedToBeCaptured()
-                    && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.FALSE);
-                  return true;
-                }
-              } else {
-                // In case of table model deviceID
-                updateIsDbNameCoveredByPattern(resource, true);
-                if (tablePattern.isTableModelDataAllowedToBeCaptured()
-                    // The database name in resource is prefixed with "root."
-                    && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
-                    && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.TRUE);
-                  return true;
-                }
+              if (!isModelDetected) {
+                detectModel(resource, deviceID);
+                isModelDetected = true;
               }
-              return false;
+
+              return isTableModel
+                  ? (tablePattern.isTableModelDataAllowedToBeCaptured()
+                      // The database name in resource is prefixed with "root."
+                      && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
+                      && tablePattern.matchesTable(deviceID.getTableName()))
+                  : (treePattern.isTreeModelDataAllowedToBeCaptured()
+                      && treePattern.mayOverlapWithDevice(deviceID));
             });
   }
 
-  private void updateIsDbNameCoveredByPattern(
-      final TsFileResource resource, final boolean isTableModel) {
-    if (isModelDetected) {
-      return;
-    }
+  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
+    this.isTableModel =
+        !(deviceID instanceof PlainDeviceID
+            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+            || deviceID.getTableName().equals(PATH_ROOT));
 
     final String databaseName = resource.getDatabaseName();
-    if (Objects.nonNull(databaseName)) {
-      isDbNameCoveredByPattern =
-          isTableModel
-              ? tablePattern.isTableModelDataAllowedToBeCaptured()
-                  && tablePattern.coversDb(databaseName.substring(5))
-              : treePattern.isTreeModelDataAllowedToBeCaptured()
-                  && treePattern.coversDb(databaseName);
-      isModelDetected = true;
-    }
+    isDbNameCoveredByPattern =
+        isTableModel
+            ? tablePattern.isTableModelDataAllowedToBeCaptured()
+                && tablePattern.coversDb(databaseName.substring(5))
+            : treePattern.isTreeModelDataAllowedToBeCaptured()
+                && treePattern.coversDb(databaseName);
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -808,7 +793,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
-            tsfile2IsTableModelMap.remove(resource),
+            isModelDetected ? isTableModel : null,
             resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
@@ -909,8 +894,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void close() {
-    tsfile2IsTableModelMap.clear();
-
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {

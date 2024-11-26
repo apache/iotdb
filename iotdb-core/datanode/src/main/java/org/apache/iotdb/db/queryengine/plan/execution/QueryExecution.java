@@ -267,16 +267,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
   private IAnalysis analyze(MPPQueryContext context) {
-    final long startTime = System.nanoTime();
-    IAnalysis result;
-    try {
-      result = planner.analyze(context);
-    } finally {
-      long analyzeCost = System.nanoTime() - startTime;
-      context.setAnalyzeCost(analyzeCost);
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
-    }
-    return result;
+    return planner.analyze(context);
   }
 
   private void schedule() {
