@@ -433,7 +433,7 @@ public class TableModelUtils {
                         if (unsequence.exists() && unsequence.listFiles() != null) {
                           num += Objects.requireNonNull(unsequence.listFiles()).length;
                         }
-                        return num > tsfileNum;
+                        return num != tsfileNum;
                       });
             });
   }
