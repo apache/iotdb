@@ -1024,7 +1024,7 @@ public class SessionCacheLeaderTest {
     try {
       session.open();
     } catch (IoTDBConnectionException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
     assertNull(session.tableModelDeviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
@@ -1033,27 +1033,23 @@ public class SessionCacheLeaderTest {
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
 
     String tableName = "table1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("id");
-    measurements.add("s1");
-    measurements.add("s2");
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.STRING);
-    dataTypes.add(TSDataType.INT64);
-    dataTypes.add(TSDataType.INT64);
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<ColumnCategory> columnTypeList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("id", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     columnTypeList.add(ColumnCategory.ID);
     columnTypeList.add(ColumnCategory.MEASUREMENT);
     columnTypeList.add(ColumnCategory.MEASUREMENT);
-    Tablet tablet = new Tablet(tableName, measurements, dataTypes, columnTypeList, 50);
+    Tablet tablet = new Tablet(tableName, IMeasurementSchema.getMeasurementNameList(schemaList), IMeasurementSchema.getDataTypeList(schemaList), columnTypeList, 50);
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(measurements.get(0), rowIndex, "id" + (rowIndex % 4));
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, "id" + (rowIndex % 4));
       for (int s = 1; s < 3; s++) {
         long value = new Random().nextLong();
-        tablet.addValue(measurements.get(s), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -1075,7 +1071,7 @@ public class SessionCacheLeaderTest {
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
 
     // with leader cache
@@ -1084,7 +1080,7 @@ public class SessionCacheLeaderTest {
     try {
       session.open();
     } catch (IoTDBConnectionException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
     assertEquals(0, session.tableModelDeviceIdToEndpoint.size());
     assertEquals(1, session.endPointToSessionConnection.size());
@@ -1092,17 +1088,17 @@ public class SessionCacheLeaderTest {
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(measurements.get(0), rowIndex, "id" + (rowIndex % 4));
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, "id" + (rowIndex % 4));
       for (int s = 1; s < 3; s++) {
         long value = new Random().nextLong();
-        tablet.addValue(measurements.get(s), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         try {
           session.insertRelationalTablet(tablet);
         } catch (IoTDBConnectionException e) {
-          fail(e.getMessage());
+          Assert.fail(e.getMessage());
         }
         tablet.reset();
       }
@@ -1114,24 +1110,24 @@ public class SessionCacheLeaderTest {
     // set connection as broken, due to we enable the cache leader, when we called
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
     // been changed to EndPoint(ip:127.0.0.1, port:55562)
-    assertEquals(
+    Assert.assertEquals(
         "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
 
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(measurements.get(0), rowIndex, "id" + (rowIndex % 4));
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, "id" + (rowIndex % 4));
       for (int s = 1; s < 3; s++) {
         long value = new Random().nextLong();
-        tablet.addValue(measurements.get(s), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         try {
           session.insertRelationalTablet(tablet);
         } catch (IoTDBConnectionException e) {
-          fail(e.getMessage());
+          Assert.fail(e.getMessage());
         }
         tablet.reset();
       }
@@ -1147,9 +1143,10 @@ public class SessionCacheLeaderTest {
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
   }
+
 
   private void addLine(
       List<Long> times,

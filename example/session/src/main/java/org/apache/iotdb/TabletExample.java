@@ -172,7 +172,6 @@ public class TabletExample {
         String deviceId = "root.sg" + i % 8 + "." + i;
 
         Tablet ta = new Tablet(deviceId, schemas, rowSize);
-        ta.setRowSize(rowSize);
         for (int t = 0; t < ta.getRowSize(); t++) {
           ta.addTimestamp(t, (Long) data.get(TIME_STR).get(t));
           for (Entry<String, TSDataType> entry : measureTSTypeInfos.entrySet()) {

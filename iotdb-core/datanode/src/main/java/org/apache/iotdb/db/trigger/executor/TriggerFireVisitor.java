@@ -117,7 +117,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       // only one row
       Tablet tablet = new Tablet(node.getTargetPath().getFullPath(), schemas, 1);
       // add one row
-      tablet.setRowSize(tablet.getRowSize() + 1);
       tablet.addTimestamp(0, time);
       for (String measurement : entry.getValue()) {
         tablet.addValue(measurement, 0, values[measurementToSchemaIndexMap.get(measurement)]);

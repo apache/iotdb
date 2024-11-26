@@ -2783,7 +2783,6 @@ public class Session implements ISession {
                     tablet.getValue(finalI, j));
               }
               v.addTimestamp(v.getRowSize(), tablet.timestamps[finalI]);
-              v.setRowSize(v.getRowSize() + 1);
               return v;
             });
       }
