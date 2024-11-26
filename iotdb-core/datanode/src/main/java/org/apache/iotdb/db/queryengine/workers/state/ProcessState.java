@@ -35,15 +35,15 @@ public class ProcessState<T> {
 
   private final Type type;
   private final T result;
-  private final ListenableFuture<Void> blocked;
+  private final ListenableFuture<?> blocked;
 
-  private ProcessState(Type type, T result, ListenableFuture<Void> blocked) {
+  private ProcessState(Type type, T result, ListenableFuture<?> blocked) {
     this.type = type;
     this.result = result;
     this.blocked = blocked;
   }
 
-  public static <T> ProcessState<T> blocked(ListenableFuture<Void> blocked) {
+  public static <T> ProcessState<T> blocked(ListenableFuture<?> blocked) {
     return new ProcessState<>(Type.BLOCKED, null, blocked);
   }
 
@@ -69,7 +69,7 @@ public class ProcessState<T> {
     return result;
   }
 
-  public ListenableFuture<Void> getBlocked() {
+  public ListenableFuture<?> getBlocked() {
     return blocked;
   }
 }

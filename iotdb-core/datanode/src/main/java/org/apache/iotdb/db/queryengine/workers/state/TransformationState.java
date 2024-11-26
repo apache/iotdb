@@ -40,10 +40,10 @@ public final class TransformationState<T> {
   private final Type type;
   private final boolean needsMoreData;
   private final T result;
-  private final ListenableFuture<Void> blocked;
+  private final ListenableFuture<?> blocked;
 
   public TransformationState(
-      Type type, boolean needsMoreData, T result, ListenableFuture<Void> blocked) {
+      Type type, boolean needsMoreData, T result, ListenableFuture<?> blocked) {
     this.type = type;
     this.needsMoreData = needsMoreData;
     this.result = result;
@@ -55,7 +55,7 @@ public final class TransformationState<T> {
     return (TransformationState<T>) NEEDS_MORE_DATA_STATE;
   }
 
-  public static <T> TransformationState<T> blocked(ListenableFuture<Void> blocked) {
+  public static <T> TransformationState<T> blocked(ListenableFuture<?> blocked) {
     return new TransformationState<>(Type.BLOCKED, false, null, blocked);
   }
 
@@ -89,7 +89,7 @@ public final class TransformationState<T> {
     return result;
   }
 
-  public ListenableFuture<Void> getBlocked() {
+  public ListenableFuture<?> getBlocked() {
     return blocked;
   }
 }

@@ -75,7 +75,7 @@ public class WorkProcessor<T> {
     return state.getType() == ProcessState.Type.BLOCKED && !state.getBlocked().isDone();
   }
 
-  public ListenableFuture<Void> getBlockedFuture() {
+  public ListenableFuture<?> getBlockedFuture() {
     if (state.getType() != ProcessState.Type.BLOCKED) {
       throw new IllegalStateException("Must be blocked to get blocked future");
     }
