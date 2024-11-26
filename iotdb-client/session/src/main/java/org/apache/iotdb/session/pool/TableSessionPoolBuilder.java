@@ -87,12 +87,12 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the target database name.
    *
-   * @param database the database name.
+   * @param database the database name, must be lower-case.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue null
    */
   public TableSessionPoolBuilder database(String database) {
-    this.database = database;
+    this.database = database.toLowerCase();
     return this;
   }
 
