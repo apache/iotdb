@@ -127,7 +127,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
     final StringBuilder errorMessage =
         new StringBuilder(
-            "All target servers are not available. Handshake errors with Target server:[");
+            "All target servers are not available. Handshake errors with target servers:[");
     for (final Map.Entry<TEndPoint, String> entry : failedEndPointsMessage.entrySet()) {
       errorMessage
           .append(" ip: ")
@@ -218,9 +218,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s.",
-                client.getIpAddress(), client.getPort(), resp.getStatus()));
+            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            client.getIpAddress(),
+            client.getPort(),
+            resp.getStatus());
         failedEndPointsMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
       } else {
         clientAndStatus.setRight(true);
