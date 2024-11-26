@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -625,7 +624,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
-    } catch (final IOException | IllegalPathException e) {
+    } catch (final Throwable e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
@@ -641,8 +640,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             schemaRegionId,
             metadataException);
       }
-    } catch (final Throwable t) {
-      logger.error("Error occurred during initializing schemaRegion {}", schemaRegionId, t);
     }
   }
 
