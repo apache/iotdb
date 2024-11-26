@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -64,9 +63,8 @@ public class WriteBackConnector implements PipeConnector {
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    // Do nothing
-    IClientSession iClientSession = new InternalClientSession(WriteBackConnector.class.getName());
-    SESSION_MANAGER.registerSession(iClientSession);
+    // The receiver will call supplySession, which is not needed in WriteBack.
+    SESSION_MANAGER.registerSession(new InternalClientSession(WriteBackConnector.class.getName()));
   }
 
   @Override
@@ -172,11 +170,6 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final String dataBaseName =
-        pipeRawTabletInsertionEvent.isTableModelEvent()
-            ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-            : EMPTY_DATABASE;
-
     final TSStatus status =
         PipeDataNodeAgent.receiver()
             .thrift()
@@ -184,7 +177,9 @@ public class WriteBackConnector implements PipeConnector {
                 PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
                     pipeRawTabletInsertionEvent.convertToTablet(),
                     pipeRawTabletInsertionEvent.isAligned(),
-                    dataBaseName))
+                    pipeRawTabletInsertionEvent.isTableModelEvent()
+                        ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                        : EMPTY_DATABASE))
             .getStatus();
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

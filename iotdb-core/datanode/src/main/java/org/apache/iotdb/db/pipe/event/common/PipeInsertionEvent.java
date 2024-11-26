@@ -104,8 +104,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         : tableModelDatabaseName;
   }
 
-  public String setTreeModelDatabaseName(String dataBaseName) {
-    tableModelDatabaseName = null;
-    return treeModelDatabaseName = dataBaseName;
+  public String setTreeModelDatabaseNameAndTableModelDataBase(
+      final String treeModelDatabaseName, final String tableModelDatabaseName) {
+    this.tableModelDatabaseName = tableModelDatabaseName;
+    return this.treeModelDatabaseName = treeModelDatabaseName;
   }
 }

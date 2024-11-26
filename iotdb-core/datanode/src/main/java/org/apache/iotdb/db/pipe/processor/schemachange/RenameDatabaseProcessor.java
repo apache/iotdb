@@ -38,6 +38,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 public class RenameDatabaseProcessor implements PipeProcessor {
 
   private String treeModelDataBaseName;
+  private String tableModelDataBaseName;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -47,6 +48,7 @@ public class RenameDatabaseProcessor implements PipeProcessor {
         String.format(
             "Database name validation failed. The provided database name: %s", dataBaseName),
         dataBaseName);
+    tableModelDataBaseName = dataBaseName;
     treeModelDataBaseName = PATH_ROOT + PATH_SEPARATOR + dataBaseName;
   }
 
@@ -74,18 +76,22 @@ public class RenameDatabaseProcessor implements PipeProcessor {
   @Override
   public void close() throws Exception {}
 
-  private void resetDataBaseName(Event event, EventCollector eventCollector) throws Exception {
+  private void resetDataBaseName(final Event event, final EventCollector eventCollector)
+      throws Exception {
     if (!((event instanceof PipeInsertionEvent)
         && ((PipeInsertionEvent) event).isTableModelEvent())) {
       eventCollector.collect(event);
       return;
     }
     final PipeInsertionEvent pipeInsertionEvent = (PipeInsertionEvent) event;
-    pipeInsertionEvent.setTreeModelDatabaseName(treeModelDataBaseName);
+    // We don't need lazy loading here, because TableModeDataBaseName is generated, all databaseName
+    // just reference the same variable, no additional memory
+    pipeInsertionEvent.setTreeModelDatabaseNameAndTableModelDataBase(
+        treeModelDataBaseName, tableModelDataBaseName);
     eventCollector.collect(pipeInsertionEvent);
   }
 
-  private boolean isDatabaseNameInvalid(String dataBaseName) {
+  private boolean isDatabaseNameInvalid(final String dataBaseName) {
     return dataBaseName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dataBaseName).matches()
         || dataBaseName.length() > MAX_DATABASE_NAME_LENGTH;
