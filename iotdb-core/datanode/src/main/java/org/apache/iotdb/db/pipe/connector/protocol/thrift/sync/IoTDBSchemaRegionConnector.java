@@ -191,6 +191,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                   mTreeSnapshotFile.length(),
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
                   snapshotEvent.getDatabaseName(),
                   snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(
