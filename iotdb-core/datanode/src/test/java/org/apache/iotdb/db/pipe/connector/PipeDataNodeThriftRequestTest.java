@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -563,8 +564,9 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotSealReq() throws IOException {
-    final String mTreeSnapshotName = "mtree.snapshot";
-    final String tLogName = "tlog.txt";
+    final String mTreeSnapshotName = SchemaConstant.MTREE_SNAPSHOT;
+    final String tLogName = SchemaConstant.TAG_LOG;
+    final String attributeSnapshotName = SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT;
     final String databaseName = "root.db";
     // CREATE_TIME_SERIES
     final String typeString = "19";
@@ -579,6 +581,8 @@ public class PipeDataNodeThriftRequestTest {
             mTreeSnapshotName,
             100,
             tLogName,
+            10,
+            attributeSnapshotName,
             10,
             databaseName,
             typeString);

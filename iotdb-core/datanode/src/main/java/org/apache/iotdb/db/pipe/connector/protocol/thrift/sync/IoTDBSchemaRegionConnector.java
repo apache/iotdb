@@ -152,6 +152,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     final long creationTime = snapshotEvent.getCreationTime();
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
+    final File attributeSnapshotFile = snapshotEvent.getAttributeSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
@@ -165,6 +166,13 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       transferFilePieces(
           Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
           tagLogSnapshotFile,
+          clientAndStatus,
+          true);
+    }
+    if (Objects.nonNull(attributeSnapshotFile)) {
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          attributeSnapshotFile,
           clientAndStatus,
           true);
     }
