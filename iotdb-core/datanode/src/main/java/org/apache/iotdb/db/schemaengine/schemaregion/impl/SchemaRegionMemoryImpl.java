@@ -641,6 +641,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             schemaRegionId,
             metadataException);
       }
+    } catch (final Throwable t) {
+      logger.error("Error occurred during initializing schemaRegion {}", schemaRegionId, t);
     }
   }
 
