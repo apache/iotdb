@@ -241,13 +241,12 @@ public class PipeTabletEventSorterTest {
     doTableModelTest(false, true);
   }
 
-  public void doTableModelTest(final boolean isDeduplicated, final boolean isUnSorted) {
-    final Tablet tablet = generateTablet("test", 10, isDeduplicated, isUnSorted);
+  public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
+    final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
 
     List<Pair<IDeviceID, Integer>> list =
         new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-    List<Pair<IDeviceID, Integer>> list1 = WriteUtils.splitTabletByDevice(tablet);
-    Assert.assertEquals(list1, list);
+    Assert.assertEquals(WriteUtils.splitTabletByDevice(tablet), list);
     for (int i = 1; i < tablet.rowSize; i++) {
       long time = tablet.timestamps[i];
       Assert.assertTrue(time > tablet.timestamps[i - 1]);
@@ -270,7 +269,7 @@ public class PipeTabletEventSorterTest {
   private Tablet generateTablet(
       final String tableName,
       final int deviceIDNum,
-      final boolean isDeduplicated,
+      final boolean hasDuplicates,
       final boolean isUnSorted) {
     final List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
@@ -324,7 +323,7 @@ public class PipeTabletEventSorterTest {
               "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
           rowIndex++;
           tablet.rowSize++;
-          if (!isDeduplicated) {
+          if (!hasDuplicates) {
             break;
           }
         }
