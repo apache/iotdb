@@ -1041,7 +1041,13 @@ public class SessionCacheLeaderTest {
     columnTypeList.add(ColumnCategory.ID);
     columnTypeList.add(ColumnCategory.MEASUREMENT);
     columnTypeList.add(ColumnCategory.MEASUREMENT);
-    Tablet tablet = new Tablet(tableName, IMeasurementSchema.getMeasurementNameList(schemaList), IMeasurementSchema.getDataTypeList(schemaList), columnTypeList, 50);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypeList,
+            50);
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
@@ -1146,7 +1152,6 @@ public class SessionCacheLeaderTest {
       Assert.fail(e.getMessage());
     }
   }
-
 
   private void addLine(
       List<Long> times,
