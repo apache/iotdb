@@ -94,47 +94,36 @@ public final class Partition {
   }
 
   public void processNextRow(TsBlockBuilder builder) {
-    //    checkState(hasNext(), "No more rows in partition");
-    //
-    //    // copy output channels
-    //    builder.declarePosition();
-    //    int channel = 0;
-    //    while (channel < outputChannels.length) {
-    //      pagesIndex.appendTo(outputChannels[channel], currentPosition,
-    // builder.getBlockBuilder(channel));
-    //      channel++;
-    //    }
-    //
-    //    // check for new peer group
-    //    if (currentPosition == peerGroupEnd) {
-    //      updatePeerGroup();
-    //    }
-    //
-    //    for (int i = 0; i < windowFunctions.size(); i++) {
-    //      WindowFunction windowFunction = windowFunctions.get(i);
-    //      Framing.Range range = framings.get(i).getRange(currentPosition, currentGroupIndex,
-    // peerGroupStart, peerGroupEnd);
-    //      windowFunction.processRow(
-    //          builder.getBlockBuilder(channel),
-    //          peerGroupStart - partitionStart,
-    //          peerGroupEnd - partitionStart - 1,
-    //          range.getStart(),
-    //          range.getEnd());
-    //      channel++;
-    //    }
+    // Copy origin data
+    int count = tsBlock.getValueColumnCount();
+    for (int i = 0; i < count; i++) {
+      Object object = tsBlock.getColumn(i).getObject(currentPosition);
+      builder.getColumnBuilder(i).writeObject(object);
+    }
+
+    if (currentPosition == peerGroupEnd) {
+      updatePeerGroup();
+    }
+
+    Frame.Range range = frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
+    windowFunction.processRow(
+        builder.getColumnBuilder(count),
+        peerGroupStart - partitionStart,
+        peerGroupEnd - partitionStart - 1,
+        range.getStart(),
+        range.getEnd());
 
     currentPosition++;
+    builder.declarePosition();
   }
 
   private void updatePeerGroup() {
-    //    currentGroupIndex++;
-    //    peerGroupStart = currentPosition;
-    //    // find end of peer group
-    //    peerGroupEnd = peerGroupStart + 1;
-    //    while ((peerGroupEnd < partitionEnd) &&
-    // pagesIndex.positionNotDistinctFromPosition(peerGroupHashStrategy, peerGroupStart,
-    // peerGroupEnd)) {
-    //      peerGroupEnd++;
-    //    }
+//    currentGroupIndex++;
+//    peerGroupStart = currentPosition;
+//    // find end of peer group
+//    peerGroupEnd = peerGroupStart + 1;
+//    while ((peerGroupEnd < partitionEnd)) {
+//      peerGroupEnd++;
+//    }
   }
 }

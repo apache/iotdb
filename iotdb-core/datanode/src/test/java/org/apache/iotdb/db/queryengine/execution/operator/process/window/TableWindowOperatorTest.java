@@ -62,8 +62,8 @@ public class TableWindowOperatorTest {
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
-    PlanNodeId planNodeId1 = new PlanNodeId("1");
-    driverContext.addOperatorContext(1, planNodeId1, TreeLinearFillOperator.class.getSimpleName());
+    PlanNodeId planNode = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNode, TreeLinearFillOperator.class.getSimpleName());
 
     Operator childOperator =
         new Operator() {
@@ -100,7 +100,7 @@ public class TableWindowOperatorTest {
                 new TsBlockBuilder(
                     timeArray[index].length,
                     Arrays.asList(
-                        TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32));
+                        TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32));
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               builder.getColumnBuilder(0).writeLong(timeArray[index][i]);
               builder
@@ -149,8 +149,10 @@ public class TableWindowOperatorTest {
             return 0;
           }
         };
-    List<TSDataType> dataTypes =
+    List<TSDataType> inputDataTypes =
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32);
+    List<TSDataType> outputDataTypes =
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32);
     WindowFunction windowFunction = new FirstValueFunction(2);
     FrameInfo frameInfo =
         new FrameInfo(
@@ -159,14 +161,15 @@ public class TableWindowOperatorTest {
             FrameInfo.FrameBoundType.CURRENT_ROW);
     List<SortOrder> sortOrderList = Collections.singletonList(SortOrder.ASC_NULLS_FIRST);
     List<Integer> sortItemIndexList = Collections.singletonList(1);
-    List<TSDataType> sortItemDataTypeList = Collections.singletonList(TSDataType.INT32);
+    List<TSDataType> sortItemDataTypeList = Collections.singletonList(TSDataType.TEXT);
     Comparator<SortKey> comparator =
         getComparatorForTable(sortOrderList, sortItemIndexList, sortItemDataTypeList);
 
     return new TableWindowOperator(
         driverContext.getOperatorContexts().get(0),
         childOperator,
-        dataTypes,
+        inputDataTypes,
+        outputDataTypes,
         windowFunction,
         frameInfo,
         comparator,

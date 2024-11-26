@@ -25,7 +25,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 public class TableWindowOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
-  private final TsBlockBuilder tsBlockBuilder;
+  private final TsBlockBuilder sortedTsBlockBuilder;
+  private final TsBlockBuilder transformTsBlockBuilder;
 
   private WindowFunction windowFunction;
   private FrameInfo frameInfo;
@@ -39,14 +40,16 @@ public class TableWindowOperator implements ProcessOperator {
   public TableWindowOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
-      List<TSDataType> dataTypes,
+      List<TSDataType> inputDataTypes,
+      List<TSDataType> outputDataTypes,
       WindowFunction windowFunction,
       FrameInfo frameInfo,
       Comparator<SortKey> comparator,
       int partitionChannel) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
-    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.sortedTsBlockBuilder = new TsBlockBuilder(inputDataTypes);
+    this.transformTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     this.windowFunction = windowFunction;
     this.frameInfo = frameInfo;
@@ -66,14 +69,14 @@ public class TableWindowOperator implements ProcessOperator {
     if (!inputOperator.hasNextWithTimer()) {
       // Sort
       buildResult();
-      TsBlock sorted = buildFinalResult(tsBlockBuilder);
-      tsBlockBuilder.reset();
+      TsBlock sorted = buildFinalResult(sortedTsBlockBuilder);
+      sortedTsBlockBuilder.reset();
 
       // Partition
       List<Partition> partitions = partition(sorted);
 
-      TsBlock res = transform(partitions, tsBlockBuilder);
-      tsBlockBuilder.reset();
+      TsBlock res = transform(partitions, transformTsBlockBuilder);
+      transformTsBlockBuilder.reset();
       return res;
     }
 
@@ -102,7 +105,7 @@ public class TableWindowOperator implements ProcessOperator {
   }
 
   private void buildTsBlockInMemory() {
-    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    ColumnBuilder[] valueColumnBuilders = sortedTsBlockBuilder.getValueColumnBuilders();
     for (int i = curRow; i < cachedData.size(); i++) {
       SortKey sortKey = cachedData.get(i);
       TsBlock tsBlock = sortKey.tsBlock;
@@ -113,9 +116,9 @@ public class TableWindowOperator implements ProcessOperator {
         }
         valueColumnBuilders[j].write(tsBlock.getColumn(j), sortKey.rowIndex);
       }
-      tsBlockBuilder.declarePosition();
+      sortedTsBlockBuilder.declarePosition();
       curRow++;
-      if (tsBlockBuilder.isFull()) {
+      if (sortedTsBlockBuilder.isFull()) {
         break;
       }
     }
@@ -133,11 +136,14 @@ public class TableWindowOperator implements ProcessOperator {
     int partitionEnd = partitionStart + 1;
 
     Column partitionColumn = tsBlock.getColumn(partitionChannel);
-    while (partitionEnd < partitionColumn.getPositionCount()
-        && partitionColumn
-            .getObject(partitionEnd)
-            .equals(partitionColumn.getObject(partitionStart))) {
-      partitionEnd++;
+
+    while (partitionEnd < partitionColumn.getPositionCount()) {
+      while (partitionEnd < partitionColumn.getPositionCount()
+          && partitionColumn
+              .getObject(partitionEnd)
+              .equals(partitionColumn.getObject(partitionStart))) {
+        partitionEnd++;
+      }
 
       Partition partition =
           new Partition(tsBlock, partitionStart, partitionEnd, windowFunction, frameInfo);
@@ -157,12 +163,14 @@ public class TableWindowOperator implements ProcessOperator {
       }
     }
 
-    return builder.build();
+    return builder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return this.inputOperator.hasNext();
+    return this.inputOperator.hasNext()
+        || ((curRow == -1 && !cachedData.isEmpty())
+        || (curRow != -1 && curRow != cachedData.size()));
   }
 
   @Override

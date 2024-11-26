@@ -15,8 +15,7 @@ public class FirstValueFunction implements WindowFunction {
 
   @Override
   public void processRow(
-      TsBlockBuilder builder, int peerGroupStart, int peerGroupEnd, int frameStart, int frameEnd) {
-    ColumnBuilder columnBuilder = builder.getColumnBuilder(channel);
-    columnBuilder.writeInt(1);
+      ColumnBuilder builder, int peerGroupStart, int peerGroupEnd, int frameStart, int frameEnd) {
+    builder.writeInt(frameStart);
   }
 }
