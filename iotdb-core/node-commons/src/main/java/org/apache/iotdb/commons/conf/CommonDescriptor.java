@@ -737,6 +737,24 @@ public class CommonDescriptor {
                     "enable_retry_for_unknown_error"))));
   }
 
+  public void loadBlobAllocatorProps(Properties properties) {
+    config.setEnableBinaryAllocator(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_binary_allocator", Boolean.toString(config.isEnableBinaryAllocator()))));
+    config.setMinAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "small_blob_object", String.valueOf(config.getMinAllocateSize()))));
+    config.setMaxAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "huge_blob_object", String.valueOf(config.getMaxAllocateSize()))));
+    config.setArenaNum(
+        Integer.parseInt(
+            properties.getProperty("arena_num", String.valueOf(config.getArenaNum()))));
+  }
+
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setTimePartitionOrigin(
