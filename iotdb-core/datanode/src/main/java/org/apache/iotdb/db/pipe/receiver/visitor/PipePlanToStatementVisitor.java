@@ -95,7 +95,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   }
 
   @Override
-  public Statement visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
+  public Statement visitRelationalInsertTablet(
+      final RelationalInsertTabletNode node, final Void context) {
     return new InsertTabletStatement(node);
   }
 
@@ -158,9 +159,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
     final List<Map<String, String>> tagsList = new ArrayList<>();
     final List<Map<String, String>> attributesList = new ArrayList<>();
 
-    for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
+    for (final Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
-      MeasurementGroup group = path2Group.getValue();
+      final MeasurementGroup group = path2Group.getValue();
       dataTypes.addAll(
           Objects.nonNull(group.getDataTypes()) ? group.getDataTypes() : new ArrayList<>());
       encodings.addAll(

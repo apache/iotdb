@@ -501,8 +501,24 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   IoTDBConfigRegionExtractor.isTypeListened(
                       configPhysicalPlan, executionTypes, treePattern, tablePattern))
           .ifPresent(
-              configPhysicalPlan ->
-                  results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
+              configPhysicalPlan -> {
+                TSStatus result = executePlanAndClassifyExceptions(configPhysicalPlan);
+                if (result.getCode()
+                        == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
+                    && configPhysicalPlan.getType() == ConfigPhysicalPlanType.PipeCreateTable) {
+                  // If the table already exists, we shall add the sender table's columns to the
+                  // receiver's table, inner procedure guaranteeing that the columns existing at the
+                  // receiver table will be trimmed
+                  result =
+                      executePlanAndClassifyExceptions(
+                          new AddTableColumnPlan(
+                              ((PipeCreateTablePlan) configPhysicalPlan).getDatabase(),
+                              ((PipeCreateTablePlan) configPhysicalPlan).getTable().getTableName(),
+                              ((PipeCreateTablePlan) configPhysicalPlan).getTable().getColumnList(),
+                              false));
+                }
+                results.add(result);
+              });
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
