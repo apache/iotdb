@@ -99,8 +99,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     return database;
   }
 
+  public void setDatabase(final String database) {
+    this.database = database;
+  }
+
   public String getTableName() {
     return tableName;
+  }
+
+  public void setTableName(final String tableName) {
+    this.tableName = tableName;
   }
 
   public Table getTable() {

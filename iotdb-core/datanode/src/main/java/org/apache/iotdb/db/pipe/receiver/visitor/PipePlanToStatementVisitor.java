@@ -39,6 +39,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -64,7 +69,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
+public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public Statement visitPlan(final PlanNode node, final Void context) {
@@ -261,5 +266,30 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setDeleteStartTime(node.getDeleteStartTime());
     statement.setPathList(node.getPathList());
     return statement;
+  }
+
+  // Table
+  @Override
+  public CreateOrUpdateDevice visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode node, final Void context) {
+    return new CreateOrUpdateDevice(
+        node.getDatabase(),
+        node.getTableName(),
+        node.getDeviceIdList(),
+        node.getAttributeNameList(),
+        node.getAttributeValueList());
+  }
+
+  // Currently we do not parse the partitionKey for simplicity
+  @Override
+  public Update visitTableDeviceAttributeUpdate(
+      final TableDeviceAttributeUpdateNode node, final Void context) {
+    final Update update = new Update(new NodeLocation(0, 0), null, null, null);
+    update.setAssignments(node.getAssignments());
+    update.setIdDeterminedFilterList(node.getIdDeterminedFilterList());
+    update.setIdFuzzyPredicate(node.getIdFuzzyPredicate());
+    update.setDatabase(node.getDatabase());
+    update.setTableName(node.getTableName());
+    return update;
   }
 }
