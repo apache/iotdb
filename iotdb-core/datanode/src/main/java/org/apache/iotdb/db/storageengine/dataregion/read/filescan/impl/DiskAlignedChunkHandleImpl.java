@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -36,6 +38,8 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
 
   private final SharedTimeDataBuffer sharedTimeDataBuffer;
   private int pageIndex = 0;
+
+  private EncryptParameter encryptParam;
 
   public DiskAlignedChunkHandleImpl(
       IDeviceID deviceID,
@@ -53,13 +57,18 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
   protected void init(TsFileSequenceReader reader) throws IOException {
     sharedTimeDataBuffer.init(reader);
     super.init(reader);
+    this.encryptParam = reader.getEncryptParam();
   }
 
   @Override
   public long[] getDataTime() throws IOException {
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer currentPageDataBuffer =
         ChunkReader.deserializePageData(
-            this.currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
+            this.currentPageHeader,
+            this.currentChunkDataBuffer,
+            this.currentChunkHeader,
+            decryptor);
     int size = ReadWriteIOUtils.readInt(currentPageDataBuffer);
     byte[] bitmap = new byte[(size + 7) / 8];
     currentPageDataBuffer.get(bitmap);

@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -180,7 +181,7 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -299,7 +300,8 @@ public class StatementAnalyzer {
           || node instanceof FetchDevice
           || node instanceof ShowDevice
           || node instanceof CountDevice
-          || node instanceof Update) {
+          || node instanceof Update
+          || node instanceof DeleteDevice) {
         return returnScope;
       }
       checkState(
@@ -447,6 +449,33 @@ public class StatementAnalyzer {
     }
 
     @Override
+    protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
+      // Actually write, but will return the result
+      queryContext.setQueryType(QueryType.READ);
+      node.parseTable(sessionContext);
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (Objects.isNull(table)) {
+        throw new SemanticException(
+            String.format(
+                "Table '%s.%s' does not exist.", node.getDatabase(), node.getTableName()));
+      }
+      node.parseModEntries(table);
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      node.parseRawExpression(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext);
+      return null;
+    }
+
+    @Override
     protected Scope visitDropFunction(DropFunction node, Optional<Scope> context) {
       throw new SemanticException("Drop Function statement is not supported yet.");
     }
@@ -504,7 +533,10 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
-      throw new SemanticException("Delete statement is not supported yet.");
+      final Scope ret = Scope.create();
+      AnalyzeUtils.analyzeDelete(node, queryContext);
+      analysis.setScope(node, ret);
+      return ret;
     }
 
     @Override
@@ -563,11 +595,13 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      throw new SemanticException("Explain Analyze statement is not supported yet.");
+      queryContext.setExplainAnalyze(true);
+      return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
+      analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
@@ -2793,7 +2827,7 @@ public class StatementAnalyzer {
       final Set<String> propertyNames = new HashSet<>();
       for (final Property property : properties) {
         final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-        if (!TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+        if (!TABLE_ALLOWED_PROPERTIES.contains(key)) {
           throw new SemanticException("Table property " + key + " is currently not allowed.");
         }
         if (!propertyNames.add(key)) {

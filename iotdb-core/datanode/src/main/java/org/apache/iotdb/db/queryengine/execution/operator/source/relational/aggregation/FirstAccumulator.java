@@ -94,7 +94,9 @@ public class FirstAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of First should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -148,7 +150,7 @@ public class FirstAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of First should be BinaryColumn");
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -243,11 +245,11 @@ public class FirstAccumulator implements TableAccumulator {
     this.firstValue.reset();
   }
 
-  private void addIntInput(Column valueColumn, Column timeColumn) {
-    // TODO can add first position optimization if first position is null ?
+  protected void addIntInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateIntFirstValue(valueColumn.getInt(i), timeColumn.getLong(i));
+        return;
       }
     }
   }
@@ -260,10 +262,11 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column valueColumn, Column timeColumn) {
+  protected void addLongInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateLongFirstValue(valueColumn.getLong(i), timeColumn.getLong(i));
+        return;
       }
     }
   }
@@ -276,10 +279,11 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column valueColumn, Column timeColumn) {
+  protected void addFloatInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateFloatFirstValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+        return;
       }
     }
   }
@@ -292,10 +296,11 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column valueColumn, Column timeColumn) {
+  protected void addDoubleInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateDoubleFirstValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+        return;
       }
     }
   }
@@ -308,10 +313,11 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBinaryInput(Column valueColumn, Column timeColumn) {
+  protected void addBinaryInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateBinaryFirstValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+        return;
       }
     }
   }
@@ -324,10 +330,11 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column valueColumn, Column timeColumn) {
+  protected void addBooleanInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateBooleanFirstValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+        return;
       }
     }
   }

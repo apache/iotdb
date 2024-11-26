@@ -34,14 +34,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
-import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
@@ -57,7 +55,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
-    if (!(context.getAnalysis().getStatement() instanceof Query)) {
+    if (!(context.getAnalysis().isQuery())) {
       return plan;
     }
 
@@ -183,7 +181,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
           analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
       Set<Symbol> sortSymbols = new HashSet<>();
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
-        if (TIMESTAMP_STR.equalsIgnoreCase(orderBy.getName())) {
+        if (tableScanNode.isTimeColumn(orderBy)) {
           break;
         }
 

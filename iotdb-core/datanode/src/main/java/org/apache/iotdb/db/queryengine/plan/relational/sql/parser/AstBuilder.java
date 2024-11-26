@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
@@ -67,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -336,7 +338,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
-    return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.table), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
@@ -564,6 +567,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         visit(ctx.updateAssignment(), UpdateAssignment.class),
+        Objects.nonNull(ctx.booleanExpression())
+            ? (Expression) visit(ctx.booleanExpression())
+            : null);
+  }
+
+  @Override
+  public Node visitDeleteDeviceStatement(
+      final RelationalSqlParser.DeleteDeviceStatementContext ctx) {
+    return new DeleteDevice(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         Objects.nonNull(ctx.booleanExpression())
             ? (Expression) visit(ctx.booleanExpression())
             : null);
@@ -1053,7 +1067,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
-    return super.visitExplainAnalyze(ctx);
+    return new ExplainAnalyze(
+        getLocation(ctx), ctx.VERBOSE() != null, (Statement) visit(ctx.query()));
   }
 
   // ********************** query expressions ********************
@@ -1921,6 +1936,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
+    // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
+    // So do last and last_by.
     if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
       if (arguments.size() == 1) {
@@ -1935,8 +1952,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The second argument of 'first' or 'last' function must be 'time'",
             ctx);
-      } else {
-        throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
       }
     } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
@@ -1952,8 +1967,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The third argument of 'first_by' or 'last_by' function must be 'time'",
             ctx);
-      } else {
-        throw parseError("Invalid number of arguments for 'first_by' or 'last_by' function", ctx);
       }
     }
 

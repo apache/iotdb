@@ -2831,6 +2831,22 @@ public class IoTDBScalarFunctionTableIT {
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "s8", "_col2"};
+    expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,2024-01-01T00:00:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.002Z,2024-01-01T01:00:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.003Z,2024-01-01T01:59:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.004Z,2023-12-31T23:59:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.005Z,1969-12-31T23:59:00.000Z,1969-12-25T00:00:00.000Z,",
+          "1970-01-01T00:00:00.006Z,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,s8,date_bin(1W, s8) from dateBinTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
   }
 
   @Test

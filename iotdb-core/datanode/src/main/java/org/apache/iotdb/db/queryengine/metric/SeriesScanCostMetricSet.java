@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -46,8 +47,102 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String NON_ALIGNED = "non_aligned";
   public static final String MEM = "mem";
   public static final String DISK = "disk";
+  public static final String MEM_AND_DISK = "mem_and_disk";
+
   public static final String SEQUENCE = "sequence";
   public static final String UNSEQUENCE = "unsequence";
+
+  public static final String SEQ_AND_UNSEQ = "seq_and_unseq";
+
+  public static final String BLOOM_FILTER = "bloom_filter";
+  public static final String TIMESERIES_METADATA = "timeseries_metadata";
+  public static final String CHUNK = "chunk";
+
+  private Histogram loadBloomFilterFromCacheCountHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadBloomFilterFromDiskCountHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Counter loadBloomFilterActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Timer loadBloomFilterTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordBloomFilterMetrics(
+      long loadBloomFilterFromCacheCount,
+      long loadBloomFilterFromDiskCount,
+      long loadBloomFilterActualIOSize,
+      long loadBloomFilterNanoTime) {
+    loadBloomFilterFromCacheCountHistogram.update(loadBloomFilterFromCacheCount);
+    loadBloomFilterFromDiskCountHistogram.update(loadBloomFilterFromDiskCount);
+    loadBloomFilterActualIOSizeCounter.inc(loadBloomFilterActualIOSize);
+    loadBloomFilterTime.updateNanos(loadBloomFilterNanoTime);
+  }
+
+  private void bindBloomFilter(AbstractMetricService metricService) {
+    loadBloomFilterFromCacheCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            BLOOM_FILTER,
+            Tag.FROM.toString(),
+            CACHE);
+    loadBloomFilterFromDiskCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            BLOOM_FILTER,
+            Tag.FROM.toString(),
+            DISK);
+    loadBloomFilterActualIOSizeCounter =
+        metricService.getOrCreateCounter(
+            Metric.QUERY_DISK_READ.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            BLOOM_FILTER);
+    loadBloomFilterTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            BLOOM_FILTER,
+            Tag.TYPE.toString(),
+            SEQ_AND_UNSEQ,
+            Tag.FROM.toString(),
+            MEM_AND_DISK);
+  }
+
+  private void unbindBloomFilter(AbstractMetricService metricService) {
+    loadBloomFilterFromCacheCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadBloomFilterFromDiskCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadBloomFilterActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    loadBloomFilterTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        BLOOM_FILTER,
+        Tag.FROM.toString(),
+        CACHE);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        BLOOM_FILTER,
+        Tag.FROM.toString(),
+        DISK);
+    metricService.remove(
+        MetricType.COUNTER, Metric.QUERY_DISK_READ.toString(), Tag.TYPE.toString(), BLOOM_FILTER);
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.SERIES_SCAN_COST.toString(),
+        Tag.STAGE.toString(),
+        BLOOM_FILTER,
+        Tag.TYPE.toString(),
+        SEQ_AND_UNSEQ,
+        Tag.FROM.toString(),
+        MEM_AND_DISK);
+  }
 
   private Histogram loadTimeSeriesMetadataDiskSeqHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -72,10 +167,18 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   private Timer loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer loadTimeSeriesMetadataMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  public Timer loadTimeSeriesMetadataAlignedDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataAlignedDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataAlignedDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataAlignedDiskUnSeqTime =
+      DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private Histogram loadTimeSeriesMetadataFromCacheCountHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataFromDiskCountHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Counter loadTimeSeriesMetadataActualIOSizeCounter =
+      DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   public void recordNonAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
     loadTimeSeriesMetadataDiskSeqHistogram.update(c1);
@@ -103,6 +206,15 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     loadTimeSeriesMetadataAlignedDiskUnSeqTime.updateNanos(t2);
     loadTimeSeriesMetadataAlignedMemSeqTime.updateNanos(t3);
     loadTimeSeriesMetadataAlignedMemUnSeqTime.updateNanos(t4);
+  }
+
+  public void recordTimeSeriesMetadataMetrics(
+      long loadTimeSeriesMetadataFromCacheCount,
+      long loadTimeSeriesMetadataFromDiskCount,
+      long loadTimeSeriesMetadataActualIOSize) {
+    loadTimeSeriesMetadataFromCacheCountHistogram.update(loadTimeSeriesMetadataFromCacheCount);
+    loadTimeSeriesMetadataFromDiskCountHistogram.update(loadTimeSeriesMetadataFromDiskCount);
+    loadTimeSeriesMetadataActualIOSizeCounter.inc(loadTimeSeriesMetadataActualIOSize);
   }
 
   private void bindTimeseriesMetadata(AbstractMetricService metricService) {
@@ -271,6 +383,57 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             UNSEQUENCE,
             Tag.FROM.toString(),
             MEM);
+  }
+
+  private void bindTimeSeriesMetadataCache(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataFromCacheCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TIMESERIES_METADATA,
+            Tag.FROM.toString(),
+            CACHE);
+    loadTimeSeriesMetadataFromDiskCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TIMESERIES_METADATA,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataActualIOSizeCounter =
+        metricService.getOrCreateCounter(
+            Metric.QUERY_DISK_READ.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            TIMESERIES_METADATA);
+  }
+
+  private void unbindTimeSeriesMetadataCache(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataFromCacheCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataFromDiskCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        TIMESERIES_METADATA,
+        Tag.FROM.toString(),
+        CACHE);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        TIMESERIES_METADATA,
+        Tag.FROM.toString(),
+        DISK);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.QUERY_DISK_READ.toString(),
+        Tag.TYPE.toString(),
+        TIMESERIES_METADATA);
   }
 
   private void unbindTimeseriesMetadata(AbstractMetricService metricService) {
@@ -744,6 +907,10 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   private Timer constructChunkReadersNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer constructChunkReadersNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
+  private Histogram loadChunkFromCacheCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadChunkFromDiskCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Counter loadChunkActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
   public void recordConstructChunkReadersCount(
       long alignedMemCount,
       long alignedDiskCount,
@@ -761,6 +928,58 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     constructChunkReadersAlignedDiskTimer.updateNanos(alignedDiskTime);
     constructChunkReadersNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
     constructChunkReadersNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
+
+  public void recordChunkMetrics(
+      long loadChunkFromCacheCount, long loadChunkFromDiskCount, long loadChunkActualIOSize) {
+    loadChunkFromCacheCountHistogram.update(loadChunkFromCacheCount);
+    loadChunkFromDiskCountHistogram.update(loadChunkFromDiskCount);
+    loadChunkActualIOSizeCounter.inc(loadChunkActualIOSize);
+  }
+
+  private void bindChunk(AbstractMetricService metricService) {
+    loadChunkFromCacheCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            CHUNK,
+            Tag.FROM.toString(),
+            CACHE);
+    loadChunkFromDiskCountHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_QUERY_CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            CHUNK,
+            Tag.FROM.toString(),
+            DISK);
+    loadChunkActualIOSizeCounter =
+        metricService.getOrCreateCounter(
+            Metric.QUERY_DISK_READ.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), CHUNK);
+  }
+
+  private void unbindChunk(AbstractMetricService metricService) {
+    loadChunkFromCacheCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadChunkFromDiskCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadChunkActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        CHUNK,
+        Tag.FROM.toString(),
+        CACHE);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.METRIC_QUERY_CACHE.toString(),
+        Tag.TYPE.toString(),
+        CHUNK,
+        Tag.FROM.toString(),
+        DISK);
+    metricService.remove(
+        MetricType.COUNTER, Metric.QUERY_DISK_READ.toString(), Tag.TYPE.toString(), CHUNK);
   }
 
   private void bindConstructChunkReader(AbstractMetricService metricService) {
@@ -888,28 +1107,28 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String READ_CHUNK = "read_chunk";
   private static final String ALL = "all";
-  public static final String READ_CHUNK_ALL = READ_CHUNK + "_" + ALL;
+  public static final String READ_CHUNK_CACHE = READ_CHUNK + "_" + CACHE;
   public static final String READ_CHUNK_FILE = READ_CHUNK + "_" + FILE;
-  private Timer readChunkAllTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer readChunkCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer readChunkFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private void bindReadChunk(AbstractMetricService metricService) {
-    readChunkAllTimer =
+    readChunkCacheTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            READ_CHUNK,
+            READ_CHUNK_CACHE,
             Tag.TYPE.toString(),
             NULL,
             Tag.FROM.toString(),
-            ALL);
+            CACHE);
     readChunkFileTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            READ_CHUNK,
+            READ_CHUNK_FILE,
             Tag.TYPE.toString(),
             NULL,
             Tag.FROM.toString(),
@@ -917,16 +1136,16 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindReadChunk(AbstractMetricService metricService) {
-    readChunkAllTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    readChunkCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     readChunkFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALL, FILE)
+    Arrays.asList(CACHE, FILE)
         .forEach(
             from ->
                 metricService.remove(
                     MetricType.TIMER,
                     Metric.SERIES_SCAN_COST.toString(),
                     Tag.STAGE.toString(),
-                    READ_CHUNK,
+                    READ_CHUNK + "_" + from,
                     Tag.TYPE.toString(),
                     NULL,
                     Tag.FROM.toString(),
@@ -1249,8 +1468,10 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    bindBloomFilter(metricService);
     bindTimeseriesMetadata(metricService);
     bindAlignedTimeseriesMetadata(metricService);
+    bindTimeSeriesMetadataCache(metricService);
     bindReadTimeseriesMetadata(metricService);
     bindTimeseriesMetadataModification(metricService);
     bindLoadChunkMetadataList(metricService);
@@ -1258,6 +1479,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     bindChunkMetadataFilter(metricService);
     bindConstructChunkReader(metricService);
     bindReadChunk(metricService);
+    bindChunk(metricService);
     bindInitChunkReader(metricService);
     bindTsBlockFromPageReader(metricService);
     bindBuildTsBlockFromMergeReader(metricService);
@@ -1265,7 +1487,9 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    unbindBloomFilter(metricService);
     unbindTimeseriesMetadata(metricService);
+    unbindTimeSeriesMetadataCache(metricService);
     unbindReadTimeseriesMetadata(metricService);
     unbindTimeseriesMetadataModification(metricService);
     unbindLoadChunkMetadataList(metricService);
@@ -1273,6 +1497,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     unbindChunkMetadataFilter(metricService);
     unbindConstructChunkReader(metricService);
     unbindReadChunk(metricService);
+    unbindChunk(metricService);
     unbindInitChunkReader(metricService);
     unbindTsBlockFromPageReader(metricService);
     unbindBuildTsBlockFromMergeReader(metricService);
@@ -1346,8 +1571,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       case READ_TIMESERIES_METADATA_FILE:
         readTimeseriesMetadataFileTimer.updateNanos(cost);
         break;
-      case READ_CHUNK_ALL:
-        readChunkAllTimer.updateNanos(cost);
+      case READ_CHUNK_CACHE:
+        readChunkCacheTimer.updateNanos(cost);
         break;
       case READ_CHUNK_FILE:
         readChunkFileTimer.updateNanos(cost);

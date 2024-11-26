@@ -586,16 +586,23 @@ public class IoTDBDescriptor {
 
     int subtaskNum =
         Integer.parseInt(
-            properties.getProperty(
-                "sub_compaction_thread_count", Integer.toString(conf.getSubCompactionTaskNum())));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "sub_compaction_thread_count",
+                        Integer.toString(conf.getSubCompactionTaskNum())))
+                .map(String::trim)
+                .orElse(Integer.toString(conf.getSubCompactionTaskNum())));
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
 
     int compactionScheduleThreadNum =
         Integer.parseInt(
-            properties.getProperty(
-                "compaction_schedule_thread_num",
-                Integer.toString(conf.getCompactionScheduleThreadNum())));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "compaction_schedule_thread_num",
+                        Integer.toString(conf.getCompactionScheduleThreadNum())))
+                .map(String::trim)
+                .orElse(Integer.toString(conf.getCompactionScheduleThreadNum())));
     compactionScheduleThreadNum =
         compactionScheduleThreadNum <= 0 ? 1 : compactionScheduleThreadNum;
     conf.setCompactionScheduleThreadNum(compactionScheduleThreadNum);
@@ -1993,10 +2000,15 @@ public class IoTDBDescriptor {
     int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     int newCompactionMaxAlignedSeriesNumInOneBatch =
         Integer.parseInt(
-            properties.getProperty(
-                "compaction_max_aligned_series_num_in_one_batch",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "compaction_max_aligned_series_num_in_one_batch")));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "compaction_max_aligned_series_num_in_one_batch",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "compaction_max_aligned_series_num_in_one_batch")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "compaction_max_aligned_series_num_in_one_batch")));
     conf.setCompactionMaxAlignedSeriesNumInOneBatch(
         newCompactionMaxAlignedSeriesNumInOneBatch > 0
             ? newCompactionMaxAlignedSeriesNumInOneBatch
@@ -2011,9 +2023,15 @@ public class IoTDBDescriptor {
       throws IOException {
     int newConfigCompactionThreadCount =
         Integer.parseInt(
-            properties.getProperty(
-                "compaction_thread_count",
-                ConfigurationFileUtils.getConfigurationDefaultValue("compaction_thread_count")));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "compaction_thread_count",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "compaction_thread_count")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "compaction_thread_count")));
     if (newConfigCompactionThreadCount <= 0) {
       LOGGER.error("compaction_thread_count must greater than 0");
       return false;
@@ -2039,10 +2057,15 @@ public class IoTDBDescriptor {
       throws IOException {
     int newConfigSubtaskNum =
         Integer.parseInt(
-            properties.getProperty(
-                "sub_compaction_thread_count",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "sub_compaction_thread_count")));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "sub_compaction_thread_count",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "sub_compaction_thread_count")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "sub_compaction_thread_count")));
     if (newConfigSubtaskNum <= 0) {
       LOGGER.error("sub_compaction_thread_count must greater than 0");
       return false;
@@ -2464,6 +2487,24 @@ public class IoTDBDescriptor {
                         ConfigurationFileUtils.getConfigurationDefaultValue("compressor")))
                 .map(String::trim)
                 .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("compressor")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptFlag(
+            properties.getProperty(
+                "encrypt_flag",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_flag")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptType(
+            properties.getProperty(
+                "encrypt_type",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_type")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromPath(
+            properties.getProperty(
+                "encrypt_key_path",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_key_path")));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockSizeInBytes(
@@ -3424,8 +3465,11 @@ public class IoTDBDescriptor {
             .toArray(String[]::new));
 
     conf.setIotConsensusV2DeletionFileDir(
-        properties.getProperty(
-            "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()));
+        Optional.ofNullable(
+                properties.getProperty(
+                    "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()))
+            .map(String::trim)
+            .orElse(conf.getIotConsensusV2DeletionFileDir()));
   }
 
   private void loadCQProps(Properties properties) {

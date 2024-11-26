@@ -2611,27 +2611,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private void parseDatabaseAttributesClause(
-      DatabaseSchemaStatement databaseSchemaStatement,
-      IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
-    for (IoTDBSqlParser.DatabaseAttributeClauseContext attribute : ctx.databaseAttributeClause()) {
-      IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
+      final DatabaseSchemaStatement databaseSchemaStatement,
+      final IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
+    for (final IoTDBSqlParser.DatabaseAttributeClauseContext attribute :
+        ctx.databaseAttributeClause()) {
+      final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
+          attribute.databaseAttributeKey();
       if (attributeKey.TTL() != null) {
-        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTtl(ttl);
-      } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
-        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-      } else if (attributeKey.DATA_REPLICATION_FACTOR() != null) {
-        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataReplicationFactor(dataReplicationFactor);
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
-        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
       } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
       } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
       }
     }

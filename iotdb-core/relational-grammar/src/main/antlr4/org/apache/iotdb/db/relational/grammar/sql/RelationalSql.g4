@@ -64,6 +64,7 @@ statement
     | insertStatement
     | updateStatement
     | deleteStatement
+    | deleteDeviceStatement
 
     // UDF Statement
     | showFunctionsStatement
@@ -155,7 +156,7 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(ID | ATTRIBUTE) charsetName?
+    : identifier columnCategory=(ID | ATTRIBUTE | TIME) charsetName?
     | identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
     ;
 
@@ -175,7 +176,7 @@ showTableStatement
     ;
 
 descTableStatement
-    : (DESC | DESCRIBE) table=qualifiedName
+    : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
     ;
 
 alterTableStatement
@@ -220,7 +221,9 @@ updateStatement
     : UPDATE qualifiedName SET updateAssignment (',' updateAssignment)* (WHERE where=booleanExpression)?
     ;
 
-
+deleteDeviceStatement
+    : DELETE DEVICES FROM tableName=qualifiedName (WHERE booleanExpression)?
+    ;
 
 
 // -------------------------------------------- UDF Statement ----------------------------------------------------------
@@ -1273,7 +1276,7 @@ VARIATION: 'VARIATION';
 VERBOSE: 'VERBOSE';
 VERSION: 'VERSION';
 VIEW: 'VIEW';
-WEEK: 'WEEK';
+WEEK: 'WEEK' | 'W';
 WHEN: 'WHEN';
 WHERE: 'WHERE';
 WHILE: 'WHILE';

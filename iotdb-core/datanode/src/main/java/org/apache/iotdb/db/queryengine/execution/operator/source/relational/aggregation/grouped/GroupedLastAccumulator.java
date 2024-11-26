@@ -188,8 +188,10 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
-        "intermediate input and output should be BinaryColumn");
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of Last should be BinaryColumn");
 
     for (int i = 0; i < groupIds.length; i++) {
       if (argument.isNull(i)) {
@@ -242,7 +244,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of should be BinaryColumn");
+        "intermediate input and output of Last should be BinaryColumn");
     if (maxTimes.get(groupId) == Long.MIN_VALUE) {
       columnBuilder.appendNull();
     } else {
@@ -287,6 +289,38 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    maxTimes.reset();
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        intValues.reset();
+        return;
+      case INT64:
+      case TIMESTAMP:
+        longValues.reset();
+        return;
+      case FLOAT:
+        floatValues.reset();
+        return;
+      case DOUBLE:
+        doubleValues.reset();
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        binaryValues.reset();
+        return;
+      case BOOLEAN:
+        booleanValues.reset();
+        return;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", seriesDataType));
+    }
+  }
 
   private byte[] serializeTimeWithValue(int groupId) {
     byte[] bytes;

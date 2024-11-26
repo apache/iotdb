@@ -51,6 +51,9 @@ public class TableWindowOperator implements ProcessOperator {
     this.windowFunction = windowFunction;
     this.frameInfo = frameInfo;
     this.comparator = comparator;
+    this.partitionChannel = partitionChannel;
+
+    this.cachedData = new ArrayList<>();
   }
 
   @Override
@@ -155,7 +158,7 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return false;
+    return this.inputOperator.hasNext();
   }
 
   @Override

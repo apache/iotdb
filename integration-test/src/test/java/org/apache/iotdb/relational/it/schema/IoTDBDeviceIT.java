@@ -215,9 +215,26 @@ public class IoTDBDeviceIT {
         assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
       }
 
+      try {
+        statement.execute("update table0 set model = cast(device_id as int32)");
+        fail("Update shall fail for non-exist column");
+      } catch (final Exception e) {
+        assertEquals(
+            "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            e.getMessage());
+      }
+
+      // Test null
+      statement.execute("update table0 set model = null where model <> substring(device_id, 1, 1)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,null,"));
+
       // Test common result column
       statement.execute(
-          "update table0 set model = substring(device_id, 1, 1) where model <> substring(device_id, 1, 1) and cast(region_id as int32) + cast(plant_id as int32) = 6 and region_id = '1'");
+          "update table0 set model = substring(device_id, 1, 1) where cast(region_id as int32) + cast(plant_id as int32) = 6 and region_id = '1'");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
@@ -229,6 +246,19 @@ public class IoTDBDeviceIT {
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
+
+      // Test delete devices
+      statement.execute("delete devices from table0 where region_id = '1' and plant_id = '5'");
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
+
+      // Test successfully invalidate cache
+      statement.execute(
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
+
+      // Test successfully delete data
+      TestUtils.assertResultSetSize(
+          statement.executeQuery("select * from table0 where region_id = '1'"), 1);
     }
   }
 }

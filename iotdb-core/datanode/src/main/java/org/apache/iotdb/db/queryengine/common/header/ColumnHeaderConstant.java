@@ -545,6 +545,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showDBColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
@@ -552,6 +553,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showDBDetailsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
@@ -562,6 +564,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> describeTableDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(

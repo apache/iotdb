@@ -117,15 +117,15 @@ public class PipeConsensusTabletBatchEventHandler
   @Override
   public void onError(final Exception exception) {
     LOGGER.warn(
-        "PipeConsensus: Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
+        "PipeConsensus: Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
+        events.size(),
         events.stream()
             .map(
                 event ->
                     event instanceof EnrichedEvent
-                        ? ((EnrichedEvent) event).coreReportMessage()
-                        : event.toString())
-            .collect(Collectors.toList()),
-        requestCommitIds,
+                        ? ((EnrichedEvent) event).getPipeName()
+                        : "UNKNOWN")
+            .collect(Collectors.toSet()),
         exception);
 
     connector.addFailureEventsToRetryQueue(events);

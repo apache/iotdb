@@ -73,4 +73,8 @@ public final class BinaryBigArray {
       sizeOfBinarys += sizeOfObject(value);
     }
   }
+
+  public void reset() {
+    array.reset();
+  }
 }

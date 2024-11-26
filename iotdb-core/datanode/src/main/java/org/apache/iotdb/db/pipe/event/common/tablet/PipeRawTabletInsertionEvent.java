@@ -41,6 +41,7 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -51,6 +52,9 @@ import java.util.function.BiConsumer;
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     implements TabletInsertionEvent, ReferenceTrackableEvent {
 
+  // For better calculation
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PipeRawTabletInsertionEvent.class);
   private Tablet tablet;
   private String deviceId; // Only used when the tablet is released.
   private final boolean isAligned;
@@ -168,10 +172,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseTabletEventCount(pipeName + "_" + creationTime);
+          .increaseTabletEventCount(pipeName, creationTime);
     }
     return true;
   }
@@ -180,7 +184,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseTabletEventCount(pipeName + "_" + creationTime);
+          .decreaseTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
 
