@@ -1237,7 +1237,7 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
+    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());

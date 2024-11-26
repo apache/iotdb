@@ -50,7 +50,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntToLongFunction;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
@@ -334,8 +333,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
-    return checkTTLInternal(results, rowTTLGetter, false);
+  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
+    return checkTTLInternal(results, ttl, false);
   }
 
   @Override
