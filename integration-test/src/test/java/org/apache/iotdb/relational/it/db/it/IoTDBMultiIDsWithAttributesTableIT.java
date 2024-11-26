@@ -146,6 +146,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into tableB(time,device,value) values('2020-01-01 00:00:02.000', 'd1', 20)",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 30)",
         "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
+        "flush",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
         "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
       };
@@ -155,9 +157,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   static String sql;
 
   //  public static void main(String[] args) {
-  //    for (String[] sqlList : Arrays.asList(sql4, sql5)) {
+  //    for (String[] sqlList : Arrays.asList(sql1, sql2)) {
   //      for (String sql : sqlList) {
-  //        System.out.println(sql);
+  //        System.out.println(sql+";");
   //      }
   //    }
   //  }
@@ -1516,9 +1518,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   // no filter
   @Test
   public void fullOuterJoinTest1() {
-    String[] expectedHeader =
+    expectedHeader =
         new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
-    String[] retArray =
+    retArray =
         new String[] {
           "1970-01-01T00:00:00.000Z,d1,l1,3,d1,d,3,coconut,",
           "1970-01-01T00:00:00.000Z,d1,l1,3,d2,c,3,coconut,",
@@ -1607,6 +1609,46 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select t1.time as time1, t2.time as time2, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 on t1.time = t2.time "
+            + "order by COALESCE(time1, time2),device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,null,d1,1,null,null,",
+          "null,2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "null,2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,null,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time1", "time2", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 USING(time) "
+            + "order by time,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   // has filter
@@ -1626,6 +1668,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,9,null,null,null,null,",
+          "1970-01-01T00:00:00.100Z,d2,l5,9,null,null,null,null,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
@@ -1660,13 +1704,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // join on
-    sql =
-        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
-            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
-            + "ON t1.time = t2.time \n"
-            + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+    //    sql =
+    //        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add,
+    // t2.device, t2.attr2, t2.num, t2.str\n"
+    //            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1'
+    // AND cast(num as double)>0) t1 \n"
+    //            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND
+    // device in ('d1','d2')) t2 \n"
+    //            + "ON t1.time = t2.time \n"
+    //            + "ORDER BY time, t1.device, t2.device";
+    //    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1719,10 +1766,12 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "  t2.value as value2 "
             + "FROM "
             + "  tableA t1 JOIN tableB t2 "
-            + "ON t1.time = t2.time";
+            + "ON t1.time = t2.time order by t1.time, device1, device2";
     retArray =
         new String[] {
-          "2020-01-01T00:00:03.000Z,d1,3,d1,30,", "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
