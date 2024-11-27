@@ -48,8 +48,8 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
     Type childType = childColumnTransformer.getType();
+    TypeEnum sourceType = childType.getTypeEnum();
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         transform(column, columnBuilder, sourceType, childType, i);
@@ -61,8 +61,8 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
-    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
     Type childType = childColumnTransformer.getType();
+    TypeEnum sourceType = childType.getTypeEnum();
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (selection[i] && !column.isNull(i)) {
         transform(column, columnBuilder, sourceType, childType, i);
