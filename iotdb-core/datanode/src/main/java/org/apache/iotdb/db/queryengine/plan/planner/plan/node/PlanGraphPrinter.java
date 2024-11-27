@@ -102,6 +102,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private static final int BOX_MARGIN = 1;
   private static final int CONNECTION_LINE_HEIGHT = 2;
 
+  private static final String REGION_NOT_ASSIGNED = "Not Assigned";
+
   @Override
   public List<String> visitPlan(PlanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
@@ -631,7 +633,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "RegionId: %s",
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
-                ? ""
+                ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
@@ -696,7 +698,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "RegionId: %s",
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
-                ? "Not Assigned"
+                ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
@@ -878,7 +880,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return String.format(
         "Partition: %s",
         regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
-            ? "Not Assigned"
+            ? REGION_NOT_ASSIGNED
             : String.valueOf(regionReplicaSet.getRegionId().id));
   }
 

@@ -36,6 +36,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -47,6 +48,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -126,7 +128,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
-    this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+    constructAlignedSeriesScanUtil();
   }
 
   @Override
@@ -292,7 +294,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   private void prepareForNextDevice() {
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
-      this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+      constructAlignedSeriesScanUtil();
 
       // reset QueryDataSource
       queryDataSource.reset();
@@ -300,17 +302,27 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     }
   }
 
-  private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
+  private void constructAlignedSeriesScanUtil() {
+    DeviceEntry deviceEntry;
+
+    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      // for device which is not exist
+      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+    } else {
+      deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
+    }
+
     AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
 
-    return new AlignedSeriesScanUtil(
-        alignedPath,
-        scanOrder,
-        seriesScanOptions,
-        operatorContext.getInstanceContext(),
-        true,
-        measurementColumnTSDataTypes);
+    this.seriesScanUtil =
+        new AlignedSeriesScanUtil(
+            alignedPath,
+            scanOrder,
+            seriesScanOptions,
+            operatorContext.getInstanceContext(),
+            true,
+            measurementColumnTSDataTypes);
   }
 
   public static AlignedFullPath constructAlignedPath(

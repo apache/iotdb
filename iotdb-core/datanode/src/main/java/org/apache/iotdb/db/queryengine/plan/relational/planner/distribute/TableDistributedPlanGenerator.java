@@ -460,7 +460,6 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTableScan(TableScanNode node, PlanContext context) {
-
     Map<TRegionReplicaSet, TableScanNode> tableScanNodeMap = new HashMap<>();
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
@@ -494,6 +493,11 @@ public class TableDistributedPlanGenerator
                 });
         tableScanNode.appendDeviceEntry(deviceEntry);
       }
+    }
+
+    if (tableScanNodeMap.isEmpty()) {
+      node.setRegionReplicaSet(new TRegionReplicaSet());
+      return Collections.singletonList(node);
     }
 
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
