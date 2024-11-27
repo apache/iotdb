@@ -25,12 +25,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/** UDFType is an enum class that represents the type of UDF. */
 public enum UDFType {
-  ILLEGAL((byte) -1),
-  TREE_EXTERNAL((byte) 0),
+  TREE_AVAILABLE((byte) 0),
+  /**
+   * TREE_BUILT_IN will not appear in the snapshot file or raft log. It is just a placeholder for
+   * some unforeseen circumstances.
+   */
   TREE_BUILT_IN((byte) 1),
   TREE_UNAVAILABLE((byte) 2),
-  TABLE_EXTERNAL((byte) 3),
+  TABLE_AVAILABLE((byte) 3),
   TABLE_UNAVAILABLE((byte) 4);
 
   private final byte type;
@@ -50,18 +54,18 @@ public enum UDFType {
         return udfType;
       }
     }
-    return ILLEGAL;
+    throw new IllegalArgumentException("Unknown UDFType: " + type);
   }
 
   public boolean isTreeModel() {
-    return this == TREE_EXTERNAL || this == TREE_BUILT_IN || this == TREE_UNAVAILABLE;
+    return this == TREE_AVAILABLE || this == TREE_BUILT_IN || this == TREE_UNAVAILABLE;
   }
 
   public boolean isTableModel() {
-    return this == TABLE_EXTERNAL || this == TABLE_UNAVAILABLE;
+    return this == TABLE_AVAILABLE || this == TABLE_UNAVAILABLE;
   }
 
   public boolean isAvailable() {
-    return this == TREE_EXTERNAL || this == TREE_BUILT_IN || this == TABLE_EXTERNAL;
+    return this == TREE_AVAILABLE || this == TREE_BUILT_IN || this == TABLE_AVAILABLE;
   }
 }

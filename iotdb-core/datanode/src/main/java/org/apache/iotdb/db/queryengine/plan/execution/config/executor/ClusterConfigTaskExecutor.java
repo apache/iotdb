@@ -61,6 +61,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -491,6 +492,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       Optional<String> stringURI,
       Class<?> baseClazz) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (UDFManagementService.getInstance().checkIsBuiltInFunctionName(model, udfName)) {
+      future.setException(
+          new IoTDBException(
+              String.format(
+                  "Failed to create UDF [%s], the given function name conflicts with the built-in function name.",
+                  udfName.toUpperCase()),
+              TSStatusCode.CREATE_UDF_ERROR.getStatusCode()));
+      return future;
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreateFunctionReq tCreateFunctionReq =
@@ -599,6 +609,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> dropFunction(Model model, String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (UDFManagementService.getInstance().checkIsBuiltInFunctionName(model, udfName)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Built-in function %s can not be deregistered.", udfName.toUpperCase()),
+              TSStatusCode.DROP_UDF_ERROR.getStatusCode()));
+      return future;
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus =

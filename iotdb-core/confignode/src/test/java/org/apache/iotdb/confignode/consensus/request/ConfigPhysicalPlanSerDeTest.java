@@ -79,7 +79,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -1454,11 +1455,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropFunctionPlanTest() throws IOException {
-    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan(Model.TABLE, "test");
-    DropFunctionPlan dropFunctionPlan1 =
-        (DropFunctionPlan)
-            ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(dropFunctionPlan0, dropFunctionPlan1);
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan0 = new DropTreeModelFunctionPlan("test");
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan1 =
+        (DropTreeModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTreeModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTreeModelFunctionPlan0, dropTreeModelFunctionPlan1);
+
+    DropTableModelFunctionPlan dropTableModelFunctionPlan0 = new DropTableModelFunctionPlan("test");
+    DropTableModelFunctionPlan dropTableModelFunctionPlan1 =
+        (DropTableModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTableModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTableModelFunctionPlan0, dropTableModelFunctionPlan1);
   }
 
   @Test

@@ -32,7 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.read.function.GetAllFunctio
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
@@ -98,8 +99,6 @@ public class UDFManager {
       LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
-
-      udfInformation.setAvailable(true);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
         return new TSStatus(TSStatusCode.CREATE_UDF_ERROR.getStatusCode())
             .setMessage(
@@ -111,7 +110,8 @@ public class UDFManager {
       if (preCreateStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return preCreateStatus;
       }
-
+      udfInformation =
+          new UDFInformation(udfName, req.getClassName(), model, true, isUsingURI, jarName, jarMD5);
       LOGGER.info(
           "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
       final TSStatus dataNodesStatus =
@@ -163,7 +163,15 @@ public class UDFManager {
         return result;
       }
 
-      return configManager.getConsensusManager().write(new DropFunctionPlan(model, functionName));
+      if (Model.TREE.equals(model)) {
+        return configManager
+            .getConsensusManager()
+            .write(new DropTreeModelFunctionPlan(functionName));
+      } else {
+        return configManager
+            .getConsensusManager()
+            .write(new DropTableModelFunctionPlan(functionName));
+      }
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

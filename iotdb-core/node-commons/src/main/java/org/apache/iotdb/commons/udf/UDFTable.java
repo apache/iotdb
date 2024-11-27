@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -36,79 +35,84 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * UDFTable is a table that stores UDF information. Only manage external UDFs, built-in UDFs are not
- * managed here.
+ * UDFTable is a table that stores UDF information. On DataNode, it stores all UDF information. On
+ * ConfigNode, it does not store built-in UDF information.
  */
 public class UDFTable {
 
-  /** functionName -> information * */
-  private final Map<Pair<Model, String>, UDFInformation> udfInformationMap;
+  /** model -> functionName -> information * */
+  private final Map<Model, Map<String, UDFInformation>> udfInformationMap;
 
-  /** maintain a map for creating instance, functionName -> class */
-  private final Map<Pair<Model, String>, Class<?>> functionToClassMap;
+  /** maintain a map for creating instance, model -> functionName -> class */
+  private final Map<Model, Map<String, Class<?>>> functionToClassMap;
 
   public UDFTable() {
     udfInformationMap = new ConcurrentHashMap<>();
     functionToClassMap = new ConcurrentHashMap<>();
+    udfInformationMap.put(Model.TREE, new ConcurrentHashMap<>());
+    udfInformationMap.put(Model.TABLE, new ConcurrentHashMap<>());
+    functionToClassMap.put(Model.TREE, new ConcurrentHashMap<>());
+    functionToClassMap.put(Model.TABLE, new ConcurrentHashMap<>());
   }
 
   public void addUDFInformation(String functionName, UDFInformation udfInformation) {
     if (udfInformation.getUdfType().isTreeModel()) {
-      udfInformationMap.put(new Pair<>(Model.TREE, functionName.toUpperCase()), udfInformation);
+      udfInformationMap.get(Model.TREE).put(functionName.toUpperCase(), udfInformation);
     } else {
-      udfInformationMap.put(new Pair<>(Model.TABLE, functionName.toUpperCase()), udfInformation);
+      udfInformationMap.get(Model.TABLE).put(functionName.toUpperCase(), udfInformation);
     }
   }
 
   public void removeUDFInformation(Model model, String functionName) {
-    udfInformationMap.remove(new Pair<>(model, functionName.toUpperCase()));
+    udfInformationMap.get(model).remove(functionName.toUpperCase());
   }
 
   public UDFInformation getUDFInformation(Model model, String functionName) {
-    return udfInformationMap.get(new Pair<>(model, functionName.toUpperCase()));
+    return udfInformationMap.get(model).get(functionName.toUpperCase());
   }
 
   public void addFunctionAndClass(Model model, String functionName, Class<?> clazz) {
-    functionToClassMap.put(new Pair<>(model, functionName.toUpperCase()), clazz);
+    functionToClassMap.get(model).put(functionName.toUpperCase(), clazz);
   }
 
   public Class<?> getFunctionClass(Model model, String functionName) {
-    return functionToClassMap.get(new Pair<>(model, functionName.toUpperCase()));
+    return functionToClassMap.get(model).get(functionName.toUpperCase());
   }
 
   public void removeFunctionClass(Model model, String functionName) {
-    functionToClassMap.remove(new Pair<>(model, functionName.toUpperCase()));
+    functionToClassMap.get(model).remove(functionName.toUpperCase());
   }
 
   public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
       throws ClassNotFoundException {
     Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);
     if (udfInformation.getUdfType().isTreeModel()) {
-      functionToClassMap.put(
-          new Pair<>(Model.TREE, udfInformation.getFunctionName().toUpperCase()), functionClass);
+      functionToClassMap
+          .get(Model.TREE)
+          .put(udfInformation.getFunctionName().toUpperCase(), functionClass);
     } else {
-      functionToClassMap.put(
-          new Pair<>(Model.TABLE, udfInformation.getFunctionName().toUpperCase()), functionClass);
+      functionToClassMap
+          .get(Model.TABLE)
+          .put(udfInformation.getFunctionName().toUpperCase(), functionClass);
     }
   }
 
   public List<UDFInformation> getUDFInformationList(Model model) {
-    return udfInformationMap.entrySet().stream()
-        .filter(entry -> entry.getKey().left == model)
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
+    return new ArrayList<>(udfInformationMap.get(model).values());
   }
 
   public List<UDFInformation> getAllInformationList() {
-    return new ArrayList<>(udfInformationMap.values());
+    return udfInformationMap.values().stream()
+        .flatMap(map -> map.values().stream())
+        .collect(Collectors.toList());
   }
 
   public boolean containsUDF(Model model, String udfName) {
-    return udfInformationMap.containsKey(new Pair<>(model, udfName.toUpperCase()));
+    return udfInformationMap.get(model).containsKey(udfName.toUpperCase());
   }
 
   @TestOnly
-  public Map<Pair<Model, String>, UDFInformation> getTable() {
+  public Map<Model, Map<String, UDFInformation>> getTable() {
     return udfInformationMap;
   }
 
@@ -125,19 +129,18 @@ public class UDFTable {
     while (size > 0) {
       UDFInformation udfInformation = UDFInformation.deserialize(inputStream);
       if (udfInformation.getUdfType().isTreeModel()) {
-        udfInformationMap.put(
-            new Pair<>(Model.TREE, udfInformation.getFunctionName()), udfInformation);
+        udfInformationMap.get(Model.TREE).put(udfInformation.getFunctionName(), udfInformation);
       } else {
-        udfInformationMap.put(
-            new Pair<>(Model.TABLE, udfInformation.getFunctionName()), udfInformation);
+        udfInformationMap.get(Model.TABLE).put(udfInformation.getFunctionName(), udfInformation);
       }
       size--;
     }
   }
 
-  // only clear external UDFs
   public void clear() {
-    udfInformationMap.clear();
-    functionToClassMap.clear();
+    udfInformationMap.get(Model.TREE).clear();
+    udfInformationMap.get(Model.TABLE).clear();
+    functionToClassMap.get(Model.TREE).clear();
+    functionToClassMap.get(Model.TABLE).clear();
   }
 }
