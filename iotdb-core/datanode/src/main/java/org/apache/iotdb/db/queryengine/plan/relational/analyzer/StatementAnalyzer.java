@@ -421,33 +421,37 @@ public class StatementAnalyzer {
               .collect(Collectors.toList()),
           queryContext);
 
-      final Set<SymbolReference> attributeNames = new HashSet<>();
-      node.setAssignments(
-          node.getAssignments().stream()
-              .map(
-                  assignment -> {
-                    final Expression parsedColumn =
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getName());
-                    if (!(parsedColumn instanceof SymbolReference)
-                        || table
-                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                .getColumnCategory()
-                            != TsTableColumnCategory.ATTRIBUTE) {
-                      throw new SemanticException("Update can only specify attribute columns.");
-                    }
-                    if (attributeNames.contains(parsedColumn)) {
-                      throw new SemanticException(
-                          "Update attribute shall specify a attribute only once.");
-                    }
-                    attributeNames.add((SymbolReference) parsedColumn);
+      // If node.location is absent, this is a pipe-transferred update, namely the assignments are
+      // already parsed at the sender
+      if (node.getLocation().isPresent()) {
+        final Set<SymbolReference> attributeNames = new HashSet<>();
+        node.setAssignments(
+            node.getAssignments().stream()
+                .map(
+                    assignment -> {
+                      final Expression parsedColumn =
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getName());
+                      if (!(parsedColumn instanceof SymbolReference)
+                          || table
+                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                  .getColumnCategory()
+                              != TsTableColumnCategory.ATTRIBUTE) {
+                        throw new SemanticException("Update can only specify attribute columns.");
+                      }
+                      if (attributeNames.contains(parsedColumn)) {
+                        throw new SemanticException(
+                            "Update attribute shall specify a attribute only once.");
+                      }
+                      attributeNames.add((SymbolReference) parsedColumn);
 
-                    return new UpdateAssignment(
-                        parsedColumn,
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getValue()));
-                  })
-              .collect(Collectors.toList()));
+                      return new UpdateAssignment(
+                          parsedColumn,
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getValue()));
+                    })
+                .collect(Collectors.toList()));
+      }
       return null;
     }
 
