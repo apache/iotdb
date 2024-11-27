@@ -152,7 +152,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
               Arrays.asList(
                   "time,TIMESTAMP,TIME,",
                   "a,STRING,ID,",
-                  "c,INT32,MEASUREMENT,",
+                  "b,STRING,ATTRIBUTE,",
                   "d,INT64,MEASUREMENT,")),
           dbName);
 
