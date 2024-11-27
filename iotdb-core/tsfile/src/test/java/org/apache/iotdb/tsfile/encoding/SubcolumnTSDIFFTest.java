@@ -237,7 +237,7 @@ public class SubcolumnTSDIFFTest {
     public void testBOS() throws IOException {
         String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
-        String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/result/";
+        String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         // String output_parent_dir =
         // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources";
         // String input_parent_dir = parent_dir + "ElfData_Short/";
@@ -260,10 +260,11 @@ public class SubcolumnTSDIFFTest {
         // dataset_name.add("TY-Transport");
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
-        dataset_block_size.add(1024);
+        // dataset_block_size.add(1024);
+        dataset_block_size.add(128);
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "/ts2diff_subcolumn_l_beta_bp_1024.csv");
+        output_path_list.add(output_parent_dir + "ts2diff_subcolumn_l_beta_bp.csv");
 
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);

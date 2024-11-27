@@ -707,6 +707,10 @@ public class SubcolumnTest {
         int l = subcolumn_cost[0];
         int beta = subcolumn_cost[1];
 
+        // TODO 以后记得注释掉
+        // l = Math.min(10, m - 1);
+        // beta = 7;
+
         writeBits(encoded_result, startBitPosition, 8, m);
         startBitPosition += 8;
 
