@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -62,7 +65,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
@@ -123,11 +128,13 @@ public class TableLogicalPlanner {
     final Statement statement = analysis.getStatement();
     PlanNode planNode = planStatement(analysis, statement);
 
-    if (statement instanceof Query) {
+    if (analysis.isQuery()) {
+      long logicalPlanCostTime = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
-      startTime = System.nanoTime();
+          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, logicalPlanCostTime);
+      queryContext.setLogicalPlanCost(logicalPlanCostTime);
 
+      startTime = System.nanoTime();
       for (PlanOptimizer optimizer : planOptimizers) {
         planNode =
             optimizer.optimize(
@@ -142,8 +149,14 @@ public class TableLogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
+      long logicalOptimizationCost =
+          System.nanoTime()
+              - startTime
+              - queryContext.getFetchPartitionCost()
+              - queryContext.getFetchSchemaCost();
+      queryContext.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, System.nanoTime() - startTime);
+          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(queryContext, planNode);
@@ -187,6 +200,9 @@ public class TableLogicalPlanner {
     if (statement instanceof Delete) {
       return createRelationPlan(analysis, (Delete) statement);
     }
+    if (statement instanceof ExplainAnalyze) {
+      return planExplainAnalyze((ExplainAnalyze) statement, analysis);
+    }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
@@ -201,18 +217,24 @@ public class TableLogicalPlanner {
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
-    RelationType outputDescriptor = analysis.getOutputDescriptor();
-    for (Field field : outputDescriptor.getVisibleFields()) {
-      String name = field.getName().orElse("_col" + columnNumber);
+    if (queryContext.isExplainAnalyze()) {
+      outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
+      names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
+      columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
+    } else {
+      RelationType outputDescriptor = analysis.getOutputDescriptor();
+      for (Field field : outputDescriptor.getVisibleFields()) {
+        String name = field.getName().orElse("_col" + columnNumber);
 
-      names.add(name);
-      int fieldIndex = outputDescriptor.indexOf(field);
-      Symbol symbol = plan.getSymbol(fieldIndex);
-      outputs.add(symbol);
+        names.add(name);
+        int fieldIndex = outputDescriptor.indexOf(field);
+        Symbol symbol = plan.getSymbol(fieldIndex);
+        outputs.add(symbol);
 
-      columnHeaders.add(new ColumnHeader(name, getTSDataType(field.getType())));
+        columnHeaders.add(new ColumnHeader(name, getTSDataType(field.getType())));
 
-      columnNumber++;
+        columnNumber++;
+      }
     }
 
     OutputNode outputNode =
@@ -422,6 +444,26 @@ public class TableLogicalPlanner {
     if (schemaPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
     }
+  }
+
+  private RelationPlan planExplainAnalyze(final ExplainAnalyze statement, final Analysis analysis) {
+    RelationPlan originalQueryPlan =
+        createRelationPlan(analysis, (Query) (statement.getStatement()));
+    Symbol symbol =
+        symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
+    PlanNode newRoot =
+        new ExplainAnalyzeNode(
+            queryContext.getQueryId().genPlanNodeId(),
+            originalQueryPlan.getRoot(),
+            statement.isVerbose(),
+            queryContext.getLocalQueryId(),
+            queryContext.getTimeOut(),
+            symbol);
+    return new RelationPlan(
+        newRoot,
+        originalQueryPlan.getScope(),
+        originalQueryPlan.getFieldMappings(),
+        Optional.empty());
   }
 
   private enum Stage {

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -49,8 +48,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
-    if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().containsAggregationQuery()) {
+    if (!context.getAnalysis().isQuery() || !context.getAnalysis().containsAggregationQuery()) {
       return plan;
     }
 

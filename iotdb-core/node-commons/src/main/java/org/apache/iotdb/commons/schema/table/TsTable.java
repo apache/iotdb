@@ -49,6 +49,8 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+
 @ThreadSafe
 public class TsTable {
 
@@ -67,6 +69,8 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
+  // Cache, avoid string parsing
+  private transient long ttlValue = Long.MIN_VALUE;
   private transient int idNums = 0;
   private transient int measurementNum = 0;
 
@@ -179,16 +183,26 @@ public class TsTable {
     }
   }
 
+  // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
+  // cache won't pollute the newest value
   public long getTableTTL() {
-    long ttl = getTableTTLInMS();
-    return ttl == Long.MAX_VALUE
-        ? ttl
-        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    // Cache for performance
+    if (ttlValue < 0) {
+      final long ttl = getTableTTLInMS();
+      ttlValue =
+          ttl == Long.MAX_VALUE
+              ? ttl
+              : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                  ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    }
+    return ttlValue;
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
+    final Optional<String> ttl = getPropValue(TTL_PROPERTY);
+    return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
+        ? Long.parseLong(ttl.get())
+        : Long.MAX_VALUE;
   }
 
   public Optional<String> getPropValue(final String propKey) {

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -137,6 +138,13 @@ public class TableDistributedPlanGenerator
       planNodes.forEach(newNode::addChild);
     }
     return Collections.singletonList(newNode);
+  }
+
+  @Override
+  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
+    List<PlanNode> children = genResult(node.getChild(), context);
+    node.setChild(children.get(0));
+    return Collections.singletonList(node);
   }
 
   @Override

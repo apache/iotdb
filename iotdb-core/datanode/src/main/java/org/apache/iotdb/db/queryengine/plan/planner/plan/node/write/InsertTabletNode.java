@@ -70,7 +70,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.function.IntToLongFunction;
 
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
@@ -1229,26 +1228,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /**
    * @param results insertion result of each row
-   * @param rowTTLGetter the ttl associated with each row
+   * @param ttl the ttl
    * @return the position of the first alive row
    * @throws OutOfTTLException if all rows have expired the TTL
    */
-  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
-    return checkTTLInternal(results, rowTTLGetter, true);
+  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
+    return checkTTLInternal(results, ttl, true);
   }
 
-  protected int checkTTLInternal(
-      TSStatus[] results, IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
+  protected int checkTTLInternal(TSStatus[] results, long ttl, boolean breakOnFirstAlive)
       throws OutOfTTLException {
 
     /*
      * assume that batch has been sorted by client
      */
     int loc = 0;
-    long ttl = 0;
     int firstAliveLoc = -1;
     while (loc < getRowCount()) {
-      ttl = rowTTLGetter.applyAsLong(loc);
       long currTime = getTimes()[loc];
       // skip points that do not satisfy TTL
       if (!isAlive(currTime, ttl)) {

@@ -595,11 +595,13 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      throw new SemanticException("Explain Analyze statement is not supported yet.");
+      queryContext.setExplainAnalyze(true);
+      return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
+      analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
