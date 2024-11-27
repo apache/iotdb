@@ -398,19 +398,6 @@ public class TableModelUtils {
   }
 
   protected static void awaitUntilFlush(BaseEnv env) {
-    int fileNum = 0;
-    for (DataNodeWrapper wrapper : env.getDataNodeWrapperList()) {
-
-      File sfile = new File(buildDataPath(wrapper, true));
-      File unsfile = new File(buildDataPath(wrapper, false));
-      if (sfile.exists() && sfile.listFiles() != null) {
-        fileNum += Objects.requireNonNull(sfile.listFiles()).length;
-      }
-      if (unsfile.exists() && unsfile.listFiles() != null) {
-        fileNum += Objects.requireNonNull(unsfile.listFiles()).length;
-      }
-    }
-    final int tsfileNum = fileNum;
     Awaitility.await()
         .atMost(1, TimeUnit.MINUTES)
         .pollDelay(2, TimeUnit.SECONDS)
@@ -433,7 +420,7 @@ public class TableModelUtils {
                         if (unsequence.exists() && unsequence.listFiles() != null) {
                           num += Objects.requireNonNull(unsequence.listFiles()).length;
                         }
-                        return num != tsfileNum;
+                        return num > 0;
                       });
             });
   }
