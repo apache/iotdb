@@ -83,6 +83,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
@@ -2252,6 +2253,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (consensusGroupId instanceof DataRegionId) {
       try {
         DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
+        Optional.ofNullable(
+                DeletionResourceManager.getInstance(String.valueOf(tconsensusGroupId.getId())))
+            .ifPresent(DeletionResourceManager::close);
       } catch (ConsensusException e) {
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
