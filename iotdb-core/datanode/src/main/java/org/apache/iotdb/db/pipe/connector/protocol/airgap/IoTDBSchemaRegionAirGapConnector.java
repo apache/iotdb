@@ -153,6 +153,9 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     if (Objects.nonNull(tagLogSnapshotFile)) {
       transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
     }
+    if (Objects.nonNull(attributeSnapshotFile)) {
+      transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socket, true);
+    }
     // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
         pipeName,
