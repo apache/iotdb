@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -45,6 +46,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR;
 
 /**
  * This visitor transforms the data type of the statement when the statement is executed and an
@@ -105,14 +108,27 @@ public class PipeStatementDataTypeConvertExecutionVisitor
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                       .constructStatement());
-          TSStatus result = statementExecutor.execute(statement);
 
-          // Retry once if the write process is rejected
-          if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-            result = statementExecutor.execute(statement);
+          TSStatus result;
+          try {
+            result =
+                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
+                    statement, statementExecutor.execute(statement));
+
+            // Retry once if the write process is rejected
+            if (result.getCode()
+                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+              result =
+                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
+                      statement, statementExecutor.execute(statement));
+            }
+          } catch (final Exception e) {
+            result = statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode()
+                  == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
             return Optional.empty();
           }
