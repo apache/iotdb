@@ -152,10 +152,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       // calculate DataSet part
       boolean singleDeviceEntry = tableScanNode.getDeviceEntries().size() < 2;
       if (groupingKeys.isEmpty()) {
-        // fixme: we don't expect ProjectNode here. Temporary workaround.
-        if (projectNode != null) {
-          return PushDownLevel.NOOP;
-        }
         // GlobalAggregation
         if (singleDeviceEntry) {
           return PushDownLevel.COMPLETE;
