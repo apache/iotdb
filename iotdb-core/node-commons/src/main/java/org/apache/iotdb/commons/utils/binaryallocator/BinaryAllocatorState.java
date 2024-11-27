@@ -17,19 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.binaryallocator;
+package org.apache.iotdb.commons.utils.binaryallocator;
 
-/**
- * This interface defines a strategy for choosing a {@link Arena} from an array of {@link Arena}s.
- * Implementations of this interface can provide various strategies for selection based on specific
- * criteria.
- */
-public interface ArenaStrategy {
-  /**
-   * Chooses a {@link Arena} from the given array of {@link Arena}s.
-   *
-   * @param arenas an array of {@link Arena}s to choose from
-   * @return the selected {@link Arena}
-   */
-  Arena choose(Arena[] arenas);
+public enum BinaryAllocatorState {
+  OPEN,
+  CLOSE,
+  TMP_CLOSE,
+  UNINITIALIZED;
+
+  @Override
+  public String toString() {
+    return name();
+  }
 }

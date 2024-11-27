@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.commons.utils.binaryallocator;
 
-import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Arena {
@@ -35,13 +32,12 @@ public class Arena {
   private final int arenaID;
   private SlabRegion[] regions;
   private final SizeClasses sizeClasses;
-  private Evictor evictor;
+  private Evictor sampleEvictor;
   private BinaryAllocator binaryAllocator;
   public AtomicInteger numRegisterThread = new AtomicInteger(0);
 
   private int sampleCount;
   private final int EVICT_SAMPLE_COUNT = 100;
-  private static final long GC_TIME_EVICTOR_PERCENTAGE = 30L;
 
   private final Duration evictorShutdownTimeoutDuration;
   private final Duration durationBetweenEvictionRuns;
@@ -60,7 +56,8 @@ public class Arena {
     }
 
     sampleCount = 0;
-    startEvictor(durationBetweenEvictionRuns);
+
+    restart();
   }
 
   public int getArenaID() {
@@ -89,34 +86,13 @@ public class Arena {
 
   public void close() {
     evict(1.0);
-    stopEvictor();
+    sampleEvictor.stopEvictor();
   }
 
   public void restart() {
-    startEvictor(durationBetweenEvictionRuns);
-  }
-
-  /**
-   * Starts the evictor with the given delay. If there is an evictor running when this method is
-   * called, it is stopped and replaced with a new evictor with the specified delay.
-   *
-   * @param delay time in milliseconds before start and between eviction runs
-   */
-  final void startEvictor(final Duration delay) {
-    LOGGER.info("Starting evictor with delay {}", delay);
-    final boolean isPositiveDelay = isPositive(delay);
-    if (evictor == null) { // Starting evictor for the first time or after a cancel
-      if (isPositiveDelay) { // Starting new evictor
-        evictor = new Evictor();
-        EvictionTimer.schedule(evictor, delay, delay, "arena-evictor-" + arenaID);
-      }
-    } else if (isPositiveDelay) { // Restart
-      EvictionTimer.cancel(evictor, evictorShutdownTimeoutDuration, true);
-      evictor = new Evictor();
-      EvictionTimer.schedule(evictor, delay, delay, "arena-evictor-" + arenaID);
-    } else { // Stopping evictor
-      EvictionTimer.cancel(evictor, evictorShutdownTimeoutDuration, false);
-    }
+    sampleEvictor =
+        new SampleEvictor("arena-" + arenaID + "-sample-evictor", evictorShutdownTimeoutDuration);
+    sampleEvictor.startEvictor(durationBetweenEvictionRuns);
   }
 
   public long getTotalUsedMemory() {
@@ -135,20 +111,10 @@ public class Arena {
     return totalActiveMemory;
   }
 
-  void stopEvictor() {
-    startEvictor(Duration.ofMillis(-1L));
-  }
+  public class SampleEvictor extends Evictor {
 
-  static boolean isPositive(final Duration delay) {
-    return delay != null && !delay.isNegative() && !delay.isZero();
-  }
-
-  public class Evictor implements Runnable {
-    private ScheduledFuture<?> scheduledFuture;
-
-    /** Cancels the scheduled future. */
-    void cancel() {
-      scheduledFuture.cancel(false);
+    public SampleEvictor(String name, Duration evictorShutdownTimeoutDuration) {
+      super(name, evictorShutdownTimeoutDuration);
     }
 
     @Override
@@ -166,23 +132,6 @@ public class Arena {
       }
       binaryAllocator.getMetrics().updateCounter(allocateFromSlabDelta, allocateFromJVMDelta);
 
-      if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage()
-          > GC_TIME_EVICTOR_PERCENTAGE) {
-        for (SlabRegion region : regions) {
-          region.evict(1.0);
-        }
-        binaryAllocator.close();
-        return;
-      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 20) {
-        for (SlabRegion region : regions) {
-          region.evict(0.5);
-        }
-      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 10) {
-        for (SlabRegion region : regions) {
-          region.evict(0.2);
-        }
-      }
-
       // Start sampling
       for (SlabRegion region : regions) {
         region.updateSample();
@@ -196,15 +145,6 @@ public class Arena {
         }
         sampleCount = 0;
       }
-    }
-
-    void setScheduledFuture(final ScheduledFuture<?> scheduledFuture) {
-      this.scheduledFuture = scheduledFuture;
-    }
-
-    @Override
-    public String toString() {
-      return getClass().getName() + " [scheduledFuture=" + scheduledFuture + "]";
     }
   }
 

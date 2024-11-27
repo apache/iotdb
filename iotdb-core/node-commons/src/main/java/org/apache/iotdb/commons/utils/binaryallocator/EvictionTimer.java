@@ -43,7 +43,7 @@ public class EvictionTimer {
     @Override
     public void run() {
       synchronized (EvictionTimer.class) {
-        for (final Map.Entry<WeakReference<Arena.Evictor>, WeakRunner<Arena.Evictor>> entry :
+        for (final Map.Entry<WeakReference<Evictor>, WeakRunner<Evictor>> entry :
             TASK_MAP.entrySet()) {
           if (entry.getKey().get() == null) {
             executor.remove(entry.getValue());
@@ -85,7 +85,7 @@ public class EvictionTimer {
   }
 
   /** Keys are weak references to tasks, values are runners managed by executor. */
-  private static final HashMap<WeakReference<Arena.Evictor>, WeakRunner<Arena.Evictor>> TASK_MAP =
+  private static final HashMap<WeakReference<Evictor>, WeakRunner<Evictor>> TASK_MAP =
       new HashMap<>();
 
   /**
@@ -97,7 +97,7 @@ public class EvictionTimer {
    * @param restarting The state of the evictor.
    */
   public static synchronized void cancel(
-      final Arena.Evictor evictor, final Duration timeout, final boolean restarting) {
+      final Evictor evictor, final Duration timeout, final boolean restarting) {
     if (evictor != null) {
       evictor.cancel();
       remove(evictor);
@@ -114,9 +114,8 @@ public class EvictionTimer {
   }
 
   /** Removes evictor from the task set and executor. Only called when holding the class lock. */
-  private static void remove(final Arena.Evictor evictor) {
-    for (final Map.Entry<WeakReference<Arena.Evictor>, WeakRunner<Arena.Evictor>> entry :
-        TASK_MAP.entrySet()) {
+  private static void remove(final Evictor evictor) {
+    for (final Map.Entry<WeakReference<Evictor>, WeakRunner<Evictor>> entry : TASK_MAP.entrySet()) {
       if (entry.getKey().get() == evictor) {
         executor.remove(entry.getValue());
         TASK_MAP.remove(entry.getKey());
@@ -127,8 +126,8 @@ public class EvictionTimer {
 
   /**
    * Adds the specified eviction task to the timer. Tasks that are added with a call to this method
-   * *must* call {@link #cancel(Arena.Evictor, Duration, boolean)} to cancel the task to prevent
-   * memory and/or thread leaks in application server environments.
+   * *must* call {@link #cancel(Evictor, Duration, boolean)} to cancel the task to prevent memory
+   * and/or thread leaks in application server environments.
    *
    * @param task Task to be scheduled.
    * @param delay Delay in milliseconds before task is executed.
@@ -136,15 +135,15 @@ public class EvictionTimer {
    * @param name Name of the thread.
    */
   public static synchronized void schedule(
-      final Arena.Evictor task, final Duration delay, final Duration period, final String name) {
+      final Evictor task, final Duration delay, final Duration period, final String name) {
     if (null == executor) {
       executor = new ScheduledThreadPoolExecutor(1, new IoTThreadFactory(name));
       executor.setRemoveOnCancelPolicy(true);
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           executor, new Reaper(), delay.toMillis(), period.toMillis(), TimeUnit.MILLISECONDS);
     }
-    final WeakReference<Arena.Evictor> ref = new WeakReference<>(task);
-    final WeakRunner<Arena.Evictor> runner = new WeakRunner<>(ref);
+    final WeakReference<Evictor> ref = new WeakReference<>(task);
+    final WeakRunner<Evictor> runner = new WeakRunner<>(ref);
     final ScheduledFuture<?> scheduledFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             executor, runner, delay.toMillis(), period.toMillis(), TimeUnit.MILLISECONDS);

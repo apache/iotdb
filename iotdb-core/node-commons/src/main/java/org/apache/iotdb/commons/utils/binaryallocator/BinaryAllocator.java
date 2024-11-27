@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.commons.utils.binaryallocator;
 
+import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.apache.tsfile.utils.PooledBinary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class BinaryAllocator {
 
@@ -36,11 +38,14 @@ public class BinaryAllocator {
 
   public static final BinaryAllocator DEFAULT = new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
   private ArenaStrategy arenaStrategy = new LeastUsedArenaStrategy();
-  private AtomicBoolean isOpen = new AtomicBoolean(true);
+  private AtomicReference<BinaryAllocatorState> state =
+      new AtomicReference<>(BinaryAllocatorState.UNINITIALIZED);
 
   private BinaryAllocatorMetrics metrics;
   private static ThreadLocal<ThreadArenaRegistry> arenaRegistry =
       ThreadLocal.withInitial(() -> new ThreadArenaRegistry());
+
+  private Evictor evictor;
 
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
@@ -56,7 +61,16 @@ public class BinaryAllocator {
     this.metrics = new BinaryAllocatorMetrics(this);
     MetricService.getInstance().addMetricSet(this.metrics);
 
-    this.isOpen.set(allocatorConfig.enableBinaryAllocator);
+    if (allocatorConfig.enableBinaryAllocator) {
+      state.set(BinaryAllocatorState.OPEN);
+      evictor =
+          new GCEvictor(
+              "binary-allocator-gc-evictor", allocatorConfig.getDurationEvictorShutdownTimeout());
+      evictor.startEvictor(allocatorConfig.getDurationBetweenEvictorRuns());
+    } else {
+      state.set(BinaryAllocatorState.CLOSE);
+      this.close(false);
+    }
   }
 
   public PooledBinary allocateBinary(int reqCapacity) {
@@ -70,14 +84,14 @@ public class BinaryAllocator {
     return new PooledBinary(arena.allocate(reqCapacity), reqCapacity, arena.getArenaID());
   }
 
-  public void deallocateBinary(PooledBinary bytes) {
-    if (bytes != null
-        && bytes.getLength() >= allocatorConfig.minAllocateSize
-        && bytes.getLength() <= allocatorConfig.maxAllocateSize) {
-      int arenaIndex = bytes.getArenaIndex();
+  public void deallocateBinary(PooledBinary binary) {
+    if (binary != null
+        && binary.getLength() >= allocatorConfig.minAllocateSize
+        && binary.getLength() <= allocatorConfig.maxAllocateSize) {
+      int arenaIndex = binary.getArenaIndex();
       if (arenaIndex != -1) {
         Arena arena = heapArenas[arenaIndex];
-        arena.deallocate(bytes.getValues());
+        arena.deallocate(binary.getValues());
       }
     }
   }
@@ -111,18 +125,22 @@ public class BinaryAllocator {
   }
 
   public boolean isOpen() {
-    return isOpen.get();
+    return state.get() == BinaryAllocatorState.OPEN;
   }
 
-  public void close() {
-    isOpen.set(false);
+  public void close(boolean needReopen) {
+    if (needReopen) state.set(BinaryAllocatorState.TMP_CLOSE);
+    else {
+      state.set(BinaryAllocatorState.CLOSE);
+      evictor.stopEvictor();
+    }
     for (Arena arena : heapArenas) {
       arena.close();
     }
   }
 
   public void restart() {
-    isOpen.set(true);
+    state.set(BinaryAllocatorState.OPEN);
     for (Arena arena : heapArenas) {
       arena.restart();
     }
@@ -185,6 +203,38 @@ public class BinaryAllocator {
 
       arenaRegistry.get().bindArena(minArena);
       return minArena;
+    }
+  }
+
+  public class GCEvictor extends Evictor {
+    public GCEvictor(String name, Duration evictorShutdownTimeoutDuration) {
+      super(name, evictorShutdownTimeoutDuration);
+    }
+
+    @Override
+    public void run() {
+      LOGGER.debug("Binary allocator running evictor");
+      if (state.get() == BinaryAllocatorState.TMP_CLOSE) {
+        if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 20) {
+          restart();
+        }
+        return;
+      }
+
+      if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 30) {
+        for (Arena arena : heapArenas) {
+          arena.evict(1.0);
+        }
+        close(true);
+      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 20) {
+        for (Arena arena : heapArenas) {
+          arena.evict(0.5);
+        }
+      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 10) {
+        for (Arena arena : heapArenas) {
+          arena.evict(0.2);
+        }
+      }
     }
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.binaryallocator;
+package org.apache.iotdb.commons.utils.binaryallocator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

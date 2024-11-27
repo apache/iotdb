@@ -1,8 +1,8 @@
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.utils.binaryallocator.AllocatorConfig;
-import org.apache.iotdb.db.utils.binaryallocator.BinaryAllocator;
-import org.apache.iotdb.db.utils.binaryallocator.SizeClasses;
+import org.apache.iotdb.commons.utils.binaryallocator.AllocatorConfig;
+import org.apache.iotdb.commons.utils.binaryallocator.BinaryAllocator;
+import org.apache.iotdb.commons.utils.binaryallocator.SizeClasses;
 
 import org.apache.tsfile.utils.PooledBinary;
 import org.junit.Test;
