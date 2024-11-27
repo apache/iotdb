@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.udf.utils.TreeUDFUtils;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -126,7 +126,7 @@ public class FunctionExpression extends Expression {
       functionType = FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
     } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
       functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
-    } else if (UDFManagementService.getInstance().isUDAF(functionName)) {
+    } else if (TreeUDFUtils.isUDAF(functionName)) {
       functionType = FunctionType.UDAF;
     } else {
       functionType = FunctionType.UDTF;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -78,7 +79,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -1474,7 +1476,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateFunctionPlanTest() throws IOException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+        new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345");
     CreateFunctionPlan createFunctionPlan0 =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     CreateFunctionPlan createFunctionPlan1 =
@@ -1485,11 +1487,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropFunctionPlanTest() throws IOException {
-    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan("test");
-    DropFunctionPlan dropFunctionPlan1 =
-        (DropFunctionPlan)
-            ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(dropFunctionPlan0, dropFunctionPlan1);
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan0 = new DropTreeModelFunctionPlan("test");
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan1 =
+        (DropTreeModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTreeModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTreeModelFunctionPlan0, dropTreeModelFunctionPlan1);
+
+    DropTableModelFunctionPlan dropTableModelFunctionPlan0 = new DropTableModelFunctionPlan("test");
+    DropTableModelFunctionPlan dropTableModelFunctionPlan1 =
+        (DropTableModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTableModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTableModelFunctionPlan0, dropTableModelFunctionPlan1);
   }
 
   @Test

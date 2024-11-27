@@ -17,22 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.function;
+package org.apache.iotdb.commons.udf.utils;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.udf.api.UDAF;
+import org.apache.iotdb.udf.api.UDTF;
 
-public class GetFunctionTablePlan extends ConfigPhysicalReadPlan {
-
-  private final Model model;
-
-  public GetFunctionTablePlan(Model model) {
-    super(ConfigPhysicalPlanType.GetFunctionTable);
-    this.model = model;
+public class TreeUDFUtils {
+  public static boolean isUDTF(String functionName) {
+    try {
+      UDFManagementService.getInstance().reflect(functionName, UDTF.class);
+      return true;
+    } catch (Throwable e) {
+      return false;
+    }
   }
 
-  public Model getModel() {
-    return model;
+  public static boolean isUDAF(String functionName) {
+    try {
+      UDFManagementService.getInstance().reflect(functionName, UDAF.class);
+      return true;
+    } catch (Throwable e) {
+      return false;
+    }
   }
 }
