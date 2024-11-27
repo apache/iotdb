@@ -9,6 +9,7 @@ on:
       - master
       - 'rel/*'
       - "rc/*"
+      - fix_last_flush_time_map_test
     paths-ignore:
       - 'docs/**'
       - 'site/**'

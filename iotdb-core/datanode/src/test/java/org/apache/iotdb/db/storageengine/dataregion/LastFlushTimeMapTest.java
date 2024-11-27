@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -89,9 +88,7 @@ public class LastFlushTimeMapTest {
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     }
 
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
+    dataRegion.syncCloseWorkingTsFileProcessors(false);
     Assert.assertEquals(
         10000,
         dataRegion
@@ -116,10 +113,6 @@ public class LastFlushTimeMapTest {
       record = new TSRecord(j, "root.vehicle.d0");
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
-    }
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
@@ -163,10 +156,6 @@ public class LastFlushTimeMapTest {
       record = new TSRecord(j, "root.vehicle.d0");
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
-    }
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
