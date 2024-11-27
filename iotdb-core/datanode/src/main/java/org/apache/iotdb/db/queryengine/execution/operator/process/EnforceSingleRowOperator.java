@@ -35,8 +35,7 @@ public class EnforceSingleRowOperator implements ProcessOperator {
   private static final String MULTIPLE_ROWS_ERROR_MESSAGE =
       "Scalar sub-query has returned multiple rows.";
 
-  private static final String NO_RESULT_ERROR_MESSAGE =
-      "Scalar sub-query has returned multiple rows.";
+  private static final String NO_RESULT_ERROR_MESSAGE = "Scalar sub-query does not have output.";
 
   private final OperatorContext operatorContext;
   private final Operator child;
@@ -56,12 +55,13 @@ public class EnforceSingleRowOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
     TsBlock tsBlock = child.next();
-    if (tsBlock != null && (tsBlock.getPositionCount() > 1 || finished)) {
+    if (tsBlock == null || tsBlock.isEmpty()) {
+      return tsBlock;
+    }
+    if (tsBlock.getPositionCount() > 1 || finished) {
       throw new IllegalStateException(MULTIPLE_ROWS_ERROR_MESSAGE);
     }
-    if (tsBlock != null) {
-      finished = true;
-    }
+    finished = true;
     return tsBlock;
   }
 

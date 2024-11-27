@@ -51,10 +51,10 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
 
   private final Operator probeSource;
 
-  // cache the result of buildSource, for now, we assume that the buildChild produces a small number
-  // of TsBlocks
   private final Operator buildSource;
 
+  // cache the result of buildSource, for now, we assume that the buildChild produces a small number
+  // of TsBlocks
   private final List<TsBlock> buildBlocks;
 
   private final TsBlockBuilder resultBuilder;

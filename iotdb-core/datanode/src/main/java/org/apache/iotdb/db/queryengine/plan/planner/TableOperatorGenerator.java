@@ -1301,7 +1301,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                LimitOperator.class.getSimpleName());
+                EnforceSingleRowOperator.class.getSimpleName());
 
     return new EnforceSingleRowOperator(operatorContext, child);
   }
