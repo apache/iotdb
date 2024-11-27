@@ -45,7 +45,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   private final int[] groupByChannels;
-  private final GroupByHash groupByHash;
+  private GroupByHash groupByHash;
   private final List<Type> groupByOutputTypes;
   private final List<GroupedAggregator> groupedAggregators;
   private final boolean partial;
@@ -53,6 +53,12 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   private final UpdateMemory updateMemory;
 
   private boolean full;
+
+  private Iterator<Integer> groupIds;
+  private final TsBlockBuilder pageBuilder;
+
+  private final int expectedGroups;
+  private final Optional<Integer> hashChannel;
 
   public InMemoryHashAggregationBuilder(
       List<GroupedAggregator> groupedAggregators,
@@ -97,6 +103,11 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     this.partial = step.isOutputPartial();
     this.maxPartialMemory = OptionalLong.of(maxPartialMemory);
     this.updateMemory = updateMemory;
+
+    this.pageBuilder = new TsBlockBuilder(buildTypes());
+
+    this.expectedGroups = expectedGroups;
+    this.hashChannel = hashChannel;
   }
 
   @Override
@@ -118,6 +129,18 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   @Override
   public void updateMemory() {
     //  updateMemory.update();
+  }
+
+  @Override
+  public void reset() {
+    // TODO reset of GroupByHash
+    groupByHash =
+        createGroupByHash(
+            groupByOutputTypes, hashChannel.isPresent(), expectedGroups, updateMemory);
+    groupedAggregators.forEach(GroupedAggregator::reset);
+    full = false;
+    groupIds = null;
+    pageBuilder.reset();
   }
 
   @Override
@@ -174,6 +197,11 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     return buildResult(consecutiveGroupIds());
   }
 
+  @Override
+  public boolean finished() {
+    return !groupIds.hasNext();
+  }
+
   public List<Type> buildSpillTypes() {
     ArrayList<Type> types = new ArrayList<>(groupByOutputTypes);
     for (GroupedAggregator groupedAggregator : groupedAggregators) {
@@ -187,12 +215,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   }
 
   private TsBlock buildResult(Iterator<Integer> groupIds) {
-    TsBlockBuilder pageBuilder = new TsBlockBuilder(buildTypes());
-
     pageBuilder.reset();
 
-    // TODO Memory Control Weihao Li
-    while (groupIds.hasNext()) {
+    while (!pageBuilder.isFull() && groupIds.hasNext()) {
       int groupId = groupIds.next();
 
       groupByHash.appendValuesTo(groupId, pageBuilder);
@@ -223,6 +248,9 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   }
 
   private Iterator<Integer> consecutiveGroupIds() {
-    return IntStream.range(0, groupByHash.getGroupCount()).iterator();
+    if (groupIds == null) {
+      groupIds = IntStream.range(0, groupByHash.getGroupCount()).iterator();
+    }
+    return groupIds;
   }
 }

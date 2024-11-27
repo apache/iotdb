@@ -231,6 +231,11 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitExchange(ExchangeNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      node.getOutputSymbols()
+          .forEach(
+              symbol ->
+                  beTypeProvider.putTableModelType(
+                      symbol, feTypeProvider.getTableModelType(symbol)));
       return null;
     }
 

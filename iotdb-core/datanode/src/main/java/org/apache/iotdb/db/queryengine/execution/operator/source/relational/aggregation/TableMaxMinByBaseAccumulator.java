@@ -97,7 +97,9 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of max_by/min_by should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -322,16 +324,16 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   private byte[] serialize() {
     byte[] valueBytes;
+    int yLength = calcTypeSize(yDataType, yExtremeValue);
     if (xNull) {
-      valueBytes = new byte[calcTypeSize(yDataType, yExtremeValue) + 1];
+      valueBytes = new byte[yLength + 1];
       serializeValue(yDataType, yExtremeValue, valueBytes, 0);
-      BytesUtils.boolToBytes(true, valueBytes, 8);
+      BytesUtils.boolToBytes(true, valueBytes, yLength);
     } else {
-      valueBytes =
-          new byte[calcTypeSize(yDataType, yExtremeValue) + 1 + calcTypeSize(xDataType, xResult)];
+      valueBytes = new byte[yLength + 1 + calcTypeSize(xDataType, xResult)];
       int offset = 0;
       serializeValue(yDataType, yExtremeValue, valueBytes, offset);
-      offset = calcTypeSize(yDataType, yExtremeValue);
+      offset = yLength;
 
       BytesUtils.boolToBytes(false, valueBytes, offset);
       offset += 1;

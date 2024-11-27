@@ -311,9 +311,10 @@ public class TableInnerJoinOperator extends AbstractOperator {
   }
 
   private boolean rightBlockNotEmpty() {
-    return !rightBlockList.isEmpty()
-        && rightBlockListIdx < rightBlockList.size()
-        && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount();
+    return (!rightBlockList.isEmpty()
+            && rightBlockListIdx < rightBlockList.size()
+            && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount())
+        || (hasCachedNextRightBlock && cachedNextRightBlock != null);
   }
 
   private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {

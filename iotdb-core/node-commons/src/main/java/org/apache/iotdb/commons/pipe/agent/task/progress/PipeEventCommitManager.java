@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
@@ -34,6 +35,7 @@ public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
+  private volatile PipeTaskAgent taskAgent;
   private final Map<CommitterKey, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
   // the restartTimes in the committer key is always -1
@@ -104,7 +106,9 @@ public class PipeEventCommitManager {
     }
     if (Objects.nonNull(commitRateMarker)) {
       try {
-        commitRateMarker.accept(event.getPipeNameWithCreationTime(), event.isDataRegionEvent());
+        commitRateMarker.accept(
+            taskAgent.getPipeNameWithCreationTime(event.getPipeName(), event.getCreationTime()),
+            event.isDataRegionEvent());
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
@@ -144,7 +148,7 @@ public class PipeEventCommitManager {
 
   private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
-    return new CommitterKey(
+    return taskAgent.getCommitterKey(
         pipeName,
         creationTime,
         regionId,
@@ -160,6 +164,10 @@ public class PipeEventCommitManager {
   private static CommitterKey generateCommitterRestartTimesKey(final CommitterKey committerKey) {
     return new CommitterKey(
         committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
+  }
+
+  public void setTaskAgent(final PipeTaskAgent taskAgent) {
+    this.taskAgent = taskAgent;
   }
 
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {

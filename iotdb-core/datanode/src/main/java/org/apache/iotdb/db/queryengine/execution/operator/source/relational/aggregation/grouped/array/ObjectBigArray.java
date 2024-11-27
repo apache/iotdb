@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array;
 
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.INITIAL_SEGMENTS;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BigArrays.SEGMENT_SIZE;
@@ -110,6 +111,21 @@ public final class ObjectBigArray<T> {
         return;
       }
       Arrays.fill(segment, value);
+    }
+  }
+
+  public void reset() {
+    fill((T) initialValue);
+  }
+
+  public void forEach(Consumer<T> action) {
+    for (Object[] segment : array) {
+      if (segment == null) {
+        return;
+      }
+      for (T object : (T[]) segment) {
+        action.accept(object);
+      }
     }
   }
 

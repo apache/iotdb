@@ -40,7 +40,9 @@ public interface IDeviceAttributeStore {
   Map<String, Binary> alterAttribute(
       final int pointer, final List<String> nameList, final Object[] valueList);
 
-  Map<String, Binary> removeAttribute(final int pointer);
+  void removeAttribute(final int pointer);
+
+  void removeAttribute(final int pointer, final String attributeName);
 
   Binary getAttribute(final int pointer, final String name);
 }

@@ -126,6 +126,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -282,14 +283,25 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       nodeIds = Collections.singleton(config.getDataNodeId());
     }
 
-    logger.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
-
     // Load ConfigNodeList from system.properties file
     ConfigNodeInfo.getInstance().loadConfigNodeList();
 
     try (ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Find a datanode location with the given node id.
+
+      Set<Integer> validNodeIds =
+          configNodeClient.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().keySet();
+
+      Set<Integer> invalidNodeIds = new HashSet<>(nodeIds);
+      invalidNodeIds.removeAll(validNodeIds);
+
+      if (!invalidNodeIds.isEmpty()) {
+        logger.info("Cannot remove invalid nodeIds:{}", invalidNodeIds);
+        nodeIds.removeAll(invalidNodeIds);
+      }
+
+      logger.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
 
       final Set<Integer> finalNodeIds = nodeIds;
       List<TDataNodeLocation> removeDataNodeLocations =

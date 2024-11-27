@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -45,9 +44,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.FIRST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.LAST_BY;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 
 public class AccumulatorFactory {
 
@@ -57,7 +56,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      boolean ascending) {
+      boolean ascending,
+      String timeColumnName) {
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
       throw new UnsupportedOperationException();
@@ -66,9 +66,9 @@ public class AccumulatorFactory {
         && inputExpressions.size() > 1) {
       boolean xIsTimeColumn = false;
       boolean yIsTimeColumn = false;
-      if (isTimeColumn(inputExpressions.get(1))) {
+      if (isTimeColumn(inputExpressions.get(1), timeColumnName)) {
         yIsTimeColumn = true;
-      } else if (isTimeColumn(inputExpressions.get(0))) {
+      } else if (isTimeColumn(inputExpressions.get(0), timeColumnName)) {
         xIsTimeColumn = true;
       }
       if (LAST_BY.getFunctionName().equals(functionName)) {
@@ -325,10 +325,5 @@ public class AccumulatorFactory {
   @FunctionalInterface
   public interface KeepEvaluator {
     boolean apply(long keep);
-  }
-
-  public static boolean isTimeColumn(Expression expression) {
-    return expression instanceof SymbolReference
-        && TIME_COLUMN_NAME.equals(((SymbolReference) expression).getName());
   }
 }

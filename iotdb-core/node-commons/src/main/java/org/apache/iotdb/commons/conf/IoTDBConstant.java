@@ -161,6 +161,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_DELETED_DEVICE_NUM = "num_of_deleted_devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";

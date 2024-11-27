@@ -53,7 +53,6 @@ import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
@@ -980,7 +979,7 @@ class RatisConsensus implements IConsensus {
     }
 
     @Override
-    public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
+    public GenericKeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
       GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
           new GenericKeyedObjectPool<>(

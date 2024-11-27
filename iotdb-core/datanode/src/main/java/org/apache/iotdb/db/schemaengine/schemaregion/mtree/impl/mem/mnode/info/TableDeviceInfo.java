@@ -33,23 +33,23 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   private int attributePointer = -1;
 
   public int getAttributePointer() {
-    return attributePointer;
+    return attributePointer >= -1 ? attributePointer : -attributePointer - 2;
   }
 
-  public void setAttributePointer(int attributePointer) {
+  public void setAttributePointer(final int attributePointer) {
     this.attributePointer = attributePointer;
   }
 
   @Override
-  public void moveDataToNewMNode(IDeviceMNode<N> newMNode) {}
+  public void moveDataToNewMNode(final IDeviceMNode<N> newMNode) {}
 
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode<N> child) {
+  public boolean addAlias(final String alias, final IMeasurementMNode<N> child) {
     return false;
   }
 
   @Override
-  public void deleteAliasChild(String alias) {}
+  public void deleteAliasChild(final String alias) {}
 
   @Override
   public Map<String, IMeasurementMNode<N>> getAliasChildren() {
@@ -57,15 +57,15 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {}
+  public void setAliasChildren(final Map<String, IMeasurementMNode<N>> aliasChildren) {}
 
   @Override
-  public boolean hasAliasChild(String name) {
+  public boolean hasAliasChild(final String name) {
     return false;
   }
 
   @Override
-  public N getAliasChild(String name) {
+  public N getAliasChild(final String name) {
     return null;
   }
 
@@ -75,10 +75,10 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {}
+  public void setUseTemplate(final boolean useTemplate) {}
 
   @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {}
+  public void setSchemaTemplateId(final int schemaTemplateId) {}
 
   @Override
   public int getSchemaTemplateId() {
@@ -91,15 +91,23 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-  public boolean isPreDeactivateTemplate() {
-    return false;
+  public boolean isPreDeactivateSelfOrTemplate() {
+    return attributePointer < -1;
   }
 
   @Override
-  public void preDeactivateTemplate() {}
+  public void preDeactivateSelfOrTemplate() {
+    if (attributePointer > -1) {
+      attributePointer = -attributePointer - 2;
+    }
+  }
 
   @Override
-  public void rollbackPreDeactivateTemplate() {}
+  public void rollbackPreDeactivateSelfOrTemplate() {
+    if (attributePointer < -1) {
+      attributePointer = -attributePointer - 2;
+    }
+  }
 
   @Override
   public void deactivateTemplate() {}
@@ -110,7 +118,7 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-  public void setAligned(Boolean isAligned) {}
+  public void setAligned(final Boolean isAligned) {}
 
   @Override
   public int estimateSize() {

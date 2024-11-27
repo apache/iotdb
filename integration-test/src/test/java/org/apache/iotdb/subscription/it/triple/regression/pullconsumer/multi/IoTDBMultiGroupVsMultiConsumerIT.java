@@ -102,7 +102,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   /***

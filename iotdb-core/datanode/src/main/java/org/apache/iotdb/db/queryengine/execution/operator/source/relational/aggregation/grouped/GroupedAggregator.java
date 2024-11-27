@@ -85,6 +85,10 @@ public class GroupedAggregator {
     accumulator.prepareFinal();
   }
 
+  public void reset() {
+    accumulator.reset();
+  }
+
   public long getEstimatedSize() {
     return accumulator.getEstimatedSize();
   }

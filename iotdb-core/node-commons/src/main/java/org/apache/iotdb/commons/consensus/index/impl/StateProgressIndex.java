@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -44,7 +45,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * integrity and independence of the progress index instances.
  */
 public class StateProgressIndex extends ProgressIndex {
-
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(StateProgressIndex.class) + ProgressIndex.LOCK_SIZE;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final long version;
@@ -52,7 +54,7 @@ public class StateProgressIndex extends ProgressIndex {
   private final ProgressIndex innerProgressIndex;
 
   public StateProgressIndex(
-      long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
+      final long version, final Map<String, Binary> state, final ProgressIndex innerProgressIndex) {
     this.version = version;
     this.state = new HashMap<>(state);
     this.innerProgressIndex = innerProgressIndex;
@@ -241,5 +243,16 @@ public class StateProgressIndex extends ProgressIndex {
         + ", innerProgressIndex="
         + innerProgressIndex
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + innerProgressIndex.ramBytesUsed()
+        + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * state.size()
+        + state.entrySet().stream()
+            .map(
+                entry -> RamUsageEstimator.sizeOf(entry.getKey()) + entry.getValue().ramBytesUsed())
+            .reduce(0L, Long::sum);
   }
 }

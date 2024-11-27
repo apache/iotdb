@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -131,6 +132,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private TreePattern treePattern;
   private TablePattern tablePattern;
+
+  private boolean isModelDetected = false;
+  private boolean isTableModel;
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
@@ -150,8 +154,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean isTerminateSignalSent = false;
 
   private volatile boolean hasBeenStarted = false;
-
-  private final Map<TsFileResource, Boolean> tsfile2IsTableModelMap = new HashMap<>(0);
 
   private Queue<PersistentResource> pendingQueue;
 
@@ -502,6 +504,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private void flushTsFilesForExtraction(
       DataRegion dataRegion, final long startHistoricalExtractionTime) {
     LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+
+    // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
+    // **immediately**, the latter pipe will skip the flush operation.
+    // Since a large number of consensus pipes are not created at the same time, resulting in no
+    // serious waiting for locks. Therefore, the flush operation is always performed for the
+    // consensus pipe, and the lastFlushed timestamp is not updated here.
+    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      LOGGER.info(
+          "Pipe {}@{}: finish to flush data region, took {} ms",
+          pipeName,
+          dataRegionId,
+          System.currentTimeMillis() - startHistoricalExtractionTime);
+      return;
+    }
+
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
       final long lastFlushedByPipeTime = DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
       if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
@@ -574,17 +592,20 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               .collect(Collectors.toList());
       resourceList.addAll(unsequenceTsFileResources);
 
-      resourceList.forEach(
+      resourceList.removeIf(
           resource -> {
             // Pin the resource, in case the file is removed by compaction or anything.
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
                   .pinTsFileResource((TsFileResource) resource, shouldTransferModFile);
+              return false;
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe: failed to pin TsFileResource {}",
-                  ((TsFileResource) resource).getTsFilePath());
+                  ((TsFileResource) resource).getTsFilePath(),
+                  e);
+              return true;
             }
           });
 
@@ -648,29 +669,34 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             deviceID -> {
-              if (deviceID instanceof PlainDeviceID
-                  || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
-                  || deviceID.getTableName().equals(PATH_ROOT)) {
-                // In case of tree model deviceID
-                if (treePattern.isTreeModelDataAllowedToBeCaptured()
-                    && treePattern.mayOverlapWithDevice(deviceID)) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.FALSE);
-                  return true;
-                }
-              } else {
-                // In case of table model deviceID
-                if (tablePattern.isTableModelDataAllowedToBeCaptured()
-                    // The database name in resource is prefixed with "root."
-                    && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
-                    && tablePattern.matchesTable(deviceID.getTableName())) {
-                  tsfile2IsTableModelMap.computeIfAbsent(
-                      resource, (tsFileResource) -> Boolean.TRUE);
-                  return true;
-                }
+              if (!isModelDetected) {
+                detectModel(resource, deviceID);
+                isModelDetected = true;
               }
-              return false;
+
+              return isTableModel
+                  ? (tablePattern.isTableModelDataAllowedToBeCaptured()
+                      // The database name in resource is prefixed with "root."
+                      && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
+                      && tablePattern.matchesTable(deviceID.getTableName()))
+                  : (treePattern.isTreeModelDataAllowedToBeCaptured()
+                      && treePattern.mayOverlapWithDevice(deviceID));
             });
+  }
+
+  private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
+    this.isTableModel =
+        !(deviceID instanceof PlainDeviceID
+            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+            || deviceID.getTableName().equals(PATH_ROOT));
+
+    final String databaseName = resource.getDatabaseName();
+    isDbNameCoveredByPattern =
+        isTableModel
+            ? tablePattern.isTableModelDataAllowedToBeCaptured()
+                && tablePattern.coversDb(databaseName.substring(5))
+            : treePattern.isTreeModelDataAllowedToBeCaptured()
+                && treePattern.coversDb(databaseName);
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -767,7 +793,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private Event supplyTsFileEvent(TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
-            tsfile2IsTableModelMap.remove(resource),
+            isModelDetected ? isTableModel : null,
             resource.getDatabaseName(),
             resource,
             shouldTransferModFile,
@@ -868,8 +894,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void close() {
-    tsfile2IsTableModelMap.clear();
-
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {

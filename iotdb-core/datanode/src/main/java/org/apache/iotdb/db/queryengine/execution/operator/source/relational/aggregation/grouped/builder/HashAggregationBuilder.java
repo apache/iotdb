@@ -20,11 +20,15 @@ public interface HashAggregationBuilder extends AutoCloseable {
 
   TsBlock buildResult();
 
+  boolean finished();
+
   long getEstimatedSize();
 
   boolean isFull();
 
   void updateMemory();
+
+  void reset();
 
   @Override
   void close();

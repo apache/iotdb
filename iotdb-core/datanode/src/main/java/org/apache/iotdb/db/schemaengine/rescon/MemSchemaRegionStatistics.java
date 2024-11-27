@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.rescon;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -98,6 +99,11 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   }
 
   @Override
+  public Map<String, Long> getTable2DevicesNumMap() {
+    return tableDeviceNumber;
+  }
+
+  @Override
   public long getTableDevicesNumber(final String table) {
     final Long deviceNumber = tableDeviceNumber.get(table);
     return Objects.nonNull(deviceNumber) ? deviceNumber : 0;
@@ -105,6 +111,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   public void addTableDevice(final String table) {
     tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+  }
+
+  public void decreaseTableDevice(final String table, final long decrease) {
+    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
   }
 
   public void resetTableDevice(final String table) {
