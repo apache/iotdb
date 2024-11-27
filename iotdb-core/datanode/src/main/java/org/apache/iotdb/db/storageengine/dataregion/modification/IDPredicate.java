@@ -261,28 +261,16 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public long serialize(OutputStream stream) throws IOException {
       long size = super.serialize(stream);
-      if (pattern != null) {
-        size += ReadWriteIOUtils.writeVar(pattern, stream);
-        size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
-      } else {
-        size += ReadWriteForEncodingUtils.writeVarInt(-1, stream);
-        size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
-      }
-
+      size += ReadWriteIOUtils.writeVar(pattern, stream);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, stream);
       return size;
     }
 
     @Override
     public long serialize(ByteBuffer buffer) {
       long size = super.serialize(buffer);
-      if (pattern != null) {
-        size += ReadWriteIOUtils.writeVar(pattern, buffer);
-        size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
-      } else {
-        size += ReadWriteForEncodingUtils.writeVarInt(-1, buffer);
-        size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
-      }
-
+      size += ReadWriteIOUtils.writeVar(pattern, buffer);
+      size += ReadWriteForEncodingUtils.writeVarInt(segmentIndex, buffer);
       return size;
     }
 
@@ -300,8 +288,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public boolean matches(IDeviceID deviceID) {
-      return deviceID.segmentNum() > segmentIndex
-          && Objects.equals(pattern, deviceID.segment(segmentIndex));
+      return Objects.equals(pattern, deviceID.segment(segmentIndex));
     }
 
     @Override

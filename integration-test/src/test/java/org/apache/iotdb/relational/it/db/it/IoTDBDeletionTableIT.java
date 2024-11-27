@@ -130,6 +130,15 @@ public class IoTDBDeletionTableIT {
         assertEquals("701: The operator of id predicate must be '=' for 'd0'", e.getMessage());
       }
 
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: Unsupported expression: (deviceId IS NOT NULL) in ((time < 10) AND (deviceId IS NOT NULL))",
+            e.getMessage());
+      }
+
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
         int cnt = 0;
         while (set.next()) {
@@ -582,17 +591,23 @@ public class IoTDBDeletionTableIT {
       // id1 is null for this record
       statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
       statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
       statement.execute("flush");
 
-      statement.execute("delete from t" + testNum + " where id1 = NULL and time <= 1");
+      statement.execute("delete from t" + testNum + " where id1 is NULL and time <= 1");
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertTrue(set.next());
+        assertTrue(set.next());
+        assertFalse(set.next());
+      }
 
+      statement.execute("delete from t" + testNum + " where id2 = NULL");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
         assertTrue(set.next());
         assertFalse(set.next());
       }
 
       statement.execute("delete from t" + testNum);
-
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
         assertFalse(set.next());
       }
