@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -580,7 +581,16 @@ public class IoTDBDeletionTableIT {
           "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
       // id1 is null for this record
       statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
       statement.execute("flush");
+
+      statement.execute("delete from t" + testNum + " where id1 = NULL and time <= 1");
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertTrue(set.next());
+        assertFalse(set.next());
+      }
+
       statement.execute("delete from t" + testNum);
 
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {

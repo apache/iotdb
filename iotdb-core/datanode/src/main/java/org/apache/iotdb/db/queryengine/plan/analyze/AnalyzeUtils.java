@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -540,13 +541,14 @@ public class AnalyzeUtils {
     String rightHandValue;
     if (right instanceof StringLiteral) {
       rightHandValue = ((StringLiteral) right).getValue();
+    } else if (right instanceof NullLiteral) {
+      rightHandValue = null;
     } else {
       throw new SemanticException(
           "The right hand value of id predicate must be a string: " + right);
     }
     // the first segment is the table name, so + 1
-    IDPredicate newPredicate = new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
-    return newPredicate;
+    return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
   }
 
   public interface DataPartitionQueryFunc {
