@@ -103,6 +103,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private static final int CONNECTION_LINE_HEIGHT = 2;
 
   public static final String DEVICE_NUMBER = "DeviceNumber";
+  public static final String CURRENT_USED_MEMORY = "CurrentUsedMemory";
+  public static final String MAX_USED_MEMORY = "MaxUsedMemory";
 
   @Override
   public List<String> visitPlan(PlanNode node, GraphContext context) {
