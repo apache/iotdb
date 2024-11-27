@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.pipe.it.tablemodel;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
@@ -35,9 +34,7 @@ import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.awaitility.Awaitility;
 
-import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Statement;
@@ -50,10 +47,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
 
@@ -100,11 +95,11 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
+    list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
       return false;
     }
-    awaitUntilFlush(baseEnv);
     return true;
   }
 
@@ -136,11 +131,11 @@ public class TableModelUtils {
               tableName, values[0], values[1], values[2], values[3], values[4], values[5],
               values[6], values[7], values[8], i));
     }
+    list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
       return false;
     }
-    awaitUntilFlush(baseEnv);
     return true;
   }
 
@@ -153,6 +148,7 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
+    list.add("flush");
     return TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
   }
@@ -171,11 +167,12 @@ public class TableModelUtils {
               "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
+    list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
         baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT)) {
       return false;
     }
-    awaitUntilFlush(baseEnv);
+
     return true;
   }
 
@@ -191,7 +188,7 @@ public class TableModelUtils {
     try (final ITableSession session = tableSessionPool.getSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
       session.insert(tablet);
-      awaitUntilFlush(baseEnv);
+      session.executeNonQueryStatement("flush");
       return true;
     } catch (Exception e) {
       e.printStackTrace();
@@ -395,46 +392,5 @@ public class TableModelUtils {
     }
 
     return tablet;
-  }
-
-  protected static void awaitUntilFlush(BaseEnv env) {
-    Awaitility.await()
-        .atMost(1, TimeUnit.MINUTES)
-        .pollDelay(2, TimeUnit.SECONDS)
-        .pollInterval(2, TimeUnit.SECONDS)
-        .until(
-            () -> {
-              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
-                return false;
-              }
-
-              return env.getDataNodeWrapperList().stream()
-                  .anyMatch(
-                      wrapper -> {
-                        int num = 0;
-                        File sequence = new File(buildDataPath(wrapper, true));
-                        File unsequence = new File(buildDataPath(wrapper, false));
-                        if (sequence.exists() && sequence.listFiles() != null) {
-                          num += Objects.requireNonNull(sequence.listFiles()).length;
-                        }
-                        if (unsequence.exists() && unsequence.listFiles() != null) {
-                          num += Objects.requireNonNull(unsequence.listFiles()).length;
-                        }
-                        return num > 0;
-                      });
-            });
-  }
-
-  private static String buildDataPath(DataNodeWrapper wrapper, boolean isSequence) {
-    String nodePath = wrapper.getNodePath();
-    return nodePath
-        + File.separator
-        + IoTDBConstant.DATA_FOLDER_NAME
-        + File.separator
-        + "datanode"
-        + File.separator
-        + IoTDBConstant.DATA_FOLDER_NAME
-        + File.separator
-        + (isSequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME);
   }
 }

@@ -169,7 +169,7 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
-  public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;
+  public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_LOAD_BALANCE_STRATEGY_KEY =
       "connector.load-balance-strategy";
