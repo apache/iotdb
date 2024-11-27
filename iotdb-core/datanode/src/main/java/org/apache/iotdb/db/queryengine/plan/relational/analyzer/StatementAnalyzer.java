@@ -283,10 +283,10 @@ public class StatementAnalyzer {
     private final Optional<UpdateKind> updateKind;
 
     private Visitor(
-        Optional<Scope> outerQueryScope,
-        WarningCollector warningCollector,
-        Optional<UpdateKind> updateKind,
-        boolean isTopLevel) {
+        final Optional<Scope> outerQueryScope,
+        final WarningCollector warningCollector,
+        final Optional<UpdateKind> updateKind,
+        final boolean isTopLevel) {
       this.outerQueryScope = requireNonNull(outerQueryScope, "outerQueryScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
       this.updateKind = requireNonNull(updateKind, "updateKind is null");
@@ -294,8 +294,11 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope process(final Node node, final Optional<Scope> scope) {
+    public Scope process(Node node, final Optional<Scope> scope) {
       final Scope returnScope = super.process(node, scope);
+      if (node instanceof PipeEnriched) {
+        node = ((PipeEnriched) node).getInnerStatement();
+      }
       if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
