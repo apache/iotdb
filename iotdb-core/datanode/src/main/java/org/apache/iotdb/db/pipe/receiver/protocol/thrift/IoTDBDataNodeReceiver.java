@@ -561,8 +561,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
-            Paths.get(fileAbsolutePaths.get(1)),
-            fileAbsolutePaths.size() > 2 ? Paths.get(fileAbsolutePaths.get(2)) : null,
+            fileAbsolutePaths.size() > 1 && Objects.nonNull(fileAbsolutePaths.get(1))
+                ? Paths.get(fileAbsolutePaths.get(1))
+                : null,
+            fileAbsolutePaths.size() > 2 && Objects.nonNull(fileAbsolutePaths.get(2))
+                ? Paths.get(fileAbsolutePaths.get(2))
+                : null,
             databasePath);
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
