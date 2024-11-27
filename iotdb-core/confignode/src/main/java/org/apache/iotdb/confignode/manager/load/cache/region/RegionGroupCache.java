@@ -153,4 +153,8 @@ public class RegionGroupCache {
   public Set<Integer> getRegionLocations() {
     return regionCacheMap.keySet();
   }
+
+  public RegionCache getRegionCache(int nodeId) {
+    return regionCacheMap.get(nodeId);
+  }
 }

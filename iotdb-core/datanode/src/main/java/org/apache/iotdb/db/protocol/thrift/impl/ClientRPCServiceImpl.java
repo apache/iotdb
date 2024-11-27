@@ -384,6 +384,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSExecuteStatementResp resp;
         if (queryExecution != null && queryExecution.isQuery()) {
+          statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
