@@ -34,10 +34,10 @@ public class Arena {
   private static final Logger LOGGER = LoggerFactory.getLogger(Arena.class);
   private final int arenaID;
   private SlabRegion[] regions;
-  public SizeClasses sizeClasses;
+  private final SizeClasses sizeClasses;
   private Evictor evictor;
   private BinaryAllocator binaryAllocator;
-  AtomicInteger numRegisterThread = new AtomicInteger(0);
+  public AtomicInteger numRegisterThread = new AtomicInteger(0);
 
   private int sampleCount;
   private final int EVICT_SAMPLE_COUNT = 100;
@@ -89,7 +89,7 @@ public class Arena {
 
   public void close() {
     evict(1.0);
-    startEvictor(Duration.ofMillis(-1L));
+    stopEvictor();
   }
 
   public void restart() {
@@ -100,8 +100,6 @@ public class Arena {
    * Starts the evictor with the given delay. If there is an evictor running when this method is
    * called, it is stopped and replaced with a new evictor with the specified delay.
    *
-   * <p>This method needs to be final, since it is called from a constructor. See POOL-195.
-   *
    * @param delay time in milliseconds before start and between eviction runs
    */
   final void startEvictor(final Duration delay) {
@@ -110,12 +108,12 @@ public class Arena {
     if (evictor == null) { // Starting evictor for the first time or after a cancel
       if (isPositiveDelay) { // Starting new evictor
         evictor = new Evictor();
-        EvictionTimer.schedule(evictor, delay, delay);
+        EvictionTimer.schedule(evictor, delay, delay, "arena-evictor-" + arenaID);
       }
     } else if (isPositiveDelay) { // Restart
       EvictionTimer.cancel(evictor, evictorShutdownTimeoutDuration, true);
       evictor = new Evictor();
-      EvictionTimer.schedule(evictor, delay, delay);
+      EvictionTimer.schedule(evictor, delay, delay, "arena-evictor-" + arenaID);
     } else { // Stopping evictor
       EvictionTimer.cancel(evictor, evictorShutdownTimeoutDuration, false);
     }
@@ -137,7 +135,6 @@ public class Arena {
     return totalActiveMemory;
   }
 
-  /** Stops the evictor. */
   void stopEvictor() {
     startEvictor(Duration.ofMillis(-1L));
   }
@@ -201,11 +198,6 @@ public class Arena {
       }
     }
 
-    /**
-     * Sets the scheduled future.
-     *
-     * @param scheduledFuture the scheduled future.
-     */
     void setScheduledFuture(final ScheduledFuture<?> scheduledFuture) {
       this.scheduledFuture = scheduledFuture;
     }
@@ -220,10 +212,10 @@ public class Arena {
     private final int size;
     private final Queue<byte[]> queue;
 
-    private AtomicInteger allocations;
-    private AtomicInteger allocationsFromJVM;
-    private AtomicInteger deallocations;
-    private AtomicInteger evictions;
+    private final AtomicInteger allocations;
+    private final AtomicInteger allocationsFromJVM;
+    private final AtomicInteger deallocations;
+    private final AtomicInteger evictions;
 
     public int prevAllocations;
     public int prevAllocationsFromJVM;
@@ -257,16 +249,16 @@ public class Arena {
     }
 
     public void updateSample() {
-      average.sample(
-          allocations.get() + allocationsFromJVM.get() - deallocations.get() + getQueueSize());
+      average.sample(getActiveSize());
     }
 
     public void resize() {
-      int remain = (int) Math.ceil(average.average()) - allocations.get();
-      while (remain > 0 && !queue.isEmpty()) {
+      int needRemain = (int) Math.ceil(average.average()) - getActiveSize();
+      int evictNum = getQueueSize() - needRemain;
+      while (evictNum > 0 && !queue.isEmpty()) {
         queue.poll();
         evictions.incrementAndGet();
-        remain--;
+        evictNum--;
       }
     }
 
@@ -287,6 +279,10 @@ public class Arena {
     // ConcurrentLinkedQueue::size() is O(n)
     private int getQueueSize() {
       return deallocations.get() - allocations.get() - evictions.get();
+    }
+
+    private int getActiveSize() {
+      return allocations.get() + allocationsFromJVM.get() - deallocations.get();
     }
   }
 }
