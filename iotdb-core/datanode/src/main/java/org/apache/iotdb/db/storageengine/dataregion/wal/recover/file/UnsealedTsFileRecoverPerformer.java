@@ -193,6 +193,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                 }
               }
             }
+            for (IDeviceID deviceID : memTable.getMemTableMap().keySet()) {
+              if (deviceID.isTableModel()) {
+                registerToTsFile(deviceID.getTableName());
+              }
+            }
             walRedoer.resetRecoveryMemTable(memTable);
           }
           // update memtable's database and dataRegionId
@@ -200,12 +205,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           break;
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:
+          registerToTsFile(((InsertNode) walEntry.getValue()).getTableName());
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
-          registerToTsFile((InsertNode) walEntry.getValue());
           break;
         case INSERT_ROWS_NODE:
+          registerToTsFile(((InsertRowsNode) walEntry.getValue()).getTableName());
           walRedoer.redoInsertRows((InsertRowsNode) walEntry.getValue());
-          registerToTsFile((InsertRowsNode) walEntry.getValue());
           break;
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
@@ -226,8 +231,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     }
   }
 
-  private void registerToTsFile(InsertNode node) {
-    final String tableName = node.getTableName();
+  private void registerToTsFile(String tableName) {
     if (tableName != null) {
       writer
           .getSchema()
