@@ -40,8 +40,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
 
-  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
-    memChunk = new AlignedWritableMemChunk(schemaList);
+  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
+    memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
   }
 
   private AlignedWritableMemChunkGroup() {
@@ -151,10 +151,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
-      throws IOException {
+  public static AlignedWritableMemChunkGroup deserialize(
+      DataInputStream stream, boolean isTableModel) throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
     return memChunkGroup;
   }
 }

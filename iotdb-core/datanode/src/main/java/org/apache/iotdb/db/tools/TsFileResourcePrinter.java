@@ -40,7 +40,7 @@ public class TsFileResourcePrinter {
   @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
-    String folder = "data/data/sequence/root.group_1/0";
+    String folder = "/Users/ht/Downloads/1732674107542-1-0-0.tsfile.resource";
     if (args.length >= 1) {
       folder = args[0];
     }

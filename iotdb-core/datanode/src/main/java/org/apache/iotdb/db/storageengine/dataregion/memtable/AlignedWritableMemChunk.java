@@ -59,7 +59,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
-  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
+  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     this.measurementIndexMap = new LinkedHashMap<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     this.schemaList = schemaList;
@@ -68,15 +68,18 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       dataTypeList.add(schemaList.get(i).getType());
     }
     this.list = AlignedTVList.newAlignedList(dataTypeList);
+    this.ignoreAllNullRows = !isTableModel;
   }
 
-  private AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, AlignedTVList list) {
+  private AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList, AlignedTVList list, boolean isTableModel) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
     }
     this.list = list;
+    this.ignoreAllNullRows = !isTableModel;
   }
 
   public Set<String> getAllMeasurements() {
@@ -244,6 +247,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
+    if (!ignoreAllNullRows && measurementIndexMap.isEmpty()) {
+      return list.rowCount();
+    }
     return (long) list.rowCount() * measurementIndexMap.size();
   }
 
@@ -297,8 +303,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush(boolean ignoreAllNullRows) {
-    this.ignoreAllNullRows = ignoreAllNullRows;
+  public synchronized void sortTvListForFlush() {
     sortTVList();
   }
 
@@ -533,7 +538,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     list.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunk deserialize(DataInputStream stream) throws IOException {
+  public static AlignedWritableMemChunk deserialize(DataInputStream stream, boolean isTableModel)
+      throws IOException {
     int schemaListSize = stream.readInt();
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
     for (int i = 0; i < schemaListSize; i++) {
@@ -542,7 +548,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     AlignedTVList list = (AlignedTVList) TVList.deserialize(stream);
-    return new AlignedWritableMemChunk(schemaList, list);
+    return new AlignedWritableMemChunk(schemaList, list, isTableModel);
   }
 
   public List<IMeasurementSchema> getSchemaList() {
