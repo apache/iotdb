@@ -107,7 +107,7 @@ public class CreateOrUpdateDevice extends Statement {
 
   @Override
   public String toString() {
-    return "CreateDevice{"
+    return "CreateOrUpdateDevice{"
         + "database='"
         + database
         + '\''
