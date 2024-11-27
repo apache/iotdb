@@ -46,6 +46,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_USED_MEMORY;
 
 public class StreamingHashAggregationOperator extends AbstractOperator {
@@ -271,6 +272,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
 
   private void updateOccupiedMemorySize() {
     long memorySize = aggregationBuilder.getEstimatedSize();
+    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(memorySize));
     if (memorySize > maxUsedMemory) {
       operatorContext.recordSpecifiedInfo(MAX_USED_MEMORY, Long.toString(memorySize));
       maxUsedMemory = memorySize;

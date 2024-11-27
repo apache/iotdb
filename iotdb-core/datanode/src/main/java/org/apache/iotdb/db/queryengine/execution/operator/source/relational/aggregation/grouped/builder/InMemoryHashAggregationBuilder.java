@@ -62,6 +62,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
 
   private final OperatorContext operatorContext;
 
+  private static final String CURRENT_GROUP_NUMBER = "CurrentGroupNumber";
   private static final String MAX_GROUP_NUMBER = "MaxGroupNumber";
   private long maxGroupNumber;
 
@@ -128,6 +129,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
     int[] groupByIdBlock = groupByHash.getGroupIds(block.getColumns(groupByChannels));
 
     int groupCount = groupByHash.getGroupCount();
+    operatorContext.recordSpecifiedInfo(CURRENT_GROUP_NUMBER, Long.toString(groupCount));
     if (groupCount > maxGroupNumber) {
       operatorContext.recordSpecifiedInfo(MAX_GROUP_NUMBER, Long.toString(groupCount));
       maxGroupNumber = groupCount;
