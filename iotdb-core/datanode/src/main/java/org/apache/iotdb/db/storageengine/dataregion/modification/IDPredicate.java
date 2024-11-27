@@ -247,11 +247,15 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public int serializedSize() {
-      byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
-      return super.serializedSize()
-          + ReadWriteForEncodingUtils.varIntSize(bytes.length)
-          + bytes.length * Character.BYTES
-          + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
+      if (pattern != null) {
+        byte[] bytes = pattern.getBytes(TSFileConfig.STRING_CHARSET);
+        return super.serializedSize()
+            + ReadWriteForEncodingUtils.varIntSize(bytes.length)
+            + bytes.length * Character.BYTES
+            + ReadWriteForEncodingUtils.varIntSize(segmentIndex);
+      } else {
+        return ReadWriteForEncodingUtils.varIntSize(-1);
+      }
     }
 
     @Override
@@ -284,7 +288,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
     @Override
     public boolean matches(IDeviceID deviceID) {
-      return deviceID.segmentNum() > segmentIndex && pattern.equals(deviceID.segment(segmentIndex));
+      return Objects.equals(pattern, deviceID.segment(segmentIndex));
     }
 
     @Override
