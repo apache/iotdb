@@ -36,7 +36,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -48,7 +47,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -289,7 +287,9 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    if (this.seriesScanUtil != null) {
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
     this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
@@ -310,18 +310,19 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   }
 
   private void constructAlignedSeriesScanUtil() {
-    DeviceEntry deviceEntry;
-
-    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
-      // for device which is not exist
-      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
-    } else {
-      deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
+    if (this.deviceEntries.isEmpty()) {
+      // no need to construct SeriesScanUtil, hasNext will return false
+      return;
     }
 
+    if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      throw new IllegalStateException(
+          "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
+    }
+
+    DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
-
     this.seriesScanUtil =
         new AlignedSeriesScanUtil(
             alignedPath,

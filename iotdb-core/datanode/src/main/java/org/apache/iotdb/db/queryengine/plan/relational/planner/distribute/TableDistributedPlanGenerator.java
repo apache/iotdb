@@ -495,7 +495,7 @@ public class TableDistributedPlanGenerator
     }
 
     if (tableScanNodeMap.isEmpty()) {
-      node.setRegionReplicaSet(new TRegionReplicaSet());
+      node.setRegionReplicaSet(NOT_ASSIGNED);
       return Collections.singletonList(node);
     }
 
