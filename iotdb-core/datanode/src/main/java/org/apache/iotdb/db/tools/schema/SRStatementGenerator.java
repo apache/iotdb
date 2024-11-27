@@ -188,7 +188,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
         cleanMTreeNode(node);
         if (ancestors.isEmpty()) {
-          emitDevice(tableName);
+          emitDevice();
         }
         if (!statements.isEmpty()) {
           return true;
@@ -278,7 +278,8 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeInternalMNode(inputStream);
         if (ancestors.size() == 1) {
-          emitDevice(node.getName());
+          emitDevice();
+          this.tableName = node.getName();
         }
         break;
       case STORAGE_GROUP_MNODE_TYPE:
@@ -305,7 +306,8 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
         if (ancestors.size() == 1) {
-          emitDevice(node.getName());
+          emitDevice();
+          this.tableName = node.getName();
         }
         break;
       default:
@@ -327,7 +329,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
     return node;
   }
 
-  private void emitDevice(final String tableName) {
+  private void emitDevice() {
     if (Objects.nonNull(attributeNameList)) {
       statements.add(
           new CreateOrUpdateDevice(
@@ -336,7 +338,6 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
               tableDeviceIdList,
               attributeNameList,
               attributeValueList));
-      this.tableName = tableName;
       this.tableDeviceIdList = new ArrayList<>();
       this.attributeNameList = null;
       this.attributeValueList = new ArrayList<>();
@@ -449,7 +450,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         attributeValueList.add(attributeValues.toArray());
         tableDeviceIdList.add(Arrays.copyOfRange(path.getNodes(), 3, path.getNodeLength()));
         if (tableDeviceIdList.size() >= MAX_SCHEMA_BATCH_SIZE) {
-          emitDevice(tableName);
+          emitDevice();
         }
       }
       return null;
