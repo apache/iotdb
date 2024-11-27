@@ -245,6 +245,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
     loadRetryProperties(properties);
+    loadBinaryAllocatorProps(properties);
   }
 
   private void loadPipeProps(Properties properties) {
@@ -737,7 +738,7 @@ public class CommonDescriptor {
                     "enable_retry_for_unknown_error"))));
   }
 
-  public void loadBlobAllocatorProps(Properties properties) {
+  public void loadBinaryAllocatorProps(Properties properties) {
     config.setEnableBinaryAllocator(
         Boolean.parseBoolean(
             properties.getProperty(

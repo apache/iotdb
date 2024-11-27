@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.BinaryAllocator;
+package org.apache.iotdb.db.utils.binaryallocator;
 
 public final class SizeClasses {
 

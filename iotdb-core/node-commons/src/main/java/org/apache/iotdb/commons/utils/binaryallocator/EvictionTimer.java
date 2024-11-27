@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.BinaryAllocator;
+package org.apache.iotdb.commons.utils.binaryallocator;
 
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -26,7 +26,9 @@ import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class EvictionTimer {
 

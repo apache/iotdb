@@ -48,6 +48,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -2845,6 +2846,24 @@ public class IoTDBDescriptor {
 
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
+
+      // update binary allocator
+      commonDescriptor
+          .getConfig()
+          .setEnableBinaryAllocator(
+              Boolean.parseBoolean(
+                  Optional.ofNullable(
+                          properties.getProperty(
+                              "enable_binary_allocator",
+                              ConfigurationFileUtils.getConfigurationDefaultValue(
+                                  "enable_binary_allocator")))
+                      .map(String::trim)
+                      .orElse(
+                          ConfigurationFileUtils.getConfigurationDefaultValue(
+                              "enable_binary_allocator"))));
+      if (!commonDescriptor.getConfig().isEnableBinaryAllocator()) {
+        BinaryAllocator.DEFAULT.close(false);
+      }
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

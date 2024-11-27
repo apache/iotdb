@@ -1,8 +1,8 @@
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.BinaryAllocator.AllocatorConfig;
-import org.apache.iotdb.commons.utils.BinaryAllocator.BinaryAllocator;
-import org.apache.iotdb.commons.utils.BinaryAllocator.SizeClasses;
+import org.apache.iotdb.db.utils.binaryallocator.AllocatorConfig;
+import org.apache.iotdb.db.utils.binaryallocator.BinaryAllocator;
+import org.apache.iotdb.db.utils.binaryallocator.SizeClasses;
 
 import org.apache.tsfile.utils.PooledBinary;
 import org.junit.Test;
@@ -12,7 +12,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class BinaryAllocatorTest {
   @Test
