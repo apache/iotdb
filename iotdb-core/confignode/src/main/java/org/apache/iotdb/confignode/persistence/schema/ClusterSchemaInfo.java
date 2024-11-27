@@ -1300,7 +1300,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final SemanticException e) {
-      LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
