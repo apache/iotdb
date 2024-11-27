@@ -101,6 +101,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
 public class Analysis implements IAnalysis {
 
@@ -202,6 +203,8 @@ public class Analysis implements IAnalysis {
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
 
+  private boolean isQuery = false;
+
   public DataPartition getDataPartition() {
     return dataPartition;
   }
@@ -216,6 +219,7 @@ public class Analysis implements IAnalysis {
   }
 
   public Statement getStatement() {
+    requireNonNull(root);
     return root;
   }
 
@@ -760,7 +764,11 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isQuery() {
-    return false;
+    return isQuery;
+  }
+
+  public void setQuery(boolean query) {
+    isQuery = query;
   }
 
   @Override
@@ -830,7 +838,7 @@ public class Analysis implements IAnalysis {
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String database, IDeviceID deviceId, Filter timeFilter) {
     if (dataPartition == null) {
-      return Collections.singletonList(new TRegionReplicaSet());
+      return Collections.singletonList(NOT_ASSIGNED);
     } else {
       return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
     }

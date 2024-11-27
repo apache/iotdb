@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -261,6 +262,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
 
     @Override
     public PlanAndMappings visitOffset(OffsetNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+
+      return new PlanAndMappings(
+          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          rewrittenSource.getMappings());
+    }
+
+    @Override
+    public PlanAndMappings visitExplainAnalyze(ExplainAnalyzeNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
 
       return new PlanAndMappings(

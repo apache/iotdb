@@ -54,7 +54,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
   private final List<String> binaryDataBases = new ArrayList<>();
-  private final List<String> inertNodeDataBases = new ArrayList<>();
+  private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
   // limit in buffer size
@@ -111,7 +111,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     tabletBuffers.clear();
 
     binaryDataBases.clear();
-    inertNodeDataBases.clear();
+    insertNodeDataBases.clear();
     tabletDataBases.clear();
 
     pipe2BytesAccumulated.clear();
@@ -123,7 +123,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         insertNodeBuffers,
         tabletBuffers,
         binaryDataBases,
-        inertNodeDataBases,
+        insertNodeDataBases,
         tabletDataBases);
   }
 
@@ -168,10 +168,10 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
           databaseEstimateSize =
               pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName().length();
-          inertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+          insertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
           databaseEstimateSize = 4;
-          inertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+          insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
         }
       }
     } else {

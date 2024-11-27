@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 
@@ -54,8 +53,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, PlanOptimizer.Context context) {
-    if (!(context.getAnalysis().getStatement() instanceof Query)
-        || !context.getAnalysis().containsAggregationQuery()) {
+    if (!(context.getAnalysis().isQuery()) || !context.getAnalysis().containsAggregationQuery()) {
       return plan;
     }
 

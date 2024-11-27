@@ -71,6 +71,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   private IDeviceID[] deviceIDs;
 
+  private boolean singleDevice;
+
   protected int rowCount = 0;
 
   /**
@@ -469,6 +471,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     return deviceIDs[rowIdx];
+  }
+
+  public void setSingleDevice() {
+    singleDevice = true;
+  }
+
+  public boolean isSingleDevice() {
+    return singleDevice;
   }
 
   @Override
