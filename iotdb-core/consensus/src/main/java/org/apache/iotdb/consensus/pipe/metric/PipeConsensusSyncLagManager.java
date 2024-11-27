@@ -21,10 +21,10 @@ package org.apache.iotdb.consensus.pipe.metric;
 
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeConsensusSyncLagManager {
   long syncLag = Long.MIN_VALUE;
   ReentrantLock lock = new ReentrantLock();
-  List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
+  List<ConsensusPipeConnector> consensusPipeConnectorList = new ArrayList<>();
 
   private long getSyncLagForSpecificConsensusPipe(ConsensusPipeConnector consensusPipeConnector) {
     long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
@@ -45,7 +45,12 @@ public class PipeConsensusSyncLagManager {
   }
 
   public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
-    consensusPipeConnectorList.add(consensusPipeConnector);
+    try {
+      lock.lock();
+      consensusPipeConnectorList.add(consensusPipeConnector);
+    } finally {
+      lock.unlock();
+    }
   }
 
   public void removeConsensusPipeConnector(ConsensusPipeConnector connector) {
