@@ -141,9 +141,7 @@ public class TableModelQueryFragmentPlanner {
         });
 
     final Statement statement = analysis.getStatement();
-    if (statement.isQuery()
-        || statement instanceof ShowDevice
-        || statement instanceof CountDevice) {
+    if (analysis.isQuery() || statement instanceof ShowDevice || statement instanceof CountDevice) {
       fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

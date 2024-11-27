@@ -21,9 +21,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -38,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -62,7 +61,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nonnull;
@@ -143,6 +141,13 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
+  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
+    List<PlanNode> children = genResult(node.getChild(), context);
+    node.setChild(children.get(0));
+    return Collections.singletonList(node);
+  }
+
+  @Override
   public List<PlanNode> visitOutput(OutputNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
@@ -157,12 +162,6 @@ public class TableDistributedPlanGenerator
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
-  }
-
-  @Override
-  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
-    symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
-    return visitPlan(node, context);
   }
 
   @Override

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
@@ -414,8 +413,8 @@ public class TsFileResource implements PersistentResource {
   }
 
   public long getTotalModSizeInByte() {
-    return getExclusiveModFile().getSize()
-        + (getSharedModFile() != null ? sharedModFile.getSize() : 0);
+    return getExclusiveModFile().getFileLength()
+        + (getSharedModFile() != null ? sharedModFile.getFileLength() : 0);
   }
 
   private void serializedSharedModFile() throws IOException {
@@ -506,7 +505,6 @@ public class TsFileResource implements PersistentResource {
         } else {
           exclusiveModFile = ModificationFile.getExclusiveMods(this);
         }
-        FileMetrics.getInstance().increaseModFileNum(1);
       }
     }
     return exclusiveModFile;
@@ -756,8 +754,6 @@ public class TsFileResource implements PersistentResource {
   public void removeModFile() throws IOException {
 
     if (getExclusiveModFile().exists()) {
-      FileMetrics.getInstance().decreaseModFileNum(1);
-      FileMetrics.getInstance().decreaseModFileSize(getExclusiveModFile().getSize());
       getExclusiveModFile().remove();
     }
     exclusiveModFile = null;

@@ -103,6 +103,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private static final int CONNECTION_LINE_HEIGHT = 2;
 
   private static final String REGION_NOT_ASSIGNED = "Not Assigned";
+  public static final String DEVICE_NUMBER = "DeviceNumber";
 
   @Override
   public List<String> visitPlan(PlanNode node, GraphContext context) {
@@ -620,7 +621,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("TableScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntries().size()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     if (node.getTimePredicate().isPresent()) {
       boxValue.add(String.format("TimePredicate: %s", node.getTimePredicate().get()));
@@ -688,7 +689,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
     }
 
-    boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntries().size()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));

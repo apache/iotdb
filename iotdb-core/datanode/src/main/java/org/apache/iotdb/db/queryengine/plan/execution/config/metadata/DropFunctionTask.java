@@ -19,24 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class DropFunctionTask implements IConfigTask {
 
+  private final Model model;
   private final String udfName;
 
-  public DropFunctionTask(DropFunctionStatement dropFunctionStatement) {
-    udfName = dropFunctionStatement.getUdfName();
+  public DropFunctionTask(Model model, String udfName) {
+    this.model = model;
+    this.udfName = udfName;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropFunction(udfName);
+    return configTaskExecutor.dropFunction(model, udfName);
   }
 }

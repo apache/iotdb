@@ -56,11 +56,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator.appendDataIntoBuilder;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class TableScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
+
+  public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
 
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
@@ -108,6 +111,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       int maxTsBlockLineNum) {
     this.sourceId = sourceId;
     this.operatorContext = context;
+    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(deviceEntries.size()));
     this.columnSchemas = columnSchemas;
     this.columnsIndexArray = columnsIndexArray;
     this.deviceEntries = deviceEntries;
@@ -120,6 +124,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
+    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
     this.maxReturnSize =
         Math.min(
@@ -299,6 +304,8 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       // reset QueryDataSource
       queryDataSource.reset();
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
+      this.operatorContext.recordSpecifiedInfo(
+          CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 
