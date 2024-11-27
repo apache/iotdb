@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
 public class TableInnerJoinOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
@@ -65,6 +66,9 @@ public class TableInnerJoinOperator extends AbstractOperator {
   protected final TsBlockBuilder resultBuilder;
 
   protected MemoryReservationManager memoryReservationManager;
+
+  protected long maxUsedMemory;
+  protected long usedMemory;
 
   public TableInnerJoinOperator(
       OperatorContext operatorContext,
@@ -145,10 +149,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     // all the rightTsBlock is less than leftTsBlock, just skip right
     if (comparator.lessThan(getRightEndTime(), getCurrentLeftTime())) {
-      for (int i = 1; i < rightBlockList.size(); i++) {
-        memoryReservationManager.releaseMemoryCumulatively(
-            rightBlockList.get(i).getRetainedSizeInBytes());
-      }
+      // releaseMemory();
       resetRightBlockList();
       return null;
     }
@@ -165,13 +166,8 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
       // all right block time is not matched
       if (!comparator.canContinueInclusive(leftProbeTime, getRightEndTime())) {
-        for (int i = 1; i < rightBlockList.size(); i++) {
-          memoryReservationManager.releaseMemoryCumulatively(
-              rightBlockList.get(i).getRetainedSizeInBytes());
-        }
-        rightBlockList.clear();
-        rightBlockListIdx = 0;
-        rightIndex = 0;
+        // releaseMemory();
+        resetRightBlockList();
         break;
       }
 
@@ -231,7 +227,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
       TsBlock block = rightChild.nextWithTimer();
       if (block != null) {
         if (block.getColumn(rightTimeColumnPosition).getLong(0) == getRightEndTime()) {
-          memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+          reserveMemory(block.getRetainedSizeInBytes());
           rightBlockList.add(block);
         } else {
           hasCachedNextRightBlock = true;
@@ -376,9 +372,24 @@ public class TableInnerJoinOperator extends AbstractOperator {
   }
 
   protected void resetRightBlockList() {
+    for (int i = 1; i < rightBlockList.size(); i++) {
+      long size = rightBlockList.get(i).getRetainedSizeInBytes();
+      usedMemory -= size;
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+
     rightBlockList.clear();
     rightBlockListIdx = 0;
     rightIndex = 0;
+  }
+
+  protected void reserveMemory(long size) {
+    usedMemory += size;
+    memoryReservationManager.reserveMemoryCumulatively(size);
+    if (usedMemory > maxUsedMemory) {
+      maxUsedMemory = usedMemory;
+      operatorContext.recordSpecifiedInfo(MAX_RESERVED_MEMORY, Long.toString(maxUsedMemory));
+    }
   }
 
   public static TsBlock buildResultTsBlock(TsBlockBuilder resultBuilder) {
@@ -413,7 +424,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     if (!rightBlockList.isEmpty()) {
       for (TsBlock block : rightBlockList) {
-        memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+        memoryReservationManager.releaseMemoryCumulatively(block.getRetainedSizeInBytes());
       }
     }
   }

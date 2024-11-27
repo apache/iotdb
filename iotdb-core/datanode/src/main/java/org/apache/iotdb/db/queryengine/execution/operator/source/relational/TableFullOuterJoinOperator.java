@@ -89,10 +89,6 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
     if (leftFinished || rightFinished) {
       if (leftFinished) {
         appendRightWithEmptyLeft();
-        for (int i = 1; i < rightBlockList.size(); i++) {
-          memoryReservationManager.releaseMemoryCumulatively(
-              rightBlockList.get(i).getRetainedSizeInBytes());
-        }
         resetRightBlockList();
       } else {
         appendLeftWithEmptyRight();
@@ -107,10 +103,6 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
     // all the rightTsBlock is less than leftTsBlock, append right with empty left
     if (comparator.lessThan(getRightEndTime(), getCurrentLeftTime())) {
       appendRightWithEmptyLeft();
-      for (int i = 1; i < rightBlockList.size(); i++) {
-        memoryReservationManager.releaseMemoryCumulatively(
-            rightBlockList.get(i).getRetainedSizeInBytes());
-      }
       resetRightBlockList();
       resultTsBlock = buildResultTsBlock(resultBuilder);
       return checkTsBlockSizeAndGetResult();
@@ -131,10 +123,6 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       // all right block time is not matched
       if (!comparator.canContinueInclusive(leftProbeTime, getRightEndTime())) {
         appendRightWithEmptyLeft();
-        for (int i = 1; i < rightBlockList.size(); i++) {
-          memoryReservationManager.releaseMemoryCumulatively(
-              rightBlockList.get(i).getRetainedSizeInBytes());
-        }
         resetRightBlockList();
         break;
       }
