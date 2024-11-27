@@ -298,37 +298,42 @@ public class PipeTabletEventSorterTest {
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
     int rowIndex = 0;
-    for (long row = 0; row < deviceIDNum; row++) {
+    boolean hasWrite = false;
+    do {
 
-      for (int i = 0; i < 100; i++) {
-        final long value;
-        if (isUnSorted) {
-          value = (row + 1) * 100 - i - 1;
-        } else {
-          value = (row) * 100 + i;
-        }
-        for (int j = 0; j < 10; j++) {
-          tablet.addTimestamp(rowIndex, value);
-          tablet.addValue(
-              "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
-          tablet.addValue("s1", rowIndex, value);
-          tablet.addValue("s2", rowIndex, (value * 1.0f));
-          tablet.addValue(
-              "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-          tablet.addValue("s4", rowIndex, value);
-          tablet.addValue("s5", rowIndex, (int) value);
-          tablet.addValue("s6", rowIndex, value * 0.1);
-          tablet.addValue("s7", rowIndex, getDate((int) value));
-          tablet.addValue(
-              "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-          rowIndex++;
-          tablet.rowSize++;
-          if (!hasDuplicates) {
-            break;
+      for (long row = 0; row < deviceIDNum; row++) {
+        for (int i = hasWrite ? 50 : 0; i < (isUnSorted && !hasWrite ? 50 : 100); i++) {
+
+          final long value;
+          if (isUnSorted) {
+            value = (row + 1) * 100 - i - 1;
+          } else {
+            value = (row) * 100 + i;
+          }
+          for (int j = 0; j < 10; j++) {
+            tablet.addTimestamp(rowIndex, value);
+            tablet.addValue(
+                "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+            tablet.addValue("s1", rowIndex, value);
+            tablet.addValue("s2", rowIndex, (value * 1.0f));
+            tablet.addValue(
+                "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+            tablet.addValue("s4", rowIndex, value);
+            tablet.addValue("s5", rowIndex, (int) value);
+            tablet.addValue("s6", rowIndex, value * 0.1);
+            tablet.addValue("s7", rowIndex, getDate((int) value));
+            tablet.addValue(
+                "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+            rowIndex++;
+            tablet.rowSize++;
+            if (!hasDuplicates) {
+              break;
+            }
           }
         }
       }
-    }
+      hasWrite = !hasWrite;
+    } while (isUnSorted && hasWrite);
 
     return tablet;
   }

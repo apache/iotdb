@@ -69,7 +69,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> sealTsFiles() throws IOException, WriteProcessException {
+  public List<Pair<String, File>> convertTabletToTSFileWithDBInfo() throws IOException {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
@@ -141,6 +141,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         createFileWriter();
       }
 
+      //
       try {
         tryBestToWriteTabletsIntoOneFile(table2TabletsLinkedList);
       } catch (final Exception e) {
@@ -213,7 +214,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
       final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
       while (!tablets.isEmpty()) {
         final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair = tablets.peekFirst();
-        if (hasNoTimestampOverlaps(pair, deviceLastTimestampMap)) {
+        if (timestampsAreNonOverlapping(pair, deviceLastTimestampMap)) {
           tabletsToWrite.add(pair);
           tablets.pollFirst();
           continue;
@@ -253,7 +254,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
    * @return If false, the tablet overlaps with the previous tablet; if true, there is no time
    *     overlap.
    */
-  private boolean hasNoTimestampOverlaps(
+  private boolean timestampsAreNonOverlapping(
       final Pair<Tablet, List<Pair<IDeviceID, Integer>>> tabletPair,
       final Map<IDeviceID, Long> deviceLastTimestampMap) {
     int currentTimestampIndex = 0;

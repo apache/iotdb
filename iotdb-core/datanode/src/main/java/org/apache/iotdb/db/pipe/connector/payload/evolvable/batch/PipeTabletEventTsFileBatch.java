@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.connector.util.PipeTsFileBuilder;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -46,13 +45,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
 
-  private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);
   private final AtomicLong currentBatchId = new AtomicLong(BATCH_ID_GENERATOR.incrementAndGet());
 
@@ -183,11 +180,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
     List<Pair<String, File>> list = new ArrayList<>();
     if (!treeModeTsFileBuilder.isEmpty()) {
-      list.addAll(treeModeTsFileBuilder.sealTsFiles());
+      list.addAll(treeModeTsFileBuilder.convertTabletToTSFileWithDBInfo());
     }
 
     if (!tableModeTsFileBuilder.isEmpty()) {
-      list.addAll(tableModeTsFileBuilder.sealTsFiles());
+      list.addAll(tableModeTsFileBuilder.convertTabletToTSFileWithDBInfo());
     }
     return list;
   }
