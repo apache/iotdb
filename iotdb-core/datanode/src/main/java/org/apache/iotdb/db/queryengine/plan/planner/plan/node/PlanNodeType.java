@@ -276,6 +276,7 @@ public enum PlanNodeType {
   TABLE_AGGREGATION_NODE((short) 1015),
   TABLE_AGGREGATION_TABLE_SCAN_NODE((short) 1016),
   TABLE_GAP_FILL_NODE((short) 1017),
+  TABLE_EXCHANGE_NODE((short) 1018),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -626,6 +627,9 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1017:
         return GapFillNode.deserialize(buffer);
+      case 1018:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
+            .deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

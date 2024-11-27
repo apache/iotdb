@@ -172,8 +172,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setMaxTsBlockLineNumber(1)
-        .setMaxNumberOfPointsInPage(1);
+        .setMaxTsBlockLineNumber(2)
+        .setMaxNumberOfPointsInPage(5);
     insertData();
   }
 
@@ -1664,6 +1664,23 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "2020-01-01T00:00:02.000Z,null,null,d1,20,",
           "2020-01-01T00:00:03.000Z,null,null,d1,30,",
           "2020-01-01T00:00:03.000Z,null,null,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "from (select * from tableA where device='d1') t1 full join (select * from tableB where device='d2') t2 USING(time) order by time, device1, device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:03.000Z,d1,3,null,null,",
           "2020-01-01T00:00:04.000Z,null,null,d2,40,",
           "2020-01-01T00:00:05.000Z,null,null,d2,50,",
         };

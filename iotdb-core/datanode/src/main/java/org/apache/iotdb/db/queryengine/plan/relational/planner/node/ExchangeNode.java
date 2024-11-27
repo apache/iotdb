@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -36,17 +37,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/** Used for table model. */
 public class ExchangeNode extends SingleChildProcessNode {
-  // In current version, one ExchangeNode will only have one source.
-  // And the fragment which the sourceNode belongs to will only have one instance.
-  // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
   private TEndPoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
-  private List<String> outputColumnNames = new ArrayList<>();
+  private List<Symbol> outputSymbols = null;
 
-  /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
   private int indexOfUpstreamSinkHandle = 0;
 
   public ExchangeNode(PlanNodeId id) {
@@ -55,7 +53,7 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.EXCHANGE;
+    return PlanNodeType.TABLE_EXCHANGE_NODE;
   }
 
   @Override
@@ -65,29 +63,29 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitExchange(this, context);
+    return visitor.visitTableExchange(this, context);
   }
 
   @Override
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
-    node.setOutputColumnNames(outputColumnNames);
+    node.setOutputSymbols(outputSymbols);
     node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
     return node;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumnNames;
-  }
-
-  public void setOutputColumnNames(List<String> outputColumnNames) {
-    this.outputColumnNames = outputColumnNames;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    throw new UnsupportedOperationException();
+    return outputSymbols;
+  }
+
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
+    this.outputSymbols = outputSymbols;
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
@@ -102,48 +100,63 @@ public class ExchangeNode extends SingleChildProcessNode {
             ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
-    int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>(outputColumnNamesSize);
-    while (outputColumnNamesSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      outputColumnNamesSize--;
-    }
+
     int index = ReadWriteIOUtils.readInt(byteBuffer);
+    int outputSymbolsSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> outputSymbols = null;
+    if (outputSymbolsSize > 0) {
+      outputSymbols = new ArrayList<>(outputSymbolsSize);
+      for (int i = 0; i < outputSymbolsSize; i++) {
+        outputSymbols.add(Symbol.deserialize(byteBuffer));
+      }
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
-    exchangeNode.setOutputColumnNames(outputColumnNames);
     exchangeNode.setIndexOfUpstreamSinkHandle(index);
+    exchangeNode.setOutputSymbols(outputSymbols);
 
     return exchangeNode;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.EXCHANGE.serialize(byteBuffer);
+    PlanNodeType.TABLE_EXCHANGE_NODE.serialize(byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String outputColumnName : outputColumnNames) {
-      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
-    }
+
     ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, byteBuffer);
+
+    if (outputSymbols != null && !outputSymbols.isEmpty()) {
+      ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+      for (Symbol outputSymbol : outputSymbols) {
+        Symbol.serialize(outputSymbol, byteBuffer);
+      }
+    } else {
+      ReadWriteIOUtils.write(0, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.EXCHANGE.serialize(stream);
+    PlanNodeType.TABLE_EXCHANGE_NODE.serialize(stream);
     ReadWriteIOUtils.write(upstreamEndpoint.getIp(), stream);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), stream);
     upstreamInstanceId.serialize(stream);
     upstreamPlanNodeId.serialize(stream);
-    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
-    for (String outputColumnName : outputColumnNames) {
-      ReadWriteIOUtils.write(outputColumnName, stream);
-    }
     ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, stream);
+
+    if (outputSymbols != null && !outputSymbols.isEmpty()) {
+      ReadWriteIOUtils.write(outputSymbols.size(), stream);
+      for (Symbol outputSymbol : outputSymbols) {
+        Symbol.serialize(outputSymbol, stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(0, stream);
+    }
   }
 
   @Override

@@ -112,7 +112,8 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
             rightBlockList.get(i).getRetainedSizeInBytes());
       }
       resetRightBlockList();
-      return null;
+      resultTsBlock = buildResultTsBlock(resultBuilder);
+      return checkTsBlockSizeAndGetResult();
     }
 
     // all the leftTsBlock is less than rightTsBlock, append left with empty right
@@ -120,7 +121,8 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       appendLeftWithEmptyRight();
       leftBlock = null;
       leftIndex = 0;
-      return null;
+      resultTsBlock = buildResultTsBlock(resultBuilder);
+      return checkTsBlockSizeAndGetResult();
     }
 
     long leftProbeTime = getCurrentLeftTime();

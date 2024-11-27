@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInje
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
@@ -66,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -382,7 +382,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitExchange(ExchangeNode node, GraphContext context) {
+  public List<String> visitExchange(
+      org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode node,
+      GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Exchange-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
@@ -782,6 +784,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ValueFill-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("FilledValue: %s", node.getFilledValue()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableExchange(ExchangeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Exchange-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 
