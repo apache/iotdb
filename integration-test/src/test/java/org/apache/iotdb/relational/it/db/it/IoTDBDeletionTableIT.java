@@ -570,6 +570,27 @@ public class IoTDBDeletionTableIT {
     cleanData(testNum);
   }
 
+  @Test
+  public void testDeviceIdWithNull() throws SQLException {
+    int testNum = 14;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+      // id1 is null for this record
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
+      statement.execute("flush");
+      statement.execute("delete from t" + testNum);
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      statement.execute("drop table t" + testNum);
+    }
+  }
+
   @Ignore
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
