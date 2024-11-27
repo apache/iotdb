@@ -29,7 +29,7 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class BackLongTVList extends QuickLongTVList implements BackwardSort {
   private final List<long[]> tmpTimestamps = new ArrayList<>();
-  private final List<long[]> tmpValues = new ArrayList<>();
+  private final List<int[]> tmpIndices = new ArrayList<>();
   private int tmpLength = 0;
 
   @Override
@@ -46,13 +46,13 @@ public class BackLongTVList extends QuickLongTVList implements BackwardSort {
     set(
         dest,
         tmpTimestamps.get(src / ARRAY_SIZE)[src % ARRAY_SIZE],
-        tmpValues.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
+        tmpIndices.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
   }
 
   @Override
   public void setToTmp(int src, int dest) {
     tmpTimestamps.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getTime(src);
-    tmpValues.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getLong(src);
+    tmpIndices.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
@@ -71,7 +71,7 @@ public class BackLongTVList extends QuickLongTVList implements BackwardSort {
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
+      tmpIndices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
       tmpLength += ARRAY_SIZE;
     }
   }
@@ -82,9 +82,9 @@ public class BackLongTVList extends QuickLongTVList implements BackwardSort {
       PrimitiveArrayManager.release(dataArray);
     }
     tmpTimestamps.clear();
-    for (long[] dataArray : tmpValues) {
+    for (int[] dataArray : tmpIndices) {
       PrimitiveArrayManager.release(dataArray);
     }
-    tmpValues.clear();
+    tmpIndices.clear();
   }
 }

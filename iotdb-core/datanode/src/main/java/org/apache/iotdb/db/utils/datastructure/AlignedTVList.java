@@ -68,11 +68,6 @@ public abstract class AlignedTVList extends TVList {
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<Object>> values;
 
-  // List of index array, add 1 when expanded -> data point index array
-  // Index relation: arrayIndex -> elementIndex
-  // Used in sort method, sort only changes indices
-  protected List<int[]> indices;
-
   // Data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
   // Value is null
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
@@ -615,20 +610,6 @@ public abstract class AlignedTVList extends TVList {
     bitMaps.remove(columnIndex);
   }
 
-  protected void set(int index, long timestamp, int value) {
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    indices.get(arrayIndex)[elementIndex] = value;
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  protected int[] cloneIndex(int[] array) {
-    int[] cloneArray = new int[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
-
   protected Object cloneValue(TSDataType type, Object value) {
     switch (type) {
       case TEXT:
@@ -718,21 +699,6 @@ public abstract class AlignedTVList extends TVList {
     }
     // use value index so that sorts will not change the nullability
     timeColDeletedMap.mark(getValueIndex(i));
-  }
-
-  /**
-   * Get the row index value in index column.
-   *
-   * @param index row index
-   */
-  @Override
-  public int getValueIndex(int index) {
-    if (index >= rowCount) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    return indices.get(arrayIndex)[elementIndex];
   }
 
   /**

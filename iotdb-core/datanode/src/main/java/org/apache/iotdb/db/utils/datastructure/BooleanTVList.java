@@ -35,6 +35,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
@@ -65,6 +66,7 @@ public abstract class BooleanTVList extends TVList {
   public BooleanTVList clone() {
     BooleanTVList cloneList = BooleanTVList.newList();
     cloneAs(cloneList);
+    cloneSlicesAndBitMap(cloneList);
     for (boolean[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -85,6 +87,7 @@ public abstract class BooleanTVList extends TVList {
     maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
+    indices.get(arrayIndex)[elementIndex] = rowCount;
     rowCount++;
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
@@ -96,19 +99,10 @@ public abstract class BooleanTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = getValueIndex(index);
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
     return values.get(arrayIndex)[elementIndex];
-  }
-
-  protected void set(int index, long timestamp, boolean value) {
-    if (index >= rowCount) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
   }
 
   @Override
@@ -119,11 +113,13 @@ public abstract class BooleanTVList extends TVList {
       }
       values.clear();
     }
+    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
     values.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
+    expandSlicesAndBitMap();
   }
 
   @Override
@@ -147,7 +143,8 @@ public abstract class BooleanTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isNullValue(i)
+          && !isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
         builder.getColumnBuilder(0).writeBoolean(getBoolean(i));
@@ -192,6 +189,8 @@ public abstract class BooleanTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
         rowCount += inputRemaining;
         break;
       } else {
@@ -200,6 +199,8 @@ public abstract class BooleanTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -245,7 +246,7 @@ public abstract class BooleanTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Byte.BYTES);
+    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Byte.BYTES + Byte.BYTES);
   }
 
   @Override
@@ -255,6 +256,7 @@ public abstract class BooleanTVList extends TVList {
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBoolean(rowIdx), buffer);
+      WALWriteUtils.write(isNullValue(rowIdx), buffer);
     }
   }
 
@@ -263,11 +265,15 @@ public abstract class BooleanTVList extends TVList {
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     boolean[] values = new boolean[rowCount];
+    BitMap bitMap = new BitMap(rowCount);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       times[rowIdx] = stream.readLong();
       values[rowIdx] = ReadWriteIOUtils.readBool(stream);
+      if (ReadWriteIOUtils.readBool(stream)) {
+        bitMap.mark(rowIdx);
+      }
     }
-    tvList.putBooleans(times, values, null, 0, rowCount);
+    tvList.putBooleans(times, values, bitMap, 0, rowCount);
     return tvList;
   }
 }
