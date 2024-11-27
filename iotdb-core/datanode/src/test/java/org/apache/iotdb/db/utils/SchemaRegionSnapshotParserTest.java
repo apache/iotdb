@@ -135,12 +135,13 @@ public class SchemaRegionSnapshotParserTest {
     FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
   }
 
-  public SchemaRegionSnapshotParserTest(SchemaRegionSnapshotParserTestParams params) {
+  public SchemaRegionSnapshotParserTest(final SchemaRegionSnapshotParserTestParams params) {
     this.testParams = params;
   }
 
-  public ISchemaRegion getSchemaRegion(String database, int schemaRegionId) throws Exception {
-    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+  public ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
+      throws Exception {
+    final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
       SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
     }
@@ -152,15 +153,15 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    PartialPath databasePath = new PartialPath("root.sg");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath databasePath = new PartialPath("root.sg");
     // Tree in memtree:
     // root->sg->s1->g1->temp
     //          |     |->status
     //          |->s2->g2->t2->temp
     //              |->g4->status
     //              |->g5->level
-    HashMap<String, ICreateTimeSeriesPlan> planMap = new HashMap<>();
+    final HashMap<String, ICreateTimeSeriesPlan> planMap = new HashMap<>();
     planMap.put(
         "root.sg.s1.g1.temp",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
@@ -216,15 +217,15 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null,
             null));
-    for (ICreateTimeSeriesPlan plan : planMap.values()) {
+    for (final ICreateTimeSeriesPlan plan : planMap.values()) {
       schemaRegion.createTimeSeries(plan, -1);
     }
 
-    File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
     snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
-    SRStatementGenerator statements =
+    final SRStatementGenerator statements =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(
                 config.getSchemaDir()
@@ -238,8 +239,8 @@ public class SchemaRegionSnapshotParserTest {
 
     assert statements != null;
     for (final Object stmt : statements) {
-      CreateTimeSeriesStatement createTimeSeriesStatement = (CreateTimeSeriesStatement) stmt;
-      ICreateTimeSeriesPlan plan =
+      final CreateTimeSeriesStatement createTimeSeriesStatement = (CreateTimeSeriesStatement) stmt;
+      final ICreateTimeSeriesPlan plan =
           planMap.get(createTimeSeriesStatement.getPaths().get(0).toString());
       Assert.assertEquals(plan.getEncoding(), createTimeSeriesStatement.getEncoding());
       Assert.assertEquals(plan.getCompressor(), createTimeSeriesStatement.getCompressor());
@@ -328,13 +329,13 @@ public class SchemaRegionSnapshotParserTest {
   }
 
   @Test
-  public void testAlignedTimeseriesTranslateSnapshot() throws Exception {
+  public void testAlignedTimeSeriesTranslateSnapshot() throws Exception {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    PartialPath database = new PartialPath("root.sg");
-    ICreateAlignedTimeSeriesPlan plan =
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath database = new PartialPath("root.sg");
+    final ICreateAlignedTimeSeriesPlan plan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.t1.t2"),
             Arrays.asList("s1", "s2", "s3"),
@@ -399,7 +400,7 @@ public class SchemaRegionSnapshotParserTest {
             database);
     assert statements != null;
     for (final Object stmt : statements) {
-      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
+      final CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
           (CreateAlignedTimeSeriesStatement) stmt;
       Assert.assertEquals(plan.getDevicePath(), createAlignedTimeSeriesStatement.getDevicePath());
 
@@ -417,10 +418,10 @@ public class SchemaRegionSnapshotParserTest {
           createAlignedTimeSeriesStatement.getMeasurements().size(),
           createAlignedTimeSeriesStatement.getTagsList().size());
 
-      Comparator<Map<String, String>> comp =
+      final Comparator<Map<String, String>> comp =
           new Comparator<Map<String, String>>() {
             @Override
-            public int compare(Map<String, String> o1, Map<String, String> o2) {
+            public int compare(final Map<String, String> o1, final Map<String, String> o2) {
               if (o1 == null && o2 == null) {
                 return 0;
               }
@@ -479,8 +480,8 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    PartialPath databasePath = new PartialPath("root.sg");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath databasePath = new PartialPath("root.sg");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new MeasurementPath("root.sg.s1.g1.temp"),
@@ -514,7 +515,7 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null),
         0);
-    Template template =
+    final Template template =
         new Template(
             "t1",
             Collections.singletonList("s1"),
@@ -522,22 +523,22 @@ public class SchemaRegionSnapshotParserTest {
             Collections.singletonList(TSEncoding.PLAIN),
             Collections.singletonList(CompressionType.GZIP));
     template.setId(0);
-    HashMap<String, IActivateTemplateInClusterPlan> planMap = new HashMap<>();
-    IActivateTemplateInClusterPlan plan1 =
+    final HashMap<String, IActivateTemplateInClusterPlan> planMap = new HashMap<>();
+    final IActivateTemplateInClusterPlan plan1 =
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
             new PartialPath("root.sg.s2"), 1, template.getId());
-    IActivateTemplateInClusterPlan plan2 =
+    final IActivateTemplateInClusterPlan plan2 =
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
             new PartialPath("root.sg.s3"), 1, template.getId());
     planMap.put("root.sg.s2", plan1);
     planMap.put("root.sg.s3", plan2);
     schemaRegion.activateSchemaTemplate(plan1, template);
     schemaRegion.activateSchemaTemplate(plan2, template);
-    File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
     snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
-    SRStatementGenerator statements =
+    final SRStatementGenerator statements =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(
                 config.getSchemaDir()
@@ -593,12 +594,12 @@ public class SchemaRegionSnapshotParserTest {
     //                      level(INT32m RLE){tags:"tag1"="t1"} alias(lev)
     //
     //
-    ISchemaRegion schemaRegion = getSchemaRegion("root", 0);
-    PartialPath databasePath = new PartialPath("root");
-    Template template = new Template();
+    final ISchemaRegion schemaRegion = getSchemaRegion("root", 0);
+    final PartialPath databasePath = new PartialPath("root");
+    final Template template = new Template();
     template.setId(1);
     template.addMeasurement("date", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-    HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
+    final HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
     planMap.put(
         "root.sg1.s1.t1",
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -744,7 +745,7 @@ public class SchemaRegionSnapshotParserTest {
                 add(new HashMap<>());
               }
             }));
-    for (ISchemaRegionPlan plan : planMap.values()) {
+    for (final ISchemaRegionPlan plan : planMap.values()) {
       if (plan instanceof ICreateTimeSeriesPlan) {
         schemaRegion.createTimeSeries((ICreateTimeSeriesPlan) plan, -1);
       } else if (plan instanceof ICreateAlignedTimeSeriesPlan) {
@@ -754,11 +755,11 @@ public class SchemaRegionSnapshotParserTest {
       }
     }
 
-    File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
     snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
-    SRStatementGenerator statements =
+    final SRStatementGenerator statements =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(
                 config.getSchemaDir()
@@ -776,10 +777,10 @@ public class SchemaRegionSnapshotParserTest {
             databasePath);
     assert statements != null;
     int count = 0;
-    Comparator<String> comparator =
+    final Comparator<String> comparator =
         new Comparator<String>() {
           @Override
-          public int compare(String o1, String o2) {
+          public int compare(final String o1, final String o2) {
             if (o1 == null && o2 == null) {
               return 0;
             } else if (o1 == null) {
@@ -793,9 +794,9 @@ public class SchemaRegionSnapshotParserTest {
         };
     for (final Object stmt : statements) {
       if (stmt instanceof CreateAlignedTimeSeriesStatement) {
-        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
+        final CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
             (CreateAlignedTimeSeriesStatement) stmt;
-        ICreateAlignedTimeSeriesPlan plan =
+        final ICreateAlignedTimeSeriesPlan plan =
             (ICreateAlignedTimeSeriesPlan)
                 planMap.get(createAlignedTimeSeriesStatement.getDevicePath().toString());
         Assert.assertNotNull(plan);
@@ -803,8 +804,8 @@ public class SchemaRegionSnapshotParserTest {
         Collections.sort(createAlignedTimeSeriesStatement.getMeasurements());
         Assert.assertEquals(
             plan.getMeasurements(), createAlignedTimeSeriesStatement.getMeasurements());
-        Collections.sort(plan.getAliasList(), comparator);
-        Collections.sort(createAlignedTimeSeriesStatement.getAliasList(), comparator);
+        plan.getAliasList().sort(comparator);
+        createAlignedTimeSeriesStatement.getAliasList().sort(comparator);
         Assert.assertEquals(plan.getAliasList(), createAlignedTimeSeriesStatement.getAliasList());
         Assert.assertEquals(plan.getEncodings(), createAlignedTimeSeriesStatement.getEncodings());
         Collections.sort(plan.getCompressors());
@@ -817,8 +818,9 @@ public class SchemaRegionSnapshotParserTest {
         Assert.assertEquals(
             plan.getTagsList().size(), createAlignedTimeSeriesStatement.getTagsList().size());
       } else if (stmt instanceof CreateTimeSeriesStatement) {
-        CreateTimeSeriesStatement createTimeSeriesStatement = (CreateTimeSeriesStatement) stmt;
-        ICreateTimeSeriesPlan plan =
+        final CreateTimeSeriesStatement createTimeSeriesStatement =
+            (CreateTimeSeriesStatement) stmt;
+        final ICreateTimeSeriesPlan plan =
             (ICreateTimeSeriesPlan) planMap.get(createTimeSeriesStatement.getPath().toString());
         Assert.assertNotNull(plan);
         Assert.assertEquals(plan.getEncoding(), createTimeSeriesStatement.getEncoding());
@@ -829,8 +831,9 @@ public class SchemaRegionSnapshotParserTest {
         Assert.assertEquals(plan.getAttributes(), createTimeSeriesStatement.getAttributes());
         Assert.assertEquals(plan.getTags(), createTimeSeriesStatement.getTags());
       } else if (stmt instanceof ActivateTemplateStatement) {
-        ActivateTemplateStatement activateTemplateStatement = (ActivateTemplateStatement) stmt;
-        IActivateTemplateInClusterPlan plan =
+        final ActivateTemplateStatement activateTemplateStatement =
+            (ActivateTemplateStatement) stmt;
+        final IActivateTemplateInClusterPlan plan =
             (IActivateTemplateInClusterPlan)
                 planMap.get(activateTemplateStatement.getPath().toString());
         Assert.assertNotNull(plan);
