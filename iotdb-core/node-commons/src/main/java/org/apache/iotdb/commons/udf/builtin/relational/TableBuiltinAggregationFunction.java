@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 

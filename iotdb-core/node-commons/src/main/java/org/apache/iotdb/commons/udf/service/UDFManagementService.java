@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
@@ -114,8 +116,10 @@ public class UDFManagementService {
               .contains(functionName.toUpperCase())
           || BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     } else {
-      // TODO: Table model UDF
-      return false;
+      return TableBuiltinScalarFunction.getNativeFunctionNames()
+              .contains(functionName.toLowerCase())
+          || TableBuiltinAggregationFunction.getNativeFunctionNames()
+              .contains(functionName.toLowerCase());
     }
   }
 

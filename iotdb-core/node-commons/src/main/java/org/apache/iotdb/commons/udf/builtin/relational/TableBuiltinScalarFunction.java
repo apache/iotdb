@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
 import java.util.Arrays;
 import java.util.HashSet;
