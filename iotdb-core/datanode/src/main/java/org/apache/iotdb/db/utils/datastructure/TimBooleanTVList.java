@@ -26,10 +26,10 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class TimBooleanTVList extends BooleanTVList implements TimSort {
   private long[][] sortedTimestamps;
-  private long pivotTime;
+  private int[][] sortedIndices;
 
-  private boolean[][] sortedValues;
-  private boolean pivotValue;
+  private long pivotTime;
+  private int pivotIndex;
 
   @Override
   public void sort() {
@@ -38,10 +38,10 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (boolean[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.BOOLEAN, rowCount);
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedIndices =
+          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }
     if (!sorted) {
       sort(0, rowCount);
@@ -59,20 +59,20 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
   @Override
   public void set(int src, int dest) {
     long srcT = getTime(src);
-    boolean srcV = getBoolean(src);
+    int srcV = getValueIndex(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   public void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getBoolean(src);
+    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
   public void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getBoolean(pos);
+    pivotIndex = getValueIndex(pos);
   }
 
   @Override
@@ -80,12 +80,12 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
     set(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   @Override
   public void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
+    set(pos, pivotTime, pivotIndex);
   }
 
   @Override
@@ -97,8 +97,8 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
 
   @Override
   public void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
+    if (sortedIndices != null) {
+      sortedIndices = null;
     }
   }
 
@@ -114,9 +114,9 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      boolean loV = getBoolean(lo);
+      int loV = getValueIndex(lo);
       long hiT = getTime(hi);
-      boolean hiV = getBoolean(hi);
+      int hiV = getValueIndex(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }

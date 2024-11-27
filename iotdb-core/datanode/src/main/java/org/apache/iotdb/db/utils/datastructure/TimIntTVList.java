@@ -25,11 +25,10 @@ import org.apache.tsfile.enums.TSDataType;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class TimIntTVList extends IntTVList implements TimSort {
-
   private long[][] sortedTimestamps;
-  private int[][] sortedValues;
+  private int[][] sortedIndices;
 
-  private int pivotValue;
+  private int pivotIndex;
   private long pivotTime;
 
   @Override
@@ -39,9 +38,9 @@ public class TimIntTVList extends IntTVList implements TimSort {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedIndices =
           (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }
     if (!sorted) {
@@ -60,20 +59,20 @@ public class TimIntTVList extends IntTVList implements TimSort {
   @Override
   public void set(int src, int dest) {
     long srcT = getTime(src);
-    int srcV = getInt(src);
+    int srcV = getValueIndex(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   public void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getInt(src);
+    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
   public void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getInt(pos);
+    pivotIndex = getValueIndex(pos);
   }
 
   @Override
@@ -81,12 +80,12 @@ public class TimIntTVList extends IntTVList implements TimSort {
     set(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   @Override
   public void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
+    set(pos, pivotTime, pivotIndex);
   }
 
   @Override
@@ -98,8 +97,8 @@ public class TimIntTVList extends IntTVList implements TimSort {
 
   @Override
   public void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
+    if (sortedIndices != null) {
+      sortedIndices = null;
     }
   }
 
@@ -115,9 +114,9 @@ public class TimIntTVList extends IntTVList implements TimSort {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      int loV = getInt(lo);
+      int loV = getValueIndex(lo);
       long hiT = getTime(hi);
-      int hiV = getInt(hi);
+      int hiV = getValueIndex(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }

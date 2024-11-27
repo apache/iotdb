@@ -30,7 +30,7 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class BackFloatTVList extends QuickFloatTVList implements BackwardSort {
   private final List<long[]> tmpTimestamps = new ArrayList<>();
-  private final List<float[]> tmpValues = new ArrayList<>();
+  private final List<int[]> tmpIndices = new ArrayList<>();
   private int tmpLength = 0;
 
   @Override
@@ -47,13 +47,13 @@ public class BackFloatTVList extends QuickFloatTVList implements BackwardSort {
     set(
         dest,
         tmpTimestamps.get(src / ARRAY_SIZE)[src % ARRAY_SIZE],
-        tmpValues.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
+        tmpIndices.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
   }
 
   @Override
   public void setToTmp(int src, int dest) {
     tmpTimestamps.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getTime(src);
-    tmpValues.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getFloat(src);
+    tmpIndices.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
@@ -72,7 +72,7 @@ public class BackFloatTVList extends QuickFloatTVList implements BackwardSort {
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((float[]) getPrimitiveArraysByType(TSDataType.FLOAT));
+      tmpIndices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
       tmpLength += ARRAY_SIZE;
     }
   }
@@ -83,9 +83,9 @@ public class BackFloatTVList extends QuickFloatTVList implements BackwardSort {
       PrimitiveArrayManager.release(dataArray);
     }
     tmpTimestamps.clear();
-    for (float[] dataArray : tmpValues) {
+    for (int[] dataArray : tmpIndices) {
       PrimitiveArrayManager.release(dataArray);
     }
-    tmpValues.clear();
+    tmpIndices.clear();
   }
 }

@@ -28,9 +28,9 @@ public class QuickLongTVList extends LongTVList implements QuickSort {
 
   @Override
   public void swap(int p, int q) {
-    long valueP = getLong(p);
+    int valueP = getValueIndex(p);
     long timeP = getTime(p);
-    long valueQ = getLong(q);
+    int valueQ = getValueIndex(q);
     long timeQ = getTime(q);
     set(p, timeQ, valueQ);
     set(q, timeP, valueP);
@@ -47,7 +47,7 @@ public class QuickLongTVList extends LongTVList implements QuickSort {
   @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
-    long srcV = getLong(src);
+    int srcV = getValueIndex(src);
     set(dest, srcT, srcV);
   }
 }

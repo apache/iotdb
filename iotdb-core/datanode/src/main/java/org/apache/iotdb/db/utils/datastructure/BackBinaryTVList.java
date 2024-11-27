@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +29,7 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class BackBinaryTVList extends QuickBinaryTVList implements BackwardSort {
   private final List<long[]> tmpTimestamps = new ArrayList<>();
-  private final List<Binary[]> tmpValues = new ArrayList<>();
+  private final List<int[]> tmpIndices = new ArrayList<>();
   private int tmpLength = 0;
 
   @Override
@@ -47,13 +46,13 @@ public class BackBinaryTVList extends QuickBinaryTVList implements BackwardSort 
     set(
         dest,
         tmpTimestamps.get(src / ARRAY_SIZE)[src % ARRAY_SIZE],
-        tmpValues.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
+        tmpIndices.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
   }
 
   @Override
   public void setToTmp(int src, int dest) {
     tmpTimestamps.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getTime(src);
-    tmpValues.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getBinary(src);
+    tmpIndices.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
@@ -72,7 +71,7 @@ public class BackBinaryTVList extends QuickBinaryTVList implements BackwardSort 
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
+      tmpIndices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
       tmpLength += ARRAY_SIZE;
     }
   }
@@ -83,9 +82,9 @@ public class BackBinaryTVList extends QuickBinaryTVList implements BackwardSort 
       PrimitiveArrayManager.release(dataArray);
     }
     tmpTimestamps.clear();
-    for (Binary[] dataArray : tmpValues) {
+    for (int[] dataArray : tmpIndices) {
       PrimitiveArrayManager.release(dataArray);
     }
-    tmpValues.clear();
+    tmpIndices.clear();
   }
 }

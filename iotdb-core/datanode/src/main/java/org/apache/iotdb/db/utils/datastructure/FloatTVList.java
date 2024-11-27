@@ -29,12 +29,14 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
@@ -65,6 +67,7 @@ public abstract class FloatTVList extends TVList {
   public FloatTVList clone() {
     FloatTVList cloneList = FloatTVList.newList();
     cloneAs(cloneList);
+    cloneSlicesAndBitMap(cloneList);
     for (float[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -85,6 +88,7 @@ public abstract class FloatTVList extends TVList {
     maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
+    indices.get(arrayIndex)[elementIndex] = rowCount;
     rowCount++;
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
@@ -96,19 +100,10 @@ public abstract class FloatTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = getValueIndex(index);
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
     return values.get(arrayIndex)[elementIndex];
-  }
-
-  protected void set(int index, long timestamp, float value) {
-    if (index >= rowCount) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
   }
 
   @Override
@@ -119,11 +114,13 @@ public abstract class FloatTVList extends TVList {
       }
       values.clear();
     }
+    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
     values.add((float[]) getPrimitiveArraysByType(TSDataType.FLOAT));
+    expandSlicesAndBitMap();
   }
 
   @Override
@@ -150,7 +147,8 @@ public abstract class FloatTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isNullValue(i)
+          && !isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
         builder
@@ -197,6 +195,8 @@ public abstract class FloatTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
         rowCount += inputRemaining;
         break;
       } else {
@@ -205,6 +205,8 @@ public abstract class FloatTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -250,7 +252,7 @@ public abstract class FloatTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Float.BYTES);
+    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Float.BYTES + Byte.BYTES);
   }
 
   @Override
@@ -260,6 +262,7 @@ public abstract class FloatTVList extends TVList {
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       buffer.putFloat(getFloat(rowIdx));
+      WALWriteUtils.write(isNullValue(rowIdx), buffer);
     }
   }
 
@@ -268,11 +271,15 @@ public abstract class FloatTVList extends TVList {
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     float[] values = new float[rowCount];
+    BitMap bitMap = new BitMap(rowCount);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       times[rowIdx] = stream.readLong();
       values[rowIdx] = stream.readFloat();
+      if (ReadWriteIOUtils.readBool(stream)) {
+        bitMap.mark(rowIdx);
+      }
     }
-    tvList.putFloats(times, values, null, 0, rowCount);
+    tvList.putFloats(times, values, bitMap, 0, rowCount);
     return tvList;
   }
 }
