@@ -306,6 +306,14 @@ public class LoadCache {
         .ifPresent(group -> group.cacheHeartbeatSample(nodeId, sample, overwrite));
   }
 
+  public RegionStatus getRegionCacheLastSampleStatus(TConsensusGroupId regionGroupId, int nodeId) {
+    return Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .map(regionGroupCache -> regionGroupCache.getRegionCache(nodeId))
+        .map(regionCache -> (RegionHeartbeatSample) regionCache.getLastSample())
+        .map(RegionHeartbeatSample::getStatus)
+        .orElse(RegionStatus.Unknown);
+  }
+
   /**
    * Remove the cache of the specified Region in the specified RegionGroup.
    *

@@ -156,20 +156,21 @@ public class RemoveDataNodeHandler {
           nodeStatus,
           currentTime);
 
-      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
-          new TreeMap<>();
-
       // Force update RegionStatus
-      configManager
-          .getPartitionManager()
-          .getAllReplicaSets(dataNodeId)
-          .forEach(
-              replicaSet ->
-                  heartbeatSampleMap.put(
-                      replicaSet.getRegionId(),
-                      Collections.singletonMap(
-                          dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
-      configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
+      if (regionStatus != RegionStatus.Removing) {
+        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
+            new TreeMap<>();
+        configManager
+            .getPartitionManager()
+            .getAllReplicaSets(dataNodeId)
+            .forEach(
+                replicaSet ->
+                    heartbeatSampleMap.put(
+                        replicaSet.getRegionId(),
+                        Collections.singletonMap(
+                            dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
+        configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
+      }
     }
   }
 
