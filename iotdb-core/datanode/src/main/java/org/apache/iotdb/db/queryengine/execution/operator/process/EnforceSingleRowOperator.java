@@ -32,7 +32,11 @@ public class EnforceSingleRowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(EnforceSingleRowOperator.class);
 
-  private static final String ERROR_MESSAGE = "Scalar sub-query has returned multiple rows.";
+  private static final String MULTIPLE_ROWS_ERROR_MESSAGE =
+      "Scalar sub-query has returned multiple rows.";
+
+  private static final String NO_RESULT_ERROR_MESSAGE =
+      "Scalar sub-query has returned multiple rows.";
 
   private final OperatorContext operatorContext;
   private final Operator child;
@@ -51,12 +55,9 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (finished) {
-      throw new IllegalStateException(ERROR_MESSAGE);
-    }
     TsBlock tsBlock = child.next();
-    if (tsBlock != null && tsBlock.getPositionCount() > 1) {
-      throw new IllegalStateException(ERROR_MESSAGE);
+    if (tsBlock != null && (tsBlock.getPositionCount() > 1 || finished)) {
+      throw new IllegalStateException(MULTIPLE_ROWS_ERROR_MESSAGE);
     }
     if (tsBlock != null) {
       finished = true;
@@ -66,11 +67,7 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    boolean hasNext = child.hasNext();
-    if (finished && hasNext) {
-      throw new IllegalStateException(ERROR_MESSAGE);
-    }
-    return hasNext;
+    return !isFinished();
   }
 
   @Override
@@ -82,7 +79,17 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished || child.isFinished();
+    boolean childFinished = child.isFinished();
+    if (childFinished && !finished) {
+      // finished == false means the child has no result returned up to now, but we need at least
+      // one result.
+      throw new IllegalStateException(NO_RESULT_ERROR_MESSAGE);
+    }
+    // Even if finished == true, we can not return true here, we need to call child.next() to check
+    // if child has more data.
+    // For example, if the child is a TableScanOperator with a filter, childFinished = false does
+    // not mean that the child can produce more data.(see the isFinished() of TableScanOperator)
+    return childFinished;
   }
 
   @Override

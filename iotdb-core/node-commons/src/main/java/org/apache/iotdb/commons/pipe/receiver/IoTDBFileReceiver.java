@@ -383,9 +383,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         }
         writingFileWriter.close();
         LOGGER.info(
-            "Receiver id = {}: Current writing file writer {} was closed.",
+            "Receiver id = {}: Current writing file writer {} was closed, length {}.",
             receiverId.get(),
-            writingFile == null ? "null" : writingFile.getPath());
+            writingFile == null ? "null" : writingFile.getPath(),
+            writingFile == null ? 0 : writingFile.length());
       } catch (Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to close current writing file writer {}, because {}.",

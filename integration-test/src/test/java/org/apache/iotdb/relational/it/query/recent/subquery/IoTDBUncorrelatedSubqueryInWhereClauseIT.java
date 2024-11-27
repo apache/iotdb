@@ -165,6 +165,20 @@ public class IoTDBUncorrelatedSubqueryInWhereClauseIT {
           retArray,
           DATABASE_NAME);
     }
+
+    // Test case: subquery is not aggregation but returns exactly one row
+    sql =
+        "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s = (SELECT %s FROM table1 WHERE device_id = 'd01' and %s = 30)";
+    retArray = new String[] {"30,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(
+              sql, measurement, measurement, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
   }
 
   @Test

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -225,8 +226,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         Files.deleteIfExists(tsFile.toPath());
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
         Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+            new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       }
     } catch (final IOException e) {
       LOGGER.warn("Delete After Loading {} error.", tsFile, e);
