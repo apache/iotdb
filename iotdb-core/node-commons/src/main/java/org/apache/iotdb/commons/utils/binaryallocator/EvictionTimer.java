@@ -31,8 +31,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class EvictionTimer {
-
-  /** Executor instance */
   private static ScheduledThreadPoolExecutor executor;
 
   /**

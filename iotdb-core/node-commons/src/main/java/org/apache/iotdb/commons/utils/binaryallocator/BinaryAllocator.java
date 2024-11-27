@@ -132,14 +132,16 @@ public class BinaryAllocator {
     if (needReopen) state.set(BinaryAllocatorState.TMP_CLOSE);
     else {
       state.set(BinaryAllocatorState.CLOSE);
-      evictor.stopEvictor();
+      if (evictor != null) {
+        evictor.stopEvictor();
+      }
     }
     for (Arena arena : heapArenas) {
       arena.close();
     }
   }
 
-  public void restart() {
+  private void restart() {
     state.set(BinaryAllocatorState.OPEN);
     for (Arena arena : heapArenas) {
       arena.restart();

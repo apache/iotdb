@@ -754,6 +754,10 @@ public class CommonDescriptor {
     config.setArenaNum(
         Integer.parseInt(
             properties.getProperty("arena_num", String.valueOf(config.getArenaNum()))));
+    config.setLog2SizeClassGroup(
+        Integer.parseInt(
+            properties.getProperty(
+                "log2_size_class_group", String.valueOf(config.getLog2SizeClassGroup()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
