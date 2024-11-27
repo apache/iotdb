@@ -89,10 +89,9 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           Arrays.asList(
               "create table table1(a id, b attribute, c int32) with (ttl=3000)",
               "alter table table1 add column d int64",
-              "alter table table1 drop column b",
+              "alter table table1 drop column c",
               "alter table table1 set properties ttl=default",
-              "insert into table1 (a, c, d) values(1, 1, 1)",
-              "delete devices from table1",
+              "insert into table1 (a, b, d) values(1, 1, 1)",
               "create table noTransferTable(a id, b attribute, c int32) with (ttl=3000)"))) {
         return;
       }
@@ -105,6 +104,37 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           "TableName,TTL(ms),",
           Collections.singleton("table1,300,"),
           dbName);
+
+      // Test devices
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,1,"), dbName);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "insert into table1 (a, b) values(1, 2)")) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,2,"), dbName);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "update table1 set b = '3'")) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,3,"), dbName);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "delete devices from table1 where a = '1'")) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "show devices from table1", "a,b,", Collections.emptySet(), dbName);
 
       // Will not include no-transfer table
       TestUtils.assertDataAlwaysOnEnv(
