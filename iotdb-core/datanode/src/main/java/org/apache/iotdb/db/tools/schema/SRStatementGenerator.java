@@ -149,7 +149,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
 
     // TODO: Inner mem-control in deviceAttributeStore
     if (Objects.nonNull(attributeFile)) {
-      deviceAttributeStore.loadFromSnapshot(attributeFile);
+      deviceAttributeStore.loadFromSnapshot(attributeFile.getParentFile());
     }
 
     this.databaseFullPath = databaseFullPath;
