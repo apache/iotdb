@@ -54,4 +54,10 @@ public abstract class AsyncThriftClientFactory<K, V> extends ThriftClientFactory
         .collect(Collectors.toList())
         .forEach(thread -> thread.setName(threadName + "-selector-" + thread.getId()));
   }
+
+  public void close() {
+    for (TAsyncClientManager tManager : tManagers) {
+      tManager.stop();
+    }
+  }
 }

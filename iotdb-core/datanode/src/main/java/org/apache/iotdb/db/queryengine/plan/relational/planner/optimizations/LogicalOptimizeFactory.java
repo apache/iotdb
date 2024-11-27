@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.AddTableScanColumnsToTypeProviderOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
@@ -203,8 +202,7 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
-        new AddTableScanColumnsToTypeProviderOptimizer());
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())));
 
     this.planOptimizers = optimizerBuilder.build();
   }

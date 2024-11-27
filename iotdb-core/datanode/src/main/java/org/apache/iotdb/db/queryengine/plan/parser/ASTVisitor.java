@@ -228,6 +228,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
@@ -878,19 +879,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
-          false);
+          Optional.empty());
     } else {
       String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
-          true,
-          uriString);
+          Optional.of(uriString));
     }
   }
 
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
+    if (StringUtils.isEmpty(uriString)) {
+      throw new SemanticException("URI is empty, please specify the URI.");
+    }
     try {
       new URI(uriString);
     } catch (URISyntaxException e) {
@@ -2611,27 +2614,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private void parseDatabaseAttributesClause(
-      DatabaseSchemaStatement databaseSchemaStatement,
-      IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
-    for (IoTDBSqlParser.DatabaseAttributeClauseContext attribute : ctx.databaseAttributeClause()) {
-      IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
+      final DatabaseSchemaStatement databaseSchemaStatement,
+      final IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
+    for (final IoTDBSqlParser.DatabaseAttributeClauseContext attribute :
+        ctx.databaseAttributeClause()) {
+      final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
+          attribute.databaseAttributeKey();
       if (attributeKey.TTL() != null) {
-        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTtl(ttl);
-      } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
-        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-      } else if (attributeKey.DATA_REPLICATION_FACTOR() != null) {
-        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataReplicationFactor(dataReplicationFactor);
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
-        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
       } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
       } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
       }
     }

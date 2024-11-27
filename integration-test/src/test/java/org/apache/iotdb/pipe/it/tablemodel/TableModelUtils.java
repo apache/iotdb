@@ -20,8 +20,8 @@
 package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.isession.IPooledSession;
-import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -182,10 +182,10 @@ public class TableModelUtils {
       BaseEnv baseEnv,
       boolean allowNullValue) {
     final Tablet tablet = generateTablet(tableName, start, end, allowNullValue);
-    ISessionPool sessionPool = baseEnv.getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(1);
+    try (final ITableSession session = tableSessionPool.getSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
-      session.insertTablet(tablet);
+      session.insert(tablet);
       session.executeNonQueryStatement("flush");
       return true;
     } catch (Exception e) {

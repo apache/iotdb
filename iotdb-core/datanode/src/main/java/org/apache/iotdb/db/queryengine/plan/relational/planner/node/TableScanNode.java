@@ -198,6 +198,24 @@ public class TableScanNode extends SourceNode {
             || columnSchema.getColumnCategory() == TIME);
   }
 
+  public boolean isTimeColumn(Symbol symbol) {
+    return isTimeColumn(symbol, assignments);
+  }
+
+  public Optional<Symbol> getTimeColumn() {
+    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
+      if (entry.getValue().getColumnCategory() == TIME) {
+        return Optional.of(entry.getKey());
+      }
+    }
+    return Optional.empty();
+  }
+
+  public static boolean isTimeColumn(Symbol symbol, Map<Symbol, ColumnSchema> columnSchemaMap) {
+    ColumnSchema columnSchema = columnSchemaMap.get(symbol);
+    return columnSchema != null && columnSchema.getColumnCategory() == TIME;
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_SCAN_NODE.serialize(byteBuffer);

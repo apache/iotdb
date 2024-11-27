@@ -87,7 +87,7 @@ public class IoTDBUDFManagementIT {
       statement.executeQuery("select udf(*, *) from root.vehicle");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();
@@ -123,7 +123,7 @@ public class IoTDBUDFManagementIT {
         Assert.assertEquals(
             1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
             count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
 
         statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
@@ -138,7 +138,7 @@ public class IoTDBUDFManagementIT {
         Assert.assertEquals(
             1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
             count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
       }
     } catch (SQLException throwable) {
@@ -249,7 +249,7 @@ public class IoTDBUDFManagementIT {
         Assert.assertEquals(
             2 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
             count);
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
         statement.execute("drop function udf1");
       } catch (Exception e) {
@@ -353,7 +353,10 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function sin as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("the given function name conflicts with the built-in function name"));
     }
   }
 
@@ -376,7 +379,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();
@@ -391,7 +394,7 @@ public class IoTDBUDFManagementIT {
           if (result.contains(FUNCTION_TYPE_EXTERNAL_UDTF)) {
             Assert.assertEquals(
                 String.format(
-                    "UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,",
+                    "UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,AVAILABLE,",
                     FUNCTION_TYPE_EXTERNAL_UDTF),
                 result);
             ++count;

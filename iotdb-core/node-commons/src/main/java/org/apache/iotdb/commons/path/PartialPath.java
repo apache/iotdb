@@ -72,7 +72,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     System.arraycopy(tableNameSegments, 0, nodes, 0, tableNameSegments.length);
     // copy non-table-name segments
     for (int i = 0; i < device.segmentNum() - 1; i++) {
-      nodes[i + tableNameSegments.length] = device.segment(i + 1).toString();
+      nodes[i + tableNameSegments.length] =
+          device.segment(i + 1) != null ? device.segment(i + 1).toString() : null;
     }
     this.fullPath = getFullPath();
   }

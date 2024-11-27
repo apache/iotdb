@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
@@ -136,7 +135,6 @@ public class PartitionLevelModFileManager implements ModFileManagement {
     references.add(tsFileResource);
     modFileReferences.put(newModFile, references);
 
-    FileMetrics.getInstance().increaseModFileNum(1);
     return newModFile;
   }
 

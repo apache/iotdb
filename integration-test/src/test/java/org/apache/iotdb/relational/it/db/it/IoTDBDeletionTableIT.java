@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -127,6 +128,24 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals("701: The operator of id predicate must be '=' for 'd0'", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: Unsupported expression: (deviceId IS NOT NULL) in ((time < 10) AND (deviceId IS NOT NULL))",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId = null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead",
+            e.getMessage());
       }
 
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
@@ -568,6 +587,58 @@ public class IoTDBDeletionTableIT {
       }
     }
     cleanData(testNum);
+  }
+
+  @Test
+  public void testDeviceIdWithNull() throws SQLException {
+    int testNum = 14;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+      // id1 is null for this record
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
+      statement.execute("flush");
+
+      statement.execute("delete from t" + testNum + " where id1 is NULL and time <= 1");
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertTrue(set.next());
+        assertTrue(set.next());
+        assertFalse(set.next());
+      }
+
+      statement.execute("delete from t" + testNum + " where id2 is NULL");
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertTrue(set.next());
+        assertFalse(set.next());
+      }
+
+      statement.execute("delete from t" + testNum);
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      statement.execute("drop table t" + testNum);
+    }
+  }
+
+  @Test
+  public void testIllegalRange() {
+    int testNum = 15;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+
+      statement.execute("delete from t" + testNum + " where time > 10 and time <= 1");
+      fail("Exception expected");
+    } catch (SQLException e) {
+      assertEquals("701: Start time 11 is greater than end time 1", e.getMessage());
+    }
   }
 
   @Ignore

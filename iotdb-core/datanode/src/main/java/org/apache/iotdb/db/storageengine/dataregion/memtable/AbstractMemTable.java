@@ -26,14 +26,10 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -49,7 +45,6 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -132,8 +127,6 @@ public abstract class AbstractMemTable implements IMemTable {
   private String database;
   private String dataRegionId;
 
-  private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
-
   private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   protected AbstractMemTable() {
@@ -187,7 +180,8 @@ public abstract class AbstractMemTable implements IMemTable {
             k -> {
               seriesNumber += schemaList.size();
               return new AlignedWritableMemChunkGroup(
-                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()));
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()),
+                  k.isTableModel());
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
@@ -295,37 +289,6 @@ public abstract class AbstractMemTable implements IMemTable {
       return pointsInserted;
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
-    }
-  }
-
-  public void updateMemtablePointCountMetric(InsertNode insertNode, int pointsInserted) {
-    MetricService.getInstance()
-        .count(
-            pointsInserted,
-            Metric.QUANTITY.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            METRIC_POINT_IN,
-            Tag.DATABASE.toString(),
-            database,
-            Tag.REGION.toString(),
-            dataRegionId,
-            Tag.TYPE.toString(),
-            Metric.MEMTABLE_POINT_COUNT.toString());
-    if (!insertNode.isGeneratedByRemoteConsensusLeader()) {
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.LEADER_QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId,
-              Tag.TYPE.toString(),
-              Metric.MEMTABLE_POINT_COUNT.toString());
     }
   }
 
@@ -956,7 +919,7 @@ public abstract class AbstractMemTable implements IMemTable {
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream, deviceID.isTableModel());
       } else {
         memChunkGroup = WritableMemChunkGroup.deserialize(stream);
       }
@@ -987,7 +950,7 @@ public abstract class AbstractMemTable implements IMemTable {
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream, false);
       } else {
         memChunkGroup = WritableMemChunkGroup.deserialize(stream);
       }

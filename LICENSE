@@ -204,23 +204,16 @@
                            APACHE IOTDB SUBCOMPONENTS
 --------------------------------------------------------------------------------
 
-The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
-which is under Apache License 2.0:
-
-mvnw files from https://github.com/apache/maven-wrapper Apache 2.0
-
---------------------------------------------------------------------------------
-
 The following files include code modified from Apache HBase project.
 
-./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/Procedure.java
-./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/ProcedureExecutor.java
-./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/StateMachineProcedure.java
-./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/TimeoutExecutorThread.java
-./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/StoppableThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/Procedure.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/ProcedureExecutor.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/impl/StateMachineProcedure.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/TimeoutExecutorThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/confignode/procedure/StoppableThread.java
 
 Project page: https://github.com/apache/hbase
-License: http://www.apache.org/licenses/LICENSE-2.0
+License: https://github.com/apache/hbase/blob/master/LICENSE.txt
 
 --------------------------------------------------------------------------------
 
@@ -242,13 +235,13 @@ License: https://github.com/ggalmazor/lt_downsampling_java8/blob/main/LICENSE
 
 The following files include code modified from Micrometer project.
 
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmClassLoaderMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmCompileMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmGcMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmMemoryMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmThreadMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/logback/LogbackMetrics
-./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/JvmUtils
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/jvm/JvmClassLoaderMetrics.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/jvm/JvmCompileMetrics.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/jvm/JvmGcMetrics.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/jvm/JvmMemoryMetrics.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/jvm/JvmThreadMetrics.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/metricsets/JvmUtils.java
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/logback/logback/LogbackMetrics.java
 
 Copyright: 2017 VMware
 Project page: https://github.com/micrometer-metrics/micrometer
@@ -256,8 +249,7 @@ License: https://github.com/micrometer-metrics/micrometer/blob/main/LICENSE
 
 --------------------------------------------------------------------------------
 
-The following files include code modified from Trino project(https://github.com/trinodb/trino),
-which is under Apache License 2.0:
+The following files include code modified from Trino project.
 
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryState.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/StateMachine.java
@@ -265,7 +257,10 @@ which is under Apache License 2.0:
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceState.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
-./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*
+
+Trino is open source software licensed under the Apache License 2.0 and supported by the Trino Software Foundation.
+Project page: https://github.com/trinodb/trino
+License: https://github.com/trinodb/trino/blob/master/LICENSE
 
 --------------------------------------------------------------------------------
 
@@ -274,4 +269,4 @@ The following files include code modified from Apache Kafka project.
 ./iotdb-client/session/src/main/java/org/apache/iotdb/session/subscription/util/PollTimer.java
 
 Project page: https://github.com/apache/kafka
-License: http://www.apache.org/licenses/LICENSE-2.0
+License: https://github.com/apache/kafka/blob/trunk/LICENSE

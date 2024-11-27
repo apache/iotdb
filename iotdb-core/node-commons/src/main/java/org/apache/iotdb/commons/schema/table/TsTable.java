@@ -27,9 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -40,15 +38,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 
 @ThreadSafe
 public class TsTable {
@@ -57,16 +58,8 @@ public class TsTable {
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
-  public static final Map<String, Object> TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP =
-      new HashMap<>();
-
-  public static final String TTL_PROPERTY = "TTL";
-
-  static {
-    TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.put(
-        TTL_PROPERTY.toLowerCase(Locale.ENGLISH), new Binary("INF", TSFileConfig.STRING_CHARSET));
-  }
-
+  public static final String TTL_PROPERTY = "ttl";
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
@@ -76,7 +69,10 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
+  // Cache, avoid string parsing
+  private transient long ttlValue = Long.MIN_VALUE;
   private transient int idNums = 0;
+  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -112,6 +108,8 @@ public class TsTable {
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+        measurementNum++;
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -140,6 +138,9 @@ public class TsTable {
         throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
       } else if (columnSchema != null) {
         columnSchemaMap.remove(columnName);
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+          measurementNum--;
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -164,6 +165,15 @@ public class TsTable {
     }
   }
 
+  public int getMeasurementNum() {
+    readWriteLock.readLock().lock();
+    try {
+      return measurementNum;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public List<TsTableColumnSchema> getColumnList() {
     readWriteLock.readLock().lock();
     try {
@@ -173,17 +183,26 @@ public class TsTable {
     }
   }
 
+  // This shall only be called on DataNode, where the tsTable is replaced completely thus an old
+  // cache won't pollute the newest value
   public long getTableTTL() {
-    long ttl = getTableTTLInMS();
-    return ttl == Long.MAX_VALUE
-        ? ttl
-        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    // Cache for performance
+    if (ttlValue < 0) {
+      final long ttl = getTableTTLInMS();
+      ttlValue =
+          ttl == Long.MAX_VALUE
+              ? ttl
+              : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                  ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    }
+    return ttlValue;
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(
-        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
+    final Optional<String> ttl = getPropValue(TTL_PROPERTY);
+    return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
+        ? Long.parseLong(ttl.get())
+        : Long.MAX_VALUE;
   }
 
   public Optional<String> getPropValue(final String propKey) {

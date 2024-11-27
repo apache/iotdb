@@ -1073,7 +1073,17 @@ public class ColumnTransformerBuilder
         Set<Long> timestampSet = new HashSet<>();
         for (Literal value : values) {
           try {
-            timestampSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
+            if (value instanceof LongLiteral) {
+              timestampSet.add(((LongLiteral) value).getParsedValue());
+            } else if (value instanceof DoubleLiteral) {
+              timestampSet.add((long) ((DoubleLiteral) value).getValue());
+            } else if (value instanceof GenericLiteral) {
+              timestampSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
+            } else {
+              throw new SemanticException(
+                  "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is "
+                      + value.getClass().getSimpleName());
+            }
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }

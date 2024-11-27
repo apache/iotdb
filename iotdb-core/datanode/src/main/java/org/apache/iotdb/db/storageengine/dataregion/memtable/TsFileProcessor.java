@@ -250,12 +250,12 @@ public class TsFileProcessor {
     logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
   }
 
-  private void ensureMemTable(long[] costsForMetrics) {
+  private void ensureMemTable(long[] infoForMetrics) {
     if (workMemTable == null) {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       // recordCreateMemtableBlockCost
-      costsForMetrics[0] += System.nanoTime() - startTime;
+      infoForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
           .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
@@ -266,10 +266,10 @@ public class TsFileProcessor {
    *
    * @param insertRowNode physical plan of insertion
    */
-  public void insert(InsertRowNode insertRowNode, long[] costsForMetrics)
+  public void insert(InsertRowNode insertRowNode, long[] infoForMetrics)
       throws WriteProcessException {
 
-    ensureMemTable(costsForMetrics);
+    ensureMemTable(infoForMetrics);
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
@@ -288,7 +288,7 @@ public class TsFileProcessor {
               insertRowNode.getDataTypes(), insertRowNode.getValues());
     }
     // recordScheduleMemoryBlockCost
-    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
+    infoForMetrics[1] += System.nanoTime() - memControlStartTime;
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -307,7 +307,7 @@ public class TsFileProcessor {
           e);
     } finally {
       // recordScheduleWalCost
-      costsForMetrics[2] += System.nanoTime() - startTime;
+      infoForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -338,17 +338,18 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
     }
-    workMemTable.updateMemtablePointCountMetric(insertRowNode, pointInserted);
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // RecordScheduleMemTableCost
-    costsForMetrics[3] += System.nanoTime() - startTime;
+    infoForMetrics[3] += System.nanoTime() - startTime;
+    // update memtable point inserted count
+    infoForMetrics[4] += pointInserted;
   }
 
-  public void insertRows(InsertRowsNode insertRowsNode, long[] costsForMetrics)
+  public void insertRows(InsertRowsNode insertRowsNode, long[] infoForMetrics)
       throws WriteProcessException {
 
-    ensureMemTable(costsForMetrics);
+    ensureMemTable(infoForMetrics);
 
     long[] memIncrements;
 
@@ -378,7 +379,7 @@ public class TsFileProcessor {
       }
     }
     // recordScheduleMemoryBlockCost
-    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
+    infoForMetrics[1] += System.nanoTime() - memControlStartTime;
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -397,7 +398,7 @@ public class TsFileProcessor {
           e);
     } finally {
       // recordScheduleWalCost
-      costsForMetrics[2] += System.nanoTime() - startTime;
+      infoForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -429,11 +430,12 @@ public class TsFileProcessor {
         tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
       }
     }
-    workMemTable.updateMemtablePointCountMetric(insertRowsNode, pointInserted);
 
     tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
     // recordScheduleMemTableCost
-    costsForMetrics[3] += System.nanoTime() - startTime;
+    infoForMetrics[3] += System.nanoTime() - startTime;
+    // update memtable point inserted count
+    infoForMetrics[4] += pointInserted;
   }
 
   private void createNewWorkingMemTable() {
@@ -450,7 +452,7 @@ public class TsFileProcessor {
       List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
-      long[] costsForMetrics)
+      long[] infoForMetrics)
       throws WriteProcessException {
     long memControlStartTime = System.nanoTime();
     long[] totalMemIncrements = new long[NUM_MEM_TO_ESTIMATE];
@@ -470,7 +472,7 @@ public class TsFileProcessor {
       }
     }
     // recordScheduleMemoryBlockCost
-    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
+    infoForMetrics[1] += System.nanoTime() - memControlStartTime;
 
     return totalMemIncrements;
   }
@@ -536,13 +538,13 @@ public class TsFileProcessor {
       List<int[]> rangeList,
       TSStatus[] results,
       boolean noFailure,
-      long[] costsForMetrics)
+      long[] infoForMetrics)
       throws WriteProcessException {
 
-    ensureMemTable(costsForMetrics);
+    ensureMemTable(infoForMetrics);
 
     long[] memIncrements =
-        scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, costsForMetrics);
+        scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -563,7 +565,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     } finally {
       // recordScheduleWalCost
-      costsForMetrics[2] += System.nanoTime() - startTime;
+      infoForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -625,11 +627,12 @@ public class TsFileProcessor {
         }
       }
     }
-    workMemTable.updateMemtablePointCountMetric(insertTabletNode, pointInserted);
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
     // recordScheduleMemTableCost
-    costsForMetrics[3] += System.nanoTime() - startTime;
+    infoForMetrics[3] += System.nanoTime() - startTime;
+    // update memtable point inserted count
+    infoForMetrics[4] += pointInserted;
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity
