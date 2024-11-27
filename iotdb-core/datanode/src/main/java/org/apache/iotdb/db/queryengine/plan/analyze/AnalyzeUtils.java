@@ -575,7 +575,8 @@ public class AnalyzeUtils {
     if (right instanceof StringLiteral) {
       rightHandValue = ((StringLiteral) right).getValue();
     } else if (right instanceof NullLiteral) {
-      rightHandValue = null;
+      throw new SemanticException(
+          "The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead");
     } else {
       throw new SemanticException(
           "The right hand value of id predicate must be a string: " + right);

@@ -139,6 +139,15 @@ public class IoTDBDeletionTableIT {
             e.getMessage());
       }
 
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId = null");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead",
+            e.getMessage());
+      }
+
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
         int cnt = 0;
         while (set.next()) {
@@ -601,7 +610,7 @@ public class IoTDBDeletionTableIT {
         assertFalse(set.next());
       }
 
-      statement.execute("delete from t" + testNum + " where id2 = NULL");
+      statement.execute("delete from t" + testNum + " where id2 is NULL");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
         assertTrue(set.next());
         assertFalse(set.next());
