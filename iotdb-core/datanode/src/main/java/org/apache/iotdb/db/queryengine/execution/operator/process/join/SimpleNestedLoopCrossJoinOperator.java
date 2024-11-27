@@ -122,9 +122,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
     while (probeIndex < cachedProbeBlock.getPositionCount()
         && System.nanoTime() - start < maxRuntime) {
       for (TsBlock buildBlock : buildBlocks) {
-        for (int i = 0; i < buildBlock.getPositionCount(); i++) {
-          appendValueToResult(probeIndex, buildBlock);
-        }
+        appendValueToResult(probeIndex, buildBlock);
       }
       probeIndex++;
     }
@@ -141,26 +139,27 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
   }
 
   private void appendValueToResult(int probeIndex, TsBlock buildBlock) {
-    for (int i = 0; i < buildBlock.getPositionCount(); i++) {
-      for (int j = 0; j < leftOutputSymbolIdx.length; j++) {
-        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(j);
-        if (cachedProbeBlock.getColumn(leftOutputSymbolIdx[j]).isNull(probeIndex)) {
+    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      for (int j = 0; j < buildBlock.getPositionCount(); j++) {
+        if (cachedProbeBlock.getColumn(leftOutputSymbolIdx[i]).isNull(probeIndex)) {
           columnBuilder.appendNull();
         } else {
-          columnBuilder.write(cachedProbeBlock.getColumn(leftOutputSymbolIdx[j]), probeIndex);
-        }
-      }
-      for (int j = 0; j < rightOutputSymbolIdx.length; j++) {
-        ColumnBuilder columnBuilder =
-            resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + j);
-        if (buildBlock.getColumn(rightOutputSymbolIdx[j]).isNull(i)) {
-          columnBuilder.appendNull();
-        } else {
-          columnBuilder.write(buildBlock.getColumn(rightOutputSymbolIdx[j]), i);
+          columnBuilder.write(cachedProbeBlock.getColumn(leftOutputSymbolIdx[i]), probeIndex);
         }
       }
     }
-    resultBuilder.declarePosition();
+    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i + leftOutputSymbolIdx.length);
+      for (int j = 0; j < buildBlock.getPositionCount(); j++) {
+        if (buildBlock.getColumn(rightOutputSymbolIdx[i]).isNull(j)) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.write(buildBlock.getColumn(rightOutputSymbolIdx[i]), j);
+        }
+      }
+    }
+    resultBuilder.declarePositions(buildBlock.getPositionCount());
   }
 
   @Override

@@ -34,7 +34,6 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Arrays;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -153,14 +152,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   String[] expectedHeader;
   String[] retArray;
   static String sql;
-
-  //  public static void main(String[] args) {
-  //    for (String[] sqlList : Arrays.asList(sql4, sql5)) {
-  //      for (String sql : sqlList) {
-  //        System.out.println(sql);
-  //      }
-  //    }
-  //  }
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -1694,17 +1685,21 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "order by s.student_id, t.teacher_id, c.course_id,g.grade_id";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
+    expectedHeader = new String[] {"region", "name", "teacher_id", "course_name", "score"};
+
+    retArray =
+        new String[] {
+          "haidian,Lucy,1005,数学,99,",
+        };
     sql =
         "select s.region, s.name,"
             + "           t.teacher_id,"
             + "           c.course_name,"
             + "           g.score "
             + "from students s, teachers t, courses c, grades g "
-            + "where s.time=c.time and c.time=g.time";
-    tableAssertTestFail(
-        sql,
-        "701: Cross join is not supported in current version, each table must have at least one equiJoinClause",
-        DATABASE_NAME);
+            + "where s.time=c.time and c.time=g.time and t.teacher_id = 1005 limit 1";
+
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
