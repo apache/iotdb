@@ -428,11 +428,11 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
       if (deviceMNode.isUseTemplate()) {
         return Collections.singletonList(new ActivateTemplateStatement(path));
-      } else if (deviceMNode instanceof TableDeviceInfo
-          && ((TableDeviceInfo<?>) deviceMNode).getAttributePointer() > -1) {
+      } else if (deviceMNode.getDeviceInfo() instanceof TableDeviceInfo
+          && ((TableDeviceInfo<?>) deviceMNode.getDeviceInfo()).getAttributePointer() > -1) {
         final Map<String, Binary> tableAttribute =
             deviceAttributeStore.getAttribute(
-                ((TableDeviceInfo<?>) deviceMNode).getAttributePointer());
+                ((TableDeviceInfo<?>) deviceMNode.getDeviceInfo()).getAttributePointer());
         if (tableAttribute.isEmpty()) {
           return null;
         }
