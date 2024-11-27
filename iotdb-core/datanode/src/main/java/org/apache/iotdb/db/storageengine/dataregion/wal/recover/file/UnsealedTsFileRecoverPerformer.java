@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -199,9 +201,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
+          registerToTsFile((InsertNode) walEntry.getValue());
           break;
         case INSERT_ROWS_NODE:
           walRedoer.redoInsertRows((InsertRowsNode) walEntry.getValue());
+          registerToTsFile((InsertRowsNode) walEntry.getValue());
           break;
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
@@ -219,6 +223,20 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       if (tsFileResource != null) {
         logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
       }
+    }
+  }
+
+  private void registerToTsFile(InsertNode node) {
+    final String tableName = node.getTableName();
+    if (tableName != null) {
+      writer
+          .getSchema()
+          .getTableSchemaMap()
+          .computeIfAbsent(
+              tableName,
+              t ->
+                  TableSchema.of(DataNodeTableCache.getInstance().getTable(databaseName, t))
+                      .toTsFileTableSchemaNoAttribute());
     }
   }
 
