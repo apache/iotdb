@@ -322,7 +322,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
       // executed correctly
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();

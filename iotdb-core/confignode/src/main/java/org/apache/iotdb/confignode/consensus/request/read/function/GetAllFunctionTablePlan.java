@@ -19,20 +19,12 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.function;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-public class GetFunctionTablePlan extends ConfigPhysicalReadPlan {
+public class GetAllFunctionTablePlan extends ConfigPhysicalReadPlan {
 
-  private final Model model;
-
-  public GetFunctionTablePlan(Model model) {
-    super(ConfigPhysicalPlanType.GetFunctionTable);
-    this.model = model;
-  }
-
-  public Model getModel() {
-    return model;
+  public GetAllFunctionTablePlan() {
+    super(ConfigPhysicalPlanType.GetAllFunctionTable);
   }
 }

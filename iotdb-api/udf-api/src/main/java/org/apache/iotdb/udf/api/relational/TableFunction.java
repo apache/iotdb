@@ -17,22 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.function;
+package org.apache.iotdb.udf.api.relational;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
-
-public class GetFunctionTablePlan extends ConfigPhysicalReadPlan {
-
-  private final Model model;
-
-  public GetFunctionTablePlan(Model model) {
-    super(ConfigPhysicalPlanType.GetFunctionTable);
-    this.model = model;
-  }
-
-  public Model getModel() {
-    return model;
-  }
-}
+public interface TableFunction extends SQLFunction {}
