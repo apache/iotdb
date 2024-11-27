@@ -237,4 +237,28 @@ public class IoTDBFilterTableIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void testCompareWithNull() {
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+  }
+
+  @Test
+  public void testCalculateWithNull() {
+    tableResultSetEqualTest(
+        "select s1 + null from sg1",
+        new String[] {"_col0"},
+        new String[] {"null,", "null,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 - null from sg1",
+        new String[] {"_col0"},
+        new String[] {"null,", "null,"},
+        DATABASE_NAME);
+  }
 }
