@@ -1471,6 +1471,21 @@ public class PipeConsensusReceiver {
                   !condition.await(
                       PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS, TimeUnit.MILLISECONDS);
 
+              // If some reqs find he buffer no longer contains their requestMeta after jumping out
+              // from condition.await, it may indicate that during their wait, some reqs with newer
+              // pipeTaskStartTimes or rebootTimes came in and refreshed the requestBuffer. In that
+              // cases we need to discard this requests.
+              if (!reqExecutionOrderBuffer.contains(requestMeta)) {
+                final TSStatus status =
+                    new TSStatus(
+                        RpcUtils.getStatus(
+                            TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                            "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it"));
+                LOGGER.info(
+                    "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the connector restart or pipe task restart. Consider to discard it",
+                    consensusPipeName);
+                return new TPipeConsensusTransferResp(status);
+              }
               // If the buffer is not full after waiting timeout, we suppose that the sender will
               // not send any more events at this time, that is, the sender has sent all events. At
               // this point we apply the event at reqBuffer's peek
