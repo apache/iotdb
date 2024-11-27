@@ -105,7 +105,9 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
     for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
       final Field field;
-      if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+      if (tablet.bitMaps != null
+          && tablet.bitMaps[columnIndex] != null
+          && tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
         field = new Field(null);
       } else {
         final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
