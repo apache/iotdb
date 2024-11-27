@@ -961,4 +961,36 @@ public class IoTDBSessionRelationalIT {
       }
     }
   }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertWithoutMeasurementTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement("create table tb (a string id, b string measurement)");
+      session.executeNonQueryStatement("insert into tb(a) values ('w')");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from tb");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        cnt++;
+      }
+      assertEquals(1, cnt);
+
+      session.executeNonQueryStatement("flush");
+
+      dataSet = session.executeQueryStatement("select * from tb");
+      cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        cnt++;
+      }
+      assertEquals(1, cnt);
+    }
+  }
 }
