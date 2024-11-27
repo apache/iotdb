@@ -747,7 +747,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       final String databaseName) {
     try {
-      final TSStatus result =
+      TSStatus result;
+      // Permission check
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (clientSession == null || !clientSession.isLogin()) {
+        result = login();
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return result;
+        }
+      }
+
+      result =
           Coordinator.getInstance()
               .executeForTableModel(
                   new PipeEnriched(statement),
@@ -790,28 +800,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     // Permission check
+    TSStatus permissionCheckStatus;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (clientSession == null || !clientSession.isLogin()) {
-      final BasicOpenSessionResp openSessionResp =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-            receiverId.get(),
-            username,
-            openSessionResp);
-        return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+      permissionCheckStatus = login();
+      if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return permissionCheckStatus;
       }
       clientSession = SESSION_MANAGER.getCurrSession();
     }
-    final TSStatus permissionCheckStatus =
-        AuthorityChecker.checkAuthority(statement, clientSession);
+    permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
@@ -863,6 +861,26 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
         ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
         : status;
+  }
+
+  private TSStatus login() {
+    final BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.login(
+            SESSION_MANAGER.getCurrSession(),
+            username,
+            password,
+            ZoneId.systemDefault().toString(),
+            SessionManager.CURRENT_RPC_VERSION,
+            IoTDBConstant.ClientVersion.V_1_0);
+    if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Receiver id = {}: Failed to open session, username = {}, response = {}.",
+          receiverId.get(),
+          username,
+          openSessionResp);
+      return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   private TSStatus executeStatementForTableModel(
