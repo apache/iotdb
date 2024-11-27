@@ -454,6 +454,12 @@ public class AnalyzeUtils {
     if (idPredicate != null) {
       predicate.setIdPredicate(idPredicate);
     }
+    if (timeRange.getStartTime() > timeRange.getEndTime()) {
+      throw new SemanticException(
+          String.format(
+              "Start time %d is greater than end time %d",
+              timeRange.getStartTime(), timeRange.getEndTime()));
+    }
 
     return new TableDeletionEntry(predicate, timeRange.toTsFileTimeRange());
   }

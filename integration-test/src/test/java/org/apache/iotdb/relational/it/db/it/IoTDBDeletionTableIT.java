@@ -601,6 +601,22 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testIllegalRange() {
+    int testNum = 15;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+
+      statement.execute("delete from t" + testNum + " where time > 10 and time <= 1");
+      fail("Exception expected");
+    } catch (SQLException e) {
+      assertEquals("701: Start time 11 is greater than end time 1", e.getMessage());
+    }
+  }
+
   @Ignore
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
