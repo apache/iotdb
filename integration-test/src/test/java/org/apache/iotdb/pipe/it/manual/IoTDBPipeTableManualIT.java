@@ -59,6 +59,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
 
       extractorAttributes.put("__system.inclusion", "all");
       extractorAttributes.put("__system.inclusion.exclusion", "data");
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
