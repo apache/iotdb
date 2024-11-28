@@ -16,10 +16,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 
 import java.util.List;
@@ -42,7 +42,7 @@ final class PlanMatchingVisitor extends PlanVisitor<MatchResult, PlanMatchPatter
   }
 
   @Override
-  public MatchResult visitExchange(ExchangeNode node, PlanMatchPattern pattern) {
+  public MatchResult visitTableExchange(ExchangeNode node, PlanMatchPattern pattern) {
     // When ExchangeNode support to get outputSymbols
     /*return pattern.detailMatches(
     node,

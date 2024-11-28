@@ -69,7 +69,10 @@ public class StreamingAggregationOperator extends AbstractOperator {
   private SortKey currentGroup;
   private final Comparator<SortKey> groupKeyComparator;
 
-  // more than one group in input block
+  // We limit the size of output block, but the process of one input block may produce more than one
+  // output because:
+  // Input columns can be reused by multiple aggregations, so size of each row maybe larger than
+  // input.
   private final Deque<TsBlock> outputs = new LinkedList<>();
 
   public StreamingAggregationOperator(

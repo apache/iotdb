@@ -131,7 +131,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
-    this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+    constructAlignedSeriesScanUtil();
   }
 
   @Override
@@ -287,7 +287,9 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    if (this.seriesScanUtil != null) {
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
     this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
@@ -297,7 +299,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   private void prepareForNextDevice() {
     if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
-      this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
+      constructAlignedSeriesScanUtil();
 
       // reset QueryDataSource
       queryDataSource.reset();
@@ -307,17 +309,28 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     }
   }
 
-  private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
+  private void constructAlignedSeriesScanUtil() {
+    if (this.deviceEntries.isEmpty()) {
+      // no need to construct SeriesScanUtil, hasNext will return false
+      return;
+    }
+
+    if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      throw new IllegalStateException(
+          "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
+    }
+
+    DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
-
-    return new AlignedSeriesScanUtil(
-        alignedPath,
-        scanOrder,
-        seriesScanOptions,
-        operatorContext.getInstanceContext(),
-        true,
-        measurementColumnTSDataTypes);
+    this.seriesScanUtil =
+        new AlignedSeriesScanUtil(
+            alignedPath,
+            scanOrder,
+            seriesScanOptions,
+            operatorContext.getInstanceContext(),
+            true,
+            measurementColumnTSDataTypes);
   }
 
   public static AlignedFullPath constructAlignedPath(

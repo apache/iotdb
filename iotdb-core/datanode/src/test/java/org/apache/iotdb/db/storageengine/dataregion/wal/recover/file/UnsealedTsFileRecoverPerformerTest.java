@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -28,6 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -42,6 +47,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TsFileMetadata;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
@@ -66,9 +74,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -170,6 +180,43 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
+  }
+
+  @Test
+  public void testRedoRelationalInsertPlan() throws Exception {
+
+    // fake table schema
+    final TsTable testTable1 = new TsTable("table1");
+    testTable1.addColumnSchema(
+        new MeasurementColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1);
+    DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1");
+    // generate crashed .tsfile
+    File file = new File(FILE_NAME);
+    Files.createDirectories(file.getParentFile().toPath());
+    Files.createFile(file.toPath());
+    // generate insertTabletNode
+    RelationalInsertTabletNode insertTabletNode = StatementTestUtils.genInsertTabletNode(10, 0);
+    int fakeMemTableId = 1;
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertTabletNode);
+    // recover
+    tsFileResource = new TsFileResource(file);
+    try (UnsealedTsFileRecoverPerformer recoverPerformer =
+        new UnsealedTsFileRecoverPerformer(
+            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+      recoverPerformer.startRecovery();
+      assertTrue(recoverPerformer.hasCrashed());
+      assertTrue(recoverPerformer.canWrite());
+      recoverPerformer.redoLog(walEntry);
+      recoverPerformer.endRecovery();
+    }
+    // check file content
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
+    TsFileMetadata metadata = reader.readFileMetadata();
+    Map<String, TableSchema> tableSchemaMap = reader.readFileMetadata().getTableSchemaMap();
+    assertEquals(1, tableSchemaMap.size());
+    assertTrue(tableSchemaMap.containsKey("table1"));
+    reader.close();
   }
 
   @Test
