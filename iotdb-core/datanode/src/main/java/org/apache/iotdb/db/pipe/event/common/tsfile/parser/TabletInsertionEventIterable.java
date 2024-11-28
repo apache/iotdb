@@ -33,12 +33,6 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
         if (!hasNext && !isMarked) {
           isMarked = true;
           if (sourceEvent != null) {
-            LOGGER.info(
-                "inHasNext:"
-                    + sourceEvent.getPipeName()
-                    + " "
-                    + sourceEvent.getCreationTime()
-                    + Thread.currentThread().getStackTrace()[2].getMethodName());
             PipeTsFileToTabletMetrics.getInstance()
                 .markTabletCount(
                     new PipeTsFileToTabletMetrics.PipeID(
@@ -46,11 +40,9 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
                         String.valueOf(sourceEvent.getCreationTime()),
                         Thread.currentThread().getStackTrace()[2].getMethodName()),
                     count);
-          } else {
-            LOGGER.info("sourceEvent not exists");
           }
         }
-        return originalIterator.hasNext();
+        return hasNext;
       }
 
       @Override

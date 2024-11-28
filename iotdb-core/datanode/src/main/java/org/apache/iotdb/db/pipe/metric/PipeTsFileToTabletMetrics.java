@@ -70,7 +70,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tsFileSizeMap.put(
         pipeID,
         metricService.getOrCreateRate(
-            Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
+            Metric.PIPE_TSFILETOTABLET_TSFILE_SIZE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             pipeID.getPipeName(),
@@ -81,7 +81,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tabletCountMap.put(
         pipeID,
         metricService.getOrCreateRate(
-            Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
+            Metric.PIPE_TSFILETOTABLET_TABLET_COUNT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             pipeID.getPipeName(),
@@ -113,7 +113,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tsFileSizeMap.remove(pipeID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_TOTABLET_TSFILE_SIZE.toString(),
+        Metric.PIPE_TSFILETOTABLET_TSFILE_SIZE.toString(),
         Tag.NAME.toString(),
         pipeID.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -123,7 +123,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tabletCountMap.remove(pipeID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_TOTABLET_TABLET_COUNT.toString(),
+        Metric.PIPE_TSFILETOTABLET_TABLET_COUNT.toString(),
         Tag.NAME.toString(),
         pipeID.getPipeName(),
         Tag.CREATION_TIME.toString(),

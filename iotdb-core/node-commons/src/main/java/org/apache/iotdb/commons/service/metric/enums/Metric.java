@@ -172,8 +172,8 @@ public enum Metric {
   PIPE_CONFIGNODE_REMAINING_TIME("pipe_confignode_remaining_time"),
   PIPE_GLOBAL_REMAINING_EVENT_COUNT("pipe_global_remaining_event_count"),
   PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
-  PIPE_TOTABLET_TSFILE_SIZE("pipe_totablet_tsfile_size"),
-  PIPE_TOTABLET_TABLET_COUNT("pipe_totablet_tablet_count"),
+  PIPE_TSFILETOTABLET_TSFILE_SIZE("pipe_tsfiletotablet_tsfile_size"),
+  PIPE_TSFILETOTABLET_TABLET_COUNT("pipe_tsfiletotablet_tablet_count"),
   // subscription related
   SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
