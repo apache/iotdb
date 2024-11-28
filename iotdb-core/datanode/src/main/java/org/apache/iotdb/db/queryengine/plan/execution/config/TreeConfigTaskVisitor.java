@@ -474,6 +474,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitAlterPipe(
       AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+
+    alterPipeStatement
+        .getExtractorAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
     return new AlterPipeTask(alterPipeStatement);
   }
 
