@@ -284,23 +284,11 @@ public class SessionConnection {
 
   protected void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
-    TSStatus resp;
-    try {
-      resp = client.setTimeZone(req);
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          req.setSessionId(sessionId);
-          resp = client.setTimeZone(req);
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
-    RpcUtils.verifySuccess(resp);
+    doOperation(() -> {
+      TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
+      RpcUtils.verifySuccess(client.setTimeZone(req));
+      return null;
+    });
     setTimeZoneOfSession(zoneId);
   }
 
@@ -317,93 +305,45 @@ public class SessionConnection {
 
   protected void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    try {
+    doOperation(() -> {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroup));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroup));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
-    try {
+    doOperation(() -> {
       RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
-  protected void createTimeseries(TSCreateTimeseriesReq request)
+  protected void createTimescreateTimeserieseries(TSCreateTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.createTimeseries(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.createTimeseries(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void createAlignedTimeseries(TSCreateAlignedTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void createMultiTimeseries(TSCreateMultiTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.createMultiTimeseries(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.createMultiTimeseries(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected boolean checkTimeseriesExists(String path, long timeout)
@@ -1316,116 +1256,56 @@ public class SessionConnection {
 
   protected void testInsertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertStringRecord(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void testInsertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertRecord(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertRecord(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   public void testInsertRecords(TSInsertStringRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertStringRecords(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertStringRecords(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   public void testInsertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertRecords(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertRecords(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void testInsertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertTablet(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertTablet(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   protected void testInsertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    request.setSessionId(sessionId);
-    try {
+    doOperation(() -> {
+      request.setSessionId(sessionId);
       RpcUtils.verifySuccess(client.testInsertTablets(request));
-    } catch (TException e) {
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.testInsertTablets(request));
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
-        }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
-      }
-    }
+      return null;
+    });
   }
 
   @SuppressWarnings({
