@@ -190,7 +190,8 @@ public abstract class AbstractMemTable implements IMemTable {
               seriesNumber += schemaList.size();
               totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
               return new AlignedWritableMemChunkGroup(
-                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()));
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()),
+                  k.isTableModel());
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
@@ -943,7 +944,7 @@ public abstract class AbstractMemTable implements IMemTable {
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream, deviceID.isTableModel());
       } else {
         memChunkGroup = WritableMemChunkGroup.deserialize(stream);
       }
@@ -974,7 +975,7 @@ public abstract class AbstractMemTable implements IMemTable {
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream, false);
       } else {
         memChunkGroup = WritableMemChunkGroup.deserialize(stream);
       }

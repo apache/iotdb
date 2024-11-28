@@ -197,10 +197,7 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
+    dataRegion.syncCloseWorkingTsFileProcessors(false);
 
     for (int j = 11; j <= 20; j++) {
       record = new TSRecord(j, deviceId);
@@ -753,10 +750,6 @@ public class DataRegionTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
-
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
@@ -838,10 +831,6 @@ public class DataRegionTest {
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
-
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
@@ -921,10 +910,6 @@ public class DataRegionTest {
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
 
     QueryDataSource queryDataSource =
         dataRegion.query(
@@ -1006,10 +991,6 @@ public class DataRegionTest {
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
-
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
@@ -1084,10 +1065,6 @@ public class DataRegionTest {
       dataRegion1.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegion1.syncCloseAllWorkingTsFileProcessors();
-
-    for (TsFileProcessor tsfileProcessor : dataRegion1.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
     IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.ln22");
     QueryDataSource queryDataSource =
         dataRegion1.query(
@@ -1733,9 +1710,7 @@ public class DataRegionTest {
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
 
-    for (TsFileProcessor processor : dataRegion.getWorkSequenceTsFileProcessors()) {
-      processor.syncFlush();
-    }
+    dataRegion.syncCloseWorkingTsFileProcessors(true);
     TsFileResource tsFileResourceUnSeq = dataRegion.getTsFileManager().getTsFileList(false).get(0);
 
     Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());

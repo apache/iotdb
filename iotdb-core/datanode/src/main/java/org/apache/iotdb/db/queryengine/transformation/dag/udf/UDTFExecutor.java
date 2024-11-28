@@ -92,7 +92,7 @@ public class UDTFExecutor {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
 
-    udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
+    udtf = UDFManagementService.getInstance().reflect(functionName, UDTF.class);
 
     final UDFParameters parameters =
         UDFParametersFactory.buildUdfParameters(

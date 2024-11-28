@@ -41,30 +41,34 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
 public class TableInnerJoinOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableInnerJoinOperator.class);
 
-  private final Operator leftChild;
-  private TsBlock leftBlock;
-  private int leftIndex; // start index of leftTsBlock
-  private final int leftTimeColumnPosition;
-  private final int[] leftOutputSymbolIdx;
+  protected final Operator leftChild;
+  protected TsBlock leftBlock;
+  protected int leftIndex; // start index of leftTsBlock
+  protected final int leftTimeColumnPosition;
+  protected final int[] leftOutputSymbolIdx;
 
-  private final Operator rightChild;
-  private final List<TsBlock> rightBlockList = new ArrayList<>();
-  private final int rightTimeColumnPosition;
-  private int rightBlockListIdx;
-  private int rightIndex; // start index of rightTsBlock
-  private final int[] rightOutputSymbolIdx;
-  private TsBlock cachedNextRightBlock;
-  private boolean hasCachedNextRightBlock;
+  protected final Operator rightChild;
+  protected final List<TsBlock> rightBlockList = new ArrayList<>();
+  protected final int rightTimeColumnPosition;
+  protected int rightBlockListIdx;
+  protected int rightIndex; // start index of rightTsBlock
+  protected final int[] rightOutputSymbolIdx;
+  protected TsBlock cachedNextRightBlock;
+  protected boolean hasCachedNextRightBlock;
 
-  private final TimeComparator comparator;
-  private final TsBlockBuilder resultBuilder;
+  protected final TimeComparator comparator;
+  protected final TsBlockBuilder resultBuilder;
 
   protected MemoryReservationManager memoryReservationManager;
+
+  protected long maxUsedMemory;
+  protected long usedMemory;
 
   public TableInnerJoinOperator(
       OperatorContext operatorContext,
@@ -145,13 +149,8 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     // all the rightTsBlock is less than leftTsBlock, just skip right
     if (comparator.lessThan(getRightEndTime(), getCurrentLeftTime())) {
-      for (int i = 1; i < rightBlockList.size(); i++) {
-        memoryReservationManager.releaseMemoryCumulatively(
-            rightBlockList.get(i).getRetainedSizeInBytes());
-      }
-      rightBlockList.clear();
-      rightBlockListIdx = 0;
-      rightIndex = 0;
+      // releaseMemory();
+      resetRightBlockList();
       return null;
     }
 
@@ -167,19 +166,12 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
       // all right block time is not matched
       if (!comparator.canContinueInclusive(leftProbeTime, getRightEndTime())) {
-        for (int i = 1; i < rightBlockList.size(); i++) {
-          memoryReservationManager.releaseMemoryCumulatively(
-              rightBlockList.get(i).getRetainedSizeInBytes());
-        }
-        rightBlockList.clear();
-        rightBlockListIdx = 0;
-        rightIndex = 0;
+        // releaseMemory();
+        resetRightBlockList();
         break;
       }
 
       appendResult(leftProbeTime);
-
-      leftIndex++;
 
       if (leftIndex >= leftBlock.getPositionCount()) {
         leftBlock = null;
@@ -198,7 +190,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
-  private boolean prepareInput(long start, long maxRuntime) throws Exception {
+  protected boolean prepareInput(long start, long maxRuntime) throws Exception {
     if ((leftBlock == null || leftBlock.getPositionCount() == leftIndex)
         && leftChild.hasNextWithTimer()) {
       leftBlock = leftChild.nextWithTimer();
@@ -230,12 +222,12 @@ public class TableInnerJoinOperator extends AbstractOperator {
     return leftBlockNotEmpty() && rightBlockNotEmpty() && hasCachedNextRightBlock;
   }
 
-  private void tryCachedNextRightTsBlock() throws Exception {
+  protected void tryCachedNextRightTsBlock() throws Exception {
     if (rightChild.hasNextWithTimer()) {
       TsBlock block = rightChild.nextWithTimer();
       if (block != null) {
         if (block.getColumn(rightTimeColumnPosition).getLong(0) == getRightEndTime()) {
-          memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+          reserveMemory(block.getRetainedSizeInBytes());
           rightBlockList.add(block);
         } else {
           hasCachedNextRightBlock = true;
@@ -248,42 +240,33 @@ public class TableInnerJoinOperator extends AbstractOperator {
     }
   }
 
-  private long getCurrentLeftTime() {
+  protected long getCurrentLeftTime() {
     return leftBlock.getColumn(leftTimeColumnPosition).getLong(leftIndex);
   }
 
-  private long getLeftEndTime() {
+  protected long getLeftEndTime() {
     return leftBlock.getColumn(leftTimeColumnPosition).getLong(leftBlock.getPositionCount() - 1);
   }
 
-  private long getRightTime(int blockIdx, int rowIdx) {
+  protected long getRightTime(int blockIdx, int rowIdx) {
     return rightBlockList.get(blockIdx).getColumn(rightTimeColumnPosition).getLong(rowIdx);
   }
 
-  private long getCurrentRightTime() {
+  protected long getCurrentRightTime() {
     return getRightTime(rightBlockListIdx, rightIndex);
   }
 
-  private long getRightEndTime() {
+  protected long getRightEndTime() {
     TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
     return lastRightTsBlock
         .getColumn(rightTimeColumnPosition)
         .getLong(lastRightTsBlock.getPositionCount() - 1);
   }
 
-  private void appendResult(long leftTime) {
+  protected void appendResult(long leftTime) {
 
     while (comparator.lessThan(getCurrentRightTime(), leftTime)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
+      if (rightBlockFinish()) {
         return;
       }
     }
@@ -304,42 +287,108 @@ public class TableInnerJoinOperator extends AbstractOperator {
         break;
       }
     }
+
+    leftIndex++;
   }
 
-  private boolean leftBlockNotEmpty() {
+  /**
+   * @return true if right block is consumed up
+   */
+  protected boolean rightBlockFinish() {
+    rightIndex++;
+
+    if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
+      rightBlockListIdx++;
+      rightIndex = 0;
+    }
+
+    if (rightBlockListIdx >= rightBlockList.size()) {
+      rightBlockListIdx = 0;
+      rightIndex = 0;
+      return true;
+    }
+
+    return false;
+  }
+
+  protected boolean leftBlockNotEmpty() {
     return leftBlock != null && leftIndex < leftBlock.getPositionCount();
   }
 
-  private boolean rightBlockNotEmpty() {
+  protected boolean rightBlockNotEmpty() {
     return (!rightBlockList.isEmpty()
             && rightBlockListIdx < rightBlockList.size()
             && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount())
         || (hasCachedNextRightBlock && cachedNextRightBlock != null);
   }
 
-  private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
+  protected void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
+    appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
+
+    appendRightBlockData(
+        rightBlockList,
+        tmpRightBlockListIdx,
+        tmpRightIndex,
+        leftOutputSymbolIdx,
+        rightOutputSymbolIdx,
+        resultBuilder);
+  }
+
+  protected void appendLeftBlockData(
+      int[] leftOutputSymbolIdx, TsBlockBuilder resultBuilder, TsBlock leftBlock, int leftIndex) {
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      int idx = leftOutputSymbolIdx[i];
       ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-      if (leftBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
+      if (leftBlock.getColumn(idx).isNull(leftIndex)) {
         columnBuilder.appendNull();
       } else {
-        columnBuilder.write(leftBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
+        columnBuilder.write(leftBlock.getColumn(idx), leftIndex);
       }
     }
+  }
 
-    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
+  protected void appendRightBlockData(
+      List<TsBlock> rightBlockList,
+      int rightBlockListIdx,
+      int rightIndex,
+      int[] leftOutputSymbolIdxArray,
+      int[] rightOutputSymbolIdxArray,
+      TsBlockBuilder resultBuilder) {
+    for (int i = 0; i < rightOutputSymbolIdxArray.length; i++) {
+      ColumnBuilder columnBuilder =
+          resultBuilder.getColumnBuilder(leftOutputSymbolIdxArray.length + i);
 
       if (rightBlockList
-          .get(tmpRightBlockListIdx)
-          .getColumn(rightOutputSymbolIdx[i])
-          .isNull(tmpRightIndex)) {
+          .get(rightBlockListIdx)
+          .getColumn(rightOutputSymbolIdxArray[i])
+          .isNull(rightIndex)) {
         columnBuilder.appendNull();
       } else {
         columnBuilder.write(
-            rightBlockList.get(tmpRightBlockListIdx).getColumn(rightOutputSymbolIdx[i]),
-            tmpRightIndex);
+            rightBlockList.get(rightBlockListIdx).getColumn(rightOutputSymbolIdxArray[i]),
+            rightIndex);
       }
+    }
+  }
+
+  protected void resetRightBlockList() {
+    for (int i = 1; i < rightBlockList.size(); i++) {
+      long size = rightBlockList.get(i).getRetainedSizeInBytes();
+      usedMemory -= size;
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+
+    rightBlockList.clear();
+    rightBlockListIdx = 0;
+    rightIndex = 0;
+  }
+
+  protected void reserveMemory(long size) {
+    usedMemory += size;
+    memoryReservationManager.reserveMemoryCumulatively(size);
+    if (usedMemory > maxUsedMemory) {
+      maxUsedMemory = usedMemory;
+      operatorContext.recordSpecifiedInfo(MAX_RESERVED_MEMORY, Long.toString(maxUsedMemory));
     }
   }
 
@@ -375,7 +424,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     if (!rightBlockList.isEmpty()) {
       for (TsBlock block : rightBlockList) {
-        memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+        memoryReservationManager.releaseMemoryCumulatively(block.getRetainedSizeInBytes());
       }
     }
   }
