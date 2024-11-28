@@ -26,7 +26,8 @@ public interface ConsensusPipeDispatcher {
       String pipeName,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> connectorAttributes,
+      boolean needManuallyStart)
       throws Exception;
 
   void startPipe(String pipeName) throws Exception;

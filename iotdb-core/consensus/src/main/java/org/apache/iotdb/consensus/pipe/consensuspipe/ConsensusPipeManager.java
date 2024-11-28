@@ -71,17 +71,29 @@ public class ConsensusPipeManager {
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
         params = buildPipeParams(senderPeer, receiverPeer, senderPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        false);
   }
 
   /** This method is used when executing region migration */
   public void createConsensusPipe(
-      Peer senderPeer, Peer receiverPeer, Peer regionMigrationCoordinatorPeer) throws Exception {
+      Peer senderPeer,
+      Peer receiverPeer,
+      Peer regionMigrationCoordinatorPeer,
+      boolean needManuallyStart)
+      throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
         params = buildPipeParams(senderPeer, receiverPeer, regionMigrationCoordinatorPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        needManuallyStart);
   }
 
   public Triple<
