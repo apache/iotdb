@@ -33,11 +33,11 @@ public class Arena {
   private SlabRegion[] regions;
   private final SizeClasses sizeClasses;
   private Evictor sampleEvictor;
-  private BinaryAllocator binaryAllocator;
+  private final BinaryAllocator binaryAllocator;
   public AtomicInteger numRegisterThread = new AtomicInteger(0);
 
   private int sampleCount;
-  private final int EVICT_SAMPLE_COUNT = 100;
+  private static final int EVICT_SAMPLE_COUNT = 100;
 
   private final Duration evictorShutdownTimeoutDuration;
   private final Duration durationBetweenEvictionRuns;
@@ -46,8 +46,8 @@ public class Arena {
       BinaryAllocator allocator, SizeClasses sizeClasses, int id, AllocatorConfig allocatorConfig) {
     this.sizeClasses = sizeClasses;
     this.arenaID = id;
-    this.evictorShutdownTimeoutDuration = allocatorConfig.getDurationEvictorShutdownTimeout();
-    this.durationBetweenEvictionRuns = allocatorConfig.getDurationBetweenEvictorRuns();
+    this.evictorShutdownTimeoutDuration = allocatorConfig.durationEvictorShutdownTimeout;
+    this.durationBetweenEvictionRuns = allocatorConfig.durationBetweenEvictorRuns;
     this.binaryAllocator = allocator;
     regions = new SlabRegion[sizeClasses.getSizeClassNum()];
 

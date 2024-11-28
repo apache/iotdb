@@ -23,23 +23,22 @@ public final class SizeClasses {
 
   // loookup table
   private int[] sizeIdx2sizeTab;
-  final int lookupMaxSize;
 
-  final int LOG2_QUANTUM;
+  private final int log2MinSize;
   private int log2SizeClassGroup;
   private static final int INTEGER_SIZE_MINUS_ONE = Integer.SIZE - 1;
 
   public SizeClasses(AllocatorConfig allocatorConfig) {
-    this.lookupMaxSize = allocatorConfig.maxAllocateSize;
+    int lookupMaxSize = allocatorConfig.maxAllocateSize;
     this.log2SizeClassGroup = allocatorConfig.log2ClassSizeGroup;
-    this.LOG2_QUANTUM = log2(allocatorConfig.minAllocateSize);
-    int group = log2(lookupMaxSize) - LOG2_QUANTUM;
+    this.log2MinSize = log2(allocatorConfig.minAllocateSize);
+    int group = log2(lookupMaxSize) - log2MinSize;
 
     sizeIdx2sizeTab = new int[(group << log2SizeClassGroup) + 1];
 
     int ndeltaLimit = 1 << log2SizeClassGroup;
-    int log2Group = LOG2_QUANTUM;
-    int log2Delta = LOG2_QUANTUM - log2SizeClassGroup;
+    int log2Group = log2MinSize;
+    int log2Delta = log2MinSize - log2SizeClassGroup;
 
     int nSizes = 0;
     int size = calculateSize(log2Group, 0, log2Delta);
@@ -60,7 +59,7 @@ public final class SizeClasses {
   public int size2SizeIdx(int size) {
     int x = log2((size << 1) - 1);
 
-    int shift = x - LOG2_QUANTUM - 1;
+    int shift = x - log2MinSize - 1;
 
     int group = shift << log2SizeClassGroup;
 

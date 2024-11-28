@@ -36,37 +36,21 @@ public class AllocatorConfig {
   public boolean enableBinaryAllocator =
       CommonDescriptor.getInstance().getConfig().isEnableBinaryAllocator();
 
-  /** The default value for {@code evictorShutdownTimeout} configuration attribute. */
-  private long evictorShutdownTimeoutMillis = 10L * 1000L;
+  /** Maximum wait time in milliseconds when shutting down the evictor */
+  public Duration durationEvictorShutdownTimeout = Duration.ofMillis(10000L);
 
-  /** The default value for {@code evictorShutdownTimeout} configuration attribute. */
-  private Duration durationEvictorShutdownTimeout = Duration.ofMillis(evictorShutdownTimeoutMillis);
-
-  /** The default value for the {@code timeBetweenEvictionRuns} configuration attribute. */
-  private long timeBetweenEvictorRunsMillis = 10000L;
-
-  /** The default value for the {@code timeBetweenEvictionRuns} configuration attribute. */
-  private Duration durationBetweenEvictorRuns = Duration.ofMillis(timeBetweenEvictorRunsMillis);
+  /** Time interval in milliseconds between two consecutive evictor runs */
+  public Duration durationBetweenEvictorRuns = Duration.ofMillis(10000L);
 
   public int arenaPredictionWeight = 35;
 
   public static final AllocatorConfig DEFAULT_CONFIG = new AllocatorConfig();
 
   public void setEvictionShutdownTimeoutMillis(long timeout) {
-    this.evictorShutdownTimeoutMillis = timeout;
     this.durationEvictorShutdownTimeout = Duration.ofMillis(timeout);
   }
 
   public void setTimeBetweenEvictorRunsMillis(long time) {
-    this.timeBetweenEvictorRunsMillis = time;
     this.durationBetweenEvictorRuns = Duration.ofMillis(time);
-  }
-
-  public Duration getDurationEvictorShutdownTimeout() {
-    return durationEvictorShutdownTimeout;
-  }
-
-  public Duration getDurationBetweenEvictorRuns() {
-    return durationBetweenEvictorRuns;
   }
 }

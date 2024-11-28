@@ -19,10 +19,43 @@
 
 package org.apache.iotdb.commons.utils.binaryallocator;
 
+/**
+ * The state transmission of a binary allocator.
+ *
+ * <pre>
+ *     ----------------------------------------
+ *     |                                      |
+ *     |              ----------              |
+ *     |              |        |              |
+ *     |              v        |              v
+ * UNINITIALIZED --> OPEN ---> TMP_CLOSE --> CLOSE
+ *                    |                       ^
+ *                    |                       |
+ *                    -------------------------
+ * </pre>
+ */
 public enum BinaryAllocatorState {
+  /**
+   * Binary allocator is open for allocation.
+   *
+   * <p>1.When configuration 'enableBinaryAllocator' is set to true, binary allocator state becomes
+   * OPEN.
+   *
+   * <p>2.When current state is TMP_CLOSE and severe GC overhead is detected, the state will be set
+   * to OPEN.
+   */
   OPEN,
+
+  /**
+   * Binary allocator is close. When configuration 'enableBinaryAllocator' is set to false, binary
+   * allocator state becomes CLOSE.
+   */
   CLOSE,
+
+  /** Binary allocator is temporarily closed by GC evictor. */
   TMP_CLOSE,
+
+  /** The initial state of a binary allocator. */
   UNINITIALIZED;
 
   @Override

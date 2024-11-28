@@ -41,10 +41,10 @@ public class BinaryAllocatorTest {
     AllocatorConfig config = new AllocatorConfig();
     config.arenaNum = 1;
     BinaryAllocator binaryAllocator = new BinaryAllocator(config);
-    PooledBinary binary = binaryAllocator.allocateBinary(256);
+    PooledBinary binary = binaryAllocator.allocateBinary(255);
     assertNotNull(binary);
     assertEquals(binary.getArenaIndex(), -1);
-    assertEquals(binary.getLength(), 256);
+    assertEquals(binary.getLength(), 255);
     binaryAllocator.deallocateBinary(binary);
 
     binary = binaryAllocator.allocateBinary(65536);

@@ -46,6 +46,12 @@ public class BinaryAllocator {
       ThreadLocal.withInitial(() -> new ThreadArenaRegistry());
 
   private Evictor evictor;
+  private static final String GC_EVICTOR_NAME = "binary-allocator-gc-evictor";
+
+  private static final int WARNING_GC_TIME_PERCENTAGE = 10;
+  private static final int HALF_GC_TIME_PERCENTAGE = 20;
+  private static final int SHUTDOWN_GC_TIME_PERCENTAGE = 30;
+  private static final int RESTART_GC_TIME_PERCENTAGE = 20;
 
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
@@ -63,10 +69,8 @@ public class BinaryAllocator {
 
     if (allocatorConfig.enableBinaryAllocator) {
       state.set(BinaryAllocatorState.OPEN);
-      evictor =
-          new GCEvictor(
-              "binary-allocator-gc-evictor", allocatorConfig.getDurationEvictorShutdownTimeout());
-      evictor.startEvictor(allocatorConfig.getDurationBetweenEvictorRuns());
+      evictor = new GCEvictor(GC_EVICTOR_NAME, allocatorConfig.durationEvictorShutdownTimeout);
+      evictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
     } else {
       state.set(BinaryAllocatorState.CLOSE);
       this.close(false);
@@ -75,7 +79,7 @@ public class BinaryAllocator {
 
   public PooledBinary allocateBinary(int reqCapacity) {
     if (reqCapacity < allocatorConfig.minAllocateSize
-        | reqCapacity > allocatorConfig.maxAllocateSize) {
+        || reqCapacity > allocatorConfig.maxAllocateSize) {
       return new PooledBinary(new byte[reqCapacity]);
     }
 
@@ -129,8 +133,9 @@ public class BinaryAllocator {
   }
 
   public void close(boolean needReopen) {
-    if (needReopen) state.set(BinaryAllocatorState.TMP_CLOSE);
-    else {
+    if (needReopen) {
+      state.set(BinaryAllocatorState.TMP_CLOSE);
+    } else {
       state.set(BinaryAllocatorState.CLOSE);
       if (evictor != null) {
         evictor.stopEvictor();
@@ -216,23 +221,33 @@ public class BinaryAllocator {
     @Override
     public void run() {
       LOGGER.debug("Binary allocator running evictor");
+      long GcTimePercent = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
       if (state.get() == BinaryAllocatorState.TMP_CLOSE) {
-        if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 20) {
+        if (GcTimePercent > RESTART_GC_TIME_PERCENTAGE) {
           restart();
         }
         return;
       }
 
-      if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 30) {
+      if (GcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
+        LOGGER.warn(
+            "Binary allocator is shutting down because of high GC time percentage{}",
+            GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(1.0);
         }
         close(true);
-      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 20) {
+      } else if (GcTimePercent > HALF_GC_TIME_PERCENTAGE) {
+        LOGGER.warn(
+            "Binary allocator is half evicting because of high GC time percentage{}",
+            GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(0.5);
         }
-      } else if (JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage() > 10) {
+      } else if (GcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
+        LOGGER.warn(
+            "Binary allocator is running evictor because of high GC time percentage{}",
+            GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(0.2);
         }
