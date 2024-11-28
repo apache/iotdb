@@ -64,13 +64,10 @@ public class SessionUtils {
     }
     if (tablet.bitMaps != null) {
       for (BitMap bitMap : tablet.bitMaps) {
-        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked();
+        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked(tablet.getRowSize());
         valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
         if (columnHasNull) {
-          byte[] bytes = bitMap.getByteArray();
-          for (int j = 0; j < tablet.getRowSize() / Byte.SIZE + 1; j++) {
-            valueBuffer.put(bytes[j]);
-          }
+          valueBuffer.put(bitMap.getTruncatedByteArray(tablet.getRowSize()));
         }
       }
     }

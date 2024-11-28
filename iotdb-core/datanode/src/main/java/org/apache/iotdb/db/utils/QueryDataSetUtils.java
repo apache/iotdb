@@ -654,7 +654,7 @@ public class QueryDataSetUtils {
     for (int i = 0; i < columns; i++) {
       boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
       if (hasBitMap) {
-        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        byte[] bytes = new byte[BitMap.getSizeOfBytes(size)];
         for (int j = 0; j < bytes.length; j++) {
           bytes[j] = buffer.get();
         }
@@ -673,7 +673,7 @@ public class QueryDataSetUtils {
     for (int i = 0; i < columns; i++) {
       boolean hasBitMap = BytesUtils.byteToBool(stream.readByte());
       if (hasBitMap) {
-        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        byte[] bytes = new byte[BitMap.getSizeOfBytes(size)];
         for (int j = 0; j < bytes.length; j++) {
           bytes[j] = stream.readByte();
         }
