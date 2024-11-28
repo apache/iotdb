@@ -113,21 +113,29 @@ public class PipeStatementDataTypeConvertExecutionVisitor
                 IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
                     statement, statementExecutor.execute(statement));
 
-            // Retry once if the write process is rejected
-            if (result.getCode()
-                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+            // Retry max 5 times if the write process is rejected
+            for (int i = 0;
+                i < 5
+                    && result.getCode()
+                        == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
+                            .getStatusCode();
+                i++) {
+              Thread.sleep(100L * (i + 1));
               result =
                   IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
                       statement, statementExecutor.execute(statement));
             }
           } catch (final Exception e) {
+            if (e instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+            }
             result = statement.accept(IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
               || result.getCode()
-                  == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
-              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+                  == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
             return Optional.empty();
           }
         }
