@@ -30,10 +30,12 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer {
 
   private final ScalarFunction scalarFunction;
+  private final List<Type> inputTypes;
 
   public UserDefineScalarFunctionTransformer(
       Type returnType,
@@ -41,12 +43,14 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
       List<ColumnTransformer> childrenTransformers) {
     super(returnType, childrenTransformers);
     this.scalarFunction = scalarFunction;
+    this.inputTypes =
+        childrenTransformers.stream().map(ColumnTransformer::getType).collect(Collectors.toList());
   }
 
   @Override
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
-    RecordIterator iterator = new RecordIterator(childrenColumns, positionCount);
+    RecordIterator iterator = new RecordIterator(childrenColumns, inputTypes, positionCount);
     while (iterator.hasNext()) {
       try {
         Object result = scalarFunction.evaluate(iterator.next());
@@ -67,7 +71,7 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
   @Override
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
-    RecordIterator iterator = new RecordIterator(childrenColumns, positionCount);
+    RecordIterator iterator = new RecordIterator(childrenColumns, inputTypes, positionCount);
     int i = 0;
     while (iterator.hasNext()) {
       try {

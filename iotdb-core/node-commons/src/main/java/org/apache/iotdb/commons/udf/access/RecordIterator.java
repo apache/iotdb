@@ -34,12 +34,21 @@ import java.util.List;
 public class RecordIterator implements Iterator<Record> {
 
   private final List<Column> childrenColumns;
+  private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
   private final int positionCount;
   private int currentIndex;
 
-  public RecordIterator(List<Column> childrenColumns, int positionCount) {
+  public RecordIterator(
+      List<Column> childrenColumns,
+      List<org.apache.tsfile.read.common.type.Type> dataTypes,
+      int positionCount) {
     this.childrenColumns = childrenColumns;
+    this.dataTypes = dataTypes;
     this.positionCount = positionCount;
+    if (childrenColumns.size() != dataTypes.size()) {
+      throw new IllegalArgumentException(
+          "The size of childrenColumns and dataTypes should be the same.");
+    }
   }
 
   @Override
@@ -98,8 +107,7 @@ public class RecordIterator implements Iterator<Record> {
 
       @Override
       public Type getDataType(int columnIndex) {
-        return UDFDataTypeTransformer.transformToUDFDataType(
-            childrenColumns.get(columnIndex).getDataType());
+        return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
       }
 
       @Override
