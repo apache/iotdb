@@ -30,9 +30,9 @@ public enum RegionGroupStatus {
   Available("Available", 2),
 
   /**
-   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly status, and at least 1 node
-   * is in ReadOnly status, the number of Regions in the Unknown or ReadOnly or Removing status is
-   * less than half
+   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly or Removing status, and at
+   * least 1 node is in ReadOnly status, the number of Regions in the Unknown or ReadOnly or
+   * Removing status is less than half
    */
   Discouraged("Discouraged", 3),
 
