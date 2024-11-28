@@ -43,6 +43,7 @@ class PoolConfig(object):
         time_zone: str = DEFAULT_TIME_ZONE,
         max_retry: int = DEFAULT_MAX_RETRY,
         enable_compression: bool = False,
+        enable_redirection: bool = True,
     ):
         self.host = host
         self.port = port
@@ -59,6 +60,7 @@ class PoolConfig(object):
         self.time_zone = time_zone
         self.max_retry = max_retry
         self.enable_compression = enable_compression
+        self.enable_redirection = enable_redirection
 
 
 class SessionPool(object):
@@ -83,7 +85,7 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
-                enable_redirection=True,
+                enable_redirection=self.__pool_config.enable_redirection,
             )
             session.sql_dialect = self.sql_dialect
             session.database = self.database
@@ -96,7 +98,7 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
-                enable_redirection=True,
+                enable_redirection=self.__pool_config.enable_redirection,
             )
             session.sql_dialect = self.sql_dialect
             session.database = self.database

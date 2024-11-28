@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - "rc/*"
-      - refector_py_table_session
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
