@@ -19,61 +19,53 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.function;
 
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DropFunctionPlan extends ConfigPhysicalPlan {
+public class UpdateFunctionPlan extends ConfigPhysicalPlan {
+  private UDFInformation udfInformation;
 
-  private String functionName;
-
-  public DropFunctionPlan() {
-    super(ConfigPhysicalPlanType.DropFunction);
+  public UpdateFunctionPlan() {
+    super(ConfigPhysicalPlanType.UpdateFunction);
   }
 
-  public DropFunctionPlan(String functionName) {
-    super(ConfigPhysicalPlanType.DropFunction);
-    this.functionName = functionName;
+  public UpdateFunctionPlan(UDFInformation udfInformation) {
+    super(ConfigPhysicalPlanType.UpdateFunction);
+    this.udfInformation = udfInformation;
   }
 
-  public String getFunctionName() {
-    return functionName;
+  public UDFInformation getUdfInformation() {
+    return udfInformation;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(functionName, stream);
+    udfInformation.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    functionName = ReadWriteIOUtils.readString(buffer);
+    udfInformation = UDFInformation.deserialize(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    DropFunctionPlan that = (DropFunctionPlan) o;
-    return Objects.equals(functionName, that.functionName);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    UpdateFunctionPlan that = (UpdateFunctionPlan) o;
+    return Objects.equals(udfInformation, that.udfInformation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), functionName);
+    return Objects.hash(super.hashCode(), udfInformation);
   }
 }

@@ -302,3 +302,8 @@ enum TrainingState {
   FAILED,
   DROPPING
 }
+
+enum Model{
+  TREE,
+  TABLE
+}

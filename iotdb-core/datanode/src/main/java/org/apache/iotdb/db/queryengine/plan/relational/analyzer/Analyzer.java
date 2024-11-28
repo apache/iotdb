@@ -90,7 +90,7 @@ public class Analyzer {
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
-    if (statement.isQuery()) {
+    if (analysis.isQuery()) {
       long analyzeCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, ANALYZER, analyzeCost);
       context.setAnalyzeCost(analyzeCost);

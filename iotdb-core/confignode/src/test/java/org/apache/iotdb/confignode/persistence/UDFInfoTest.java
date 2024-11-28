@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
@@ -61,13 +62,14 @@ public class UDFInfoTest {
   @Test
   public void testSnapshot() throws TException, IOException, IllegalPathException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+        new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345");
     CreateFunctionPlan createFunctionPlan =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     udfInfo.addUDFInTable(createFunctionPlan);
     udfInfoSaveBefore.addUDFInTable(createFunctionPlan);
 
-    udfInformation = new UDFInformation("test2", "test2", false, true, "test2.jar", "123456");
+    udfInformation =
+        new UDFInformation("test2", "test2", Model.TREE, true, true, "test2.jar", "123456");
     createFunctionPlan = new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     udfInfo.addUDFInTable(createFunctionPlan);
     udfInfoSaveBefore.addUDFInTable(createFunctionPlan);

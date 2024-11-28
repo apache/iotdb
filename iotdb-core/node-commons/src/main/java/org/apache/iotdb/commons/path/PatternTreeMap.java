@@ -143,7 +143,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     // TODO change this way
     PartialPath devicePath;
     try {
-      devicePath = new PartialPath(deviceID.toString());
+      devicePath = new PartialPath(deviceID);
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }

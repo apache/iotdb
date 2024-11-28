@@ -31,7 +31,10 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
 
 import com.google.common.collect.ImmutableSet;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** All built-in UDFs need to register their function names and classes here. */
 public enum BuiltinTimeSeriesGeneratingFunction {
@@ -95,6 +98,16 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   private final String functionName;
   private final Class<?> functionClass;
   private final String className;
+
+  private static final Set<String> NATIVE_FUNCTION_NAMES =
+      new HashSet<>(
+          Arrays.stream(BuiltinTimeSeriesGeneratingFunction.values())
+              .map(BuiltinTimeSeriesGeneratingFunction::getFunctionName)
+              .collect(Collectors.toList()));
+
+  public static Set<String> getNativeFunctionNames() {
+    return NATIVE_FUNCTION_NAMES;
+  }
 
   /**
    * Set of functions are mappable but DeviceView of them also need special process. Now there is no

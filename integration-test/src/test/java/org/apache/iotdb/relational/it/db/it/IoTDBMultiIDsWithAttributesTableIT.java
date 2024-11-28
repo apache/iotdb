@@ -133,18 +133,37 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "(6,1113,10000003,6,55),(7,1114,10000004,7,60),(8,1115,10000005,8,100),(9,1114,10000001,2,99),(10,1115,10000002,1,95)"
       };
 
-  //  public static void main(String[] args) {
-  //    for (String sql : sql1) {
-  //      System.out.println(sql+";");
-  //    }
-  //    for (String sql : sql2) {
-  //      System.out.println(sql+";");
-  //    }
-  //  }
+  private static final String[] sql5 =
+      new String[] {
+        "create table tableA(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableB(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableC(device STRING ID, value INT32 MEASUREMENT)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:01.000', 'd1', 1)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 3)",
+        "flush",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 5)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:07.000', 'd2', 7)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:02.000', 'd1', 20)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 30)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+      };
 
   String[] expectedHeader;
   String[] retArray;
-  String sql;
+  static String sql;
+
+  //  public static void main(String[] args) {
+  //    for (String[] sqlList : Arrays.asList(sql1, sql2)) {
+  //      for (String sql : sqlList) {
+  //        System.out.println(sql+";");
+  //      }
+  //    }
+  //  }
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -153,8 +172,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setMaxTsBlockLineNumber(1)
-        .setMaxNumberOfPointsInPage(1);
+        .setMaxTsBlockLineNumber(2)
+        .setMaxNumberOfPointsInPage(5);
     insertData();
   }
 
@@ -166,7 +185,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4)) {
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
         for (String sql : sqlList) {
           statement.execute(sql);
         }
@@ -1500,9 +1519,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   // no filter
   @Test
   public void fullOuterJoinTest1() {
-    String[] expectedHeader =
+    expectedHeader =
         new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
-    String[] retArray =
+    retArray =
         new String[] {
           "1970-01-01T00:00:00.000Z,d1,l1,3,d1,d,3,coconut,",
           "1970-01-01T00:00:00.000Z,d1,l1,3,d2,c,3,coconut,",
@@ -1591,6 +1610,82 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select t1.time as time1, t2.time as time2, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 on t1.time = t2.time "
+            + "order by COALESCE(time1, time2),device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,null,d1,1,null,null,",
+          "null,2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "null,2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,null,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time1", "time2", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 USING(time) "
+            + "order by time,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // empty table join non-empty table
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableC t1 full join tableB t2 USING(time) "
+            + "order by time,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,null,null,d1,30,",
+          "2020-01-01T00:00:03.000Z,null,null,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "from (select * from tableA where device='d1') t1 full join (select * from tableB where device='d2') t2 USING(time) order by time, device1, device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:03.000Z,d1,3,null,null,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   // has filter
@@ -1610,6 +1705,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,9,null,null,null,null,",
+          "1970-01-01T00:00:00.100Z,d2,l5,9,null,null,null,null,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
@@ -1665,6 +1762,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.002Z,2,Jack,2015-09-24,1002,10000002,语文,1112,90,",
           "1970-01-01T00:00:00.003Z,3,Sam,2014-07-20,1003,10000003,英语,1113,85,",
           "1970-01-01T00:00:00.004Z,4,Lily,2015-03-28,1004,10000004,体育,1114,89,",
+          "1970-01-01T00:00:00.005Z,5,Helen,2016-01-22,1005,10000005,历史,1115,98,",
         };
     sql =
         "select s.time,"
@@ -1688,6 +1786,28 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         sql,
         "701: Cross join is not supported in current version, each table must have at least one equiJoinClause",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void innerJoinTest() {
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    sql =
+        "SELECT "
+            + "  t1.time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "FROM "
+            + "  tableA t1 JOIN tableB t2 "
+            + "ON t1.time = t2.time order by t1.time, device1, device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   public static String[] buildHeaders(int length) {

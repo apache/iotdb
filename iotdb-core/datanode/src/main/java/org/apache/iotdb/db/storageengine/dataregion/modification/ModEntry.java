@@ -48,17 +48,21 @@ public abstract class ModEntry
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
+  public long serialize(OutputStream stream) throws IOException {
     stream.write(modType.getTypeNum());
-    ReadWriteIOUtils.write(timeRange.getMin(), stream);
-    ReadWriteIOUtils.write(timeRange.getMax(), stream);
+    long size = 1;
+    size += ReadWriteIOUtils.write(timeRange.getMin(), stream);
+    size += ReadWriteIOUtils.write(timeRange.getMax(), stream);
+    return size;
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public long serialize(ByteBuffer buffer) {
     buffer.put(modType.getTypeNum());
-    ReadWriteIOUtils.write(timeRange.getMin(), buffer);
-    ReadWriteIOUtils.write(timeRange.getMax(), buffer);
+    long size = 1;
+    size += ReadWriteIOUtils.write(timeRange.getMin(), buffer);
+    size += ReadWriteIOUtils.write(timeRange.getMax(), buffer);
+    return size;
   }
 
   @Override
