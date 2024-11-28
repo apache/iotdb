@@ -429,7 +429,11 @@ public class TsFileResourceUtils {
 
   public static void updateTsFileResource(
       Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
-    ITimeIndex newTimeIndex = config.getTimeIndexLevel().getTimeIndex();
+    // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
+    ITimeIndex newTimeIndex =
+        tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
+            ? config.getTimeIndexLevel().getTimeIndex()
+            : tsFileResource.getTimeIndex();
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         newTimeIndex.updateStartTime(
