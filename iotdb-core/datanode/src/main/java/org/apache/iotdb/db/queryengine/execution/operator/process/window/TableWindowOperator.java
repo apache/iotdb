@@ -6,9 +6,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -17,25 +20,33 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableWindowOperator implements ProcessOperator {
+  // Common fields
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TsBlockBuilder sortedTsBlockBuilder;
   private final TsBlockBuilder transformTsBlockBuilder;
 
+  // Basic information about window operator
   private WindowFunction windowFunction;
   private FrameInfo frameInfo;
 
+  // Partition
+  private List<Integer> partitionChannels;
+  private RowComparator rowComparator;
+
+  // Sort
   private final Comparator<SortKey> comparator;
+  // Auxiliary field for sort
   private List<SortKey> cachedData;
   private int curRow = -1;
-
-  private int partitionChannel;
 
   public TableWindowOperator(
       OperatorContext operatorContext,
@@ -44,17 +55,49 @@ public class TableWindowOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes,
       WindowFunction windowFunction,
       FrameInfo frameInfo,
-      Comparator<SortKey> comparator,
-      int partitionChannel) {
+      List<Integer> partitionChannels,
+      List<Integer> sortChannels,
+      List<SortOrder> sortOrders) {
+    // Common part(among all other operators)
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.sortedTsBlockBuilder = new TsBlockBuilder(inputDataTypes);
     this.transformTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
+    // Basic information part
     this.windowFunction = windowFunction;
     this.frameInfo = frameInfo;
-    this.comparator = comparator;
-    this.partitionChannel = partitionChannel;
+
+    // TODO: preGroup & preSort
+    // Partition Part
+    this.partitionChannels = ImmutableList.copyOf(partitionChannels);
+    // Acquire partition channels' data types
+    List<TSDataType> partitionDataTypes = new ArrayList<>();
+    for (Integer channel : partitionChannels) {
+      partitionDataTypes.add(inputDataTypes.get(channel));
+    }
+    this.rowComparator = new RowComparator(partitionDataTypes);
+
+    // Ordering part
+    // Concat partition and sort channels
+    List<Integer> allSortChannels = new ArrayList<>();
+    allSortChannels.addAll(partitionChannels);
+    allSortChannels.addAll(sortChannels);
+    // Construct orderings
+    // Partition channels are ascent by default
+    List<SortOrder> allSortOrders = new ArrayList<>();
+    List<SortOrder> partitionSortOrder =
+        Collections.nCopies(partitionChannels.size(), SortOrder.ASC_NULLS_FIRST);
+    allSortOrders.addAll(partitionSortOrder);
+    allSortOrders.addAll(sortOrders);
+    // Acquire these channels data types
+    List<TSDataType> allSortDataTypes = new ArrayList<>(partitionDataTypes);
+    for (Integer channel : sortChannels) {
+      TSDataType dataType = inputDataTypes.get(channel);
+      allSortDataTypes.add(dataType);
+    }
+    // Create comparator for sort
+    this.comparator = getComparatorForTable(allSortOrders, allSortChannels, allSortDataTypes);
 
     this.cachedData = new ArrayList<>();
   }
@@ -135,13 +178,15 @@ public class TableWindowOperator implements ProcessOperator {
     int partitionStart = 0;
     int partitionEnd = partitionStart + 1;
 
-    Column partitionColumn = tsBlock.getColumn(partitionChannel);
+    List<Column> partitionColumns = new ArrayList<>();
+    for (Integer channel : partitionChannels) {
+      Column partitionColumn = tsBlock.getColumn(channel);
+      partitionColumns.add(partitionColumn);
+    }
 
-    while (partitionEnd < partitionColumn.getPositionCount()) {
-      while (partitionEnd < partitionColumn.getPositionCount()
-          && partitionColumn
-              .getObject(partitionEnd)
-              .equals(partitionColumn.getObject(partitionStart))) {
+    while (partitionEnd < tsBlock.getPositionCount()) {
+      while (partitionEnd < tsBlock.getPositionCount()
+          && rowComparator.equal(partitionColumns, partitionStart, partitionEnd)) {
         partitionEnd++;
       }
 

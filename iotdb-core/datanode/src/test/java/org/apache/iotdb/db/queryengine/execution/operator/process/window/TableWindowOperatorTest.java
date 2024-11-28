@@ -15,7 +15,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -27,12 +26,10 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.junit.Assert.fail;
 
@@ -158,11 +155,6 @@ public class TableWindowOperatorTest {
             FrameInfo.FrameType.ROWS,
             FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING,
             FrameInfo.FrameBoundType.CURRENT_ROW);
-    List<SortOrder> sortOrderList = Collections.singletonList(SortOrder.ASC_NULLS_FIRST);
-    List<Integer> sortItemIndexList = Collections.singletonList(1);
-    List<TSDataType> sortItemDataTypeList = Collections.singletonList(TSDataType.TEXT);
-    Comparator<SortKey> comparator =
-        getComparatorForTable(sortOrderList, sortItemIndexList, sortItemDataTypeList);
 
     return new TableWindowOperator(
         driverContext.getOperatorContexts().get(0),
@@ -171,7 +163,8 @@ public class TableWindowOperatorTest {
         outputDataTypes,
         windowFunction,
         frameInfo,
-        comparator,
-        1);
+        Collections.singletonList(1),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_FIRST));
   }
 }
