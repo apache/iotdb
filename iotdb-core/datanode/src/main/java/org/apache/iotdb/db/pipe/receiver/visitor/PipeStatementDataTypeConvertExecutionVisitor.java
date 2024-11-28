@@ -47,8 +47,6 @@ import java.io.File;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR;
-
 /**
  * This visitor transforms the data type of the statement when the statement is executed and an
  * exception occurs. The transformed statement (if any) is returned and will be executed again.
@@ -123,7 +121,7 @@ public class PipeStatementDataTypeConvertExecutionVisitor
                       statement, statementExecutor.execute(statement));
             }
           } catch (final Exception e) {
-            result = statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+            result = statement.accept(IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
