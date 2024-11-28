@@ -18,8 +18,8 @@
 
 import numpy as np
 
-from iotdb.table_session import TableSession
-from iotdb.table_session_pool import TableSessionPool
+from iotdb.table_session import TableSession, TableSessionConfig
+from iotdb.table_session_pool import TableSessionPool, TableSessionPoolConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet, ColumnType
@@ -37,16 +37,17 @@ def test_session_pool():
 def session_test(use_session_pool=False):
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        config = {
-            "node_urls": [
-                f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
-            ]
-        }
         if use_session_pool:
-            session_pool = TableSessionPool(**config)
+            config = TableSessionPoolConfig(
+                node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
+            )
+            session_pool = TableSessionPool(config)
             session = session_pool.get_session()
         else:
-            session = TableSession(**config)
+            config = TableSessionConfig(
+                node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
+            )
+            session = TableSession(config)
 
         session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
         session.execute_non_query_statement('USE "db1"')

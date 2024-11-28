@@ -19,7 +19,7 @@ import threading
 
 import numpy as np
 
-from iotdb.table_session_pool import TableSessionPool
+from iotdb.table_session_pool import TableSessionPool, TableSessionPoolConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import ColumnType, Tablet
@@ -123,22 +123,24 @@ def delete_data():
     session.close()
 
 
-ip = "127.0.0.1"
-port = "6667"
+# Create a session pool
 username = "root"
 password = "root"
-config = {
-    "node_urls": ["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
-    "username": username,
-    "password": password,
-    "fetch_size": 1024,
-    "database": "db1",
-}
+node_urls = ["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"]
+fetch_size = 1024
+database = "db1"
 max_pool_size = 5
 wait_timeout_in_ms = 3000
-
-# Create a session pool
-session_pool = TableSessionPool(**config)
+config = TableSessionPoolConfig(
+    node_urls=node_urls,
+    user_name=username,
+    password=password,
+    database=database,
+    max_pool_size=max_pool_size,
+    fetch_size=fetch_size,
+    wait_timeout_in_ms=wait_timeout_in_ms,
+)
+session_pool = TableSessionPool(config)
 
 prepare_data()
 

@@ -23,26 +23,46 @@ from iotdb.utils.SessionDataSet import SessionDataSet
 from iotdb.utils.Tablet import Tablet
 
 
+class TableSessionConfig(object):
+
+    def __init__(
+        self,
+        node_urls: list = None,
+        username: str = Session.DEFAULT_USER,
+        password: str = Session.DEFAULT_PASSWORD,
+        database: str = None,
+        fetch_size: int = 5000,
+        time_zone: str = Session.DEFAULT_ZONE_ID,
+        enable_compression: bool = False,
+    ):
+        if node_urls is None:
+            node_urls = ["localhost:6667"]
+        self.node_urls = node_urls
+        self.username = username
+        self.password = password
+        self.database = database
+        self.fetch_size = fetch_size
+        self.time_zone = time_zone
+        self.enable_compression = enable_compression
+
+
 class TableSession(object):
 
-    def __init__(self, **kwargs):
-        self.__session_pool = kwargs.get("__session_pool", None)
+    def __init__(
+        self, table_session_config: TableSessionConfig = None, session_pool=None
+    ):
+        self.__session_pool = session_pool
         if self.__session_pool is None:
-            __node_urls = kwargs.get("node_urls", ["127.0.0.1:6667"])
-            __username = kwargs.get("username", Session.DEFAULT_USER)
-            __password = kwargs.get("password", Session.DEFAULT_PASSWORD)
-            __fetch_size = kwargs.get("fetch_size", 5000)
-            __zone_id = kwargs.get("zone_id", Session.DEFAULT_ZONE_ID)
             self.__session = Session.init_from_node_urls(
-                __node_urls,
-                __username,
-                __password,
-                __fetch_size,
-                __zone_id,
+                table_session_config.node_urls,
+                table_session_config.username,
+                table_session_config.password,
+                table_session_config.fetch_size,
+                table_session_config.time_zone,
             )
             self.__session.sql_dialect = "table"
-            self.__session.database = kwargs.get("database", None)
-            self.__session.open(kwargs.get("enable_rpc_compression", False))
+            self.__session.database = table_session_config.database
+            self.__session.open(table_session_config.enable_compression)
         else:
             self.__session = self.__session_pool.get_session()
 

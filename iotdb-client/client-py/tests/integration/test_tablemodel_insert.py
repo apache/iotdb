@@ -17,7 +17,7 @@
 #
 
 import numpy as np
-from iotdb.table_session import TableSession
+from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet, ColumnType
@@ -30,12 +30,10 @@ from .iotdb_container import IoTDBContainer
 def test_insert_use_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        config = {
-            "node_urls": [
-                f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
-            ]
-        }
-        session = TableSession(**config)
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
+        )
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
@@ -622,12 +620,10 @@ def test_insert_use_tablet():
 def test_insert_relational_tablet_use_numpy_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        config = {
-            "node_urls": [
-                f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
-            ]
-        }
-        session = TableSession(**config)
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
+        )
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
@@ -1106,12 +1102,10 @@ def test_insert_relational_tablet_use_numpy_tablet():
 def test_insert_relational_tablet_auto_create():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        config = {
-            "node_urls": [
-                f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}",
-            ]
-        }
-        session = TableSession(**config)
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
+        )
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
