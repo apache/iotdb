@@ -322,7 +322,7 @@ public class SessionConnection {
         });
   }
 
-  protected void createTimescreateTimeserieseries(TSCreateTimeseriesReq request)
+  protected void createTimeseries(TSCreateTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     doOperation(
         () -> {
