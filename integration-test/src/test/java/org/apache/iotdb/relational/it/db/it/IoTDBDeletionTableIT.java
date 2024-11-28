@@ -642,7 +642,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
       statement.execute("flush");
 
-      statement.execute("delete from t" + testNum + " where id2 is null");
+      statement.execute("delete from t" + testNum + " where id2 = ''");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
         assertEquals(1, set.getLong("time"));
