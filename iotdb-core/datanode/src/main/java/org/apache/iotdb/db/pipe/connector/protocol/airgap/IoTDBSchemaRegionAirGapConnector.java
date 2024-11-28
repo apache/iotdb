@@ -187,9 +187,10 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
           pipeSchemaRegionSnapshotEvent.toString());
     } else {
       LOGGER.info(
-          "Successfully transferred schema region snapshot {} and {}.",
+          "Successfully transferred schema region snapshot {}, {} and {}.",
           mtreeSnapshotFile,
-          tagLogSnapshotFile);
+          tagLogSnapshotFile,
+          attributeSnapshotFile);
     }
   }
 

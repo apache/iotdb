@@ -221,7 +221,11 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           snapshotEvent.toString());
     }
 
-    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
+    LOGGER.info(
+        "Successfully transferred file {}, {} and {}.",
+        mTreeSnapshotFile,
+        tagLogSnapshotFile,
+        attributeSnapshotFile);
   }
 
   @Override
