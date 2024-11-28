@@ -126,7 +126,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
             : receiverDataNode.getPort();
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
+    TableModelUtils.insertData("test", "test", 0, 50, senderEnv, false);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -143,7 +143,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.realtime.mode", "forced-log");
+      extractorAttributes.put("extractor.realtime.mode", "file");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
 
@@ -186,7 +186,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
         return;
       }
 
-      TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
+      TableModelUtils.insertData("test", "test", 50, 100, senderEnv, false);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

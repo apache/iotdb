@@ -159,6 +159,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
             timeseriesMetadataIterator.next();
 
         for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
+          LOGGER.warn("load tsfile println device {}", deviceId);
           schemaCache.autoCreateAndVerify(deviceId);
         }
 
