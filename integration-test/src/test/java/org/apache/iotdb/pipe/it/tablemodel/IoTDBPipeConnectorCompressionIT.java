@@ -143,14 +143,14 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.realtime.mode", realtimeMode);
+      extractorAttributes.put("extractor.realtime.mode", "forced-log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
       connectorAttributes.put("connector", connectorType);
-      connectorAttributes.put("connector.batch.enable", useBatchMode ? "true" : "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
       connectorAttributes.put("connector.user", "root");

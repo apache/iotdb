@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -759,6 +760,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           ((InsertBaseStatement) statement).getDatabaseName().isPresent()
               ? ((InsertBaseStatement) statement).getDatabaseName().get()
               : null;
+      if (statement instanceof InsertTabletStatement) {
+        for (int i = 0; i < ((InsertTabletStatement) statement).getRowCount(); i++) {
+          LOGGER.warn(
+              "println DeviceID {}: Row {} has been inserted.",
+              ((InsertTabletStatement) statement).getTableDeviceID(i),
+              i);
+        }
+      } else if (statement instanceof InsertRowsStatement) {
+        for (InsertRowStatement rowStatement :
+            ((InsertRowsStatement) statement).getInsertRowStatementList()) {
+          LOGGER.warn("println DeviceID InsertRow {}", rowStatement.getTableDeviceID());
+        }
+      } else if (statement instanceof InsertRowStatement) {
+        LOGGER.warn(
+            "println DeviceID InsertRow {}", ((InsertRowStatement) statement).getTableDeviceID());
+      }
     } else {
       isTableModelStatement = false;
       dataBaseName = null;
