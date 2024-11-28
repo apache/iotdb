@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -452,9 +451,6 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     DataRegionForCompactionTest dataRegion = createDataRegion();
     TsFileManager tsFileManager = dataRegion.getTsFileManager();
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource1);
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource2);
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource3);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource1);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource2);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(2808).keepOrderInsert(unseqResource3);

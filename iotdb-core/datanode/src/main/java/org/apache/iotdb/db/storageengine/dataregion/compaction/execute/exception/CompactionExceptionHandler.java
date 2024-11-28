@@ -23,9 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.TsFileUtils;
@@ -145,10 +143,6 @@ public class CompactionExceptionHandler {
       boolean isTargetSequence,
       String fullStorageGroupName)
       throws IOException {
-    TsFileResourceList unseqTsFileResourceList =
-        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
-    TsFileResourceList seqTsFileResourceList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
 
     // delete compaction mods files
     CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);
@@ -174,26 +168,19 @@ public class CompactionExceptionHandler {
 
         // remove target tsfile resource in memory
         if (targetTsFile.isFileInList()) {
-          if (isTargetSequence) {
-            seqTsFileResourceList.remove(targetTsFile);
-          } else {
-            unseqTsFileResourceList.remove(targetTsFile);
-          }
-          TsFileResourceManager.getInstance().removeTsFileResource(targetTsFile);
+          tsFileManager.remove(targetTsFile, isTargetSequence);
         }
       }
 
       // recover source tsfile resource in memory
       for (TsFileResource tsFileResource : sourceSeqResourceList) {
         if (!tsFileResource.isFileInList()) {
-          seqTsFileResourceList.keepOrderInsert(tsFileResource);
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+          tsFileManager.keepOrderInsert(tsFileResource, true);
         }
       }
       for (TsFileResource tsFileResource : sourceUnseqResourceList) {
         if (!tsFileResource.isFileInList()) {
-          unseqTsFileResourceList.keepOrderInsert(tsFileResource);
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+          tsFileManager.keepOrderInsert(tsFileResource, false);
         }
       }
     } finally {

@@ -127,7 +127,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -273,7 +272,8 @@ public class DataRegion implements IDataRegionForQuery {
   private final TsFileManager tsFileManager;
 
   /** manage tsFileResource degrade. */
-  private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+  private final TsFileManager.TsFileResourceManager tsFileResourceManager =
+      TsFileManager.TsFileResourceManager.getInstance();
 
   /** file system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -819,7 +819,6 @@ public class DataRegion implements IDataRegionForQuery {
           return;
         }
         updateDeviceLastFlushTime(tsFileResource);
-        tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         FileMetrics.getInstance()
             .addTsFile(
                 tsFileResource.getDatabaseName(),
@@ -886,7 +885,6 @@ public class DataRegion implements IDataRegionForQuery {
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
       sealedTsFile.close();
-      tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (Throwable e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
@@ -959,7 +957,6 @@ public class DataRegion implements IDataRegionForQuery {
         try (SealedTsFileRecoverPerformer recoverPerformer =
             new SealedTsFileRecoverPerformer(tsFileResource)) {
           recoverPerformer.recover();
-          tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } catch (Throwable e) {
           logger.error(
               "Fail to recover sealed TsFile {}, skip it.", tsFileResource.getTsFilePath(), e);
@@ -2642,8 +2639,6 @@ public class DataRegion implements IDataRegionForQuery {
         renameAndHandleError(tsFilePath, tsFilePath + BROKEN_SUFFIX);
         renameAndHandleError(
             tsFilePath + RESOURCE_SUFFIX, tsFilePath + RESOURCE_SUFFIX + BROKEN_SUFFIX);
-      } else {
-        tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
       }
     } finally {
       closeQueryLock.writeLock().unlock();
@@ -3061,9 +3056,6 @@ public class DataRegion implements IDataRegionForQuery {
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
-
-    // help tsfile resource degrade
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 

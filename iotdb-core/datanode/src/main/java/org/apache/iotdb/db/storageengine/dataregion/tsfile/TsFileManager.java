@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -52,6 +58,7 @@ public class TsFileManager {
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
   private final TreeMap<Long, ModFileManagement> modFileManagementMap = new TreeMap<>();
+  private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
@@ -160,13 +167,13 @@ public class TsFileManager {
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
         if (entry.getValue().contains(tsFileResource)) {
           entry.getValue().remove(tsFileResource);
-          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
           break;
         }
       }
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.removeTsFileResource(tsFileResource);
   }
 
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
@@ -174,7 +181,6 @@ public class TsFileManager {
     try {
       for (TsFileResource resource : tsFileResourceList) {
         remove(resource, sequence);
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
       }
     } finally {
       writeLock("removeAll");
@@ -201,6 +207,7 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
   }
 
   public void add(TsFileResource tsFileResource, boolean sequence) {
@@ -218,6 +225,7 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
   }
 
   public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
@@ -235,6 +243,7 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
   }
 
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
@@ -445,5 +454,116 @@ public class TsFileManager {
       resourceListLock.readLock().unlock();
     }
     return maxFileTimestamp;
+  }
+
+  public static class TsFileResourceManager {
+    private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
+
+    private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+    /** threshold total memory for all TimeIndex */
+    private long timeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
+
+    /** store the sealed TsFileResource, sorted by priority of TimeIndex */
+    private final TreeSet<TsFileResource> sealedTsFileResources =
+        new TreeSet<>(TsFileResource::compareIndexDegradePriority);
+
+    /** total used memory for TimeIndex */
+    private long totalTimeIndexMemCost;
+
+    // degraded time index number
+    private long degradedTimeIndexNum = 0;
+
+    @TestOnly
+    public void setTimeIndexMemoryThreshold(long timeIndexMemoryThreshold) {
+      this.timeIndexMemoryThreshold = timeIndexMemoryThreshold;
+    }
+
+    public long getPriorityQueueSize() {
+      return sealedTsFileResources.size();
+    }
+
+    /**
+     * add the closed TsFileResource into priorityQueue and increase memory cost of timeIndex, once
+     * memory cost is larger than threshold, degradation is triggered.
+     */
+    private synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
+      if (!sealedTsFileResources.contains(tsFileResource)) {
+        sealedTsFileResources.add(tsFileResource);
+        totalTimeIndexMemCost += tsFileResource.calculateRamSize();
+        chooseTsFileResourceToDegrade();
+      }
+    }
+
+    /** delete the TsFileResource in PriorityQueue when the source file is deleted */
+    private synchronized void removeTsFileResource(TsFileResource tsFileResource) {
+      if (sealedTsFileResources.contains(tsFileResource)) {
+        sealedTsFileResources.remove(tsFileResource);
+        if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+            == TimeIndexLevel.FILE_TIME_INDEX) {
+          totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+          degradedTimeIndexNum--;
+        } else {
+          totalTimeIndexMemCost -= tsFileResource.getRamSize();
+        }
+      }
+    }
+
+    /** once degradation is triggered, the total memory for timeIndex should reduce */
+    private void releaseTimeIndexMemCost(long memCost) {
+      totalTimeIndexMemCost -= memCost;
+    }
+
+    /**
+     * choose the top TsFileResource in priorityQueue to degrade until the memory is smaller than
+     * threshold.
+     */
+    private void chooseTsFileResourceToDegrade() {
+      while (totalTimeIndexMemCost > timeIndexMemoryThreshold) {
+        TsFileResource tsFileResource = sealedTsFileResources.pollFirst();
+        if (tsFileResource == null
+            || TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+                == TimeIndexLevel.FILE_TIME_INDEX) {
+          logger.debug("Can't degrade time index any more because all time index are file level.");
+          sealedTsFileResources.add(tsFileResource);
+          return;
+        }
+        long memoryReduce = tsFileResource.degradeTimeIndex();
+        logger.debug("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
+        degradedTimeIndexNum++;
+        releaseTimeIndexMemCost(memoryReduce);
+        // add the polled tsFileResource to the priority queue
+        sealedTsFileResources.add(tsFileResource);
+      }
+    }
+
+    public long getDegradedTimeIndexNum() {
+      return degradedTimeIndexNum;
+    }
+
+    public long getTimeIndexMemoryThreshold() {
+      return timeIndexMemoryThreshold;
+    }
+
+    public long getTotalTimeIndexMemCost() {
+      return totalTimeIndexMemCost;
+    }
+
+    /** function for clearing TsFileManager */
+    public synchronized void clear() {
+      this.sealedTsFileResources.clear();
+      this.totalTimeIndexMemCost = 0;
+      this.degradedTimeIndexNum = 0;
+    }
+
+    public static TsFileResourceManager getInstance() {
+      return InstanceHolder.INSTANCE;
+    }
+
+    private static class InstanceHolder {
+      private InstanceHolder() {}
+
+      private static final TsFileResourceManager INSTANCE = new TsFileResourceManager();
+    }
   }
 }
