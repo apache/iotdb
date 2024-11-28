@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeTableModelConvertedInsertRowStatement;
+import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeTableModelConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -182,18 +184,26 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!incoming.getType().equals(real.getType())) {
-      SemanticException semanticException =
-          new SemanticException(
-              String.format(
-                  "Inconsistent data type of column %s: %s/%s",
-                  incoming.getName(), incoming.getType(), real.getType()),
-              TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
-      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
-        // non-measurement columns cannot be partially inserted
-        throw semanticException;
+      if (innerTreeStatement instanceof PipeTableModelConvertedInsertRowStatement) {
+        ((PipeTableModelConvertedInsertRowStatement) innerTreeStatement)
+            .checkAndCastDataType(i, InternalTypeManager.getTSDataType(real.getType()));
+      } else if (innerTreeStatement instanceof PipeTableModelConvertedInsertTabletStatement) {
+        ((PipeTableModelConvertedInsertTabletStatement) innerTreeStatement)
+            .checkAndCastDataType(i, InternalTypeManager.getTSDataType(real.getType()));
       } else {
-        // partial insertion
-        innerTreeStatement.markFailedMeasurement(i, semanticException);
+        SemanticException semanticException =
+            new SemanticException(
+                String.format(
+                    "Inconsistent data type of column %s: %s/%s",
+                    incoming.getName(), incoming.getType(), real.getType()),
+                TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
+        if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+          // non-measurement columns cannot be partially inserted
+          throw semanticException;
+        } else {
+          // partial insertion
+          innerTreeStatement.markFailedMeasurement(i, semanticException);
+        }
       }
     }
     if (incoming.getColumnCategory() == null) {

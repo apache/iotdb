@@ -60,11 +60,12 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTableModelDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreeModelDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -144,9 +145,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementExceptionVisitor();
   private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
       new PipeStatementPatternParseVisitor();
-  private final PipeStatementDataTypeConvertExecutionVisitor
-      statementDataTypeConvertExecutionVisitor =
-          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -770,18 +768,27 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ? executeStatementForTableModel(statement, dataBaseName)
             : executeStatementForTreeModel(statement);
 
-    // The following code is used to handle the data type mismatch exception
-    // Data type conversion is not supported for table model statements
-    if (isTableModelStatement) {
-      return status;
-    }
     // Try to convert data type if the statement is a tree model statement
     // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
+        ? isTableModelStatement
+            ? statement
+                .accept(
+                    new PipeStatementTableModelDataTypeConvertExecutionVisitor(
+                        tableConvertStatement ->
+                            executeStatementForTableModel(tableConvertStatement, dataBaseName),
+                        dataBaseName),
+                    status)
+                .orElse(status)
+            : statement
+                .accept(
+                    new PipeStatementTreeModelDataTypeConvertExecutionVisitor(
+                        this::executeStatementForTreeModel),
+                    status)
+                .orElse(status)
         : status;
   }
 

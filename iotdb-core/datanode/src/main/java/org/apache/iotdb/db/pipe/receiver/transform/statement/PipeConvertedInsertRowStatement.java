@@ -55,7 +55,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+  public boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     LOGGER.info(
         "Pipe: Inserting row to {}.{}. Casting type from {} to {}.",
         devicePath,
