@@ -4,13 +4,9 @@ import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeTsFileToTabletMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Iterator;
 
 public class TabletInsertionEventIterable implements Iterable<TabletInsertionEvent> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionEventIterable.class);
   private final Iterable<TabletInsertionEvent> originalIterable;
   private int count = 0;
   private boolean isMarked = false;
