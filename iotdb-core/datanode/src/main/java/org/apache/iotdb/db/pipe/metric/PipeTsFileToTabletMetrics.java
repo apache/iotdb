@@ -142,18 +142,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(final PipeID pipeID) {
-    if (!pipeIDMap.containsKey(pipeID.getPipeFullName())
-        || !pipeIDMap.get(pipeID.getPipeFullName()).contains(pipeID)) {
-      return;
-    }
-    if (Objects.nonNull(metricService)) {
-      removeMetrics(pipeID);
-    }
-    pipeIDMap.get(pipeID.getPipeFullName()).remove(pipeID);
-  }
-
-  public void deregisterPipe(final String pipeFullName) {
+  public void deregister(final String pipeFullName) {
     if (!pipeIDMap.containsKey(pipeFullName)) {
       return;
     }
