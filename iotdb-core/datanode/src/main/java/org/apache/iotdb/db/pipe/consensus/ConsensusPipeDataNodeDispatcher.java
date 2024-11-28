@@ -49,13 +49,15 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       String pipeName,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> connectorAttributes,
+      boolean needManuallyStart)
       throws Exception {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(pipeName)
+              .setNeedManuallyStart(needManuallyStart)
               .setExtractorAttributes(extractorAttributes)
               .setProcessorAttributes(processorAttributes)
               .setConnectorAttributes(connectorAttributes);

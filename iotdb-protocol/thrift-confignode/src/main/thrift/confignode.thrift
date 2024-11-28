@@ -737,6 +737,7 @@ struct TCreatePipeReq {
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
     5: optional bool ifNotExistsCondition
+    6: optional bool needManuallyStart
 }
 
 struct TAlterPipeReq {
