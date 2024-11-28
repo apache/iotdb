@@ -82,13 +82,19 @@ public class UserDefineScalarFunctionTransformer extends MultiColumnTransformer 
         } else {
           builder.writeObject(result);
         }
-      } catch (Exception e) {
+      } catch (Throwable e) {
         throw new RuntimeException(
             "Error occurs when evaluating user-defined scalar function "
                 + scalarFunction.getClass().getName(),
             e);
       }
     }
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    scalarFunction.beforeDestroy();
   }
 
   @Override

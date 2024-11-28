@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
@@ -640,11 +641,14 @@ public class TableMetadataImpl implements Metadata {
               Collections.emptyMap());
       try {
         scalarFunction.validate(functionParameters);
+        ScalarFunctionConfig config = new ScalarFunctionConfig();
+        scalarFunction.beforeStart(functionParameters, config);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        scalarFunction.beforeDestroy();
       }
-      return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-          scalarFunction.inferOutputType(functionParameters));
     }
 
     // TODO UDAF

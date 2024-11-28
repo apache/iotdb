@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.example.relational;
 
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -34,8 +35,8 @@ public class ContainNull implements ScalarFunction {
   }
 
   @Override
-  public Type inferOutputType(FunctionParameters parameters) {
-    return Type.BOOLEAN;
+  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
+    configurations.setOutputDataType(Type.BOOLEAN);
   }
 
   @Override

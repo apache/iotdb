@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.example.relational;
 
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -50,7 +51,7 @@ public class AllSum implements ScalarFunction {
   }
 
   @Override
-  public Type inferOutputType(FunctionParameters parameters) {
+  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
     Set<Type> inputTypeSet = new HashSet<>();
     for (int i = 0; i < parameters.getChildExpressionsSize(); i++) {
       inputTypeSet.add(parameters.getDataType(i));
@@ -64,7 +65,7 @@ public class AllSum implements ScalarFunction {
     } else {
       outputDataType = Type.INT32;
     }
-    return outputDataType;
+    configurations.setOutputDataType(outputDataType);
   }
 
   @Override

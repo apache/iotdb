@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.udf.api.relational;
 
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.access.Record;
-import org.apache.iotdb.udf.api.type.Type;
 
 public interface ScalarFunction extends SQLFunction {
 
@@ -34,12 +34,22 @@ public interface ScalarFunction extends SQLFunction {
   void validate(FunctionParameters parameters) throws Exception;
 
   /**
-   * This method is used to infer the output data type of the transformation.
+   * This method is mainly used to initialize {@link ScalarFunction}. In this method, the user can
+   * do the following things:
    *
-   * @param parameters input parameters
-   * @return the output data type
+   * <ul>
+   *   <li>Use {@link FunctionParameters}. to get input data types and infer output data type.
+   *   <li>Use {@link FunctionParameters}. to get necessary attributes.
+   *   <li>Set the output data type in {@link ScalarFunctionConfig}..
+   * </ul>
+   *
+   * <p>This method is called after the ScalarFunction is instantiated and before the beginning of
+   * the transformation process.
+   *
+   * @param parameters used to parse the input parameters entered by the user
+   * @param configurations used to set the required properties in the ScalarFunction
    */
-  Type inferOutputType(FunctionParameters parameters);
+  void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations);
 
   /**
    * This method will be called to process the transformation. In a single UDF query, this method

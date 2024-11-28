@@ -155,6 +155,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
@@ -1014,9 +1015,10 @@ public class ColumnTransformerBuilder
                     .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
+        ScalarFunctionConfig config = new ScalarFunctionConfig();
+        scalarFunction.beforeStart(parameters, config);
         Type returnType =
-            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-                scalarFunction.inferOutputType(parameters));
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
             returnType, scalarFunction, childrenColumnTransformer);
       }

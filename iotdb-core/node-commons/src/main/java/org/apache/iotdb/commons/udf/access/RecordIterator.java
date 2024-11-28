@@ -25,8 +25,9 @@ import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.utils.DateUtils;
 
-import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.List;
 
@@ -51,42 +52,47 @@ public class RecordIterator implements Iterator<Record> {
     final int index = currentIndex++;
     return new Record() {
       @Override
-      public int getInt(int columnIndex) throws IOException {
+      public int getInt(int columnIndex) {
         return childrenColumns.get(columnIndex).getInt(index);
       }
 
       @Override
-      public long getLong(int columnIndex) throws IOException {
+      public long getLong(int columnIndex) {
         return childrenColumns.get(columnIndex).getLong(index);
       }
 
       @Override
-      public float getFloat(int columnIndex) throws IOException {
+      public float getFloat(int columnIndex) {
         return childrenColumns.get(columnIndex).getFloat(index);
       }
 
       @Override
-      public double getDouble(int columnIndex) throws IOException {
+      public double getDouble(int columnIndex) {
         return childrenColumns.get(columnIndex).getDouble(index);
       }
 
       @Override
-      public boolean getBoolean(int columnIndex) throws IOException {
+      public boolean getBoolean(int columnIndex) {
         return childrenColumns.get(columnIndex).getBoolean(index);
       }
 
       @Override
-      public Binary getBinary(int columnIndex) throws IOException {
+      public Binary getBinary(int columnIndex) {
         return new Binary(childrenColumns.get(columnIndex).getBinary(index).getValues());
       }
 
       @Override
-      public String getString(int columnIndex) throws IOException {
+      public String getString(int columnIndex) {
         return childrenColumns.get(columnIndex).getBinary(index).toString();
       }
 
       @Override
-      public Object getObject(int columnIndex) throws IOException {
+      public LocalDate getLocalDate(int columnIndex) {
+        return DateUtils.parseIntToLocalDate(childrenColumns.get(columnIndex).getInt(index));
+      }
+
+      @Override
+      public Object getObject(int columnIndex) {
         return childrenColumns.get(columnIndex).getObject(index);
       }
 
@@ -97,7 +103,7 @@ public class RecordIterator implements Iterator<Record> {
       }
 
       @Override
-      public boolean isNull(int columnIndex) throws IOException {
+      public boolean isNull(int columnIndex) {
         return childrenColumns.get(columnIndex).isNull(index);
       }
 
