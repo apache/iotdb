@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
@@ -74,7 +73,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementId(), k -> new WritableMemChunk(schema));
+        schema.getMeasurementName(), k -> new WritableMemChunk(schema));
   }
 
   @Override
@@ -117,48 +116,34 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunkMap;
   }
 
-  @SuppressWarnings("squid:S3776")
   @Override
-  public int delete(
-      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
-    int deletedPointsNumber = 0;
-    String targetMeasurement = originalPath.getMeasurement();
-    if (PathPatternUtil.hasWildcard(targetMeasurement)) {
-      Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
-      while (iter.hasNext()) {
-        Entry<String, IWritableMemChunk> entry = iter.next();
-        if (!PathPatternUtil.isNodeMatch(targetMeasurement, entry.getKey())) {
-          continue;
-        }
-        IWritableMemChunk chunk = entry.getValue();
-        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-          iter.remove();
-          deletedPointsNumber += chunk.count();
-          chunk.release();
-        } else {
-          deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
-          if (chunk.count() == 0) {
-            iter.remove();
-          }
-        }
+  public long delete(ModEntry modEntry) {
+    Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
+    long deletedPointsNumber = 0;
+    while (iter.hasNext()) {
+      Entry<String, IWritableMemChunk> entry = iter.next();
+      if (!modEntry.affects(entry.getKey())) {
+        continue;
       }
-    } else {
-      IWritableMemChunk chunk = memChunkMap.get(targetMeasurement);
-      if (chunk != null) {
-        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-          memChunkMap.remove(targetMeasurement);
-          deletedPointsNumber += chunk.count();
-          chunk.release();
-        } else {
-          deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
-          if (chunk.count() == 0) {
-            memChunkMap.remove(targetMeasurement);
-          }
+
+      IWritableMemChunk chunk = entry.getValue();
+      if (modEntry.getStartTime() == Long.MIN_VALUE && modEntry.getEndTime() == Long.MAX_VALUE) {
+        iter.remove();
+        deletedPointsNumber += chunk.count();
+        chunk.release();
+      } else {
+        deletedPointsNumber += chunk.delete(modEntry.getStartTime(), modEntry.getEndTime());
+        if (chunk.count() == 0) {
+          iter.remove();
         }
       }
     }
-
     return deletedPointsNumber;
+  }
+
+  @Override
+  public long deleteTime(ModEntry modEntry) {
+    return delete(modEntry);
   }
 
   @Override

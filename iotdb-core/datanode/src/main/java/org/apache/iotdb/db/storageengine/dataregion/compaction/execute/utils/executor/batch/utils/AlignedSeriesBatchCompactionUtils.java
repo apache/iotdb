@@ -103,7 +103,7 @@ public class AlignedSeriesBatchCompactionUtils {
           originValueChunkMetadataList.get(currentValueChunkMetadataIndex);
       if (currentValueChunkMetadata != null
           && currentSchema
-              .getMeasurementId()
+              .getMeasurementName()
               .equals(currentValueChunkMetadata.getMeasurementUid())) {
         newValueChunkMetadataArr[i] = currentValueChunkMetadata;
         currentValueChunkMetadataIndex++;

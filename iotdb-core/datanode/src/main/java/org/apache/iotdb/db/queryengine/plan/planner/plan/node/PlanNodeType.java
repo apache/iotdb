@@ -112,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -275,10 +276,14 @@ public enum PlanNodeType {
   TABLE_AGGREGATION_NODE((short) 1015),
   TABLE_AGGREGATION_TABLE_SCAN_NODE((short) 1016),
   TABLE_GAP_FILL_NODE((short) 1017),
+  TABLE_EXCHANGE_NODE((short) 1018),
+  TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
-  RELATIONAL_INSERT_ROWS((short) 2002);
+  RELATIONAL_INSERT_ROWS((short) 2002),
+  RELATIONAL_DELETE_DATA((short) 2003),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -319,6 +324,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(stream);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(stream);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -343,6 +350,8 @@ public enum PlanNodeType {
         return RelationalInsertRowNode.deserializeFromWAL(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserializeFromWAL(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -529,7 +538,7 @@ public enum PlanNodeType {
       case 89:
         return AggregationMergeSortNode.deserialize(buffer);
       case 90:
-        return ExplainAnalyzeNode.deserialize(buffer);
+        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
       case 92:
@@ -619,12 +628,19 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1017:
         return GapFillNode.deserialize(buffer);
+      case 1018:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
+            .deserialize(buffer);
+      case 1019:
+        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
         return RelationalInsertRowNode.deserialize(buffer);
       case 2002:
         return RelationalInsertRowsNode.deserialize(buffer);
+      case 2003:
+        return RelationalDeleteDataNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

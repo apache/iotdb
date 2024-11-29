@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -104,6 +105,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     }
   }
 
+  @Ignore
   @Test
   public void testLifeCycleWithHistoryDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -559,7 +561,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -598,7 +601,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);

@@ -171,7 +171,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     this.schemaList =
         measurementSchemaMap.values().stream()
-            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
+            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementName))
             .collect(Collectors.toList());
   }
 
@@ -271,7 +271,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       if (valueChunk.isEmpty()) {
         IMeasurementSchema schema = schemaList.get(i);
         writer.writeEmptyValueChunk(
-            schema.getMeasurementId(),
+            schema.getMeasurementName(),
             schema.getCompressor(),
             schema.getType(),
             schema.getEncodingType(),

@@ -32,7 +32,9 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Arrays;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -86,15 +88,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool,date) values('d2','l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2023-01-01')"
       };
 
-  //  public static void main(String[] args) {
-  //    for (String sql : sql1) {
-  //      System.out.println(sql+";");
-  //    }
-  //    for (String sql : sql2) {
-  //      System.out.println(sql+";");
-  //    }
-  //  }
-
   private static final String[] sql3 =
       new String[] {
         "CREATE TABLE table1 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
@@ -120,9 +113,57 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table1(time, device, level, attr1, attr2, num,bigNum,floatNum,str,bool) values(40, 'd11', 'l11', 'c', 'd', 3, 2947483648, 231.2121, 'coconut', FALSE)"
       };
 
+  private static final String[] sql4 =
+      new String[] {
+        "create table students(region STRING ID, student_id INT32 MEASUREMENT, name STRING MEASUREMENT, genders text MEASUREMENT, date_of_birth DATE MEASUREMENT)",
+        "create table teachers(region STRING ID, teacher_id INT32 MEASUREMENT, course_id INT32 MEASUREMENT, age INT32 MEASUREMENT)",
+        "create table courses(course_id STRING ID, course_name STRING MEASUREMENT, teacher_id INT32 MEASUREMENT)",
+        "create table grades(grade_id STRING ID, course_id INT32 MEASUREMENT, student_id INT32 MEASUREMENT, score INT32 MEASUREMENT)",
+        "insert into students(time,region,student_id,name,genders,date_of_birth) values"
+            + "(1,'haidian',1,'Lucy','女','2015-10-10'),(2,'haidian',2,'Jack','男','2015-09-24'),(3,'chaoyang',3,'Sam','男','2014-07-20'),(4,'chaoyang',4,'Lily','女','2015-03-28'),"
+            + "(5,'xicheng',5,'Helen','女','2016-01-22'),(6,'changping',6,'Nancy','女','2017-12-20'),(7,'changping',7,'Mike','男','2016-11-22'),(8,'shunyi',8,'Bob','男','2016-05-12')",
+        "insert into teachers(time,region,teacher_id,course_id,age) values"
+            + "(1,'haidian',1001,10000001,25),(2,'haidian',1002,10000002,26),(3,'chaoyang',1003,10000003,28),"
+            + "(4,'chaoyang',1004,10000004,27),(5,'xicheng',1005,10000005,26)",
+        "insert into courses(time,course_id,course_name,teacher_id) values"
+            + "(1,10000001,'数学',1001),(2,10000002,'语文',1002),(3,10000003,'英语',1003),"
+            + "(4,10000004,'体育',1004),(5,10000005,'历史',1005)",
+        "insert into grades(time,grade_id,course_id,student_id,score) values"
+            + "(1,1111,10000001,1,99),(2,1112,10000002,2,90),(3,1113,10000003,3,85),(4,1114,10000004,4,89),(5,1115,10000005,5,98),"
+            + "(6,1113,10000003,6,55),(7,1114,10000004,7,60),(8,1115,10000005,8,100),(9,1114,10000001,2,99),(10,1115,10000002,1,95)"
+      };
+
+  private static final String[] sql5 =
+      new String[] {
+        "create table tableA(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableB(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableC(device STRING ID, value INT32 MEASUREMENT)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:01.000', 'd1', 1)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 3)",
+        "flush",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 5)",
+        "insert into tableA(time,device,value) values('2020-01-01 00:00:07.000', 'd2', 7)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:02.000', 'd1', 20)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 30)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:03.000', 'd333', 333)",
+        "flush",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:04.000', 'd2', 40)",
+        "insert into tableB(time,device,value) values('2020-01-01 00:00:05.000', 'd2', 50)"
+      };
+
   String[] expectedHeader;
   String[] retArray;
-  String sql;
+  static String sql;
+
+  //  public static void main(String[] args) {
+  //    for (String[] sqlList : Arrays.asList(sql1, sql2)) {
+  //      for (String sql : sqlList) {
+  //        System.out.println(sql+";");
+  //      }
+  //    }
+  //  }
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -131,8 +172,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setMaxTsBlockLineNumber(1)
-        .setMaxNumberOfPointsInPage(1);
+        .setMaxTsBlockLineNumber(2)
+        .setMaxNumberOfPointsInPage(5);
     insertData();
   }
 
@@ -144,15 +185,10 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-
-      for (String sql : sql1) {
-        statement.execute(sql);
-      }
-      for (String sql : sql2) {
-        statement.execute(sql);
-      }
-      for (String sql : sql3) {
-        statement.execute(sql);
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
+        for (String sql : sqlList) {
+          statement.execute(sql);
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1027,8 +1063,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    // no data in given time range
+    // no data in given time range (push-down)
     sql = "select count(*), count(num), sum(num) from table0 where time>2100-04-26T18:01:40.000";
+    retArray = new String[] {"0,0,null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // no data in given time range (no push-down)
+    sql = "select count(*), count(num+1), sum(num) from table0 where time>2100-04-26T18:01:40.000";
     retArray = new String[] {"0,0,null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
@@ -1478,9 +1519,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   // no filter
   @Test
   public void fullOuterJoinTest1() {
-    String[] expectedHeader =
+    expectedHeader =
         new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
-    String[] retArray =
+    retArray =
         new String[] {
           "1970-01-01T00:00:00.000Z,d1,l1,3,d1,d,3,coconut,",
           "1970-01-01T00:00:00.000Z,d1,l1,3,d2,c,3,coconut,",
@@ -1569,14 +1610,90 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select t1.time as time1, t2.time as time2, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 on t1.time = t2.time "
+            + "order by COALESCE(time1, time2),device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,null,d1,1,null,null,",
+          "null,2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "null,2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,null,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time1", "time2", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableA t1 full join tableB t2 USING(time) "
+            + "order by time,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+          "2020-01-01T00:00:07.000Z,d2,7,null,null,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // empty table join non-empty table
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2  from tableC t1 full join tableB t2 USING(time) "
+            + "order by time,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:02.000Z,null,null,d1,20,",
+          "2020-01-01T00:00:03.000Z,null,null,d1,30,",
+          "2020-01-01T00:00:03.000Z,null,null,d333,333,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "from (select * from tableA where device='d1') t1 full join (select * from tableB where device='d2') t2 USING(time) order by time, device1, device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:01.000Z,d1,1,null,null,",
+          "2020-01-01T00:00:03.000Z,d1,3,null,null,",
+          "2020-01-01T00:00:04.000Z,null,null,d2,40,",
+          "2020-01-01T00:00:05.000Z,null,null,d2,50,",
+        };
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   // has filter
   @Test
   public void fullOuterJoinTest2() {
-    String[] expectedHeader =
+    expectedHeader =
         new String[] {"time", "device", "level", "t1_num_add", "device", "attr2", "num", "str"};
-    String[] retArray =
+    retArray =
         new String[] {
           "1970-01-01T00:00:00.000Z,null,null,null,d1,d,3,coconut,",
           "1970-01-01T00:00:00.000Z,null,null,null,d2,c,3,coconut,",
@@ -1588,6 +1705,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,9,null,null,null,null,",
+          "1970-01-01T00:00:00.100Z,d2,l5,9,null,null,null,null,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
           "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
@@ -1628,6 +1747,66 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
             + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void fourTableJoinTest() {
+    expectedHeader =
+        new String[] {
+          "time", "s_id", "s_name", "s_birth", "t_id", "t_c_id", "c_name", "g_id", "score"
+        };
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1,Lucy,2015-10-10,1001,10000001,数学,1111,99,",
+          "1970-01-01T00:00:00.002Z,2,Jack,2015-09-24,1002,10000002,语文,1112,90,",
+          "1970-01-01T00:00:00.003Z,3,Sam,2014-07-20,1003,10000003,英语,1113,85,",
+          "1970-01-01T00:00:00.004Z,4,Lily,2015-03-28,1004,10000004,体育,1114,89,",
+          "1970-01-01T00:00:00.005Z,5,Helen,2016-01-22,1005,10000005,历史,1115,98,",
+        };
+    sql =
+        "select s.time,"
+            + "         s.student_id as s_id, s.name as s_name, s.date_of_birth as s_birth,"
+            + "         t.teacher_id as t_id, t.course_id as t_c_id,"
+            + "         c.course_name as c_name,"
+            + "         g.grade_id as g_id, g.score as score "
+            + "from students s, teachers t, courses c, grades g "
+            + "where s.time=t.time AND c.time=g.time AND s.time=c.time "
+            + "order by s.student_id, t.teacher_id, c.course_id,g.grade_id";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select s.region, s.name,"
+            + "           t.teacher_id,"
+            + "           c.course_name,"
+            + "           g.score "
+            + "from students s, teachers t, courses c, grades g "
+            + "where s.time=c.time and c.time=g.time";
+    tableAssertTestFail(
+        sql,
+        "701: Cross join is not supported in current version, each table must have at least one equiJoinClause",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void innerJoinTest() {
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    sql =
+        "SELECT "
+            + "  t1.time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "FROM "
+            + "  tableA t1 JOIN tableB t2 "
+            + "ON t1.time = t2.time order by t1.time, device1, device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,",
+          "2020-01-01T00:00:03.000Z,d1,3,d333,333,",
+          "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 

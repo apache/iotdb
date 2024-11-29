@@ -520,7 +520,7 @@ public class LogicalPlanBuilder {
             ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
             : queryStatement.getRowLimit();
 
-    if (canUseTopKNode(queryStatement, limitValue)) {
+    if (canUseTopKNode(queryStatement, limitValue) && deviceNameToSourceNodesMap.size() > 1) {
       TopKNode topKNode =
           new TopKNode(
               context.getQueryId().genPlanNodeId(),
@@ -552,7 +552,8 @@ public class LogicalPlanBuilder {
 
       analysis.setUseTopKNode();
       this.root = topKNode;
-    } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
+    } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())
+        && deviceNameToSourceNodesMap.size() > 1) {
       // use MergeSortNode + SingleDeviceViewNode
       MergeSortNode mergeSortNode =
           new MergeSortNode(

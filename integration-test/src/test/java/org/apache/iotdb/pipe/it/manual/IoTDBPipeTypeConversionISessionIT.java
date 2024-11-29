@@ -300,7 +300,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     String sql = "select ";
     StringBuffer param = new StringBuffer();
     for (IMeasurementSchema schema : measurementSchemas) {
-      param.append(schema.getMeasurementId());
+      param.append(schema.getMeasurementName());
       param.append(',');
     }
     sql = sql + param.substring(0, param.length() - 1);
@@ -317,9 +317,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     String uuid = RandomStringUtils.random(8, true, false);
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(
-          uuid.toString(), pair.left.getMeasurementId(), pair.left.getType().name(), senderEnv);
+          uuid.toString(), pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
-          uuid.toString(), pair.right.getMeasurementId(), pair.right.getType().name(), receiverEnv);
+          uuid.toString(),
+          pair.right.getMeasurementName(),
+          pair.right.getType().name(),
+          receiverEnv);
     }
 
     try (ISession senderSession = senderEnv.getSessionConnection();
@@ -548,16 +551,16 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
 
   private Pair<List<List<String>>, List<List<TSDataType>>> getMeasurementSchemasAndType(
       Tablet tablet) {
-    List<List<String>> schemaData = new ArrayList<>(tablet.rowSize);
-    List<List<TSDataType>> typeData = new ArrayList<>(tablet.rowSize);
+    List<List<String>> schemaData = new ArrayList<>(tablet.getRowSize());
+    List<List<TSDataType>> typeData = new ArrayList<>(tablet.getRowSize());
     List<String> measurementSchemas = new ArrayList<>(tablet.getSchemas().size());
-    List<TSDataType> types = new ArrayList<>(tablet.rowSize);
+    List<TSDataType> types = new ArrayList<>(tablet.getRowSize());
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurementSchemas.add(measurementSchema.getMeasurementId());
+      measurementSchemas.add(measurementSchema.getMeasurementName());
       types.add(measurementSchema.getType());
     }
 
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       schemaData.add(measurementSchemas);
       typeData.add(types);
     }
@@ -566,8 +569,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   private List<String> getDeviceID(Tablet tablet) {
-    List<String> data = new ArrayList<>(tablet.rowSize);
-    for (int i = 0; i < tablet.rowSize; i++) {
+    List<String> data = new ArrayList<>(tablet.getRowSize());
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       data.add(tablet.getDeviceId());
     }
     return data;
@@ -575,10 +578,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
 
   private List<List<Object>> generateTabletResultSetForTable(
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
-    List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
+    List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
         TSDataType sourceType = pairs.get(j).left.getType();
@@ -643,10 +646,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
-    List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
+    List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
         switch (schemas.get(j).getType()) {
@@ -686,10 +689,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   private List<List<String>> generateTabletInsertStrRecordForTable(Tablet tablet) {
-    List<List<String>> insertRecords = new ArrayList<>(tablet.rowSize);
+    List<List<String>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       List<String> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
         switch (schemas.get(j).getType()) {
@@ -743,11 +746,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     for (int i = 0; i < bitMaps.length; i++) {
       bitMaps[i] = new BitMap(generateDataSize);
     }
-    List<Tablet.ColumnType> columnTypes = new ArrayList<>(pairs.size());
+    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(pairs.size());
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
+      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
       switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();

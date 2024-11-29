@@ -116,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -607,6 +608,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitDeleteData(RelationalDeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -659,6 +664,12 @@ public abstract class PlanVisitor<R, C> {
   public R visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
+  }
+
+  public R visitExplainAnalyze(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitOutput(
@@ -719,6 +730,11 @@ public abstract class PlanVisitor<R, C> {
   public R visitAggregation(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
       C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitTableExchange(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

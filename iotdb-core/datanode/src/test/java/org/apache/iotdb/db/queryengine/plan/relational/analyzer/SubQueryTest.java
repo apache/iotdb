@@ -22,10 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -74,8 +75,10 @@ public class SubQueryTest {
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC) "
             + "ORDER BY tag2 OFFSET 3 LIMIT 6";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -88,7 +91,7 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof TableScanNode);
     tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 5);
     assertEquals(9, tableScanNode.getPushDownLimit());
-    assertEquals(true, tableScanNode.isPushLimitToEachDevice());
+    assertTrue(tableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
 
     /*
@@ -102,7 +105,8 @@ public class SubQueryTest {
      *               │           └──TableScanNode-115
      *               └──ExchangeNode-160: [SourceAddress:192.0.10.1/test_query.3.0/162]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
+    distributionPlanner =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -161,8 +165,10 @@ public class SubQueryTest {
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "ORDER BY tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -194,7 +200,8 @@ public class SubQueryTest {
      *                           │       └──TableScanNode-147
      *                           └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.3.0/198]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
+    distributionPlanner =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -256,8 +263,10 @@ public class SubQueryTest {
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -305,7 +314,8 @@ public class SubQueryTest {
      *                               │       └──TableScanNode-151
      *                               └──ExchangeNode-202: [SourceAddress:192.0.10.1/test_query.3.0/204]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
+    distributionPlanner =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -369,8 +379,10 @@ public class SubQueryTest {
             + "WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "WHERE s1>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -414,7 +426,8 @@ public class SubQueryTest {
      *                                   │       └──TableScanNode-163
      *                                   └──ExchangeNode-216: [SourceAddress:192.0.10.1/test_query.3.0/218]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
+    distributionPlanner =
+        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -476,8 +489,10 @@ public class SubQueryTest {
   public void subQueryTest5() {
     sql = "SELECT * FROM (SELECT * FROM table1 WHERE s1>1) WHERE s2>2";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalPlanNode =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, TableScanNode.class);
@@ -491,8 +506,10 @@ public class SubQueryTest {
   public void subQueryTest6() {
     sql = "SELECT * FROM (SELECT * FROM table1 limit 10) limit 5";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalPlanNode =
-        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, LimitNode.class, TableScanNode.class);

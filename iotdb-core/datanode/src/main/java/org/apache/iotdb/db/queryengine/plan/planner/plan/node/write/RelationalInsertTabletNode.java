@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -49,27 +50,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntToLongFunction;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
   // deviceId cache for Table-view insertion
   private IDeviceID[] deviceIDs;
 
-  public RelationalInsertTabletNode(
-      PlanNodeId id,
-      PartialPath devicePath,
-      boolean isAligned,
-      String[] measurements,
-      TSDataType[] dataTypes,
-      long[] times,
-      BitMap[] bitMaps,
-      Object[] columns,
-      int rowCount,
-      TsTableColumnCategory[] columnCategories) {
-    super(id, devicePath, isAligned, measurements, dataTypes, times, bitMaps, columns, rowCount);
-    setColumnCategories(columnCategories);
-  }
+  private boolean singleDevice;
 
   public RelationalInsertTabletNode(
       PlanNodeId id,
@@ -101,8 +88,46 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(id);
   }
 
+  @TestOnly
+  public RelationalInsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      long[] times,
+      BitMap[] bitMaps,
+      Object[] columns,
+      int rowCount,
+      TsTableColumnCategory[] columnCategories) {
+    super(id, devicePath, isAligned, measurements, dataTypes, times, bitMaps, columns, rowCount);
+    setColumnCategories(columnCategories);
+  }
+
+  public void setSingleDevice() {
+    this.singleDevice = true;
+  }
+
   @Override
   public IDeviceID getDeviceID(int rowIdx) {
+    if (singleDevice) {
+      if (deviceIDs == null) {
+        deviceIDs = new IDeviceID[1];
+      }
+      if (deviceIDs[0] == null) {
+        String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+        deviceIdSegments[0] = this.getTableName();
+        for (int i = 0; i < idColumnIndices.size(); i++) {
+          final Integer columnIndex = idColumnIndices.get(i);
+          Object idSeg = ((Object[]) columns[columnIndex])[0];
+          boolean isNull =
+              bitMaps != null && bitMaps[columnIndex] != null && bitMaps[columnIndex].isMarked(0);
+          deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
+        }
+        deviceIDs[0] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+      }
+      return deviceIDs[0];
+    }
     if (deviceIDs == null) {
       deviceIDs = new IDeviceID[rowCount];
     }
@@ -139,18 +164,23 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
     BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
-    return new RelationalInsertTabletNode(
-        getPlanNodeId(),
-        targetPath,
-        isAligned,
-        measurements,
-        dataTypes,
-        measurementSchemas,
-        subTimes,
-        newBitMaps,
-        values,
-        subTimes.length,
-        columnCategories);
+    RelationalInsertTabletNode split =
+        new RelationalInsertTabletNode(
+            getPlanNodeId(),
+            targetPath,
+            isAligned,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            subTimes,
+            newBitMaps,
+            values,
+            subTimes.length,
+            columnCategories);
+    if (singleDevice) {
+      split.setSingleDevice();
+    }
+    return split;
   }
 
   protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
@@ -303,8 +333,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
-    return checkTTLInternal(results, rowTTLGetter, false);
+  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
+    return checkTTLInternal(results, ttl, false);
   }
 
   @Override

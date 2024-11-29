@@ -208,6 +208,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -383,6 +384,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSExecuteStatementResp resp;
         if (queryExecution != null && queryExecution.isQuery()) {
+          statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
@@ -1230,7 +1232,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
-      clientSession.setDatabaseName(database.get());
+      clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     Map<String, String> configuration = new HashMap<>();

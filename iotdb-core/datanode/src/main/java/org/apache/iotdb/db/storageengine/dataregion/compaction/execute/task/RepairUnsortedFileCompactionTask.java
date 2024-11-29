@@ -35,7 +35,6 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -168,10 +167,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       CompactionUtils.combineModsInInnerCompaction(
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
-      if (sourceFile.modFileExists()) {
-        Files.createLink(
-            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
-            new File(sourceFile.getModFile().getFilePath()).toPath());
+      if (sourceFile.anyModFileExists()) {
+        sourceFile.linkModFile(filesView.targetFilesInPerformer.get(0));
+      }
+      if (TsFileResource.useSharedModFile) {
+        filesView
+            .targetFilesInPerformer
+            .get(0)
+            .setSharedModFile(sourceFile.getSharedModFile(), false);
       }
     }
   }
@@ -195,12 +198,12 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       return;
     }
     RepairDataFileScanUtil repairDataFileScanUtil = new RepairDataFileScanUtil(sourceFile, true);
-    repairDataFileScanUtil.scanTsFile();
+    repairDataFileScanUtil.scanTsFile(true);
     if (repairDataFileScanUtil.isBrokenFile()) {
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
       return;
     }
-    if (repairDataFileScanUtil.hasUnsortedData()) {
+    if (repairDataFileScanUtil.hasUnsortedDataOrWrongStatistics()) {
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
       return;
     }

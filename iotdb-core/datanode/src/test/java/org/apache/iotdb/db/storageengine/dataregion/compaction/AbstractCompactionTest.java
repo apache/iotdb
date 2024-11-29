@@ -775,8 +775,8 @@ public class AbstractCompactionTest {
     file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
 
     // rename mods file
-    file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
+    file = ModificationFile.getExclusiveMods(resource.getTsFile());
+    file.renameTo(ModificationFile.getExclusiveMods(new File(newFileName)));
   }
 
   protected TsFileResource generateSingleAlignedSeriesFile(
@@ -855,7 +855,7 @@ public class AbstractCompactionTest {
         }
         List<String> existedMeasurements =
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList());
         IFullPath seriesPath;
         if (isAlign) {

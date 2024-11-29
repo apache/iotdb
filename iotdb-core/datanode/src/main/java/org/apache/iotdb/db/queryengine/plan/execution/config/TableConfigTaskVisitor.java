@@ -128,7 +128,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Collections;
@@ -137,14 +139,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -189,8 +191,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       if (property.isSetToDefault()) {
         switch (key) {
           case TTL_KEY:
-          case SCHEMA_REPLICATION_FACTOR_KEY:
-          case DATA_REPLICATION_FACTOR_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
@@ -205,14 +205,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
       switch (key) {
         case TTL_KEY:
+          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+          if (strValue.isPresent()) {
+            if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
+              throw new SemanticException(
+                  "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            break;
+          }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
-          break;
-        case SCHEMA_REPLICATION_FACTOR_KEY:
-          schema.setSchemaReplicationFactor(
-              parseIntFromLiteral(value, SCHEMA_REPLICATION_FACTOR_KEY));
-          break;
-        case DATA_REPLICATION_FACTOR_KEY:
-          schema.setDataReplicationFactor(parseIntFromLiteral(value, DATA_REPLICATION_FACTOR_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
@@ -311,18 +312,41 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
 
     // TODO: Place the check at statement analyzer
+    boolean hasTimeColumn = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
+      final TSDataType dataType = getDataType(columnDefinition.getType());
+      if (checkTimeColumnIdempotent(category, columnName, dataType) && !hasTimeColumn) {
+        hasTimeColumn = true;
+        continue;
+      }
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-      final TSDataType dataType = getDataType(columnDefinition.getType());
       table.addColumnSchema(
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
     return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  private boolean checkTimeColumnIdempotent(
+      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      if (category == TsTableColumnCategory.TIME
+          && columnName.equals(TsTable.TIME_COLUMN_NAME)
+          && dataType == TSDataType.TIMESTAMP) {
+        return true;
+      } else if (dataType == TSDataType.TIMESTAMP) {
+        throw new SemanticException(
+            "The time column category shall be bounded with column name 'time'.");
+      } else {
+        throw new SemanticException("The time column's type shall be 'timestamp'.");
+      }
+    }
+
+    return false;
   }
 
   @Override
@@ -443,21 +467,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
-          if (value instanceof Literal
-              && Objects.equals(
-                  ((Literal) value).getTsValue(),
-                  TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.get(key))) {
-            // Ignore default values
+          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+          if (strValue.isPresent()) {
+            if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
+              throw new SemanticException(
+                  "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            map.put(key, strValue.get().toUpperCase(Locale.ENGLISH));
             continue;
           }
           // TODO: support validation for other properties
-          map.put(
-              key,
-              String.valueOf(
-                  parseLongFromLiteral(value, TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
+          map.put(key, String.valueOf(parseLongFromLiteral(value, TTL_PROPERTY)));
         } else if (serializeDefault) {
           map.put(key, null);
         }
@@ -540,6 +563,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
+  }
+
+  private Optional<String> parseStringFromLiteralIfBinary(final Object value) {
+    return value instanceof Literal && ((Literal) value).getTsValue() instanceof Binary
+        ? Optional.of(
+            ((Binary) ((Literal) value).getTsValue()).getStringValue(TSFileConfig.STRING_CHARSET))
+        : Optional.empty();
   }
 
   private long parseLongFromLiteral(final Object value, final String name) {

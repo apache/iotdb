@@ -21,8 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.utils.BitMap;
@@ -41,8 +40,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
 
-  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
-    memChunk = new AlignedWritableMemChunk(schemaList);
+  public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
+    memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
   }
 
   private AlignedWritableMemChunkGroup() {
@@ -99,34 +98,22 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return Collections.singletonMap("", memChunk);
   }
 
-  @SuppressWarnings("squid:S3776")
   @Override
-  public int delete(
-      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
+  public long delete(ModEntry modEntry) {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
-    String targetMeasurement = originalPath.getMeasurement();
-    if (PathPatternUtil.hasWildcard(targetMeasurement)) {
-      for (String measurement : measurements) {
-        if (!PathPatternUtil.isNodeMatch(targetMeasurement, measurement)) {
-          continue;
-        }
-        Pair<Integer, Boolean> deleteInfo =
-            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
-        deletedPointsNumber += deleteInfo.left;
-        if (Boolean.TRUE.equals(deleteInfo.right)) {
-          columnsToBeRemoved.add(measurement);
-        }
+    for (String measurement : measurements) {
+      if (!modEntry.affects(measurement)) {
+        continue;
       }
-    } else {
-      if (measurements.contains(targetMeasurement)) {
-        Pair<Integer, Boolean> deleteInfo =
-            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, targetMeasurement);
-        deletedPointsNumber += deleteInfo.left;
-        if (Boolean.TRUE.equals(deleteInfo.right)) {
-          columnsToBeRemoved.add(targetMeasurement);
-        }
+
+      Pair<Integer, Boolean> deletedNumAndIsFullyDeleted =
+          memChunk.deleteDataFromAColumn(
+              modEntry.getStartTime(), modEntry.getEndTime(), measurement);
+      deletedPointsNumber += deletedNumAndIsFullyDeleted.left;
+      if (Boolean.TRUE.equals(deletedNumAndIsFullyDeleted.right)) {
+        columnsToBeRemoved.add(measurement);
       }
     }
 
@@ -134,6 +121,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       memChunk.removeColumn(columnToBeRemoved);
     }
     return deletedPointsNumber;
+  }
+
+  public long deleteTime(ModEntry modEntry) {
+    return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
   }
 
   @Override
@@ -160,10 +151,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
-      throws IOException {
+  public static AlignedWritableMemChunkGroup deserialize(
+      DataInputStream stream, boolean isTableModel) throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
-    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
     return memChunkGroup;
   }
 }
