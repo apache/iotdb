@@ -59,13 +59,13 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   @Test
   public void singleDeviceTest() {
     expectedHeader = new String[] {"Time,Device,precipitation"};
-    retArray = new String[] {"2022-11-21T00:00:00.200+08:00,root.weather.London,1667492178318,"};
+    retArray = new String[] {"1668960000200,root.weather.London,1667492178318,"};
     resultSetEqualTest(
         "select precipitation from root.weather.London where precipitation>1667492178118 order by time offset 1 limit 1 align by device",
         expectedHeader,
         retArray);
 
-    retArray = new String[] {"2022-11-21T00:00:00.200+08:00,root.weather.London,1667492178318,"};
+    retArray = new String[] {"1668960000200,root.weather.London,1667492178318,"};
     resultSetEqualTest(
         "select precipitation from root.weather.London where precipitation>1667492178118 order by precipitation offset 1 limit 1 align by device",
         expectedHeader,
