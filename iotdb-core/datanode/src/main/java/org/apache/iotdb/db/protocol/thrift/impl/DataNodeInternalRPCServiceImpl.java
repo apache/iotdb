@@ -1533,6 +1533,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
+    final String database;
+    final int size;
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
@@ -1556,6 +1558,36 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
+        break;
+      case PRE_UPDATE_TABLES:
+        DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        try {
+          Pair<String, List<TsTable>> pair =
+              TsTableInternalRPCUtil.deserializeTsTablesWithDatabase(req.getTableInfo());
+          database = pair.getLeft();
+          for (final TsTable table : pair.getRight()) {
+            DataNodeTableCache.getInstance().preUpdateTable(database, table);
+          }
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        }
+        break;
+      case ROLLBACK_UPDATE_TABLES:
+        database = ReadWriteIOUtils.readString(req.tableInfo);
+        size = ReadWriteIOUtils.readInt(req.tableInfo);
+        for (int i = 0; i < size; ++i) {
+          DataNodeTableCache.getInstance()
+              .rollbackUpdateTable(database, ReadWriteIOUtils.readString(req.tableInfo));
+        }
+        break;
+      case COMMIT_UPDATE_TABLES:
+        database = ReadWriteIOUtils.readString(req.tableInfo);
+        size = ReadWriteIOUtils.readInt(req.tableInfo);
+        for (int i = 0; i < size; ++i) {
+          DataNodeTableCache.getInstance()
+              .commitUpdateTable(database, ReadWriteIOUtils.readString(req.tableInfo));
+        }
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
