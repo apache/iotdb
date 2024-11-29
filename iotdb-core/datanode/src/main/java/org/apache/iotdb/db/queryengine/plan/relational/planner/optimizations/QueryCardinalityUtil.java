@@ -30,8 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 
 import com.google.common.collect.Range;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.max;
@@ -184,11 +188,18 @@ public final class QueryCardinalityUtil {
       return applyLimit(node.getChild(), node.getCount());
     }
 
-    //        @Override
-    //        public Range<Long> visitTopN(TopNNode node, Void context)
-    //        {
-    //            return applyLimit(node.getSource(), node.getCount());
-    //        }
+    @Override
+    public Range<Long> visitTopK(TopKNode node, Void context) {
+      long limit = node.getCount();
+      List<Range<Long>> rangeList =
+          node.getChildren().stream()
+              .map(child -> applyLimit(child, limit))
+              .collect(Collectors.toList());
+      // merge rangeList
+      long lower = rangeList.stream().mapToLong(Range::lowerEndpoint).sum();
+      long upper = rangeList.stream().mapToLong(Range::upperEndpoint).sum();
+      return Range.closed(Math.min(lower, limit), Math.min(upper, limit));
+    }
 
     //        @Override
     //        public Range<Long> visitWindow(WindowNode node, Void context)

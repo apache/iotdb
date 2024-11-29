@@ -433,8 +433,12 @@ public class TableDistributedPlanGenerator
     }
     // For CrossJoinNode, we need to merge children nodes(It's safe for other JoinNodes here since
     // the size of their children is always 1.)
-    node.setLeftChild(mergeChildrenViaCollectOrMergeSort(null, leftChildrenNodes));
-    node.setRightChild(mergeChildrenViaCollectOrMergeSort(null, rightChildrenNodes));
+    node.setLeftChild(
+        mergeChildrenViaCollectOrMergeSort(
+            nodeOrderingMap.get(node.getLeftChild().getPlanNodeId()), leftChildrenNodes));
+    node.setRightChild(
+        mergeChildrenViaCollectOrMergeSort(
+            nodeOrderingMap.get(node.getRightChild().getPlanNodeId()), rightChildrenNodes));
     return Collections.singletonList(node);
   }
 

@@ -154,7 +154,7 @@ public class LogicalOptimizeFactory {
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
                         new MergeLimits(),
-                        new RemoveTrivialFilters()
+                        new RemoveTrivialFilters(),
                         //                        new RemoveRedundantLimit(),
                         //                        new RemoveRedundantOffset(),
                         //                        new RemoveRedundantSort(),
@@ -164,6 +164,7 @@ public class LogicalOptimizeFactory {
                         //                        new ReplaceRedundantJoinWithSource(),
                         //                        new RemoveRedundantJoin(),
                         //                        new ReplaceRedundantJoinWithProject(),
+                        new RemoveRedundantEnforceSingleRowNode()
                         //                        new RemoveRedundantExists(),
                         //                        new RemoveRedundantWindow(),
                         //                        new SingleDistinctAggregationToGroupBy(),
@@ -205,6 +206,7 @@ public class LogicalOptimizeFactory {
                 new RemoveRedundantEnforceSingleRowNode(),
                 new TransformUncorrelatedSubqueryToJoin())),
         new CheckSubqueryNodesAreRewritten(),
+        simplifyOptimizer,
         new PushPredicateIntoTableScan(),
         // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
         columnPruningOptimizer,
