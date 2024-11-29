@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,7 +35,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class AlterDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterDatabaseState> {
@@ -70,6 +71,7 @@ public class AlterDatabaseProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.ALTER_DATABASE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(database, stream);
@@ -83,11 +85,10 @@ public class AlterDatabaseProcedure
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     this.database = ReadWriteIOUtils.readString(byteBuffer);
-    this.tableName = ReadWriteIOUtils.readString(byteBuffer);
-    this.queryId = ReadWriteIOUtils.readString(byteBuffer);
-
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      this.table = TsTable.deserialize(byteBuffer);
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.tables = new ArrayList<>(size);
+    for (int i = 0; i < size; ++i) {
+      tables.add(TsTable.deserialize(byteBuffer));
     }
   }
 }
