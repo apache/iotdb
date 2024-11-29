@@ -301,13 +301,13 @@ public class IoTDBTableIT {
 
       // Will not affect the manual "6600000"
       statement.execute("alter database test2 set properties ttl=6600000");
-      statement.execute("alter database test2 set properties ttl=2000000");
+      statement.execute("alter database test2 set properties ttl=DEFAULT");
 
       statement.execute("alter table table3 set properties ttl=1000000");
       statement.execute("alter table table3 set properties ttl=DEFAULT");
 
-      ttls = new String[] {"2000000", "6600000"};
-      // The table3's ttl shall be 2000000
+      ttls = new String[] {"INF", "6600000"};
+      // The table3's ttl shall be "INF"
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
