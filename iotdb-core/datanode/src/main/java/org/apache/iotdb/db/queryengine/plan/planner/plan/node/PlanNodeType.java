@@ -277,8 +277,9 @@ public enum PlanNodeType {
   TABLE_AGGREGATION_NODE((short) 1015),
   TABLE_AGGREGATION_TABLE_SCAN_NODE((short) 1016),
   TABLE_GAP_FILL_NODE((short) 1017),
-  TABLE_EXPLAIN_ANALYZE_NODE((short) 1018),
-  TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1019),
+  TABLE_EXCHANGE_NODE((short) 1018),
+  TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
+  TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -630,8 +631,11 @@ public enum PlanNodeType {
       case 1017:
         return GapFillNode.deserialize(buffer);
       case 1018:
-        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
+            .deserialize(buffer);
       case 1019:
+        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
+      case 1020:
         return EnforceSingleRowNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);

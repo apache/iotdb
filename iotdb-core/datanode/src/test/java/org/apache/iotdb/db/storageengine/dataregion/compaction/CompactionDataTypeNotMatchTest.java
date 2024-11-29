@@ -145,10 +145,10 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
       writer.registerTimeseries(new Path(device), measurementSchema1);
-      TSRecord record = new TSRecord(1, device);
+      TSRecord record = new TSRecord(device, 1);
       record.addTuple(new BooleanDataPoint("s1", true));
-      writer.write(record);
-      writer.flushAllChunkGroups();
+      writer.writeRecord(record);
+      writer.flush();
     }
     resource1.updateStartTime(device, 1);
     resource1.updateEndTime(device, 1);
@@ -160,10 +160,10 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
       writer.registerTimeseries(new Path(device), measurementSchema2);
-      TSRecord record = new TSRecord(2, device);
+      TSRecord record = new TSRecord(device, 2);
       record.addTuple(new IntDataPoint("s1", 10));
-      writer.write(record);
-      writer.flushAllChunkGroups();
+      writer.writeRecord(record);
+      writer.flush();
     }
     resource2.updateStartTime(device, 2);
     resource2.updateEndTime(device, 2);
@@ -181,11 +181,11 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
       writer.registerAlignedTimeseries(new Path(device), measurementSchemas1);
-      TSRecord record = new TSRecord(1, device);
+      TSRecord record = new TSRecord(device, 1);
       record.addTuple(new IntDataPoint("s1", 0));
       record.addTuple(new IntDataPoint("s2", 1));
-      writer.writeAligned(record);
-      writer.flushAllChunkGroups();
+      writer.writeRecord(record);
+      writer.flush();
     }
     resource1.updateStartTime(device, 1);
     resource1.updateEndTime(device, 1);
@@ -199,11 +199,11 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
       writer.registerAlignedTimeseries(new Path(device), measurementSchemas2);
-      TSRecord record = new TSRecord(2, device);
+      TSRecord record = new TSRecord(device, 2);
       record.addTuple(new BooleanDataPoint("s1", true));
       record.addTuple(new BooleanDataPoint("s2", true));
-      writer.writeAligned(record);
-      writer.flushAllChunkGroups();
+      writer.writeRecord(record);
+      writer.flush();
     }
     resource2.updateStartTime(device, 2);
     resource2.updateEndTime(device, 2);

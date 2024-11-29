@@ -219,12 +219,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             isFirstRow = false;
           }
 
-          final int rowIndex = tablet.rowSize;
+          final int rowIndex = tablet.getRowSize();
 
           tablet.addTimestamp(rowIndex, data.currentTime());
           putValueToColumns(data, tablet, rowIndex);
-
-          tablet.rowSize++;
         }
 
         data.next();
@@ -232,7 +230,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           data = chunkReader.nextPageData();
         }
 
-        if (tablet != null && tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet != null && tablet.getRowSize() == tablet.getMaxRowNumber()) {
           break;
         }
       }

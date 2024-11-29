@@ -95,7 +95,7 @@ public class IoTDBRealTimeDBDatasetPushConsumerIT extends AbstractSubscriptionRe
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);

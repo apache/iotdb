@@ -91,7 +91,7 @@ public class TabletTest {
           new Binary("2".getBytes(StandardCharsets.UTF_8))
         };
 
-    tablet.rowSize = 3;
+    tablet.setRowSize(3);
 
     session.sortTablet(tablet);
 

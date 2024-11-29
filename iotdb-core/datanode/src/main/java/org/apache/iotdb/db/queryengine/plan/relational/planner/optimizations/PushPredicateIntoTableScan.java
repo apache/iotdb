@@ -447,11 +447,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       queryContext.setFetchSchemaCost(schemaFetchCost);
 
       if (deviceEntries.isEmpty()) {
-        if (analysis.noAggregates()) {
-          // no device entries, queries(except aggregation) can be finished
+        if (analysis.noAggregates() && !analysis.hasJoinNode()) {
+          // no device entries, queries(except aggregation and join) can be finished
+          analysis.setEmptyDataSource(true);
           analysis.setFinishQueryAfterAnalyze();
         }
-        analysis.setEmptyDataSource(true);
       } else {
         Filter timeFilter =
             tableScanNode
@@ -473,11 +473,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
-          if (analysis.noAggregates()) {
-            // no data partitions, queries(except aggregation) can be finished
+          if (analysis.noAggregates() && !analysis.hasJoinNode()) {
+            // no data partitions, queries(except aggregation and join) can be finished
+            analysis.setEmptyDataSource(true);
             analysis.setFinishQueryAfterAnalyze();
           }
-          analysis.setEmptyDataSource(true);
         } else {
           analysis.upsertDataPartition(dataPartition);
         }

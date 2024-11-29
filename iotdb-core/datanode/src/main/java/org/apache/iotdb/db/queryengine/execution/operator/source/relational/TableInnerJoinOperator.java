@@ -34,7 +34,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
@@ -43,32 +42,36 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
 public class TableInnerJoinOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableInnerJoinOperator.class);
 
-  private final Operator leftChild;
-  private TsBlock leftBlock;
-  private int leftIndex; // start index of leftTsBlock
-  private final int leftJoinKeyPosition;
-  private final int[] leftOutputSymbolIdx;
+  protected final Operator leftChild;
+  protected TsBlock leftBlock;
+  protected int leftIndex; // start index of leftTsBlock
+  protected final int leftJoinKeyPosition;
+  protected final int[] leftOutputSymbolIdx;
 
-  private final Operator rightChild;
-  private final List<TsBlock> rightBlockList = new ArrayList<>();
-  private final int rightJoinKeyPosition;
-  private int rightBlockListIdx;
-  private int rightIndex; // start index of rightTsBlock
-  private final int[] rightOutputSymbolIdx;
-  private TsBlock cachedNextRightBlock;
-  private boolean hasCachedNextRightBlock;
+  protected final Operator rightChild;
+  protected final List<TsBlock> rightBlockList = new ArrayList<>();
+  protected final int rightJoinKeyPosition;
+  protected int rightBlockListIdx;
+  protected int rightIndex; // start index of rightTsBlock
+  protected final int[] rightOutputSymbolIdx;
+  protected TsBlock cachedNextRightBlock;
+  protected boolean hasCachedNextRightBlock;
 
-  private final JoinKeyComparator comparator;
-  private final TsBlockBuilder resultBuilder;
+  protected final JoinKeyComparator comparator;
+  protected final TsBlockBuilder resultBuilder;
 
-  private final Type joinKeyType;
+  protected final Type joinKeyType;
 
   protected MemoryReservationManager memoryReservationManager;
+
+  protected long maxUsedMemory;
+  protected long usedMemory;
 
   public TableInnerJoinOperator(
       OperatorContext operatorContext,
@@ -78,7 +81,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
       Operator rightChild,
       int rightJoinKeyPosition,
       int[] rightOutputSymbolIdx,
-      JoinKeyComparator timeComparator,
+      JoinKeyComparator joinKeyComparator,
       List<TSDataType> dataTypes,
       Type joinKeyType) {
     this.operatorContext = operatorContext;
@@ -89,7 +92,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
     this.rightJoinKeyPosition = rightJoinKeyPosition;
     this.rightOutputSymbolIdx = rightOutputSymbolIdx;
 
-    this.comparator = timeComparator;
+    this.comparator = joinKeyComparator;
     this.joinKeyType = joinKeyType;
     this.resultBuilder = new TsBlockBuilder(dataTypes);
 
@@ -151,7 +154,8 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     // all the rightTsBlock is less than leftTsBlock, just skip right
     if (allRightLessThanLeft()) {
-      clearRightBlockList();
+      // release memory;
+      resetRightBlockList();
       return null;
     }
 
@@ -162,7 +166,28 @@ public class TableInnerJoinOperator extends AbstractOperator {
       return null;
     }
 
-    mainJoinLoop();
+    while (!resultBuilder.isFull()) {
+      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
+      // all right block value is not matched
+      if (!comparator.lessThanOrEqual(
+          leftBlock,
+          leftJoinKeyPosition,
+          leftIndex,
+          lastRightTsBlock,
+          rightJoinKeyPosition,
+          lastRightTsBlock.getPositionCount() - 1)) {
+        resetRightBlockList();
+        break;
+      }
+
+      appendResult();
+
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        leftBlock = null;
+        leftIndex = 0;
+        break;
+      }
+    }
 
     if (resultBuilder.isEmpty()) {
       return null;
@@ -172,7 +197,67 @@ public class TableInnerJoinOperator extends AbstractOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
-  private boolean prepareInput(long start, long maxRuntime) throws Exception {
+  protected boolean allRightLessThanLeft() {
+    // check if the last value of the right is less than left
+    return comparator.lessThan(
+        rightBlockList.get(rightBlockList.size() - 1),
+        rightJoinKeyPosition,
+        rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex);
+  }
+
+  protected boolean allLeftLessThanRight() {
+    return comparator.lessThan(
+        leftBlock,
+        leftJoinKeyPosition,
+        leftBlock.getPositionCount() - 1,
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPosition,
+        rightIndex);
+  }
+
+  private void appendResult() {
+    while (comparator.lessThan(
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPosition,
+        rightIndex,
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex)) {
+      if (rightBlockFinish()) {
+        return;
+      }
+    }
+
+    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
+    while (comparator.equalsTo(
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex,
+        rightBlockList.get(tmpBlockIdx),
+        rightJoinKeyPosition,
+        tmpIdx)) {
+      appendValueToResult(tmpBlockIdx, tmpIdx);
+
+      resultBuilder.declarePosition();
+
+      tmpIdx++;
+      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
+        tmpIdx = 0;
+        tmpBlockIdx++;
+      }
+
+      if (tmpBlockIdx >= rightBlockList.size()) {
+        break;
+      }
+    }
+
+    leftIndex++;
+  }
+
+  protected boolean prepareInput(long start, long maxRuntime) throws Exception {
     if ((leftBlock == null || leftBlock.getPositionCount() == leftIndex)
         && leftChild.hasNextWithTimer()) {
       leftBlock = leftChild.nextWithTimer();
@@ -204,18 +289,18 @@ public class TableInnerJoinOperator extends AbstractOperator {
     return leftBlockNotEmpty() && rightBlockNotEmpty() && hasCachedNextRightBlock;
   }
 
-  private void tryCachedNextRightTsBlock() throws Exception {
+  protected void tryCachedNextRightTsBlock() throws Exception {
     if (rightChild.hasNextWithTimer()) {
       TsBlock block = rightChild.nextWithTimer();
       if (block != null) {
-        if (equalsTo(
+        if (comparator.equalsTo(
             block,
             rightJoinKeyPosition,
             0,
             rightBlockList.get(rightBlockList.size() - 1),
             rightJoinKeyPosition,
             rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1)) {
-          memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+          reserveMemory(block.getRetainedSizeInBytes());
           rightBlockList.add(block);
         } else {
           hasCachedNextRightBlock = true;
@@ -228,176 +313,104 @@ public class TableInnerJoinOperator extends AbstractOperator {
     }
   }
 
-  private void mainJoinLoop() {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        intJoinLoop();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longJoinLoop();
-        break;
-      case FLOAT:
-        floatJoinLoop();
-        break;
-      case DOUBLE:
-        doubleJoinLoop();
-        break;
-      case STRING:
-        binaryJoinLoop();
-        break;
-      case BLOB:
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new IllegalArgumentException("Unsupported dataType: " + joinKeyType.getTypeEnum());
+  /**
+   * @return true if right block is consumed up
+   */
+  protected boolean rightBlockFinish() {
+    rightIndex++;
+
+    if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
+      rightBlockListIdx++;
+      rightIndex = 0;
     }
-  }
 
-  private boolean allRightLessThanLeft() {
-    // check if the last value of the right is less than left
-    return lessThan(
-        rightBlockList.get(rightBlockList.size() - 1),
-        rightJoinKeyPosition,
-        rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex);
-  }
-
-  private boolean allLeftLessThanRight() {
-    return lessThan(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftBlock.getPositionCount() - 1,
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex);
-  }
-
-  /* Get value from the two blocks, and returns comparator.lessThan(firstValue, secondValue). */
-  private boolean lessThan(
-      TsBlock firstBlock,
-      int firstColumnIndex,
-      int firstRowIndex,
-      TsBlock secondBlock,
-      int secondColumnIndex,
-      int secondRowIndex) {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        return comparator.lessThan(
-            getIntFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getIntFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case INT64:
-      case TIMESTAMP:
-        return comparator.lessThan(
-            getLongFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getLongFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case FLOAT:
-        return comparator.lessThan(
-            getFloatFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getFloatFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case DOUBLE:
-        return comparator.lessThan(
-            getDoubleFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getDoubleFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case STRING:
-        return comparator.lessThan(
-            getBinaryFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getBinaryFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case BLOB:
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new IllegalArgumentException("Unsupported type: " + joinKeyType.getTypeEnum());
+    if (rightBlockListIdx >= rightBlockList.size()) {
+      rightBlockListIdx = 0;
+      rightIndex = 0;
+      return true;
     }
+
+    return false;
   }
 
-  /* Get value from the two blocks, and returns comparator.equalsTo(firstValue, secondValue). */
-  private boolean equalsTo(
-      TsBlock firstBlock,
-      int firstColumnIndex,
-      int firstRowIndex,
-      TsBlock secondBlock,
-      int secondColumnIndex,
-      int secondRowIndex) {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        return comparator.equalsTo(
-            getIntFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getIntFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case INT64:
-      case TIMESTAMP:
-        return comparator.equalsTo(
-            getLongFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getLongFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case FLOAT:
-        return comparator.equalsTo(
-            getFloatFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getFloatFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case DOUBLE:
-        return comparator.equalsTo(
-            getDoubleFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getDoubleFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case STRING:
-        return comparator.equalsTo(
-            getBinaryFromBlock(firstBlock, firstColumnIndex, firstRowIndex),
-            getBinaryFromBlock(secondBlock, secondColumnIndex, secondRowIndex));
-      case BLOB:
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new IllegalArgumentException("Unsupported type: " + joinKeyType.getTypeEnum());
-    }
-  }
-
-  private void clearRightBlockList() {
-    for (int i = 1; i < rightBlockList.size(); i++) {
-      memoryReservationManager.releaseMemoryCumulatively(
-          rightBlockList.get(i).getRetainedSizeInBytes());
-    }
-    rightBlockList.clear();
-    rightBlockListIdx = 0;
-    rightIndex = 0;
-  }
-
-  private boolean leftBlockNotEmpty() {
+  protected boolean leftBlockNotEmpty() {
     return leftBlock != null && leftIndex < leftBlock.getPositionCount();
   }
 
-  private boolean rightBlockNotEmpty() {
+  protected boolean rightBlockNotEmpty() {
     return (!rightBlockList.isEmpty()
             && rightBlockListIdx < rightBlockList.size()
             && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount())
         || (hasCachedNextRightBlock && cachedNextRightBlock != null);
   }
 
-  private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
+  protected void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
+    appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
+
+    appendRightBlockData(
+        rightBlockList,
+        tmpRightBlockListIdx,
+        tmpRightIndex,
+        leftOutputSymbolIdx,
+        rightOutputSymbolIdx,
+        resultBuilder);
+  }
+
+  protected void appendLeftBlockData(
+      int[] leftOutputSymbolIdx, TsBlockBuilder resultBuilder, TsBlock leftBlock, int leftIndex) {
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      int idx = leftOutputSymbolIdx[i];
       ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-      if (leftBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
+      if (leftBlock.getColumn(idx).isNull(leftIndex)) {
         columnBuilder.appendNull();
       } else {
-        columnBuilder.write(leftBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
+        columnBuilder.write(leftBlock.getColumn(idx), leftIndex);
       }
     }
+  }
 
-    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
+  protected void appendRightBlockData(
+      List<TsBlock> rightBlockList,
+      int rightBlockListIdx,
+      int rightIndex,
+      int[] leftOutputSymbolIdxArray,
+      int[] rightOutputSymbolIdxArray,
+      TsBlockBuilder resultBuilder) {
+    for (int i = 0; i < rightOutputSymbolIdxArray.length; i++) {
+      ColumnBuilder columnBuilder =
+          resultBuilder.getColumnBuilder(leftOutputSymbolIdxArray.length + i);
 
       if (rightBlockList
-          .get(tmpRightBlockListIdx)
-          .getColumn(rightOutputSymbolIdx[i])
-          .isNull(tmpRightIndex)) {
+          .get(rightBlockListIdx)
+          .getColumn(rightOutputSymbolIdxArray[i])
+          .isNull(rightIndex)) {
         columnBuilder.appendNull();
       } else {
         columnBuilder.write(
-            rightBlockList.get(tmpRightBlockListIdx).getColumn(rightOutputSymbolIdx[i]),
-            tmpRightIndex);
+            rightBlockList.get(rightBlockListIdx).getColumn(rightOutputSymbolIdxArray[i]),
+            rightIndex);
       }
+    }
+  }
+
+  protected void resetRightBlockList() {
+    for (int i = 1; i < rightBlockList.size(); i++) {
+      long size = rightBlockList.get(i).getRetainedSizeInBytes();
+      usedMemory -= size;
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+
+    rightBlockList.clear();
+    rightBlockListIdx = 0;
+    rightIndex = 0;
+  }
+
+  protected void reserveMemory(long size) {
+    usedMemory += size;
+    memoryReservationManager.reserveMemoryCumulatively(size);
+    if (usedMemory > maxUsedMemory) {
+      maxUsedMemory = usedMemory;
+      operatorContext.recordSpecifiedInfo(MAX_RESERVED_MEMORY, Long.toString(maxUsedMemory));
     }
   }
 
@@ -433,7 +446,7 @@ public class TableInnerJoinOperator extends AbstractOperator {
 
     if (!rightBlockList.isEmpty()) {
       for (TsBlock block : rightBlockList) {
-        memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+        memoryReservationManager.releaseMemoryCumulatively(block.getRetainedSizeInBytes());
       }
     }
   }
@@ -473,349 +486,4 @@ public class TableInnerJoinOperator extends AbstractOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + resultBuilder.getRetainedSizeInBytes();
   }
-
-  // region helper function for each datatype
-
-  private int getIntFromBlock(TsBlock block, int columnIndex, int rowIndex) {
-    return block.getColumn(columnIndex).getInt(rowIndex);
-  }
-
-  private long getLongFromBlock(TsBlock block, int columnIndex, int rowIndex) {
-    return block.getColumn(columnIndex).getLong(rowIndex);
-  }
-
-  private float getFloatFromBlock(TsBlock block, int columnIndex, int rowIndex) {
-    return block.getColumn(columnIndex).getFloat(rowIndex);
-  }
-
-  private double getDoubleFromBlock(TsBlock block, int columnIndex, int rowIndex) {
-    return block.getColumn(columnIndex).getDouble(rowIndex);
-  }
-
-  private Binary getBinaryFromBlock(TsBlock block, int columnIndex, int rowIndex) {
-    return block.getColumn(columnIndex).getBinary(rowIndex);
-  }
-
-  private void intJoinLoop() {
-    while (!resultBuilder.isFull()) {
-      int leftJoinKey = leftBlock.getColumn(leftJoinKeyPosition).getInt(leftIndex);
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
-      int rightJoinKey =
-          lastRightTsBlock
-              .getColumn(rightJoinKeyPosition)
-              .getInt(lastRightTsBlock.getPositionCount() - 1);
-      // all right block value is not matched
-      if (!comparator.lessThanOrEqual(leftJoinKey, rightJoinKey)) {
-        clearRightBlockList();
-        break;
-      }
-
-      appendIntResult(leftJoinKey);
-
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
-        break;
-      }
-    }
-  }
-
-  private void longJoinLoop() {
-    while (!resultBuilder.isFull()) {
-      long leftJoinKey = leftBlock.getColumn(leftJoinKeyPosition).getLong(leftIndex);
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
-      long rightJoinKey =
-          lastRightTsBlock
-              .getColumn(rightJoinKeyPosition)
-              .getLong(lastRightTsBlock.getPositionCount() - 1);
-      // all right block value is not matched
-      if (!comparator.lessThanOrEqual(leftJoinKey, rightJoinKey)) {
-        clearRightBlockList();
-        break;
-      }
-
-      appendLongResult(leftJoinKey);
-
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
-        break;
-      }
-    }
-  }
-
-  private void floatJoinLoop() {
-    while (!resultBuilder.isFull()) {
-      float leftJoinKey = leftBlock.getColumn(leftJoinKeyPosition).getFloat(leftIndex);
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
-      float rightJoinKey =
-          lastRightTsBlock
-              .getColumn(rightJoinKeyPosition)
-              .getFloat(lastRightTsBlock.getPositionCount() - 1);
-      // all right block value is not matched
-      if (!comparator.lessThanOrEqual(leftJoinKey, rightJoinKey)) {
-        clearRightBlockList();
-        break;
-      }
-
-      appendFloatResult(leftJoinKey);
-
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
-        break;
-      }
-    }
-  }
-
-  private void doubleJoinLoop() {
-    while (!resultBuilder.isFull()) {
-      double leftJoinKey = leftBlock.getColumn(leftJoinKeyPosition).getDouble(leftIndex);
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
-      double rightJoinKey =
-          lastRightTsBlock
-              .getColumn(rightJoinKeyPosition)
-              .getDouble(lastRightTsBlock.getPositionCount() - 1);
-      // all right block value is not matched
-      if (!comparator.lessThanOrEqual(leftJoinKey, rightJoinKey)) {
-        clearRightBlockList();
-        break;
-      }
-
-      appendDoubleResult(leftJoinKey);
-
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
-        break;
-      }
-    }
-  }
-
-  private void binaryJoinLoop() {
-    while (!resultBuilder.isFull()) {
-      Binary leftJoinKey = leftBlock.getColumn(leftJoinKeyPosition).getBinary(leftIndex);
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
-      Binary rightJoinKey =
-          lastRightTsBlock
-              .getColumn(rightJoinKeyPosition)
-              .getBinary(lastRightTsBlock.getPositionCount() - 1);
-      // all right block value is not matched
-      if (!comparator.lessThanOrEqual(leftJoinKey, rightJoinKey)) {
-        clearRightBlockList();
-        break;
-      }
-
-      appendBinaryResult(leftJoinKey);
-
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
-        break;
-      }
-    }
-  }
-
-  private void appendIntResult(int leftJoinKey) {
-
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx).getColumn(rightJoinKeyPosition).getInt(rightIndex),
-        leftJoinKey)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
-        return;
-      }
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (leftJoinKey
-        == rightBlockList.get(tmpBlockIdx).getColumn(rightJoinKeyPosition).getInt(tmpIdx)) {
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
-      }
-    }
-  }
-
-  private void appendLongResult(long leftJoinKey) {
-
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx).getColumn(rightJoinKeyPosition).getLong(rightIndex),
-        leftJoinKey)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
-        return;
-      }
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (leftJoinKey
-        == rightBlockList.get(tmpBlockIdx).getColumn(rightJoinKeyPosition).getLong(tmpIdx)) {
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
-      }
-    }
-  }
-
-  private void appendFloatResult(float leftJoinKey) {
-
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx).getColumn(rightJoinKeyPosition).getFloat(rightIndex),
-        leftJoinKey)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
-        return;
-      }
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (leftJoinKey
-        == rightBlockList.get(tmpBlockIdx).getColumn(rightJoinKeyPosition).getFloat(tmpIdx)) {
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
-      }
-    }
-  }
-
-  private void appendDoubleResult(double leftJoinKey) {
-
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx).getColumn(rightJoinKeyPosition).getDouble(rightIndex),
-        leftJoinKey)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
-        return;
-      }
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (leftJoinKey
-        == rightBlockList.get(tmpBlockIdx).getColumn(rightJoinKeyPosition).getDouble(tmpIdx)) {
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
-      }
-    }
-  }
-
-  private void appendBinaryResult(Binary leftJoinKey) {
-
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx).getColumn(rightJoinKeyPosition).getBinary(rightIndex),
-        leftJoinKey)) {
-      rightIndex++;
-
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightBlockListIdx++;
-        rightIndex = 0;
-      }
-
-      if (rightBlockListIdx >= rightBlockList.size()) {
-        rightBlockListIdx = 0;
-        rightIndex = 0;
-        return;
-      }
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (comparator.equalsTo(
-        leftJoinKey,
-        rightBlockList.get(tmpBlockIdx).getColumn(rightJoinKeyPosition).getBinary(tmpIdx))) {
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
-      }
-    }
-  }
-
-  // end region
 }

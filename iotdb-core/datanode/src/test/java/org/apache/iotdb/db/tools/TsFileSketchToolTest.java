@@ -108,21 +108,21 @@ public class TsFileSketchToolTest {
         long timestamp = 1;
         long value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
-          int row = tablet.rowSize++;
-          timestamps[row] = timestamp++;
+          int row = tablet.getRowSize();
+          tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
             long[] sensor = (long[]) values[i];
             sensor[row] = value;
           }
           // write Tablet to TsFile
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
-            tsFileWriter.write(tablet);
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+            tsFileWriter.writeTree(tablet);
             tablet.reset();
           }
         }
         // write Tablet to TsFile
-        if (tablet.rowSize != 0) {
-          tsFileWriter.write(tablet);
+        if (tablet.getRowSize() != 0) {
+          tsFileWriter.writeTree(tablet);
           tablet.reset();
         }
 
@@ -134,20 +134,20 @@ public class TsFileSketchToolTest {
         timestamp = 1;
         value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
-          int row = tablet.rowSize++;
-          timestamps[row] = timestamp++;
+          int row = tablet.getRowSize();
+          tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
             long[] sensor = (long[]) values[i];
             sensor[row] = value;
           }
           // write Tablet to TsFile
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
             tsFileWriter.writeAligned(tablet);
             tablet.reset();
           }
         }
         // write Tablet to TsFile
-        if (tablet.rowSize != 0) {
+        if (tablet.getRowSize() != 0) {
           tsFileWriter.writeAligned(tablet);
           tablet.reset();
         }

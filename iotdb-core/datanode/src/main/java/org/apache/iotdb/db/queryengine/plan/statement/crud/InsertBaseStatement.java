@@ -585,7 +585,7 @@ public abstract class InsertBaseStatement extends Statement {
     }
     if (measurementSchemas != null) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        measurementSchema.setMeasurementId(measurementSchema.getMeasurementId().toLowerCase());
+        measurementSchema.setMeasurementName(measurementSchema.getMeasurementName().toLowerCase());
       }
     }
   }

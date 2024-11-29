@@ -19,39 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator;
 
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface JoinKeyComparator {
 
-  /*Use primitive types to avoid boxing and unboxing.*/
+  boolean lessThan(
+      TsBlock left,
+      int leftColumnIndex,
+      int leftRowIndex,
+      TsBlock right,
+      int rightColumnIndex,
+      int rightRowIndex);
 
-  boolean lessThan(int left, int right);
+  boolean equalsTo(
+      TsBlock left,
+      int leftColumnIndex,
+      int leftRowIndex,
+      TsBlock right,
+      int rightColumnIndex,
+      int rightRowIndex);
 
-  boolean lessThan(long left, long right);
-
-  boolean lessThan(float left, float right);
-
-  boolean lessThan(double left, double right);
-
-  boolean lessThan(Binary left, Binary right);
-
-  boolean equalsTo(int left, int right);
-
-  boolean equalsTo(long left, long right);
-
-  boolean equalsTo(float left, float right);
-
-  boolean equalsTo(double left, double right);
-
-  boolean equalsTo(Binary left, Binary right);
-
-  boolean lessThanOrEqual(int left, int right);
-
-  boolean lessThanOrEqual(long left, long right);
-
-  boolean lessThanOrEqual(float left, float right);
-
-  boolean lessThanOrEqual(double left, double right);
-
-  boolean lessThanOrEqual(Binary left, Binary right);
+  boolean lessThanOrEqual(
+      TsBlock left,
+      int leftColumnIndex,
+      int leftRowIndex,
+      TsBlock right,
+      int rightColumnIndex,
+      int rightRowIndex);
 }

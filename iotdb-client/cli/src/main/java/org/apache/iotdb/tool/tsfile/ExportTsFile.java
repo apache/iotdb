@@ -341,10 +341,9 @@ public class ExportTsFile extends AbstractTsFileTool {
           new MeasurementSchema(path.getMeasurement(), tsDataType);
       List<Field> seriesList =
           session.executeQueryStatement("show timeseries " + column, timeout).next().getFields();
-      measurementSchema.setEncoding(
-          TSEncoding.valueOf(seriesList.get(4).getStringValue()).serialize());
-      measurementSchema.setCompressor(
-          CompressionType.valueOf(seriesList.get(5).getStringValue()).serialize());
+      measurementSchema.setEncoding(TSEncoding.valueOf(seriesList.get(4).getStringValue()));
+      measurementSchema.setCompressionType(
+          CompressionType.valueOf(seriesList.get(5).getStringValue()));
 
       deviceSchemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
       deviceColumnIndices.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(i);
@@ -390,7 +389,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       for (Tablet tablet : tabletList) {
         String deviceId = tablet.getDeviceId();
         List<Integer> columnIndices = deviceColumnIndices.get(deviceId);
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
         List<IMeasurementSchema> schemas = tablet.getSchemas();
 
@@ -402,10 +401,10 @@ public class ExportTsFile extends AbstractTsFileTool {
           if (value == null) {
             tablet.bitMaps[i].mark(rowIndex);
           }
-          tablet.addValue(measurementSchema.getMeasurementId(), rowIndex, value);
+          tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
         }
 
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           writeToTsFile(alignedDevices, tsFileWriter, tablet);
           tablet.initBitMaps();
           tablet.reset();
@@ -414,7 +413,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
 
     for (Tablet tablet : tabletList) {
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         writeToTsFile(alignedDevices, tsFileWriter, tablet);
       }
     }
@@ -455,7 +454,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       writeWithTablets(
           sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
 
-      tsFileWriter.flushAllChunkGroups();
+      tsFileWriter.flush();
     }
   }
 
@@ -465,7 +464,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (deviceFilterSet.contains(tablet.getDeviceId())) {
       tsFileWriter.writeAligned(tablet);
     } else {
-      tsFileWriter.write(tablet);
+      tsFileWriter.writeTree(tablet);
     }
   }
 
