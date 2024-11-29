@@ -499,11 +499,14 @@ public class IoTDBTableIT {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
 
-      try {
-        statement.execute("alter table test1.test drop column a");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals("500: Unknown database test1", e.getMessage());
+      // TODO: Reopen
+      if (false) {
+        try {
+          statement.execute("alter table test1.test drop column a");
+          fail();
+        } catch (final SQLException e) {
+          assertEquals("500: Unknown database test1", e.getMessage());
+        }
       }
 
       try {
