@@ -246,12 +246,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getMaxDataRegionGroupNum());
       }
 
-      mTree
-          .getDatabaseNodeByDatabasePath(partialPathName)
-          .getAsMNode()
-          .setDatabaseSchema(currentSchema);
-
       if (alterSchema.isSetTTL()) {
+        currentSchema.setTTL(alterSchema.getTTL());
         mTree.getAllTablesUnderSpecificDatabase(partialPathName).stream()
             .map(Pair::getLeft)
             .filter(
@@ -261,7 +257,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         .equals(table.getPropValue(TsTable.TTL_DEFAULT).orElse(null)))
             .forEach(
                 table -> table.addProp(TsTable.TTL_PROPERTY, String.valueOf(alterSchema.getTTL())));
+        LOGGER.info(
+            "[SetTTL] The ttl of Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getTTL());
       }
+
+      mTree
+          .getDatabaseNodeByDatabasePath(partialPathName)
+          .getAsMNode()
+          .setDatabaseSchema(currentSchema);
+
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
