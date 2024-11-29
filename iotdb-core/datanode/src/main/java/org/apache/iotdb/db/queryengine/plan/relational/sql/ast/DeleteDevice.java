@@ -67,6 +67,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
 
   public DeleteDevice(final NodeLocation location, final Table table, final Expression where) {
     super(location, table, where);
+    throw new UnsupportedOperationException("Delete device is unsupported yet.");
   }
 
   public void parseModEntries(final TsTable table) {
