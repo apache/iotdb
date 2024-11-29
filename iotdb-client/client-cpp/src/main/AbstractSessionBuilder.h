@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,25 +17,16 @@
  * under the License.
  */
 
-#define CATCH_CONFIG_MAIN
+#include <string>
 
-#include <catch.hpp>
-#include "TableSessionBuilder.h"
-
-TableSession *session = new TableSessionBuilder().host("127.0.0.1").rpcPort(6667).username("root").password("root").build();
-
-struct SessionListener : Catch::TestEventListenerBase {
-
-    using TestEventListenerBase::TestEventListenerBase;
-
-    void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
-        // Perform some setup before a test case is run
-    }
-
-    void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
-        // Tear-down after a test case is run
-        session->close();
-    }
-};
-
-CATCH_REGISTER_LISTENER( SessionListener )
+class AbstractSessionBuilder {
+public:
+    std::string host = "localhost";
+    int rpcPort = 6667;
+    std::string username = "root";
+    std::string password = "root";
+    std::string zoneId = "";
+    int fetchSize = 10000;
+    std::string sqlDialect = "tree";
+    std::string database = "";
+}

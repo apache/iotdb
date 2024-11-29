@@ -41,6 +41,7 @@
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TBufferTransports.h>
 #include "IClientRPCService.h"
+#include "AbstractSessionBuilder.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -132,6 +133,15 @@ public:
     explicit UnSupportedDataTypeException(const char *m) : IoTDBException(m) {}
 
     explicit UnSupportedDataTypeException(const std::string &m) : IoTDBException("UnSupported dataType: " + m) {}
+};
+
+class SchemaNotFoundException : public IoTDBException {
+public:
+    SchemaNotFoundException() {}
+
+    explicit SchemaNotFoundException(const char *m) : IoTDBException(m) {}
+
+    explicit SchemaNotFoundException(const std::string &m) : IoTDBException(m) {}
 };
 
 namespace Version {
@@ -566,6 +576,7 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
+    std::map<std::string, size_t> schemaNameIndex; // the map of schema name to index
     std::vector<ColumnCategory> columnTypes; // the list of column types (used in table model)
     std::vector<int64_t> timestamps;   // timestamps in this tablet
     std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
@@ -621,6 +632,10 @@ public:
         for (size_t i = 0; i < schemas.size(); i++) {
             bitMaps[i].resize(maxRowNumber);
         }
+        // create schemaNameIndex
+        for (size_t i = 0; i < schemas.size(); i++) {
+            schemaNameIndex[schemas[i].first] = i;
+        }
         this->rowSize = 0;
     }
 
@@ -632,7 +647,11 @@ public:
         }
     }
 
-    void addValue(size_t schemaId, size_t rowIndex, void *value);
+    template<typename T>
+    void addValue(size_t schemaId, size_t rowIndex, const T& value);
+
+    template<typename T>
+    void addValue(const std::string &schemaName, size_t rowIndex, const T& value);
 
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
 
@@ -1061,6 +1080,19 @@ public:
         this->zoneId = zoneId;
         this->fetchSize = fetchSize;
         this->version = Version::V_1_0;
+        initZoneId();
+    }
+
+    Session(AbstractSessionBuilder* builder) {
+        this->host = builder->host;
+        this->rpcPort = builder->rpcPort;
+        this->username = builder->username;
+        this->password = builder->password;
+        this->zoneId = builder->zoneId;
+        this->fetchSize = builder->fetchSize;
+        this->version = Version::V_1_0;
+        this->sqlDialect = builder->sqlDialect;
+        this->database = builder->database;
         initZoneId();
     }
 

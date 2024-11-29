@@ -182,7 +182,8 @@ void Tablet::deleteColumns() {
     }
 }
 
-void Tablet::addValue(size_t schemaId, size_t rowIndex, void* value) {
+template<typename T>
+void Tablet::addValue(size_t schemaId, size_t rowIndex, const T& value) {
     if (schemaId >= schemas.size()) {
         char tmpStr[100];
         sprintf(tmpStr, "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.", schemaId, schemas.size());
@@ -198,38 +199,41 @@ void Tablet::addValue(size_t schemaId, size_t rowIndex, void* value) {
     TSDataType::TSDataType dataType = schemas[schemaId].second;
     switch (dataType) {
         case TSDataType::BOOLEAN: {
-            bool* valueBuf = (bool*)(values[schemaId]);
-            valueBuf[rowIndex] = *((bool*)value);
+            ((bool*)values[schemaId])[rowIndex] = value;
             break;
         }
         case TSDataType::INT32: {
-            int* valueBuf = (int*)(values[schemaId]);
-            valueBuf[rowIndex] = *((int*)value);
+            ((int*)values[schemaId])[rowIndex] = value;
             break;
         }
         case TSDataType::INT64: {
-            int64_t* valueBuf = (int64_t*)(values[schemaId]);
-            valueBuf[rowIndex] = *((int64_t*)value);
+            ((int64_t*)values[schemaId])[rowIndex] = value;
             break;
         }
         case TSDataType::FLOAT: {
-            float* valueBuf = (float*)(values[schemaId]);
-            valueBuf[rowIndex] = *((float*)value);
+            ((float*)values[schemaId])[rowIndex] = value;
             break;
         }
         case TSDataType::DOUBLE: {
-            double* valueBuf = (double*)(values[schemaId]);
-            valueBuf[rowIndex] = *((double*)value);
+            ((double*)values[schemaId])[rowIndex] = value;
             break;
         }
         case TSDataType::TEXT: {
-            string* valueBuf = (string*)(values[schemaId]);
-            valueBuf[rowIndex] = *(string*)value;
+            ((string*)values[schemaId])[rowIndex] = value;
             break;
         }
         default:
             throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
     }
+}
+
+template<typename T>
+void Tablet::addValue(const string &schemaName, size_t rowIndex, const T& value) {
+    if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
+        throw SchemaNotFoundException(string("Schema ") + schemaName + " not found.");
+    }
+    size_t schemaId = schemaNameIndex[schemaName];
+    addValue(schemaId, rowIndex, value);
 }
 
 void Tablet::reset() {

@@ -18,12 +18,12 @@
  */
 
 #include "catch.hpp"
-#include "Session.h"
+#include "TableSession.h"
 #include <math.h>
 
 using namespace std;
 
-extern Session *session;
+extern TableSession *session;
 
 static int global_test_id = 0;
 class CaseReporter
@@ -49,7 +49,7 @@ TEST_CASE("Create table success", "[createTable]") {
     session->executeNonQueryStatement("CREATE DATABASE db1");
     session->executeNonQueryStatement("CREATE DATABASE db2");
     session->executeNonQueryStatement("USE \"db1\"");
-    REQUIRE(session->getDatabase() == "db1");
+    REQUIRE(session->session->getDatabase() == "db1");
     session->executeNonQueryStatement("CREATE TABLE table0 ("
             "id1 string id,"
             "attr1 string attribute,"
@@ -93,13 +93,13 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
         double value = row * 1.1;
         tablet.addValue(2, rowIndex, &value);
         if (tablet.rowSize == tablet.maxRowNumber) {
-            session->insertRelationalTablet(tablet, true);
+            session->insert(tablet, true);
             tablet.reset();
         }
     }
 
     if (tablet.rowSize != 0) {
-        session->insertRelationalTablet(tablet, true);
+        session->insert(tablet, true);
         tablet.reset();
     }
     session->executeNonQueryStatement("FLUSH");
