@@ -19,17 +19,27 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class AlterDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterDatabaseState> {
+
+  protected String database;
+  protected List<TsTable> tables = new ArrayList<>();
 
   @Override
   protected Flow executeFromState(
@@ -45,16 +55,39 @@ public class AlterDatabaseProcedure
 
   @Override
   protected AlterDatabaseState getState(final int stateId) {
-    return null;
+    return AlterDatabaseState.values()[stateId];
   }
 
   @Override
   protected int getStateId(final AlterDatabaseState alterDatabaseState) {
-    return 0;
+    return alterDatabaseState.ordinal();
   }
 
   @Override
   protected AlterDatabaseState getInitialState() {
-    return null;
+    return AlterDatabaseState.CHECK_ALTERED_TABLES;
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(tables.size(), stream);
+    for (final TsTable table : tables) {
+      table.serialize(stream);
+    }
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    this.database = ReadWriteIOUtils.readString(byteBuffer);
+    this.tableName = ReadWriteIOUtils.readString(byteBuffer);
+    this.queryId = ReadWriteIOUtils.readString(byteBuffer);
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      this.table = TsTable.deserialize(byteBuffer);
+    }
   }
 }
