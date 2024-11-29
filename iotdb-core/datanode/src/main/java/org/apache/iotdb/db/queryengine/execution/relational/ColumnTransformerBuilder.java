@@ -1003,7 +1003,10 @@ public class ColumnTransformerBuilder
         columnTransformers.add(this.process(children.get(i), context));
       }
       return new FormatColumnTransformer(
-          STRING, ((StringLiteral) children.get(0)).getValue(), columnTransformers);
+          STRING,
+          ((StringLiteral) children.get(0)).getValue(),
+          columnTransformers,
+          context.sessionInfo.getZoneId());
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
