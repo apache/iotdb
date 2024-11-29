@@ -906,7 +906,8 @@ public class DataRegion implements IDataRegionForQuery {
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
       tsFileManager.add(tsFileResource, isSeq);
-      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())
+          && tsFileResource.resourceFileExists()) {
         tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         resourceListForAsyncRecover.add(tsFileResource);
