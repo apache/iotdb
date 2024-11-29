@@ -831,7 +831,8 @@ public class ConfigMTree {
             }
           } else if (k.equals(TsTable.TTL_PROPERTY)) {
             table.addProp(TsTable.TTL_DEFAULT, Boolean.TRUE.toString());
-            if (databaseNode.getDatabaseSchema().isSetTTL()) {
+            if (databaseNode.getDatabaseSchema().isSetTTL()
+                && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
               table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
             } else {
               table.removeProp(k);
