@@ -51,6 +51,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.PRE_RELEASE;
+
 public class AlterDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterDatabaseState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AlterDatabaseProcedure.class);
@@ -107,7 +109,17 @@ public class AlterDatabaseProcedure
     }
   }
 
-  private void checkAlteredTables(final ConfigNodeProcedureEnv env) {}
+  private void checkAlteredTables(final ConfigNodeProcedureEnv env) {
+    try {
+      tables =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .getAlteredTablesByDatabase(schema.getName(), schema.getTTL());
+      setNextState(PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
+    }
+  }
 
   private void preRelease(final ConfigNodeProcedureEnv env) {
     if (!tables.isEmpty()) {
@@ -195,6 +207,9 @@ public class AlterDatabaseProcedure
   }
 
   protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    if (tables.isEmpty()) {
+      return;
+    }
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitOrRollbackReleaseTables(
             schema.getName(),

@@ -1231,6 +1231,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public List<TsTable> getAllTablesUnderSpecificDatabase(final String database)
+      throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree
+          .getAllTablesUnderSpecificDatabase(getQualifiedDatabasePartialPath(database))
+          .stream()
+          .map(Pair::getLeft)
+          .collect(Collectors.toList());
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public TSStatus addTableColumn(final AddTableColumnPlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {

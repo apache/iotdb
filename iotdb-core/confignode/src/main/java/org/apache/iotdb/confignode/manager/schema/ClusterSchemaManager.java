@@ -1337,6 +1337,22 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
+  public List<TsTable> getAlteredTablesByDatabase(final String database, final long ttl)
+      throws MetadataException {
+    return clusterSchemaInfo.getAllTablesUnderSpecificDatabase(database).stream()
+        .filter(
+            table -> {
+              if (Boolean.TRUE
+                  .toString()
+                  .equals(table.getPropValue(TsTable.TTL_DEFAULT).orElse(null))) {
+                table.addProp(TsTable.TTL_PROPERTY, String.valueOf(ttl));
+                return true;
+              }
+              return false;
+            })
+        .collect(Collectors.toList());
+  }
+
   public void clearSchemaQuotaCache() {
     schemaQuotaStatistics.clear();
   }
