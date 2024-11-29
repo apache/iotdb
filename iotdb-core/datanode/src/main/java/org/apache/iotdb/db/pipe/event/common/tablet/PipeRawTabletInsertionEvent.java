@@ -330,7 +330,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public long count() {
     final Tablet covertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
-    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+    return (long) covertedTablet.getRowSize() * covertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
@@ -354,7 +354,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public static boolean isTabletEmpty(final Tablet tablet) {
     return Objects.isNull(tablet)
-        || tablet.rowSize == 0
+        || tablet.getRowSize() == 0
         || Objects.isNull(tablet.getSchemas())
         || tablet.getSchemas().isEmpty();
   }

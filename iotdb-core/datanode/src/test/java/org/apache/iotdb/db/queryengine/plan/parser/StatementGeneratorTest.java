@@ -213,9 +213,11 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<Tablet.ColumnType> tsfileColumnCategories =
+    List<Tablet.ColumnCategory> tsfileColumnCategories =
         Arrays.asList(
-            Tablet.ColumnType.ID, Tablet.ColumnType.ATTRIBUTE, Tablet.ColumnType.MEASUREMENT);
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ATTRIBUTE,
+            Tablet.ColumnCategory.MEASUREMENT);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
             .map(TsTableColumnCategory::fromTsFileColumnType)

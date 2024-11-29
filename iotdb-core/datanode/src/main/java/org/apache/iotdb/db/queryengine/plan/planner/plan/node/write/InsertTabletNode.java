@@ -718,7 +718,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
+        measurements[i] = measurementSchemas[i].getMeasurementName();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {

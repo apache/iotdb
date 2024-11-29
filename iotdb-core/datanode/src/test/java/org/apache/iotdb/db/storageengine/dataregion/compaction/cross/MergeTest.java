@@ -160,20 +160,20 @@ abstract class MergeTest {
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j].toString());
+        TSRecord record = new TSRecord(deviceIds[j].toString(), i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i + valueOffset)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         tsFileResource.updateStartTime(deviceIds[j], i);
         tsFileResource.updateEndTime(deviceIds[j], i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();

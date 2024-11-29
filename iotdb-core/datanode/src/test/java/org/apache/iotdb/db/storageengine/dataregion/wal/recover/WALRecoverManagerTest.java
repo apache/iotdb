@@ -590,27 +590,27 @@ public class WALRecoverManagerTest {
           new Path(DEVICE2_NAME), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       writer.registerTimeseries(
           new Path(DEVICE2_NAME), new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = channel.size();
       }
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = (truncateSize + channel.size()) / 2;
       }

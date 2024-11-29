@@ -377,7 +377,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         if (valueChunk.isEmpty()) {
           IMeasurementSchema schema = schemaList.get(i);
           writer.writeEmptyValueChunk(
-              schema.getMeasurementId(),
+              schema.getMeasurementName(),
               schema.getCompressor(),
               schema.getType(),
               schema.getEncodingType(),

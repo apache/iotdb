@@ -427,7 +427,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long count() {
     long count = 0;
     for (final Tablet covertedTablet : convertToTablets()) {
-      count += (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+      count += (long) covertedTablet.getRowSize() * covertedTablet.getSchemas().size();
     }
     return count;
   }

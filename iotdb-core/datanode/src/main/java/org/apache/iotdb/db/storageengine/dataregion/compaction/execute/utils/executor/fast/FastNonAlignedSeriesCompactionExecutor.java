@@ -210,7 +210,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
               header.getEncodingType(),
               header.getCompressionType());
       compactionWriter.startMeasurement(
-          schema.getMeasurementId(), new ChunkWriterImpl(schema, true), subTaskId);
+          schema.getMeasurementName(), new ChunkWriterImpl(schema, true), subTaskId);
       hasStartMeasurement = true;
       seriesCompressionType = header.getCompressionType();
       seriesTSEncoding = header.getEncodingType();
