@@ -3152,15 +3152,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteDatabasesReq req =
+  public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(
                 Collections.singletonList(transformDBName(dropDB.getDbName().getValue())))
             .setIsTableModel(true);
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = client.deleteDatabases(req);
+      final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
@@ -3182,7 +3182,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.getCode()));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -3206,8 +3206,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
-          || TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         if (exists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
@@ -3218,6 +3217,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format(
                       "Database %s already exists", databaseSchema.getName().substring(5)),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
+        }
+      } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+        if (exists) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          LOGGER.info(
+              "Failed to ALTER DATABASE {}, because it doesn't exist", databaseSchema.getName());
+          future.setException(
+              new IoTDBException(
+                  String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
       } else {
         LOGGER.warn(
