@@ -384,10 +384,9 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder singleOrderedDeviceView(
       String id, String device, OrderByParameter orderByParameter, String... measurement) {
-    IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
-    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put(
-        deviceID, measurement.length == 1 ? Collections.singletonList(1) : Arrays.asList(1, 2));
+        device, measurement.length == 1 ? Collections.singletonList(1) : Arrays.asList(1, 2));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId(id),
@@ -396,7 +395,7 @@ public class TestPlanBuilder {
                 ? Arrays.asList(DEVICE, measurement[0])
                 : Arrays.asList(DEVICE, measurement[0], measurement[1]),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode(deviceID, getRoot());
+    deviceViewNode.addChildDeviceNode(device, getRoot());
     this.root = deviceViewNode;
     return this;
   }
