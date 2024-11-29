@@ -49,6 +49,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -677,8 +679,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias(),
-              (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+              plan instanceof CreateTimeSeriesPlanImpl
+                      && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
+                  || plan instanceof CreateTimeSeriesNode
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -760,8 +764,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               encodings,
               compressors,
               aliasList,
-              (plan instanceof CreateAlignedTimeSeriesPlanImpl
-                  && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
+              plan instanceof CreateAlignedTimeSeriesPlanImpl
+                      && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()
+                  || plan instanceof CreateAlignedTimeSeriesNode
+                      && ((CreateAlignedTimeSeriesNode) plan).isGeneratedByPipe(),
               existingMeasurementIndexes);
 
       // update statistics and schemaDataTypeNumMap
