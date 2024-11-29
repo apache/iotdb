@@ -193,6 +193,7 @@ public class Arena {
     }
 
     public void resize() {
+      average.update();
       int needRemain = (int) Math.ceil(average.average()) - getActiveSize();
       int evictNum = getQueueSize() - needRemain;
       while (evictNum > 0 && !queue.isEmpty()) {

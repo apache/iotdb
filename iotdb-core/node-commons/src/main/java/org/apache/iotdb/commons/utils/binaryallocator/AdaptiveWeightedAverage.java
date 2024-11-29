@@ -21,10 +21,18 @@ package org.apache.iotdb.commons.utils.binaryallocator;
 
 import static java.lang.Math.max;
 
-/** This file is modified from JDK17 src/hotspot/share/gc/shared/gcUtil.hpp */
+/**
+ * This file is modified from JDK17 src/hotspot/share/gc/shared/gcUtil.hpp. But some necessary
+ * modifications are made to adapt to the usage of binary allocator:
+ *
+ * <p>Adaptive weighted average implementation for memory allocation tracking. During each eviction
+ * cycle, records the peak memory allocation size via sampling, then uses this peak to calculate a
+ * weighted moving average.
+ */
 public class AdaptiveWeightedAverage {
   private float average;
   private int sampleCount;
+  private int tmpMaxSample;
   private final int weight;
   private boolean isOld; // Enable to have enough historical data
   private static final int OLD_THRESHOLD = 100;
@@ -33,14 +41,21 @@ public class AdaptiveWeightedAverage {
     this.weight = weight;
     average = 0f;
     sampleCount = 0;
+    tmpMaxSample = 0;
   }
 
   public void sample(int newSample) {
+    tmpMaxSample = max(tmpMaxSample, newSample);
+  }
+
+  // called at the end of each eviction cycle
+  public void update() {
     incrementCount();
 
     // Compute the new weighted average
-    float newAverage = computeAdaptiveAverage(newSample, average);
-    average = newAverage;
+    int newSample = tmpMaxSample;
+    tmpMaxSample = 0;
+    average = computeAdaptiveAverage(newSample, average);
   }
 
   public float average() {
@@ -50,6 +65,7 @@ public class AdaptiveWeightedAverage {
   public void clear() {
     average = 0f;
     sampleCount = 0;
+    tmpMaxSample = 0;
   }
 
   void incrementCount() {
