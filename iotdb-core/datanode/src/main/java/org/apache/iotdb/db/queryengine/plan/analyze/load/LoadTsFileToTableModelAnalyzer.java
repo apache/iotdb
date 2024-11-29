@@ -27,11 +27,12 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -191,9 +192,11 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       return;
     }
 
-    final CreateDBTask task =
-        new CreateDBTask(
-            new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database).setIsTableModel(true), true);
+    final CreateOrAlterDBTask task =
+        new CreateOrAlterDBTask(
+            new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database).setIsTableModel(true),
+            true,
+            DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());

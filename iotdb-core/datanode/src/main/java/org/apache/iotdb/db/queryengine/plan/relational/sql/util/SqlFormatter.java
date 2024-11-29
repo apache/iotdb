@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -89,6 +89,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -579,7 +580,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDelete(Delete node, Integer indent) {
+    protected Void visitDelete(final Delete node, final Integer indent) {
       builder.append("DELETE FROM ").append(formatName(node.getTable().getName()));
 
       node.getWhere().ifPresent(where -> builder.append(" WHERE ").append(formatExpression(where)));
@@ -588,10 +589,16 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateDB(CreateDB node, Integer indent) {
-      builder.append("CREATE DATABASE ");
-      if (node.isSetIfNotExists()) {
-        builder.append("IF NOT EXISTS ");
+    protected Void visitCreateOrAlterDB(final CreateOrAlterDB node, final Integer indent) {
+      builder.append(
+          node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
+              ? "CREATE DATABASE "
+              : "ALTER DATABASE ");
+      if (node.isSetExists()) {
+        builder.append(
+            node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
+                ? "IF NOT EXISTS "
+                : "IF EXISTS ");
       }
       builder.append(node.getDbName()).append(" ");
 
@@ -601,7 +608,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropDB(DropDB node, Integer indent) {
+    protected Void visitDropDB(final DropDB node, final Integer indent) {
       builder.append("DROP DATABASE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");

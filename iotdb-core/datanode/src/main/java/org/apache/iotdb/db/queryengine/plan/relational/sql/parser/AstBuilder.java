@@ -44,8 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -165,6 +165,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
@@ -272,21 +273,37 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateDbStatement(RelationalSqlParser.CreateDbStatementContext ctx) {
+  public Node visitCreateDbStatement(final RelationalSqlParser.CreateDbStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
     }
 
-    return new CreateDB(
+    return new CreateOrAlterDB(
         getLocation(ctx),
         ctx.EXISTS() != null,
         ((Identifier) visit(ctx.database)).getValue(),
-        properties);
+        properties,
+        DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
   }
 
   @Override
-  public Node visitDropDbStatement(RelationalSqlParser.DropDbStatementContext ctx) {
+  public Node visitAlterDbStatement(final RelationalSqlParser.AlterDbStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+
+    return new CreateOrAlterDB(
+        getLocation(ctx),
+        ctx.EXISTS() != null,
+        ((Identifier) visit(ctx.database)).getValue(),
+        properties,
+        DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER);
+  }
+
+  @Override
+  public Node visitDropDbStatement(final RelationalSqlParser.DropDbStatementContext ctx) {
     return new DropDB(
         getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)), ctx.EXISTS() != null);
   }

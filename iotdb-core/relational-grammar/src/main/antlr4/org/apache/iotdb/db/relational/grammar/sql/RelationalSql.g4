@@ -46,6 +46,7 @@ statement
     | useDatabaseStatement
     | showDatabasesStatement
     | createDbStatement
+    | alterDbStatement
     | dropDbStatement
 
     // Table Statement
@@ -135,6 +136,10 @@ showDatabasesStatement
 
 createDbStatement
     : CREATE DATABASE (IF NOT EXISTS)? database=identifier (WITH properties)?
+    ;
+
+alterDbStatement
+    : ALTER DATABASE (IF EXISTS)? database=identifier SET PROPERTIES propertyAssignments
     ;
 
 dropDbStatement

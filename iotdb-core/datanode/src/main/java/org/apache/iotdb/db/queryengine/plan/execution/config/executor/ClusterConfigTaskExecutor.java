@@ -3107,10 +3107,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster) {
+  public SettableFuture<ConfigTaskResult> showCluster(final ShowCluster showCluster) {
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    ShowClusterStatement treeStatement = new ShowClusterStatement();
+    final ShowClusterStatement treeStatement = new ShowClusterStatement();
     treeStatement.setDetails(showCluster.getDetails().orElse(false));
     return showCluster(treeStatement);
   }
@@ -3189,20 +3189,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createDatabase(
-      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+  public SettableFuture<ConfigTaskResult> createOrAlterDatabase(
+      final TDatabaseSchema databaseSchema,
+      final boolean exists,
+      final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Construct request using statement
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
+      final TSStatus tsStatus =
+          type == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
+              ? configNodeClient.setDatabase(databaseSchema)
+              : configNodeClient.alterDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-        if (ifNotExists) {
+      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+          || TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+        if (exists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           LOGGER.info(

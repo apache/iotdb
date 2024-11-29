@@ -43,7 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
@@ -80,7 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -145,10 +145,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENG
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
-import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask.DATA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask.TIME_PARTITION_INTERVAL_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
@@ -175,7 +175,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+  protected IConfigTask visitCreateOrAlterDB(
+      final CreateOrAlterDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
@@ -229,7 +230,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new SemanticException("Unsupported database property key: " + key);
       }
     }
-    return new CreateDBTask(schema, node.isSetIfNotExists());
+    return new CreateOrAlterDBTask(schema, node.isSetExists(), node.getType());
   }
 
   @Override

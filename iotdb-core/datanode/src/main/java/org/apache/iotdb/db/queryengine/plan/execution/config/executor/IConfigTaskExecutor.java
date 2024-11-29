@@ -290,8 +290,10 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
 
-  SettableFuture<ConfigTaskResult> createDatabase(
-      final TDatabaseSchema databaseSchema, final boolean ifNotExists);
+  SettableFuture<ConfigTaskResult> createOrAlterDatabase(
+      final TDatabaseSchema databaseSchema,
+      final boolean ifNotExist,
+      final DatabaseSchemaStatement.DatabaseSchemaStatementType type);
 
   SettableFuture<ConfigTaskResult> createTable(
       final TsTable table, final String database, final boolean ifNotExists);

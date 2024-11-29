@@ -385,7 +385,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCreateDB(CreateDB node, C context) {
+  protected Void visitCreateOrAlterDB(CreateOrAlterDB node, C context) {
     for (Property property : node.getProperties()) {
       process(property, context);
     }

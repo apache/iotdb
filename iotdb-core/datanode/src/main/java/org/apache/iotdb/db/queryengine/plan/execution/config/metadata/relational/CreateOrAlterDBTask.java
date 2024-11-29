@@ -23,10 +23,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateDBTask implements IConfigTask {
+public class CreateOrAlterDBTask implements IConfigTask {
 
   /////////////////////////////// Allowed properties ///////////////////////////////
   public static final String TTL_KEY = "ttl";
@@ -42,15 +43,20 @@ public class CreateDBTask implements IConfigTask {
 
   private final TDatabaseSchema schema;
   private final boolean ifNotExists;
+  private final DatabaseSchemaStatement.DatabaseSchemaStatementType type;
 
-  public CreateDBTask(final TDatabaseSchema schema, final boolean ifNotExists) {
+  public CreateOrAlterDBTask(
+      final TDatabaseSchema schema,
+      final boolean ifNotExists,
+      final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
     this.schema = schema;
     this.ifNotExists = ifNotExists;
+    this.type = type;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createDatabase(schema, ifNotExists);
+    return configTaskExecutor.createOrAlterDatabase(schema, ifNotExists, type);
   }
 }
