@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -61,6 +64,7 @@ import java.util.Set;
 
 public class TsFileResourceUtils {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String VALIDATE_FAILED = "validate failed,";
 
   private TsFileResourceUtils() {
@@ -425,14 +429,19 @@ public class TsFileResourceUtils {
 
   public static void updateTsFileResource(
       Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+    // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
+    ITimeIndex newTimeIndex =
+        tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
+            ? config.getTimeIndexLevel().getTimeIndex()
+            : tsFileResource.getTimeIndex();
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-        tsFileResource.updateStartTime(
+        newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource.updateEndTime(
-            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+    tsFileResource.setTimeIndex(newTimeIndex);
   }
 
   /**
