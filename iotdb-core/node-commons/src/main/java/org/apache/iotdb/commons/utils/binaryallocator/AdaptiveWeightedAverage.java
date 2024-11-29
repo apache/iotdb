@@ -21,18 +21,7 @@ package org.apache.iotdb.commons.utils.binaryallocator;
 
 import static java.lang.Math.max;
 
-/**
- * A utility class that implements EMA for data sampling and prediction. This implementation uses an
- * adaptive weight mechanism where the weight gradually adjusts based on the number of samples
- * collected, providing more stable predictions as more historical data becomes available.
- *
- * <p>The weight adapts in the following manner: For initial samples (count < OLD_THRESHOLD), uses a
- * larger weight to be more responsive After collecting enough samples (count >= OLD_THRESHOLD),
- * uses the configured weight for stable long-term predictions
- *
- * <p>The EMA is calculated as: EMA = (1 - α) * previous_EMA + α * new_sample where α is the
- * adaptive weight divided by 100
- */
+/** This file is modified from JDK17 src/hotspot/share/gc/shared/gcUtil.hpp */
 public class AdaptiveWeightedAverage {
   private float average;
   private int sampleCount;
