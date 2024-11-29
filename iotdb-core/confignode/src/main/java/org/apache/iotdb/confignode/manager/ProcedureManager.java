@@ -87,6 +87,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -1753,6 +1754,12 @@ public class ProcedureManager {
           if (database.equals(alterTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
                   || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case ALTER_DATABASE_PROCEDURE:
+          final AlterDatabaseProcedure alterDatabaseProcedure = (AlterDatabaseProcedure) procedure;
+          if (database.equals(alterDatabaseProcedure.getSchema().getName())) {
             return new Pair<>(-1L, true);
           }
           break;
