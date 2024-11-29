@@ -106,18 +106,14 @@ public class IoTDBDisableDeletionTableIT {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId is not null");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals(
-            "701: Delete statement is not supported yet.",
-            e.getMessage());
+        assertEquals("701: Delete statement is not supported yet.", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId = null");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals(
-            "701: Delete statement is not supported yet.",
-            e.getMessage());
+        assertEquals("701: Delete statement is not supported yet.", e.getMessage());
       }
     }
   }
