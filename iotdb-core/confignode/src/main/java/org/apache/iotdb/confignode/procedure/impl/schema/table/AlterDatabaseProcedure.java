@@ -160,11 +160,10 @@ public class AlterDatabaseProcedure
       return;
     }
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitOrRollbackReleaseTables(
+        SchemaUtils.commitReleaseTables(
             schema.getName(),
             tables.stream().map(TsTable::getTableName).collect(Collectors.toList()),
-            env.getConfigManager(),
-            false);
+            env.getConfigManager());
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
           "Failed to commit release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
@@ -179,55 +178,11 @@ public class AlterDatabaseProcedure
   }
 
   @Override
-  protected boolean isRollbackSupported(final AlterDatabaseState state) {
-    return true;
-  }
-
-  @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final AlterDatabaseState state)
       throws IOException, InterruptedException, ProcedureException {
-    final long startTime = System.currentTimeMillis();
-    try {
-      // TODO: Config write?
-      switch (state) {
-        case PRE_RELEASE:
-          LOGGER.info(
-              "Start rollback pre release info for tables {} when altering database {}",
-              tables,
-              schema.getName());
-          rollbackPreRelease(env);
-          break;
-      }
-    } finally {
-      LOGGER.info(
-          "Rollback SetTableProperties-{} costs {}ms.",
-          state,
-          (System.currentTimeMillis() - startTime));
-    }
-  }
-
-  protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    if (tables.isEmpty()) {
-      return;
-    }
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitOrRollbackReleaseTables(
-            schema.getName(),
-            tables.stream().map(TsTable::getTableName).collect(Collectors.toList()),
-            env.getConfigManager(),
-            true);
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to rollback pre-release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
-          schema.getName(),
-          tables,
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Rollback pre-release tables for alter database failed")));
-    }
+    // Do nothing
+    // Currently we do not store the original schema of the database, the table's consistency will
+    // be guaranteed by the table cache's fetch
   }
 
   @Override

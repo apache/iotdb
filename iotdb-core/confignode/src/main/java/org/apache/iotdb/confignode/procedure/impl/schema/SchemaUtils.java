@@ -304,16 +304,10 @@ public class SchemaUtils {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> commitOrRollbackReleaseTables(
-      final String database,
-      final List<String> tableNames,
-      final ConfigManager configManager,
-      final boolean isRollback) {
+  public static Map<Integer, TSStatus> commitReleaseTables(
+      final String database, final List<String> tableNames, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(
-        isRollback
-            ? TsTableInternalRPCType.ROLLBACK_UPDATE_TABLES.getOperationType()
-            : TsTableInternalRPCType.COMMIT_UPDATE_TABLES.getOperationType());
+    req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLES.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);

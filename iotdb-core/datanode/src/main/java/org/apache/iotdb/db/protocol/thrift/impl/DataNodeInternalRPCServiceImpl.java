@@ -1573,14 +1573,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         }
         break;
-      case ROLLBACK_UPDATE_TABLES:
-        database = ReadWriteIOUtils.readString(req.tableInfo);
-        size = ReadWriteIOUtils.readInt(req.tableInfo);
-        for (int i = 0; i < size; ++i) {
-          DataNodeTableCache.getInstance()
-              .rollbackUpdateTable(database, ReadWriteIOUtils.readString(req.tableInfo));
-        }
-        break;
       case COMMIT_UPDATE_TABLES:
         database = ReadWriteIOUtils.readString(req.tableInfo);
         size = ReadWriteIOUtils.readInt(req.tableInfo);

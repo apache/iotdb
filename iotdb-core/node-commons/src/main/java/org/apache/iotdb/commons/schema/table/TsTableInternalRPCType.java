@@ -30,8 +30,7 @@ public enum TsTableInternalRPCType {
   ROLLBACK_UPDATE_TABLE((byte) 1),
   COMMIT_UPDATE_TABLE((byte) 2),
   PRE_UPDATE_TABLES((byte) 3),
-  ROLLBACK_UPDATE_TABLES((byte) 4),
-  COMMIT_UPDATE_TABLES((byte) 5);
+  COMMIT_UPDATE_TABLES((byte) 4);
 
   private final byte operationType;
 
@@ -63,8 +62,6 @@ public enum TsTableInternalRPCType {
       case 3:
         return PRE_UPDATE_TABLES;
       case 4:
-        return ROLLBACK_UPDATE_TABLES;
-      case 5:
         return COMMIT_UPDATE_TABLES;
       default:
         throw new IllegalArgumentException("Unknown table update operation type" + type);
