@@ -110,29 +110,26 @@ public class RegionGroupCache {
       Map<Integer, RegionStatistics> regionStatisticsMap) {
     int unknownCount = 0;
     int readonlyCount = 0;
+    int removingCount = 0;
     for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
-      if (RegionStatus.Removing.equals(regionStatistics.getRegionStatus())) {
-        // The RegionGroup is considered as Disabled when
-        // at least one Region is in the ReadOnly or Removing status
-        return RegionGroupStatus.Disabled;
-      }
       unknownCount += RegionStatus.Unknown.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
       readonlyCount += RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
+      removingCount += RegionStatus.Removing.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
     }
 
-    if (unknownCount + readonlyCount == 0) {
+    if (unknownCount + readonlyCount + removingCount == 0) {
       // The RegionGroup is considered as Running only if
       // all Regions are in the Running status
       return RegionGroupStatus.Running;
     } else if (readonlyCount == 0) {
-      return unknownCount <= ((regionCacheMap.size() - 1) / 2)
+      return (unknownCount + removingCount) <= ((regionCacheMap.size() - 1) / 2)
           // The RegionGroup is considered as Available when the number of Unknown Regions is less
           // than half
           ? RegionGroupStatus.Available
           // Disabled otherwise
           : RegionGroupStatus.Disabled;
     } else {
-      return unknownCount + readonlyCount <= ((regionCacheMap.size() - 1) / 2)
+      return (unknownCount + readonlyCount + removingCount) <= ((regionCacheMap.size() - 1) / 2)
           // The RegionGroup is considered as Discouraged when the number of Unknown or ReadOnly
           // Regions is less
           // than half, and there are at least 1 ReadOnly Region
