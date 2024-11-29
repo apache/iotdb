@@ -198,5 +198,14 @@ public class AbstractCliTest {
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
             ctx, String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
+
+    assertEquals(
+            OperationResult.CONTINUE_OPER,
+            AbstractCli.handleInputCmd(
+                    ctx, String.format("%s=", AbstractCli.SET_SQL_DIALECT), connection));
+    assertEquals(
+            OperationResult.CONTINUE_OPER,
+            AbstractCli.handleInputCmd(
+                    ctx, String.format("%s=table", AbstractCli.SET_SQL_DIALECT), connection));
   }
 }

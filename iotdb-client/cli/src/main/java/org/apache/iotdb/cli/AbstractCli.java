@@ -21,6 +21,7 @@ package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -48,11 +49,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
 
 public abstract class AbstractCli {
+  // TODO: Make non-static
+  static final Properties info = new Properties();
 
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
@@ -98,6 +102,8 @@ public abstract class AbstractCli {
   static final String SHOW_TIMEZONE = "show time_zone";
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
+  static final String SET_SQL_DIALECT = "set sql_dialect";
+  static final String SHOW_SQL_DIALECT = "show sql_dialect";
   private static final String HELP = "help";
   static final String IOTDB_CLI_PREFIX = "IoTDB";
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
@@ -321,7 +327,26 @@ public abstract class AbstractCli {
   }
 
   static void setSqlDialect(String sqlDialect) {
-    AbstractCli.sqlDialect = sqlDialect;
+    info.setProperty(Config.SQL_DIALECT, AbstractCli.sqlDialect);
+  }
+
+  private static int setSqlDialect(
+      CliContext ctx, String specialCmd, String cmd, IoTDBConnection connection) {
+    String[] values = specialCmd.split("=");
+    if (values.length != 2) {
+      ctx.getPrinter()
+          .println(String.format("Sql dialect error, please input like %s=table", SET_SQL_DIALECT));
+      return CODE_ERROR;
+    }
+    try {
+      setSqlDialect(cmd.split("=")[1]);
+      connection.setSqlDialect(cmd.split("=")[1]);
+    } catch (Exception e) {
+      ctx.getPrinter().println(String.format("Sql dialect  format error, %s", e.getMessage()));
+      return CODE_ERROR;
+    }
+    ctx.getPrinter().println("Sql dialect has set to " + values[1].trim());
+    return CODE_OK;
   }
 
   static String[] removePasswordArgs(String[] args) {
@@ -433,6 +458,11 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
 
+    if (specialCmd.startsWith(SET_SQL_DIALECT)) {
+      lastProcessStatus = setSqlDialect(ctx, specialCmd, cmd, connection);
+      return OperationResult.CONTINUE_OPER;
+    }
+
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
       lastProcessStatus = showTimeZone(ctx, connection);
       return OperationResult.CONTINUE_OPER;
@@ -443,6 +473,10 @@ public abstract class AbstractCli {
     }
     if (specialCmd.startsWith(SHOW_FETCH_SIZE)) {
       ctx.getPrinter().println("Current fetch size: " + fetchSize);
+      return OperationResult.CONTINUE_OPER;
+    }
+    if (specialCmd.startsWith(SHOW_SQL_DIALECT)) {
+      ctx.getPrinter().println("Current sql dialect: " + connection.getSqlDialect());
       return OperationResult.CONTINUE_OPER;
     }
 

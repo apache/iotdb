@@ -605,6 +605,14 @@ public class IoTDBConnection implements Connection {
     this.zoneId = ZoneId.of(timeZone);
   }
 
+  public void setSqlDialect(String sqlDialect) {
+    if (getSqlDialect().equals(sqlDialect)) {
+      return;
+    }
+    params.setSqlDialect(sqlDialect);
+    reconnect();
+  }
+
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
   }

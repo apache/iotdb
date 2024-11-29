@@ -41,15 +41,12 @@ import org.jline.reader.UserInterruptException;
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Properties;
 
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 
 /** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class Cli extends AbstractCli {
   private static CommandLine commandLine;
-  // TODO: Make non-static
-  private static final Properties info = new Properties();
 
   /**
    * IoTDB Client main function.
