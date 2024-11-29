@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
@@ -191,10 +192,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
-          case TTL_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
+            break;
+          case TTL_KEY:
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
+            }
             break;
           default:
             throw new SemanticException("Unsupported database property key: " + key);
@@ -211,6 +216,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
                   "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
             }
             break;
           }
