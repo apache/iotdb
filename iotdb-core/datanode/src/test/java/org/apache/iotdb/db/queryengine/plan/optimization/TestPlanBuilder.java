@@ -35,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
@@ -76,6 +78,13 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder scan(String id, PartialPath path) {
     this.root = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
+    return this;
+  }
+
+  public TestPlanBuilder scan(String id, PartialPath path, long pushDownLimit) {
+    SeriesScanNode node = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
+    node.setPushDownLimit(pushDownLimit);
+    this.root = node;
     return this;
   }
 
@@ -350,6 +359,41 @@ public class TestPlanBuilder {
                     new SortItem(OrderByKey.DEVICE, Ordering.ASC),
                     new SortItem(OrderByKey.TIME, Ordering.ASC))),
             Arrays.asList(DEVICE, measurement),
+            deviceToMeasurementIndexesMap);
+    deviceViewNode.addChildDeviceNode(device, getRoot());
+    this.root = deviceViewNode;
+    return this;
+  }
+
+  public TestPlanBuilder sort(String id, OrderByParameter orderParameter) {
+    this.root = new SortNode(new PlanNodeId(id), getRoot(), orderParameter);
+    return this;
+  }
+
+  public TestPlanBuilder topK(
+      String id, int topKValue, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
+    this.root =
+        new TopKNode(
+            new PlanNodeId(id),
+            topKValue,
+            Collections.singletonList(getRoot()),
+            mergeOrderParameter,
+            outputColumns);
+    return this;
+  }
+
+  public TestPlanBuilder singleOrderedDeviceView(
+      String id, String device, OrderByParameter orderByParameter, String... measurement) {
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(
+        device, measurement.length == 1 ? Collections.singletonList(1) : Arrays.asList(1, 2));
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            new PlanNodeId(id),
+            orderByParameter,
+            measurement.length == 1
+                ? Arrays.asList(DEVICE, measurement[0])
+                : Arrays.asList(DEVICE, measurement[0], measurement[1]),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(device, getRoot());
     this.root = deviceViewNode;
