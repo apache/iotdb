@@ -671,6 +671,49 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testMergeDeletion() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database db1");
+      statement.execute("use db1");
+      statement.execute(
+          "create table t1(country id,region id, city id, device id, ab1 ATTRIBUTE, s1 int32, s2 float, s3 boolean, s4 string)");
+      statement.execute(
+          "INSERT INTO t1(time,country,region,city,device,ab1,s1,s2,s3,s4) values (100,'china','hebei','shijiazhuang','d1','ab1',1,1,1,1),(200,null,'hebei','shijiazhuang','d2','ab2',1,1,1,1),(300,'china','beijing','beijing','d1','ab3',1,1,1,1),(400,'china','tianjin','tianjin','d1','ab4',1,1,1,1),(500,'china','sichuan','chengdu','d1',null,1,1,1,1),(600,'china','zhejiang','hangzhou','d1','ab6',1,1,1,1),(700,'japan','dao','tokyo','d1','ab7',1,1,1,1),(800,'canada','tronto','shijiazhuang','d1','ab8',null,1,1,1),(900,'usa','ca','oldmountain','d1','ab9',1,1,1,1),(1000,'tailand',null,'mangu','d1','ab10',1,1,1,1),(1100,'china','hebei','','d1','ab11',1,1,1,1),(1200,'','hebei','','d1','ab12',1,1,1,1),(1300,'china','','','d1','ab13',1,1,1,1)");
+      statement.execute("flush");
+      int cnt = 0;
+      try (ResultSet set =
+          statement.executeQuery(
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(13, cnt);
+      }
+      cnt = 0;
+      statement.execute("delete from t1 where country='japan'");
+      try (ResultSet set =
+          statement.executeQuery(
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(12, cnt);
+      }
+      cnt = 0;
+      statement.execute("delete from t1 where country='china' and region='beijing'");
+      try (ResultSet set =
+          statement.executeQuery(
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(11, cnt);
+      }
+    }
+  }
+
   @Ignore
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
