@@ -256,7 +256,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         .toString()
                         .equals(table.getPropValue(TsTable.TTL_DEFAULT).orElse(null)))
             .forEach(
-                table -> table.addProp(TsTable.TTL_PROPERTY, String.valueOf(alterSchema.getTTL())));
+                table ->
+                    table.addProp(
+                        TsTable.TTL_PROPERTY,
+                        alterSchema.getTTL() == Long.MAX_VALUE
+                            ? String.valueOf(alterSchema.getTTL())
+                            : TTL_INFINITE));
         LOGGER.info(
             "[SetTTL] The ttl of Database: {} is adjusted to: {}",
             currentSchema.getName(),
