@@ -24,6 +24,7 @@ import org.apache.iotdb.library.match.model.PatternContext;
 import org.apache.iotdb.library.match.model.PatternResult;
 import org.apache.iotdb.library.match.model.Point;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,6 +47,9 @@ public class UDAFPatternTest {
       try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
         String line;
         while ((line = reader.readLine()) != null) {
+          if (line.startsWith("#") || StringUtils.isEmpty(line)) {
+            continue;
+          }
           sourcePoints.add(
               new Point(
                   Double.parseDouble(line.split(",")[0]), Double.parseDouble(line.split(",")[1])));
@@ -58,6 +62,9 @@ public class UDAFPatternTest {
       try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
         String line;
         while ((line = reader.readLine()) != null) {
+          if (line.startsWith("#") || StringUtils.isEmpty(line)) {
+            continue;
+          }
           queryPoints.add(
               new Point(
                   Double.parseDouble(line.split(",")[0]), Double.parseDouble(line.split(",")[1])));
