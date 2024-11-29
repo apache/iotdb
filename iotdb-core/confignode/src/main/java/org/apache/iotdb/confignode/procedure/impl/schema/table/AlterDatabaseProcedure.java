@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
@@ -47,6 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.ALTER_DATABASE;
@@ -77,7 +79,7 @@ public class AlterDatabaseProcedure
     try {
       switch (state) {
         case CHECK_ALTERED_TABLES:
-          validateTable(env);
+          checkAlteredTables(env);
           LOGGER.info(
               "Checking altered tables for database {} when altering database", schema.getName());
           if (!isFailed() && Objects.isNull(table)) {
@@ -114,6 +116,23 @@ public class AlterDatabaseProcedure
     return null;
   }
 
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to pre-release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
+          schema.getName(),
+          tables,
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Pre-release tables for alter database failed")));
+    }
+  }
+
   private void alterDatabase(final ConfigNodeProcedureEnv env) {
     final DatabaseSchemaPlan plan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, schema);
@@ -124,6 +143,18 @@ public class AlterDatabaseProcedure
       setNextState(AlterDatabaseState.COMMIT_RELEASE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
+
+  protected void commitRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+    if (!failedResults.isEmpty()) {
+      LOGGER.warn(
+          "Failed to commit release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
+          schema.getName(),
+          tables,
+          failedResults);
     }
   }
 
