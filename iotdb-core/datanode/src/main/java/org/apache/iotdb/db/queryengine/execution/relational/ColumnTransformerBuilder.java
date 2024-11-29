@@ -1012,6 +1012,10 @@ public class ColumnTransformerBuilder
         columnTransformers.add(this.process(children.get(i), context));
       }
       return new FormatColumnTransformer(
+          STRING,
+          ((StringLiteral) children.get(0)).getValue(),
+          columnTransformers,
+          context.sessionInfo.getZoneId());
           STRING, ((StringLiteral) children.get(0)).getValue(), columnTransformers);
     } else {
       // user defined function
