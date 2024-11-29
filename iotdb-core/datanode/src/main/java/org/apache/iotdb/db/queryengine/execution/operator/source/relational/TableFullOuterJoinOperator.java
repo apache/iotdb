@@ -222,7 +222,7 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       // notice: must examine `comparator.lessThan(getCurrentRightTime(), leftTime)` then examine
       // `comparator.lessThan(leftTime, getCurrentRightTime())`
       if (lastMatchedRightBlockIsNull
-          || comparator.lessThanOrEqual(
+          || comparator.lessThan(
               lastMatchedRightBlock,
               0,
               0,
@@ -296,7 +296,7 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
     while (rightBlockListIdx < rightBlockList.size()) {
 
       if (lastMatchedRightBlockIsNull
-          || comparator.lessThanOrEqual(
+          || comparator.lessThan(
               lastMatchedRightBlock,
               0,
               0,
