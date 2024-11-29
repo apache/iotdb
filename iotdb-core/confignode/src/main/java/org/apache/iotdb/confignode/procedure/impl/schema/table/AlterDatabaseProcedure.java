@@ -49,12 +49,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-
-import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.ALTER_DATABASE;
-import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.CHECK_ALTERED_TABLES;
-import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.COMMIT_RELEASE;
-import static org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState.PRE_RELEASE;
+import java.util.stream.Collectors;
 
 public class AlterDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterDatabaseState> {
@@ -82,11 +77,6 @@ public class AlterDatabaseProcedure
           checkAlteredTables(env);
           LOGGER.info(
               "Checking altered tables for database {} when altering database", schema.getName());
-          if (!isFailed() && Objects.isNull(table)) {
-            LOGGER.info(
-                "The updated table has the same properties with the original one. Skip the procedure.");
-            return Flow.NO_MORE_STATE;
-          }
           break;
         case PRE_RELEASE:
           preRelease(env);
@@ -113,24 +103,29 @@ public class AlterDatabaseProcedure
           state,
           (System.currentTimeMillis() - startTime));
     }
-    return null;
   }
 
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+  private void checkAlteredTables(final ConfigNodeProcedureEnv env) {}
 
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to pre-release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
-          schema.getName(),
-          tables,
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Pre-release tables for alter database failed")));
+  private void preRelease(final ConfigNodeProcedureEnv env) {
+    if (!tables.isEmpty()) {
+      final Map<Integer, TSStatus> failedResults =
+          SchemaUtils.preReleaseTables(schema.getName(), tables, env.getConfigManager());
+
+      if (!failedResults.isEmpty()) {
+        // All dataNodes must clear the related schema cache
+        LOGGER.warn(
+            "Failed to pre-release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
+            schema.getName(),
+            tables,
+            failedResults);
+        setFailure(
+            new ProcedureException(
+                new MetadataException("Pre-release tables for alter database failed")));
+      }
     }
+
+    setNextState(AlterDatabaseState.ALTER_DATABASE);
   }
 
   private void alterDatabase(final ConfigNodeProcedureEnv env) {
@@ -146,9 +141,16 @@ public class AlterDatabaseProcedure
     }
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env) {
+  private void commitRelease(final ConfigNodeProcedureEnv env) {
+    if (tables.isEmpty()) {
+      return;
+    }
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitOrRollbackReleaseTables(
+            schema.getName(),
+            tables.stream().map(TsTable::getTableName).collect(Collectors.toList()),
+            env.getConfigManager(),
+            false);
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
           "Failed to commit release tables for alter database {} for altered tables {} to DataNode, failure results: {}",

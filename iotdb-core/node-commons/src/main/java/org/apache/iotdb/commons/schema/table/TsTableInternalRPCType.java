@@ -28,7 +28,10 @@ import java.nio.ByteBuffer;
 public enum TsTableInternalRPCType {
   PRE_UPDATE_TABLE((byte) 0),
   ROLLBACK_UPDATE_TABLE((byte) 1),
-  COMMIT_UPDATE_TABLE((byte) 2);
+  COMMIT_UPDATE_TABLE((byte) 2),
+  PRE_UPDATE_TABLES((byte) 3),
+  ROLLBACK_UPDATE_TABLES((byte) 4),
+  COMMIT_UPDATE_TABLES((byte) 5);
 
   private final byte operationType;
 
