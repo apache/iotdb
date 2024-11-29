@@ -259,7 +259,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       while (modsIterator.hasNext()) {
         currentDeletion = modsIterator.next();
         if (currentDeletion.affects(deviceId)
-            && currentDeletion.affects(schema.getMeasurementId())
+            && currentDeletion.affects(schema.getMeasurementName())
             && currentDeletion
                 .getTimeRange()
                 .contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
@@ -388,7 +388,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         currentDeletion = modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
         if (currentDeletion.affects(deviceId)
-            && currentDeletion.affects(schema.getMeasurementId())) {
+            && currentDeletion.affects(schema.getMeasurementName())) {
           chunkMetadata.insertIntoSortedDeletions(currentDeletion.getTimeRange());
         }
       }

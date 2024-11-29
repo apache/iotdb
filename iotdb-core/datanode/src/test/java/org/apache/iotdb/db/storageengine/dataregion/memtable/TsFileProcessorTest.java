@@ -159,7 +159,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -563,7 +563,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -647,7 +647,7 @@ public class TsFileProcessorTest {
 
     for (int flushId = 0; flushId < 10; flushId++) {
       for (int i = 1; i <= 10; i++) {
-        TSRecord record = new TSRecord(i, deviceId);
+        TSRecord record = new TSRecord(deviceId, i);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
         processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
       }
@@ -704,7 +704,7 @@ public class TsFileProcessorTest {
     Assert.assertEquals(720360, memTable.memSize());
     // Test records
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -791,14 +791,14 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1920960, memTable.memSize());
     // Test records
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
     Assert.assertEquals(6387232, memTable.getTVListsRamCost());
     // Test records
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -849,7 +849,7 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1440000, memTable.memSize());
     // Test records
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -875,7 +875,7 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor1.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }
@@ -896,7 +896,7 @@ public class TsFileProcessorTest {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     // insert 100 rows by insertRows
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       insertRowsNode.addOneInsertRowNode(buildInsertRowNodeByTSRecord(record), i - 1);
     }
@@ -908,19 +908,19 @@ public class TsFileProcessorTest {
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
 
     // insert more rows by insertRow
-    TSRecord record = new TSRecord(101, deviceId);
+    TSRecord record = new TSRecord(deviceId, 101);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode1 = buildInsertRowNodeByTSRecord(record);
     processor1.insert(insertRowNode1, new long[5]);
-    record = new TSRecord(101, deviceId);
+    record = new TSRecord(deviceId, 101);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode2 = buildInsertRowNodeByTSRecord(record);
     processor1.insert(insertRowNode2, new long[5]);
-    record = new TSRecord(102, deviceId);
+    record = new TSRecord(deviceId, 102);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode3 = buildInsertRowNodeByTSRecord(record);
     processor1.insert(insertRowNode3, new long[5]);
-    record = new TSRecord(102, "root.vehicle.d2");
+    record = new TSRecord("root.vehicle.d2", 102);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode4 = buildInsertRowNodeByTSRecord(record);
     processor1.insert(insertRowNode4, new long[5]);
@@ -968,7 +968,7 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       node.setAligned(true);
@@ -992,7 +992,7 @@ public class TsFileProcessorTest {
     insertRowsNode.setAligned(true);
     // insert 100 rows by insertRows
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       node.setAligned(true);
@@ -1006,22 +1006,22 @@ public class TsFileProcessorTest {
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
 
     // insert more rows by insertRow
-    TSRecord record = new TSRecord(101, deviceId);
+    TSRecord record = new TSRecord(deviceId, 101);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode1 = buildInsertRowNodeByTSRecord(record);
     insertRowNode1.setAligned(true);
     processor1.insert(insertRowNode1, new long[5]);
-    record = new TSRecord(101, deviceId);
+    record = new TSRecord(deviceId, 101);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode2 = buildInsertRowNodeByTSRecord(record);
     insertRowNode2.setAligned(true);
     processor1.insert(insertRowNode2, new long[5]);
-    record = new TSRecord(102, deviceId);
+    record = new TSRecord(deviceId, 102);
     record.addTuple(DataPoint.getDataPoint(dataType, "s99", "1"));
     InsertRowNode insertRowNode3 = buildInsertRowNodeByTSRecord(record);
     insertRowNode3.setAligned(true);
     processor1.insert(insertRowNode3, new long[5]);
-    record = new TSRecord(102, "root.vehicle.d2");
+    record = new TSRecord("root.vehicle.d2", 102);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode insertRowNode4 = buildInsertRowNodeByTSRecord(record);
     insertRowNode4.setAligned(true);
@@ -1072,7 +1072,7 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       if (i <= 50) {
@@ -1099,7 +1099,7 @@ public class TsFileProcessorTest {
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
     insertRowsNode.setMixingAlignment(true);
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       if (i <= 50) {
@@ -1132,7 +1132,7 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
       record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       node.setAligned(true);
@@ -1160,7 +1160,7 @@ public class TsFileProcessorTest {
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
     insertRowsNode.setMixingAlignment(true);
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
       record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       node.setAligned(true);
@@ -1204,7 +1204,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[5]);
     }

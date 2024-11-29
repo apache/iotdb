@@ -717,7 +717,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(
                 SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0"),
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList()),
             new ArrayList<>(measurementSchemas));
 

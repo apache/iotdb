@@ -262,7 +262,6 @@ public class TwoStageCountProcessor implements PipeProcessor {
               Collections.singletonList(
                   new MeasurementSchema(outputSeries.getMeasurement(), TSDataType.INT64)),
               1);
-      tablet.rowSize = 1;
       tablet.addTimestamp(0, timestampCountPair.left);
       tablet.addValue(outputSeries.getMeasurement(), 0, timestampCountPair.right);
 

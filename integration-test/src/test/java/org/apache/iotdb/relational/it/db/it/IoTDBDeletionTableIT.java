@@ -604,20 +604,50 @@ public class IoTDBDeletionTableIT {
       statement.execute("flush");
 
       statement.execute("delete from t" + testNum + " where id1 is NULL and time <= 1");
-      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
+        assertEquals(2, set.getLong("time"));
         assertTrue(set.next());
+        assertEquals(3, set.getLong("time"));
         assertFalse(set.next());
       }
 
       statement.execute("delete from t" + testNum + " where id2 is NULL");
-      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
+        assertEquals(2, set.getLong("time"));
         assertFalse(set.next());
       }
 
       statement.execute("delete from t" + testNum);
-      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum)) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
+        assertFalse(set.next());
+      }
+
+      statement.execute("drop table t" + testNum);
+    }
+  }
+
+  @Test
+  public void testEmptyString() throws SQLException {
+    int testNum = 15;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+      // id1 is null for this record
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
+      statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
+      statement.execute("flush");
+
+      statement.execute("delete from t" + testNum + " where id2 = ''");
+      try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
+        assertTrue(set.next());
+        assertEquals(1, set.getLong("time"));
+        assertTrue(set.next());
+        assertEquals(3, set.getLong("time"));
         assertFalse(set.next());
       }
 

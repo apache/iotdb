@@ -187,20 +187,20 @@ public class DataRegionTest {
   @Test
   public void testUnseqUnsealedDelete()
       throws WriteProcessException, IOException, MetadataException {
-    TSRecord record = new TSRecord(10000, deviceId);
+    TSRecord record = new TSRecord(deviceId, 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
-      record = new TSRecord(j, deviceId);
+      record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
     dataRegion.syncCloseWorkingTsFileProcessors(false);
 
     for (int j = 11; j <= 20; j++) {
-      record = new TSRecord(j, deviceId);
+      record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -246,7 +246,7 @@ public class DataRegionTest {
   public void testSequenceSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 1; j <= 10; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -670,14 +670,14 @@ public class DataRegionTest {
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
     for (int j = 10; j >= 1; j--) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -700,7 +700,7 @@ public class DataRegionTest {
   public void testAllMeasurementsFailedRecordSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setFailedMeasurementNumber(1);
@@ -709,7 +709,7 @@ public class DataRegionTest {
     }
 
     for (int j = 10; j >= 1; j--) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setFailedMeasurementNumber(1);
@@ -737,14 +737,14 @@ public class DataRegionTest {
     config.setEnableSeparateData(false);
 
     for (int j = 21; j <= 30; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
     for (int j = 10; j >= 1; j--) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1017,7 +1017,7 @@ public class DataRegionTest {
     List<Integer> indexList = new ArrayList<>();
     List<InsertRowNode> nodes = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
-      TSRecord record = new TSRecord(time[i], "root.Rows");
+      TSRecord record = new TSRecord("root.Rows", time[i]);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(i)));
       nodes.add(buildInsertRowNodeByTSRecord(record));
       indexList.add(i);
@@ -1056,7 +1056,7 @@ public class DataRegionTest {
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");
 
     for (int j = 21; j <= 30; j++) {
-      TSRecord record = new TSRecord(j, "root.ln22");
+      TSRecord record = new TSRecord("root.ln22", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion1.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion1.syncCloseAllWorkingTsFileProcessors();
@@ -1103,7 +1103,7 @@ public class DataRegionTest {
     long finishedCompactionTaskNumWhenTestStart =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1111,7 +1111,7 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1168,7 +1168,7 @@ public class DataRegionTest {
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(10);
     try {
       for (int j = 0; j < 10; j++) {
-        TSRecord record = new TSRecord(j, deviceId);
+        TSRecord record = new TSRecord(deviceId, j);
         record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
         dataRegion.insert(buildInsertRowNodeByTSRecord(record));
         dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1225,7 +1225,7 @@ public class DataRegionTest {
   public void testTimedFlushSeqMemTable()
       throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable
-    TSRecord record = new TSRecord(10000, deviceId);
+    TSRecord record = new TSRecord(deviceId, 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
@@ -1274,7 +1274,7 @@ public class DataRegionTest {
   public void testTimedFlushUnseqMemTable()
       throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable & close
-    TSRecord record = new TSRecord(10000, deviceId);
+    TSRecord record = new TSRecord(deviceId, 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
@@ -1282,7 +1282,7 @@ public class DataRegionTest {
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // create one unsequence memtable
-    record = new TSRecord(1, deviceId);
+    record = new TSRecord(deviceId, 1);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
@@ -1340,7 +1340,7 @@ public class DataRegionTest {
       if (i % 2 == 0) {
         for (int d = 0; d < 2; d++) {
           for (int count = i * 100; count < i * 100 + 100; count++) {
-            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            TSRecord record = new TSRecord("root.vehicle.d" + d, count);
             record.addTuple(
                 DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
             dataRegion.insert(buildInsertRowNodeByTSRecord(record));
@@ -1349,7 +1349,7 @@ public class DataRegionTest {
       } else {
         for (int d = 0; d < 3; d++) {
           for (int count = i * 100; count < i * 100 + 100; count++) {
-            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            TSRecord record = new TSRecord("root.vehicle.d" + d, count);
             record.addTuple(
                 DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
             dataRegion.insert(buildInsertRowNodeByTSRecord(record));
@@ -1407,7 +1407,7 @@ public class DataRegionTest {
   public void testDeleteDataNotInFlushingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 0; j < 100; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1437,7 +1437,7 @@ public class DataRegionTest {
   public void testDeleteDataInSeqFlushingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1480,7 +1480,7 @@ public class DataRegionTest {
   public void testDeleteDataInUnSeqFlushingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1517,7 +1517,7 @@ public class DataRegionTest {
 
     // insert unseq data points
     for (int j = 50; j < 100; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1575,12 +1575,12 @@ public class DataRegionTest {
   public void testDeleteDataInSeqWorkingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, "root.vehicle.d0");
+      TSRecord record = new TSRecord("root.vehicle.d0", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, "root.vehicle.d199");
+      TSRecord record = new TSRecord("root.vehicle.d199", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1617,7 +1617,7 @@ public class DataRegionTest {
   public void testFlushingEmptyMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1657,7 +1657,7 @@ public class DataRegionTest {
   public void testDeleteDataDirectlySeqWriteModsOrDeleteFiles()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
@@ -1695,14 +1695,14 @@ public class DataRegionTest {
   public void testDeleteDataDirectlyUnseqWriteModsOrDeleteFiles()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
     TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     for (int j = 30; j < 100; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
+      TSRecord record = new TSRecord(deviceId, j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }

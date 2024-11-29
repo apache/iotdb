@@ -44,7 +44,6 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -437,7 +436,7 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 drop column time");
       } catch (final SQLException e) {
-        assertTrue(e.getMessage().contains("Dropping id or time column is not supported."));
+        assertEquals("701: Dropping id or time column is not supported.", e.getMessage());
       }
 
       // test data deletion by drop column
