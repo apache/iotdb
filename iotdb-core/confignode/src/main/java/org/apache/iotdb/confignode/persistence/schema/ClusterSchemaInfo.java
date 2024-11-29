@@ -250,6 +250,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
+
+      if (alterSchema.isSetTTL()) {
+        mTree.getAllTablesUnderSpecificDatabase(partialPathName).stream()
+            .map(Pair::getLeft)
+            .filter(
+                table ->
+                    Boolean.TRUE
+                        .toString()
+                        .equals(table.getPropValue(TsTable.TTL_DEFAULT).orElse(null)))
+            .forEach(
+                table -> table.addProp(TsTable.TTL_PROPERTY, String.valueOf(alterSchema.getTTL())));
+      }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
