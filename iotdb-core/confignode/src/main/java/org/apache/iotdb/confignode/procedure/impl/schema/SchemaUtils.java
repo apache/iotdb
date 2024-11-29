@@ -290,7 +290,7 @@ public class SchemaUtils {
   public static Map<Integer, TSStatus> preReleaseTables(
       final String database, final List<TsTable> tables, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
+    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLES.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeTsTablesWithDatabase(database, tables));
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
