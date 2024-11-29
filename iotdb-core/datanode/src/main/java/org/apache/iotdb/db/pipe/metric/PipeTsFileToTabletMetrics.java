@@ -95,10 +95,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     final ImmutableSet<String> pipeFullNames = ImmutableSet.copyOf(pipeIDMap.keySet());
     for (final String pipeFullName : pipeFullNames) {
-      for (final PipeID pipeID : pipeIDMap.get(pipeFullName)) {
-        removeMetrics(pipeID);
-      }
-      pipeIDMap.remove((pipeFullName));
+      deregister(pipeFullName);
     }
     if (!pipeIDMap.isEmpty()) {
       LOGGER.warn("Failed to unbind from pipeTsFileToTablet metrics,  pipeIDMap not empty");
