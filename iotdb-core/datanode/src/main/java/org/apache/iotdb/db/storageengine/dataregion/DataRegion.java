@@ -2502,7 +2502,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     List<Exception> exceptions =
-        involvedModificationFiles.parallelStream()
+        involvedModificationFiles
+            .parallelStream()
             .map(
                 modFile -> {
                   try {
@@ -3554,9 +3555,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * @return the disk space occupied by this data region, unit is MB
-   */
+  /** @return the disk space occupied by this data region, unit is MB */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()
@@ -3728,7 +3727,10 @@ public class DataRegion implements IDataRegionForQuery {
   private static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
+            && config
+                .getIotConsensusV2Mode()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE))) {
       acquireDirectBufferMemCost = config.getWalBufferSize();
     } else if (config
         .getDataRegionConsensusProtocolClass()
