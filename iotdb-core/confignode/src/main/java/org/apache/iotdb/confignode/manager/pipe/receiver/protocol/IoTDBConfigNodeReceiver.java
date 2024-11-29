@@ -333,13 +333,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                         ((PipeCreateTablePlan) plan).getDatabase(),
                         ((PipeCreateTablePlan) plan).getTable(),
                         true));
-        if (result.getCode()
-            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+        if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
           // If the table already exists, we shall add the sender table's columns to the
           // receiver's table, inner procedure guaranteeing that the columns existing at the
           // receiver table will be trimmed
           result =
-              executePlanAndClassifyExceptions(
+              executePlan(
                   new AddTableColumnPlan(
                       ((PipeCreateTablePlan) plan).getDatabase(),
                       ((PipeCreateTablePlan) plan).getTable().getTableName(),
