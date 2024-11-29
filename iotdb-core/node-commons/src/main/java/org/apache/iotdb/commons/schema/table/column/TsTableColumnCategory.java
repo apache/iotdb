@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,20 +76,20 @@ public enum TsTableColumnCategory {
     }
   }
 
-  public ColumnType toTsFileColumnType() {
+  public ColumnCategory toTsFileColumnType() {
     switch (this) {
       case ID:
-        return ColumnType.ID;
+        return ColumnCategory.ID;
       case ATTRIBUTE:
-        return ColumnType.ATTRIBUTE;
+        return ColumnCategory.ATTRIBUTE;
       case MEASUREMENT:
-        return ColumnType.MEASUREMENT;
+        return ColumnCategory.MEASUREMENT;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnType(ColumnType columnType) {
+  public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
     switch (columnType) {
       case MEASUREMENT:
         return MEASUREMENT;

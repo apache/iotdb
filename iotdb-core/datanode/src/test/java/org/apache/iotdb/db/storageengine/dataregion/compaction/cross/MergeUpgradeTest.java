@@ -184,15 +184,15 @@ public class MergeUpgradeTest {
       fileWriter.registerTimeseries(new Path(deviceName), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
-      TSRecord record = new TSRecord(i, deviceName);
+      TSRecord record = new TSRecord(deviceName, i);
       for (int k = 0; k < timeseriesNum; k++) {
         record.addTuple(
             DataPoint.getDataPoint(
                 measurementSchemas[k].getType(),
-                measurementSchemas[k].getMeasurementId(),
+                measurementSchemas[k].getMeasurementName(),
                 String.valueOf(i + valueOffset)));
       }
-      fileWriter.write(record);
+      fileWriter.writeRecord(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName), i);
     }

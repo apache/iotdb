@@ -345,7 +345,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
       final Tablet tablet = tablets.get(i);
-      if (Objects.isNull(tablet) || tablet.rowSize == 0) {
+      if (Objects.isNull(tablet) || tablet.getRowSize() == 0) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {

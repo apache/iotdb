@@ -263,7 +263,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   message
                       .getSessionDataSetsHandler()
                       .tabletIterator()
-                      .forEachRemaining(tablet -> rowCount.addAndGet(tablet.rowSize));
+                      .forEachRemaining(tablet -> rowCount.addAndGet(tablet.getRowSize()));
                   return ConsumeResult.SUCCESS;
                 })
             .buildPushConsumer()) {
