@@ -225,7 +225,7 @@ public class SchemaUtils {
   public static Map<Integer, TSStatus> preReleaseTable(
       final String database, final TsTable table, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_CREATE_OR_ADD_COLUMN.getOperationType());
+    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
@@ -242,7 +242,7 @@ public class SchemaUtils {
   public static Map<Integer, TSStatus> commitReleaseTable(
       final String database, final String tableName, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.COMMIT_CREATE_OR_ADD_COLUMN.getOperationType());
+    req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);
@@ -266,7 +266,7 @@ public class SchemaUtils {
   public static Map<Integer, TSStatus> rollbackPreRelease(
       final String database, final String tableName, final ConfigManager configManager) {
     final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.ROLLBACK_CREATE_OR_ADD_COLUMN.getOperationType());
+    req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(database, outputStream);

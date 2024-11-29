@@ -1534,7 +1534,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
     switch (TsTableInternalRPCType.getType(req.type)) {
-      case PRE_CREATE_OR_ADD_COLUMN:
+      case PRE_UPDATE_TABLE:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
@@ -1545,13 +1545,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         }
         break;
-      case ROLLBACK_CREATE_OR_ADD_COLUMN:
+      case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case COMMIT_CREATE_OR_ADD_COLUMN:
+      case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
