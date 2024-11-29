@@ -73,7 +73,6 @@ public class ConfigurationFileUtils {
           .add("# KIND, either express or implied.  See the License for the")
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
-          .add(lineSeparator)
           .toString();
   private static Map<String, String> configuration2DefaultValue;
 
@@ -299,8 +298,8 @@ public class ConfigurationFileUtils {
       return "";
     }
     byte[] bytes = Files.readAllBytes(file.toPath());
-    String content = new String(bytes) + lineSeparator;
-    return content.replace(license, "");
+    String content = new String(bytes);
+    return lineSeparator + content.replace(license, "");
   }
 
   private static String readConfigLines(File file) throws IOException {
