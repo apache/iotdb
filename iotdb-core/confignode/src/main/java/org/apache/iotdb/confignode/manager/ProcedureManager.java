@@ -1684,6 +1684,30 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus alterDatabase(final TDatabaseSchema schema, final boolean isGeneratedByPipe) {
+    long procedureId;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          checkDuplicateTableTask(
+              schema.getName(), null, null, null, ProcedureType.ALTER_DATABASE_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
+
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(new AlterDatabaseProcedure(schema, isGeneratedByPipe));
+      }
+    }
+    final List<TSStatus> procedureStatus = new ArrayList<>();
+    return waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus)
+        ? StatusUtils.OK
+        : procedureStatus.get(0);
+  }
+
   private TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
