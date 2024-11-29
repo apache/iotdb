@@ -246,6 +246,7 @@ public class ClusterSchemaManager {
       }
     }
 
+    // For table model's ttl
     if (databaseSchema.isIsTableModel() && databaseSchema.isSetTTL()) {
       return configManager.getProcedureManager().alterDatabase(databaseSchema, isGeneratedByPipe);
     }
