@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -120,6 +121,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case REMOVE_REGION_PEER_PROCEDURE:
         procedure = new RemoveRegionPeerProcedure();
+        break;
+      case ALTER_DATABASE_PROCEDURE:
+        procedure = new AlterDatabaseProcedure(false);
         break;
       case CREATE_REGION_GROUPS:
         procedure = new CreateRegionGroupsProcedure();
@@ -320,7 +324,7 @@ public class ProcedureFactory implements IProcedureFactory {
     return procedure;
   }
 
-  public static ProcedureType getProcedureType(Procedure<?> procedure) {
+  public static ProcedureType getProcedureType(final Procedure<?> procedure) {
     if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_DATABASE_PROCEDURE;
     } else if (procedure instanceof AddConfigNodeProcedure) {
@@ -337,6 +341,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ADD_REGION_PEER_PROCEDURE;
     } else if (procedure instanceof RemoveRegionPeerProcedure) {
       return ProcedureType.REMOVE_REGION_PEER_PROCEDURE;
+    } else if (procedure instanceof AlterDatabaseProcedure) {
+      return ProcedureType.ALTER_DATABASE_PROCEDURE;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {

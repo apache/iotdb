@@ -75,12 +75,12 @@ public class AlterDatabaseProcedure
       switch (state) {
         case CHECK_ALTERED_TABLES:
           checkAlteredTables(env);
-          LOGGER.info(
-              "Checking altered tables for database {} when altering database", schema.getName());
+          LOGGER.info("Checking altered tables when altering database {}", schema.getName());
           break;
         case PRE_RELEASE:
           preRelease(env);
-          LOGGER.info("Pre release info for tables {} when altering database", tables);
+          LOGGER.info(
+              "Pre release info for tables {} when altering database {}", tables, schema.getName());
           break;
         case ALTER_DATABASE:
           alterDatabase(env);
@@ -89,7 +89,9 @@ public class AlterDatabaseProcedure
         case COMMIT_RELEASE:
           commitRelease(env);
           LOGGER.info(
-              "Commit release info of database {} when altering database", schema.getName());
+              "Commit release info for tables {} when altering database {}",
+              tables,
+              schema.getName());
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
@@ -165,9 +167,53 @@ public class AlterDatabaseProcedure
   }
 
   @Override
-  protected void rollbackState(
-      final ConfigNodeProcedureEnv env, final AlterDatabaseState alterDatabaseState)
-      throws IOException, InterruptedException, ProcedureException {}
+  protected boolean isRollbackSupported(final AlterDatabaseState state) {
+    return true;
+  }
+
+  @Override
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final AlterDatabaseState state)
+      throws IOException, InterruptedException, ProcedureException {
+    final long startTime = System.currentTimeMillis();
+    try {
+      // TODO: Config write?
+      switch (state) {
+        case PRE_RELEASE:
+          LOGGER.info(
+              "Start rollback pre release info for tables {} when altering database {}",
+              tables,
+              schema.getName());
+          rollbackPreRelease(env);
+          break;
+      }
+    } finally {
+      LOGGER.info(
+          "Rollback SetTableProperties-{} costs {}ms.",
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.commitOrRollbackReleaseTables(
+            schema.getName(),
+            tables.stream().map(TsTable::getTableName).collect(Collectors.toList()),
+            env.getConfigManager(),
+            true);
+
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to rollback pre-release tables for alter database {} for altered tables {} to DataNode, failure results: {}",
+          schema.getName(),
+          tables,
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Rollback pre-release tables for alter database failed")));
+    }
+  }
 
   @Override
   protected AlterDatabaseState getState(final int stateId) {
