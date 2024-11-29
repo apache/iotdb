@@ -30,8 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.junit.Assert;
@@ -51,6 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
+/** Use optimize rule: LimitOffsetPushDown and OrderByExpressionWithLimitChangeToTopK */
 public class LimitOffsetPushDownTest {
 
   @Test
@@ -139,6 +144,7 @@ public class LimitOffsetPushDownTest {
 
   @Test
   public void testPushDownAlignByDevice() {
+    // non aligned device
     checkPushDown(
         "select s1 from root.sg.d1 limit 100 offset 100 align by device;",
         new TestPlanBuilder()
@@ -150,6 +156,71 @@ public class LimitOffsetPushDownTest {
         new TestPlanBuilder()
             .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
             .singleDeviceView("1", "root.sg.d1", "s1")
+            .getRoot());
+
+    OrderByParameter orderByParameter =
+        new OrderByParameter(
+            Arrays.asList(
+                new SortItem(OrderByKey.TIME, Ordering.ASC),
+                new SortItem(OrderByKey.DEVICE, Ordering.ASC)));
+    checkPushDown(
+        "select s1 from root.sg.d1 order by time asc limit 100 offset 100 align by device;",
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"), 200)
+            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .offset("2", 100)
+            .limit("3", 100)
+            .getRoot(),
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
+            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .getRoot());
+
+    // can not push down
+    orderByParameter =
+        new OrderByParameter(
+            Arrays.asList(
+                new SortItem("s1", Ordering.ASC),
+                new SortItem("DEVICE", Ordering.ASC),
+                new SortItem("TIME", Ordering.ASC)));
+    checkPushDown(
+        "select s1 from root.sg.d1 order by s1 asc limit 100 offset 100 align by device;",
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .sort("2", orderByParameter)
+            .offset("3", 100)
+            .limit("4", 100)
+            .getRoot(),
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .topK("5", 200, orderByParameter, Arrays.asList("Device", "s1"))
+            .offset("3", 100)
+            .limit("4", 100)
+            .getRoot());
+
+    orderByParameter =
+        new OrderByParameter(
+            Arrays.asList(
+                new SortItem("s1", Ordering.ASC),
+                new SortItem("DEVICE", Ordering.ASC),
+                new SortItem("TIME", Ordering.ASC)));
+    checkPushDown(
+        "select s1,s2 from root.sg.d2.a order by s1 asc limit 100 offset 100 align by device;",
+        new TestPlanBuilder()
+            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .singleOrderedDeviceView("1", "root.sg.d2.a", orderByParameter, "s1", "s2")
+            .sort("2", orderByParameter)
+            .offset("3", 100)
+            .limit("4", 100)
+            .getRoot(),
+        new TestPlanBuilder()
+            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .singleOrderedDeviceView("1", "root.sg.d2.a", orderByParameter, "s1", "s2")
+            .topK("5", 200, orderByParameter, Arrays.asList("Device", "s1"))
+            .offset("3", 100)
+            .limit("4", 100)
             .getRoot());
   }
 
