@@ -41,6 +41,8 @@ public class BinaryAllocatorTest {
     AllocatorConfig config = new AllocatorConfig();
     config.arenaNum = 1;
     BinaryAllocator binaryAllocator = new BinaryAllocator(config);
+    binaryAllocator.resetArenaBinding();
+
     PooledBinary binary = binaryAllocator.allocateBinary(255);
     assertNotNull(binary);
     assertEquals(binary.getArenaIndex(), -1);
@@ -64,6 +66,7 @@ public class BinaryAllocatorTest {
   @Test
   public void testStrategy() throws InterruptedException {
     BinaryAllocator binaryAllocator = new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
+    binaryAllocator.resetArenaBinding();
 
     PooledBinary binary1 = binaryAllocator.allocateBinary(4096);
     PooledBinary binary2 = binaryAllocator.allocateBinary(4096);
@@ -103,6 +106,7 @@ public class BinaryAllocatorTest {
     config.minAllocateSize = config.maxAllocateSize = 4096;
     config.setTimeBetweenEvictorRunsMillis(1);
     BinaryAllocator binaryAllocator = new BinaryAllocator(config);
+    binaryAllocator.resetArenaBinding();
 
     PooledBinary binary = binaryAllocator.allocateBinary(4096);
     binaryAllocator.deallocateBinary(binary);

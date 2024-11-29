@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.utils.binaryallocator;
 
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.utils.PooledBinary;
 import org.slf4j.Logger;
@@ -153,6 +154,11 @@ public class BinaryAllocator {
     }
   }
 
+  @TestOnly
+  public void resetArenaBinding() {
+    arenaRegistry.get().unbindArena();
+  }
+
   public BinaryAllocatorMetrics getMetrics() {
     return metrics;
   }
@@ -178,6 +184,7 @@ public class BinaryAllocator {
       Arena arena = threadArenaBinding;
       if (arena != null) {
         arena.numRegisterThread.decrementAndGet();
+        threadArenaBinding = null;
       }
     }
 
