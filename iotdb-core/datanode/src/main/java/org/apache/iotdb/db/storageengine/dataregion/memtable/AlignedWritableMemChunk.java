@@ -55,7 +55,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
-  private boolean ignoreAllNullRows;
+  private final boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();

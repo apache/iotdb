@@ -234,7 +234,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
     }
@@ -313,7 +313,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId, String.valueOf(i)));
       processor.insert(buildInsertRowNodeByTSRecord(record), new long[4]);
     }
@@ -390,7 +390,7 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setAligned(true);
@@ -398,7 +398,7 @@ public class TsFileProcessorTest {
     }
 
     // add another point time = 1, value = 1
-    TSRecord record = new TSRecord(1, deviceId);
+    TSRecord record = new TSRecord(deviceId, 1);
     record.addTuple(DataPoint.getDataPoint(dataType, measurementId, "1"));
     InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
     rowNode.setAligned(true);
@@ -480,14 +480,14 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
+      TSRecord record = new TSRecord(deviceId, i);
       record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId, String.valueOf(i)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
       rowNode.setAligned(true);
       processor.insert(rowNode, new long[4]);
     }
     // add another point time = 1, value = "1"
-    TSRecord record = new TSRecord(1, deviceId);
+    TSRecord record = new TSRecord(deviceId, 1);
     record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, measurementId, "1"));
     InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
     rowNode.setAligned(true);
