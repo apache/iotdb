@@ -475,9 +475,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterPipe(
       AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
 
-    alterPipeStatement
-        .getExtractorAttributes()
-        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // modified, the original sql-dialect is used.
+    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+      alterPipeStatement
+          .getExtractorAttributes()
+          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    } else {
+      alterPipeStatement.getExtractorAttributes().remove(SystemConstant.SQL_DIALECT_KEY);
+    }
 
     return new AlterPipeTask(alterPipeStatement);
   }

@@ -624,8 +624,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
-    node.getExtractorAttributes()
-        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // modified, the original sql-dialect is used.
+    if (node.isReplaceAllExtractorAttributes()) {
+      node.getExtractorAttributes()
+          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    } else {
+      node.getExtractorAttributes().remove(SystemConstant.SQL_DIALECT_KEY);
+    }
 
     return new AlterPipeTask(node);
   }
