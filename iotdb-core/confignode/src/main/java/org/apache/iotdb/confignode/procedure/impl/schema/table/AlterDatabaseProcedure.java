@@ -160,6 +160,10 @@ public class AlterDatabaseProcedure
     }
   }
 
+  public TDatabaseSchema getSchema() {
+    return schema;
+  }
+
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final AlterDatabaseState alterDatabaseState)
