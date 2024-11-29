@@ -43,6 +43,10 @@ public class JoinKeyComparatorFactory {
         return isAscending
             ? AscDoubleTypeJoinKeyComparator.getInstance()
             : DescDoubleTypeJoinKeyComparator.getInstance();
+      case BOOLEAN:
+        return isAscending
+            ? AscBooleanTypeJoinKeyComparator.getInstance()
+            : DescBooleanTypeJoinKeyComparator.getInstance();
       case STRING:
       case BLOB:
       case TEXT:

@@ -28,6 +28,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
@@ -398,6 +399,16 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
                     1,
                     Optional.empty(),
                     new double[] {block.getColumn(columnIndex).getDouble(rowIndex)}));
+        break;
+      case BOOLEAN:
+        lastMatchedRightBlock =
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new BooleanColumn(
+                    1,
+                    Optional.empty(),
+                    new boolean[] {block.getColumn(columnIndex).getBoolean(rowIndex)}));
         break;
       case STRING:
       case TEXT:
