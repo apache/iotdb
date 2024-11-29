@@ -29,7 +29,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -50,12 +50,12 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
   public void registerTableSchema(String tableName, List<String> idColumnNames) {
     CompactionTableSchema tableSchema = new CompactionTableSchema(tableName);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnType> columnTypes = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
     for (String idColumnName : idColumnNames) {
       measurementSchemas.add(
           new MeasurementSchema(
               idColumnName, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
-      columnTypes.add(ColumnType.ID);
+      columnTypes.add(ColumnCategory.ID);
     }
     tableSchema.merge(new TableSchema(tableName, measurementSchemas, columnTypes));
     schema.registerTableSchema(tableSchema);

@@ -437,7 +437,7 @@ public class TemplatedInfo {
         new HashMap<>(measurementSchemaList.size());
     measurementSchemaList.forEach(
         measurementSchema ->
-            measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema));
+            measurementSchemaMap.put(measurementSchema.getMeasurementName(), measurementSchema));
 
     Expression pushDownPredicate = null;
     byte hasPushDownFilter = ReadWriteIOUtils.readByte(byteBuffer);

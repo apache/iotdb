@@ -141,9 +141,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   public static final PipePlanToStatementVisitor PLAN_TO_STATEMENT_VISITOR =
       new PipePlanToStatementVisitor();
-  private static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+  public static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new PipeStatementTSStatusVisitor();
-  private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
+  public static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
   private static final PipeStatementTreePatternParseVisitor STATEMENT_TREE_PATTERN_PARSE_VISITOR =
       new PipeStatementTreePatternParseVisitor();

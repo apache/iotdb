@@ -70,7 +70,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     columnNameList.addAll(
         schemas.stream()
-            .map((schema) -> deviceId + "." + schema.getMeasurementId())
+            .map((schema) -> deviceId + "." + schema.getMeasurementName())
             .collect(Collectors.toList()));
     return columnNameList;
   }
@@ -105,7 +105,9 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
     for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
       final Field field;
-      if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+      if (tablet.bitMaps != null
+          && tablet.bitMaps[columnIndex] != null
+          && tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
         field = new Field(null);
       } else {
         final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();

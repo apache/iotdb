@@ -88,18 +88,24 @@ public class TableModelSessionExample {
                   new MeasurementSchema("model", TSDataType.STRING),
                   new MeasurementSchema("temperature", TSDataType.FLOAT),
                   new MeasurementSchema("humidity", TSDataType.DOUBLE)));
-      List<Tablet.ColumnType> columnTypeList =
+      List<Tablet.ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnType.ID,
-                  Tablet.ColumnType.ID,
-                  Tablet.ColumnType.ID,
-                  Tablet.ColumnType.ATTRIBUTE,
-                  Tablet.ColumnType.MEASUREMENT,
-                  Tablet.ColumnType.MEASUREMENT));
-      Tablet tablet = new Tablet("test1", measurementSchemaList, columnTypeList, 100);
+                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.ATTRIBUTE,
+                  Tablet.ColumnCategory.MEASUREMENT,
+                  Tablet.ColumnCategory.MEASUREMENT));
+      Tablet tablet =
+          new Tablet(
+              "test1",
+              IMeasurementSchema.getMeasurementNameList(measurementSchemaList),
+              IMeasurementSchema.getDataTypeList(measurementSchemaList),
+              columnTypeList,
+              100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("region_id", rowIndex, "1");
         tablet.addValue("plant_id", rowIndex, "5");
@@ -107,12 +113,12 @@ public class TableModelSessionExample {
         tablet.addValue("model", rowIndex, "A");
         tablet.addValue("temperature", rowIndex, 37.6F);
         tablet.addValue("humidity", rowIndex, 111.1);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }

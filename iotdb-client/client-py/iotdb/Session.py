@@ -69,7 +69,7 @@ class Session(object):
     SUCCESS_STATUS = 200
     MULTIPLE_ERROR = 302
     REDIRECTION_RECOMMEND = 400
-    DEFAULT_FETCH_SIZE = 10000
+    DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
@@ -85,8 +85,6 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=SQL_DIALECT,
-        database=None,
     ):
         self.__host = host
         self.__port = port
@@ -107,8 +105,8 @@ class Session(object):
         self.__enable_redirection = enable_redirection
         self.__device_id_to_endpoint = None
         self.__endpoint_to_connection = None
-        self.__sql_dialect = sql_dialect
-        self.__database = database
+        self.sql_dialect = self.SQL_DIALECT
+        self.database = None
 
     @classmethod
     def init_from_node_urls(
@@ -119,8 +117,6 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=SQL_DIALECT,
-        database=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -132,8 +128,6 @@ class Session(object):
             fetch_size,
             zone_id,
             enable_redirection,
-            sql_dialect=sql_dialect,
-            database=database,
         )
         session.__hosts = []
         session.__ports = []
@@ -196,9 +190,9 @@ class Session(object):
         else:
             client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
-        configuration = {"version": "V_1_0", "sql_dialect": self.__sql_dialect}
-        if self.__database is not None:
-            configuration["db"] = self.__database
+        configuration = {"version": "V_1_0", "sql_dialect": self.sql_dialect}
+        if self.database is not None:
+            configuration["db"] = self.database
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
             username=self.__user,
@@ -1431,10 +1425,10 @@ class Session(object):
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
-        previous_db = self.__database
+        previous_db = self.database
         if resp.database is not None:
-            self.__database = resp.database
-        if previous_db != self.__database and self.__endpoint_to_connection is not None:
+            self.database = resp.database
+        if previous_db != self.database and self.__endpoint_to_connection is not None:
             iterator = iter(self.__endpoint_to_connection.items())
             for entry in list(iterator):
                 endpoint, connection = entry
@@ -1604,7 +1598,7 @@ class Session(object):
         ):
             return 0
 
-        raise RuntimeError(str(status.code) + ": " + status.message)
+        raise RuntimeError(f"{status.code}: {status.message}")
 
     @staticmethod
     def verify_success_by_list(status_list: list):
@@ -1612,14 +1606,15 @@ class Session(object):
         verify success of operation
         :param status_list: execution result status
         """
-        message = str(Session.MULTIPLE_ERROR) + ": "
-        for status in status_list:
-            if (
-                status.code != Session.SUCCESS_STATUS
-                and status.code != Session.REDIRECTION_RECOMMEND
-            ):
-                message += status.message + "; "
-        raise RuntimeError(message)
+        error_messages = [
+            status.message
+            for status in status_list
+            if status.code
+            not in {Session.SUCCESS_STATUS, Session.REDIRECTION_RECOMMEND}
+        ]
+        if error_messages:
+            message = f"{Session.MULTIPLE_ERROR}: {'; '.join(error_messages)}"
+            raise RuntimeError(message)
 
     @staticmethod
     def verify_success_with_redirection(status: TSStatus):
