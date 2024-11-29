@@ -364,7 +364,8 @@ public class ModificationUtils {
   }
 
   public static boolean canMerge(ModEntry left, ModEntry right) {
-    if (!Objects.equals(left.getClass(), right.getClass())) {
+    if (!Objects.equals(left.getClass(), right.getClass())
+        || !canMerge(left.getTimeRange(), right.getTimeRange())) {
       return false;
     }
 
