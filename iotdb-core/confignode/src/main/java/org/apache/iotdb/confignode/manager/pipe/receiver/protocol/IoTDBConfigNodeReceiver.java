@@ -320,18 +320,33 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case PipeCreateTable:
-        return configManager
-            .getProcedureManager()
-            .executeWithoutDuplicate(
-                ((PipeCreateTablePlan) plan).getDatabase(),
-                ((PipeCreateTablePlan) plan).getTable(),
-                ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                generatePseudoQueryId(),
-                ProcedureType.DROP_TABLE_PROCEDURE,
-                new CreateTableProcedure(
+        TSStatus result =
+            configManager
+                .getProcedureManager()
+                .executeWithoutDuplicate(
                     ((PipeCreateTablePlan) plan).getDatabase(),
                     ((PipeCreateTablePlan) plan).getTable(),
-                    true));
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    generatePseudoQueryId(),
+                    ProcedureType.CREATE_TABLE_PROCEDURE,
+                    new CreateTableProcedure(
+                        ((PipeCreateTablePlan) plan).getDatabase(),
+                        ((PipeCreateTablePlan) plan).getTable(),
+                        true));
+        if (result.getCode()
+            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+          // If the table already exists, we shall add the sender table's columns to the
+          // receiver's table, inner procedure guaranteeing that the columns existing at the
+          // receiver table will be trimmed
+          result =
+              executePlanAndClassifyExceptions(
+                  new AddTableColumnPlan(
+                      ((PipeCreateTablePlan) plan).getDatabase(),
+                      ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                      ((PipeCreateTablePlan) plan).getTable().getColumnList(),
+                      false));
+        }
+        return result;
       case AddTableColumn:
         queryId = generatePseudoQueryId();
         return configManager
@@ -341,7 +356,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 null,
                 ((AddTableColumnPlan) plan).getTableName(),
                 queryId,
-                ProcedureType.DROP_TABLE_PROCEDURE,
+                ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
                 new AddTableColumnProcedure(
                     ((AddTableColumnPlan) plan).getDatabase(),
                     ((AddTableColumnPlan) plan).getTableName(),
@@ -357,7 +372,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 null,
                 ((SetTablePropertiesPlan) plan).getTableName(),
                 queryId,
-                ProcedureType.DROP_TABLE_PROCEDURE,
+                ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
                 new SetTablePropertiesProcedure(
                     ((SetTablePropertiesPlan) plan).getDatabase(),
                     ((SetTablePropertiesPlan) plan).getTableName(),
@@ -373,7 +388,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 null,
                 ((CommitDeleteColumnPlan) plan).getTableName(),
                 queryId,
-                ProcedureType.DROP_TABLE_PROCEDURE,
+                ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
                 new DropTableColumnProcedure(
                     ((CommitDeleteColumnPlan) plan).getDatabase(),
                     ((CommitDeleteColumnPlan) plan).getTableName(),
@@ -501,24 +516,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   IoTDBConfigRegionExtractor.isTypeListened(
                       configPhysicalPlan, executionTypes, treePattern, tablePattern))
           .ifPresent(
-              configPhysicalPlan -> {
-                TSStatus result = executePlanAndClassifyExceptions(configPhysicalPlan);
-                if (result.getCode()
-                        == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
-                    && configPhysicalPlan.getType() == ConfigPhysicalPlanType.PipeCreateTable) {
-                  // If the table already exists, we shall add the sender table's columns to the
-                  // receiver's table, inner procedure guaranteeing that the columns existing at the
-                  // receiver table will be trimmed
-                  result =
-                      executePlanAndClassifyExceptions(
-                          new AddTableColumnPlan(
-                              ((PipeCreateTablePlan) configPhysicalPlan).getDatabase(),
-                              ((PipeCreateTablePlan) configPhysicalPlan).getTable().getTableName(),
-                              ((PipeCreateTablePlan) configPhysicalPlan).getTable().getColumnList(),
-                              false));
-                }
-                results.add(result);
-              });
+              configPhysicalPlan ->
+                  results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
