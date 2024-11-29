@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
@@ -161,18 +160,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
     @Override
     public TsBlock get() {
-      sortTvLists();
       return buildTsBlock();
-    }
-
-    private void sortTvLists() {
-      for (Map.Entry<TVList, Integer> entry : readableChunk.getTvListQueryMap().entrySet()) {
-        TVList tvList = entry.getKey();
-        int queryRowCount = entry.getValue();
-        if (!tvList.isSorted() && queryRowCount > tvList.getSeqRowCount()) {
-          tvList.safelySort();
-        }
-      }
     }
 
     private TsBlock buildTsBlock() {

@@ -124,7 +124,18 @@ public class ReadOnlyMemChunk {
     metaData.setVersion(Long.MAX_VALUE);
     cachedMetaData = metaData;
 
+    sortTvLists();
     initChunkAndPageStats();
+  }
+
+  private void sortTvLists() {
+    for (Map.Entry<TVList, Integer> entry : getTvListQueryMap().entrySet()) {
+      TVList tvList = entry.getKey();
+      int queryRowCount = entry.getValue();
+      if (!tvList.isSorted() && queryRowCount > tvList.getSeqRowCount()) {
+        tvList.safelySort();
+      }
+    }
   }
 
   private void initChunkAndPageStats() {

@@ -151,6 +151,10 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
+  public List<BitMap> getBitMap() {
+    return bitMap;
+  }
+
   public int getSeqRowCount() {
     return seqRowCount;
   }
@@ -569,7 +573,7 @@ public abstract class TVList implements WALEntryValue {
    * @param rowIndex value index
    * @return boolean
    */
-  protected boolean isNullValue(int rowIndex) {
+  public boolean isNullValue(int rowIndex) {
     if (rowIndex >= rowCount) {
       return false;
     }
