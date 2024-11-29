@@ -746,11 +746,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final PartialPath prefixPath = plan.getDevicePath();
       final List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
 
-      // Deep copy if with merge
-      // The original lists may be altered to help distinguish between creation plan
-      // and update plan
-      // Here we deeply copy to avoid damaging the original plan node for pipe schema region
-      // listening queue
       List<String> measurements = plan.getMeasurements();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
@@ -759,6 +754,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       List<Map<String, String>> tagsList = plan.getTagsList();
       List<Map<String, String>> attributesList = plan.getAttributesList();
 
+      // Deep copy if with merge
+      // The original lists may be altered to help distinguish between creation plan
+      // and update plan
+      // Here we deeply copy to avoid damaging the original plan node for pipe schema region
+      // listening queue
       if (withMerge) {
         measurements = new ArrayList<>(measurements);
         dataTypes = new ArrayList<>(dataTypes);
