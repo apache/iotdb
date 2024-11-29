@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -27,8 +29,11 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterDatabaseState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -38,9 +43,19 @@ import java.util.List;
 
 public class AlterDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterDatabaseState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlterDatabaseProcedure.class);
 
-  protected String database;
+  protected TDatabaseSchema schema;
   protected List<TsTable> tables = new ArrayList<>();
+
+  public AlterDatabaseProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+  }
+
+  public AlterDatabaseProcedure(final TDatabaseSchema schema, final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+    this.schema = schema;
+  }
 
   @Override
   protected Flow executeFromState(
@@ -74,7 +89,7 @@ public class AlterDatabaseProcedure
     stream.writeShort(ProcedureType.ALTER_DATABASE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(database, stream);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, stream);
     ReadWriteIOUtils.write(tables.size(), stream);
     for (final TsTable table : tables) {
       table.serialize(stream);
@@ -84,11 +99,16 @@ public class AlterDatabaseProcedure
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    this.database = ReadWriteIOUtils.readString(byteBuffer);
+    try {
+      schema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
+    } catch (final ThriftSerDeException e) {
+      LOGGER.error("Error in deserialize AlterDatabaseProcedure", e);
+    }
+
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     this.tables = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
-      tables.add(TsTable.deserialize(byteBuffer));
+      this.tables.add(TsTable.deserialize(byteBuffer));
     }
   }
 }
