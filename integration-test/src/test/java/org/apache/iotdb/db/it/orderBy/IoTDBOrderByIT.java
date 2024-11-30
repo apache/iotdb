@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -97,6 +98,15 @@ public class IoTDBOrderByIT {
         "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
+  private static final String[] sql3 =
+      new String[] {
+        "CREATE TIMESERIES root.db.d.v_timestamp WITH DATATYPE=TIMESTAMP, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d.v_string WITH DATATYPE=STRING, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d.v_date WITH DATATYPE=DATE, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d.v_blob WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "insert into root.sg.d(timestamp,v_timestamp,v_string,v_date,v_blob) values(1,2024-09-20T06:15:35.000+00:00,'sss','2012-12-12',X'108DCD62')",
+      };
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -112,12 +122,13 @@ public class IoTDBOrderByIT {
   protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String sql : sql) {
-        statement.execute(sql);
+
+      for (String[] sqlList : java.util.Arrays.asList(sql, sql2, sql3)) {
+        for (String sql : sqlList) {
+          statement.execute(sql);
+        }
       }
-      for (String sql : sql2) {
-        statement.execute(sql);
-      }
+
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -190,6 +201,19 @@ public class IoTDBOrderByIT {
       e.printStackTrace();
       fail();
     }
+  }
+
+  @Test
+  public void newDataTypeTest() {
+    String[] expectedHeader = new String[] {"Time,,s3,s1,s2"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d2,11,11.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.db.** LIMIT 2 ORDER BY timestamp ALIGN BY DEVICE",
+        expectedHeader,
+        retArray);
   }
 
   // 1. One-level order by test
