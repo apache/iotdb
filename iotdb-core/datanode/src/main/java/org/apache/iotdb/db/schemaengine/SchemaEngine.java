@@ -388,29 +388,26 @@ public class SchemaEngine {
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
-                timeSeriesNum.put(
-                    entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)
-                        + entry
-                            .getValue()
-                            .getSchemaRegionStatistics()
-                            .getTable2DevicesNumMap()
-                            .entrySet()
-                            .stream()
-                            .map(
-                                tableEntry -> {
-                                  final TsTable table =
-                                      DataNodeTableCache.getInstance()
-                                          .getTable(
-                                              PathUtils.unQualifyDatabaseName(
-                                                  entry.getValue().getDatabaseFullPath()),
-                                              tableEntry.getKey());
-                                  return Objects.nonNull(table)
-                                      ? table.getMeasurementNum() * tableEntry.getValue()
-                                      : 0;
-                                })
-                            .reduce(0L, Long::sum)));
+                timeSeriesNum.put(entry.getKey().getId(), getTimeSeriesNumber(entry.getValue())));
     return timeSeriesNum;
+  }
+
+  // not including view number
+  private long getTimeSeriesNumber(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false)
+        + schemaRegion.getSchemaRegionStatistics().getTable2DevicesNumMap().entrySet().stream()
+            .map(
+                tableEntry -> {
+                  final TsTable table =
+                      DataNodeTableCache.getInstance()
+                          .getTable(
+                              PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                              tableEntry.getKey());
+                  return Objects.nonNull(table)
+                      ? table.getMeasurementNum() * tableEntry.getValue()
+                      : 0;
+                })
+            .reduce(0L, Long::sum);
   }
 
   /**
@@ -459,9 +456,7 @@ public class SchemaEngine {
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(
-                              schemaRegion ->
-                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false))
+                          .map(this::getTimeSeriesNumber)
                           .orElse(0L)));
     }
   }
