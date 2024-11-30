@@ -49,7 +49,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -737,37 +736,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
-    final boolean withMerge =
-        plan instanceof CreateAlignedTimeSeriesPlanImpl
-                && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()
-            || plan instanceof CreateAlignedTimeSeriesNode
-                && ((CreateAlignedTimeSeriesNode) plan).isGeneratedByPipe();
     try {
       final PartialPath prefixPath = plan.getDevicePath();
+      final List<String> measurements = plan.getMeasurements();
+      final List<TSDataType> dataTypes = plan.getDataTypes();
+      final List<TSEncoding> encodings = plan.getEncodings();
+      final List<CompressionType> compressors = plan.getCompressors();
+      final List<String> aliasList = plan.getAliasList();
+      final List<Map<String, String>> tagsList = plan.getTagsList();
+      final List<Map<String, String>> attributesList = plan.getAttributesList();
       final List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
-
-      List<String> measurements = plan.getMeasurements();
-      List<TSDataType> dataTypes = plan.getDataTypes();
-      List<TSEncoding> encodings = plan.getEncodings();
-      List<CompressionType> compressors = plan.getCompressors();
-      List<String> aliasList = plan.getAliasList();
-      List<Map<String, String>> tagsList = plan.getTagsList();
-      List<Map<String, String>> attributesList = plan.getAttributesList();
-
-      // Deep copy if with merge
-      // The original lists may be altered to help distinguish between creation plan
-      // and update plan
-      // Here we deeply copy to avoid damaging the original plan node for pipe schema region
-      // listening queue
-      if (withMerge) {
-        measurements = new ArrayList<>(measurements);
-        dataTypes = new ArrayList<>(dataTypes);
-        encodings = new ArrayList<>(encodings);
-        compressors = new ArrayList<>(compressors);
-        aliasList = Objects.nonNull(aliasList) ? new ArrayList<>(aliasList) : null;
-        tagsList = Objects.nonNull(tagsList) ? new ArrayList<>(tagsList) : null;
-        attributesList = Objects.nonNull(attributesList) ? new ArrayList<>(attributesList) : null;
-      }
 
       for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
@@ -785,7 +763,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               encodings,
               compressors,
               aliasList,
-              withMerge,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
               existingMeasurementIndexes);
 
       // update statistics and schemaDataTypeNumMap

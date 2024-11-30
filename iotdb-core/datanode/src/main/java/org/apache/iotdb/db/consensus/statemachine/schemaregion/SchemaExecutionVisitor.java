@@ -110,7 +110,22 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitCreateAlignedTimeSeries(
       final CreateAlignedTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createAlignedTimeSeries(node);
+      if (node.isGeneratedByPipe()) {
+        final ICreateAlignedTimeSeriesPlan plan =
+            SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+                node.getDevicePath(),
+                node.getMeasurements(),
+                node.getDataTypes(),
+                node.getEncodings(),
+                node.getCompressors(),
+                node.getAliasList(),
+                node.getTagsList(),
+                node.getAttributesList());
+        ((CreateAlignedTimeSeriesPlanImpl) plan).setWithMerge(true);
+        schemaRegion.createAlignedTimeSeries(plan);
+      } else {
+        schemaRegion.createAlignedTimeSeries(node);
+      }
     } catch (final MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
