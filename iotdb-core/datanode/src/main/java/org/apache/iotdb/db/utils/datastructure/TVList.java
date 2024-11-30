@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -57,6 +58,8 @@ public abstract class TVList implements WALEntryValue {
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
   protected int rowCount;
+  // the count of sequential part started from the beginning
+  protected int seqRowCount;
 
   // List of index array, add 1 when expanded -> data point index array
   // Index relation: arrayIndex -> elementIndex
@@ -67,8 +70,16 @@ public abstract class TVList implements WALEntryValue {
   // Index relation: arrayIndex -> elementIndex
   protected List<BitMap> bitMap;
 
+  // list of query that this TVList is used
+  protected final List<QueryContext> queryContextList;
+
+  // the owner query which is obligated to release the TVList.
+  // When it is null, the TVList is owned by insert thread and released after flush.
+  protected QueryContext ownerQuery;
+
   protected boolean sorted = true;
   protected long maxTime;
+  protected long minTime;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
@@ -78,7 +89,10 @@ public abstract class TVList implements WALEntryValue {
     timestamps = new ArrayList<>();
     indices = new ArrayList<>();
     rowCount = 0;
+    seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
+    queryContextList = new ArrayList<>();
     referenceCount = new AtomicInteger();
   }
 
@@ -343,6 +357,10 @@ public abstract class TVList implements WALEntryValue {
     return maxTime;
   }
 
+  public long getMinTime() {
+    return minTime;
+  }
+
   public long getVersion() {
     return version;
   }
@@ -368,6 +386,7 @@ public abstract class TVList implements WALEntryValue {
   public int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
+    long minTime = Long.MAX_VALUE;
     for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
@@ -378,6 +397,7 @@ public abstract class TVList implements WALEntryValue {
         deletedNumber++;
       } else {
         maxTime = Math.max(time, maxTime);
+        minTime = Math.min(time, minTime);
       }
     }
     return deletedNumber;
@@ -388,14 +408,20 @@ public abstract class TVList implements WALEntryValue {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
     cloneList.rowCount = rowCount;
+    cloneList.seqRowCount = seqRowCount;
     cloneList.sorted = sorted;
     cloneList.maxTime = maxTime;
+    cloneList.minTime = minTime;
   }
 
   public void clear() {
     rowCount = 0;
+    seqRowCount = 0;
     sorted = true;
     maxTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
+    queryContextList.clear();
+    ownerQuery = null;
     clearTime();
     clearValue();
   }
@@ -428,16 +454,25 @@ public abstract class TVList implements WALEntryValue {
     return cloneArray;
   }
 
-  void updateMaxTimeAndSorted(long[] time, int start, int end) {
+  void updateMinMaxTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
+    int inputSeqRowCount = 0;
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
-        inputSorted = false;
+      minTime = Math.min(minTime, time[i]);
+      if (inputSorted) {
+        if (i < length - 1 && time[i] > time[i + 1]) {
+          inputSorted = false;
+        } else {
+          inputSeqRowCount++;
+        }
       }
+    }
+    if (sorted && (rowCount == 0 || time[start] > getTime(rowCount - 1))) {
+      seqRowCount += inputSeqRowCount;
     }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
@@ -513,5 +548,13 @@ public abstract class TVList implements WALEntryValue {
 
   public List<long[]> getTimestamps() {
     return timestamps;
+  }
+
+  public void setOwnerQuery(QueryContext queryCtx) {
+    this.ownerQuery = queryCtx;
+  }
+
+  public List<QueryContext> getQueryContextList() {
+    return queryContextList;
   }
 }
