@@ -869,7 +869,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override
