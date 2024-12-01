@@ -552,6 +552,17 @@ enum class ColumnCategory {
     ATTRIBUTE
 };
 
+template<typename T, typename Target>
+Target safe_cast(const T& value) {
+    if constexpr (std::is_convertible<T, Target>::value) {
+        return static_cast<Target>(value);
+    } else {
+        throw UnSupportedDataTypeException("Cannot convert parameter type " + 
+            std::string(typeid(T).name()) + " to data type " + 
+            std::string(typeid(Target).name()));
+    }
+}
+
 /*
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
@@ -648,10 +659,58 @@ public:
     }
 
     template<typename T>
-    void addValue(size_t schemaId, size_t rowIndex, const T& value);
+    void addValue(size_t schemaId, size_t rowIndex, const T& value) {
+        if (schemaId >= schemas.size()) {
+            char tmpStr[100];
+            sprintf(tmpStr, "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.", schemaId, schemas.size());
+            throw std::out_of_range(tmpStr);
+        }
+
+        if (rowIndex >= rowSize) {
+            char tmpStr[100];
+            sprintf(tmpStr, "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.", rowIndex, rowSize);
+            throw std::out_of_range(tmpStr);
+        }
+
+        TSDataType::TSDataType dataType = schemas[schemaId].second;
+        switch (dataType) {
+            case TSDataType::BOOLEAN: {
+                ((bool*)values[schemaId])[rowIndex] = safe_cast<T, bool>(value);
+                break;
+            }
+            case TSDataType::INT32: {
+                ((int*)values[schemaId])[rowIndex] =safe_cast<T, int>(value);
+                break;
+            }
+            case TSDataType::INT64: {
+                ((int64_t*)values[schemaId])[rowIndex] = safe_cast<T, int64_t>(value);
+                break;
+            }
+            case TSDataType::FLOAT: {
+                ((float*)values[schemaId])[rowIndex] = safe_cast<T, float>(value);
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                ((double*)values[schemaId])[rowIndex] = safe_cast<T, double>(value);
+                break;
+            }
+            case TSDataType::TEXT: {
+                ((string*)values[schemaId])[rowIndex] = safe_cast<T, string>(value);
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
+    }
 
     template<typename T>
-    void addValue(const std::string &schemaName, size_t rowIndex, const T& value);
+    void addValue(const string &schemaName, size_t rowIndex, const T& value) {
+        if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
+            throw SchemaNotFoundException(string("Schema ") + schemaName + " not found.");
+        }
+        size_t schemaId = schemaNameIndex[schemaName];
+        addValue(schemaId, rowIndex, value);
+    }
 
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
 

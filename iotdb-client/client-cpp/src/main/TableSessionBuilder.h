@@ -19,11 +19,13 @@
 
 // This file is a translation of the Java file iotdb-client/session/src/main/java/org/apache/iotdb/session/TableSessionBuilder.java
 
+#ifndef IOTDB_TABLESESSIONBUILDER_H
+#define IOTDB_TABLESESSIONBUILDER_H
+
 #include "TableSession.h"
 #include "AbstractSessionBuilder.h"
-#include <string>
 
-class TableSessionBuiler : public AbstractSessionBuilder {
+class TableSessionBuilder : public AbstractSessionBuilder {
     /*
         std::string host;
         int rpcPort;
@@ -35,38 +37,40 @@ class TableSessionBuiler : public AbstractSessionBuilder {
         std::string database;
     */
 public:
-    inline TableSessionBuiler* host(const std::string &host) {
-        this->host = host;
+    TableSessionBuilder* host(const std::string &host) {
+        AbstractSessionBuilder::host = host;
         return this;
     }
-    inline TableSessionBuiler* rpcPort(int rpcPort) {
-        this->rpcPort = rpcPort;
+    TableSessionBuilder* rpcPort(int rpcPort) {
+        AbstractSessionBuilder::rpcPort = rpcPort;
         return this;
     }
-    inline TableSessionBuiler* username(const std::string &username) {
-        this->username = username;
+    TableSessionBuilder* username(const std::string &username) {
+        AbstractSessionBuilder::username = username;
         return this;
     }
-    inline TableSessionBuiler* password(const std::string &password) {
-        this->password = password;
+    TableSessionBuilder* password(const std::string &password) {
+        AbstractSessionBuilder::password = password;
         return this;
     }
-    inline TableSessionBuiler* zoneId(const std::string &zoneId) {
-        this->zoneId = zoneId;
+    TableSessionBuilder* zoneId(const std::string &zoneId) {
+        AbstractSessionBuilder::zoneId = zoneId;
         return this;
     }
-    inline TableSessionBuiler* fetchSize(int fetchSize) {
-        this->fetchSize = fetchSize;
+    TableSessionBuilder* fetchSize(int fetchSize) {
+        AbstractSessionBuilder::fetchSize = fetchSize;
         return this;
     }
-    inline TableSessionBuiler* database(const std::string &database) {
-        this->database = database;
+    TableSessionBuilder* database(const std::string &database) {
+        AbstractSessionBuilder::database = database;
         return this;
     }
-    inline TableSession* build() {
-        this->sqlDialect = "table";
+    TableSession* build() {
+        sqlDialect = "table";
         Session* newSession = new Session(this);
         newSession->open(false);
         return new TableSession(newSession);
     }
-}
+};
+
+#endif // IOTDB_TABLESESSIONBUILDER_H

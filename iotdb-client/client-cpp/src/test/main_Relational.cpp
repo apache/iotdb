@@ -22,7 +22,7 @@
 #include <catch.hpp>
 #include "TableSessionBuilder.h"
 
-TableSession *session = new TableSessionBuilder().host("127.0.0.1").rpcPort(6667).username("root").password("root").build();
+TableSession *session = (new TableSessionBuilder())->host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
 
 struct SessionListener : Catch::TestEventListenerBase {
 

@@ -49,7 +49,7 @@ TEST_CASE("Create table success", "[createTable]") {
     session->executeNonQueryStatement("CREATE DATABASE db1");
     session->executeNonQueryStatement("CREATE DATABASE db2");
     session->executeNonQueryStatement("USE \"db1\"");
-    REQUIRE(session->session->getDatabase() == "db1");
+    REQUIRE(session->getDatabase() == "db1");
     session->executeNonQueryStatement("CREATE TABLE table0 ("
             "id1 string id,"
             "attr1 string attribute,"
@@ -87,11 +87,11 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
         int rowIndex = tablet.rowSize++;
         tablet.timestamps[rowIndex] = timestamp + row;
         string data = "id:"; data += to_string(row);
-        tablet.addValue(0, rowIndex, &data);
+        tablet.addValue(0, rowIndex, data);
         data = "attr:"; data += to_string(row);
-        tablet.addValue(1, rowIndex, &data);
+        tablet.addValue(1, rowIndex, data);
         double value = row * 1.1;
-        tablet.addValue(2, rowIndex, &value);
+        tablet.addValue(2, rowIndex, value);
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insert(tablet, true);
             tablet.reset();

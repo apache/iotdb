@@ -19,6 +19,9 @@
 
 // This file is a translation of the Java file iotdb-client/session/src/main/java/org/apache/iotdb/session/TableSession.java
 
+#ifndef IOTDB_TABLESESSION_H
+#define IOTDB_TABLESESSION_H
+
 #include "Session.h"
 
 class TableSession {
@@ -32,5 +35,8 @@ public:
     void executeNonQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
+    string getDatabase();
     void close();
 };
+
+#endif // IOTDB_TABLESESSION_H

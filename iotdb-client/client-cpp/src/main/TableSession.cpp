@@ -33,6 +33,9 @@ unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql
 unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
     return session->executeQueryStatement(sql, timeoutInMs);
 }
+string TableSession::getDatabase() {
+    return session->getDatabase();
+}
 void TableSession::close() {
     session->close();
 }

@@ -17,6 +17,9 @@
  * under the License.
  */
 
+#ifndef IOTDB_ABSTRACTSESSIONBUILDER_H
+#define IOTDB_ABSTRACTSESSIONBUILDER_H
+
 #include <string>
 
 class AbstractSessionBuilder {
@@ -30,3 +33,5 @@ public:
     std::string sqlDialect = "tree";
     std::string database = "";
 };
+
+#endif // IOTDB_ABSTRACTSESSIONBUILDER_H

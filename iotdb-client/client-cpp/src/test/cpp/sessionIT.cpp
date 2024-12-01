@@ -274,7 +274,7 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int64_t i = 0; i < 3; i++) {
-            tablet.addValue(i, row, &i);
+            tablet.addValue(i, row, i);
         }
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insertTablet(tablet);
