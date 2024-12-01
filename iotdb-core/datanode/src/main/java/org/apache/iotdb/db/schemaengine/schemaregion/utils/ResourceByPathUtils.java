@@ -22,14 +22,16 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -51,11 +53,14 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -322,6 +327,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
 class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(MeasurementResourceByPathUtils.class);
+
   NonAlignedFullPath fullPath;
 
   protected MeasurementResourceByPathUtils(IFullPath fullPath) {
@@ -359,6 +367,62 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return timeSeriesMetadata;
   }
 
+  private Map<TVList, Integer> prepareTvListMapForQuery(
+      WritableMemChunk memChunk, boolean isWorkMemTable, QueryContext context) {
+    Map<TVList, Integer> tvListQueryMap = new LinkedHashMap<>();
+    // immutable sorted lists
+    for (TVList tvList : memChunk.getSortedList()) {
+      tvList.lockQueryList();
+      try {
+        LOGGER.debug(
+            "Flushing/Working MemTable - Add current query context to immutable TVList's query list");
+        tvList.getQueryContextList().add(context);
+        tvListQueryMap.put(tvList, tvList.rowCount());
+      } finally {
+        tvList.unlockQueryList();
+      }
+    }
+
+    // mutable tvlist
+    TVList list = memChunk.getTVList();
+    list.lockQueryList();
+    try {
+      if (!isWorkMemTable) {
+        LOGGER.debug(
+            "Flushing MemTable - add current query context to mutable TVList's query list");
+        list.getQueryContextList().add(context);
+        tvListQueryMap.put(list, list.rowCount());
+      } else {
+        if (list.isSorted() || list.getQueryContextList().isEmpty()) {
+          LOGGER.debug(
+              "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
+          list.getQueryContextList().add(context);
+          tvListQueryMap.put(list, list.rowCount());
+        } else {
+          LOGGER.debug(
+              "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
+          QueryContext firstQuery = list.getQueryContextList().get(0);
+          // reserve query memory
+          if (firstQuery instanceof FragmentInstanceContext) {
+            MemoryReservationManager memoryReservationManager =
+                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+            memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
+          }
+          list.setOwnerQuery(firstQuery);
+
+          // clone TVList
+          TVList cloneList = list.clone();
+          cloneList.getQueryContextList().add(context);
+          tvListQueryMap.put(cloneList, cloneList.rowCount());
+          memChunk.setTVList(cloneList);
+        }
+      }
+    } finally {
+      list.unlockQueryList();
+    }
+    return tvListQueryMap;
+  }
+
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
@@ -373,10 +437,13 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         || !memTableMap.get(deviceID).contains(fullPath.getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk =
-        memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
-    // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList chunkCopy = memChunk.getSortedTvListForQuery();
+    WritableMemChunk memChunk =
+        (WritableMemChunk)
+            memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
+    // prepare TVList for query. It should clone and sort TVList if necessary.
+    // Also, the map keeps TVlist length at this moment.
+    Map<TVList, Integer> tvListQueryMap =
+        prepareTvListMapForQuery(memChunk, modsToMemtable == null, context);
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList =
@@ -392,7 +459,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         fullPath.getMeasurement(),
         fullPath.getMeasurementSchema().getType(),
         fullPath.getMeasurementSchema().getEncodingType(),
-        chunkCopy,
+        tvListQueryMap,
         fullPath.getMeasurementSchema().getProps(),
         deletionList);
   }

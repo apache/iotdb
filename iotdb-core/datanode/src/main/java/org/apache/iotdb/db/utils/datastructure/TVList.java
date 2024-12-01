@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -70,6 +71,8 @@ public abstract class TVList implements WALEntryValue {
   // Index relation: arrayIndex -> elementIndex
   protected List<BitMap> bitMap;
 
+  // lock to provide synchronization for query list
+  private final ReentrantLock queryListLock = new ReentrantLock();
   // list of query that this TVList is used
   protected final List<QueryContext> queryContextList;
 
@@ -133,6 +136,10 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
+  public long calculateRamSize() {
+    return timestamps.size() * tvListArrayMemCost(getDataType());
+  }
+
   public boolean isSorted() {
     return sorted;
   }
@@ -149,6 +156,23 @@ public abstract class TVList implements WALEntryValue {
 
   public int rowCount() {
     return rowCount;
+  }
+
+  public int seqRowCount() {
+    return seqRowCount;
+  }
+
+  public int count() {
+    if (bitMap == null) {
+      return rowCount;
+    }
+    int count = 0;
+    for (int row = 0; row < rowCount; row++) {
+      if (!isNullValue(row)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   public long getTime(int index) {
@@ -214,7 +238,7 @@ public abstract class TVList implements WALEntryValue {
    * @param rowIndex value index
    * @return boolean
    */
-  protected boolean isNullValue(int rowIndex) {
+  public boolean isNullValue(int rowIndex) {
     if (rowIndex >= rowCount) {
       return false;
     }
@@ -554,7 +578,71 @@ public abstract class TVList implements WALEntryValue {
     this.ownerQuery = queryCtx;
   }
 
+  public QueryContext getOwnerQuery() {
+    return ownerQuery;
+  }
+
   public List<QueryContext> getQueryContextList() {
     return queryContextList;
+  }
+
+  public List<BitMap> getBitMap() {
+    return bitMap;
+  }
+
+  public void lockQueryList() {
+    queryListLock.lock();
+  }
+
+  public void unlockQueryList() {
+    queryListLock.unlock();
+  }
+
+  public TVListIterator iterator() {
+    return new TVListIterator();
+  }
+
+  /* TVList Iterator */
+  public class TVListIterator {
+    private int index;
+
+    public TVListIterator() {
+      index = 0;
+    }
+
+    public boolean hasNext() {
+      if (bitMap != null) {
+        // skip deleted & duplicated timestamp
+        while ((index < rowCount && isNullValue(getValueIndex(index)))
+            || (index + 1 < rowCount && getTime(index + 1) == getTime(index))) {
+          index++;
+        }
+      } else {
+        // skip duplicated timestamp
+        while (index + 1 < rowCount && getTime(index + 1) == getTime(index)) {
+          index++;
+        }
+      }
+      return index < rowCount;
+    }
+
+    public TimeValuePair next() {
+      return getTimeValuePair(index++);
+    }
+
+    public TimeValuePair current() {
+      if (index >= rowCount || isNullValue(getValueIndex(index))) {
+        return null;
+      }
+      return getTimeValuePair(index);
+    }
+
+    public int getIndex() {
+      return index;
+    }
+
+    public void setIndex(int index) {
+      this.index = index;
+    }
   }
 }

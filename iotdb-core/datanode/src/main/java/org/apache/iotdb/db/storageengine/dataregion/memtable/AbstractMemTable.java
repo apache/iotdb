@@ -570,7 +570,7 @@ public abstract class AbstractMemTable implements IMemTable {
             buildChunkMetaDataForMemoryChunk(
                 measurementId,
                 timestamps[0],
-                timestamps[tvListCopy.rowCount() - 1],
+                timestamps[tvListCopy.count() - 1],
                 Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
@@ -669,7 +669,7 @@ public abstract class AbstractMemTable implements IMemTable {
               buildChunkMetaDataForMemoryChunk(
                   measurementId,
                   timestamps[0],
-                  timestamps[tvListCopy.rowCount() - 1],
+                  timestamps[tvListCopy.count() - 1],
                   Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
@@ -759,7 +759,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private long[] filterDeletedTimestamp(TVList tvList, List<TimeRange> deletionList) {
-    if (deletionList.isEmpty()) {
+    if (tvList.getBitMap() == null && deletionList.isEmpty()) {
       long[] timestamps = tvList.getTimestamps().stream().flatMapToLong(LongStream::of).toArray();
       return Arrays.copyOfRange(timestamps, 0, tvList.rowCount());
     }
@@ -771,7 +771,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     for (int i = 0; i < rowCount; i++) {
       long curTime = tvList.getTime(i);
-      if (!ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)
+      if (!tvList.isNullValue(i)
+          && !ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)
           && (i == rowCount - 1 || curTime != lastTime)) {
         result.add(curTime);
       }
