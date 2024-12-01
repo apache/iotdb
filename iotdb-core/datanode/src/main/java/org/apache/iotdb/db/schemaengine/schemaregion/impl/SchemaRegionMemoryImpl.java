@@ -117,6 +117,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -854,13 +855,26 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
+      throws SchemaQuotaExceededException {
+    final int notExistNum = mtree.getTableDeviceNotExistNum(tableName, deviceIdList);
+    schemaQuotaManager.check(
+        (long)
+                DataNodeTableCache.getInstance()
+                    .getTable(storageGroupFullPath.substring(5), tableName)
+                    .getMeasurementNum()
+            * notExistNum,
+        notExistNum);
   }
 
   @Override
@@ -1388,7 +1402,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<String> attributeNameList = node.getAttributeNameList();
       final Object[] attributeValueList = node.getAttributeValueList().get(i);
 
-      mtree.createTableDevice(
+      mtree.createOrUpdateTableDevice(
           tableName,
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
