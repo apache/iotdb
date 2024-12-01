@@ -33,8 +33,8 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
@@ -48,7 +48,7 @@ public abstract class BooleanTVList extends TVList {
 
   BooleanTVList() {
     super();
-    values = new ArrayList<>();
+    values = new CopyOnWriteArrayList<>();
   }
 
   public static BooleanTVList newList() {
