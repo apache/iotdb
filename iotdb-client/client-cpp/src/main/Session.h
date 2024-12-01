@@ -554,12 +554,12 @@ enum class ColumnCategory {
 
 template<typename T, typename Target>
 Target safe_cast(const T& value) {
-    if constexpr (std::is_convertible<T, Target>::value) {
-        return static_cast<Target>(value);
+    if (std::is_same<T, Target>::value) {
+        return *(Target*)(&value);
     } else {
-        throw UnSupportedDataTypeException("Cannot convert parameter type " + 
-            std::string(typeid(T).name()) + " to data type " + 
-            std::string(typeid(Target).name()));
+        throw UnSupportedDataTypeException("Parameter type " +
+                                           std::string(typeid(T).name()) + " is not the same as DataType" +
+                                           std::string(typeid(Target).name()));
     }
 }
 
