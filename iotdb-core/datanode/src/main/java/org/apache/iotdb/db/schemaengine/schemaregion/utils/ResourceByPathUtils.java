@@ -367,6 +367,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return timeSeriesMetadata;
   }
 
+  // TODO: global time filter pushdown
   private Map<TVList, Integer> prepareTvListMapForQuery(
       WritableMemChunk memChunk, boolean isWorkMemTable, QueryContext context) {
     Map<TVList, Integer> tvListQueryMap = new LinkedHashMap<>();

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -89,8 +90,8 @@ public abstract class TVList implements WALEntryValue {
   private long version;
 
   protected TVList() {
-    timestamps = new ArrayList<>();
-    indices = new ArrayList<>();
+    timestamps = new CopyOnWriteArrayList<>();
+    indices = new CopyOnWriteArrayList<>();
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -123,6 +124,7 @@ public abstract class TVList implements WALEntryValue {
     return null;
   }
 
+  // TODO: memory cost for indices and bitmap
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
@@ -218,7 +220,7 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      bitMap = new ArrayList<>();
+      bitMap = new CopyOnWriteArrayList<>();
       for (int i = 0; i < timestamps.size(); i++) {
         bitMap.add(new BitMap(ARRAY_SIZE));
       }
@@ -257,7 +259,7 @@ public abstract class TVList implements WALEntryValue {
       }
     }
     if (bitMap != null) {
-      cloneList.bitMap = new ArrayList<>();
+      cloneList.bitMap = new CopyOnWriteArrayList<>();
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }
