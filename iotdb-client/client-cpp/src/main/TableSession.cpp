@@ -27,10 +27,10 @@ void TableSession::insert(Tablet &tablet, bool sorted = false) {
 void TableSession::executeNonQueryStatement(const string &sql) {
     session->executeNonQueryStatement(sql);
 }
-SessionDataSet TableSession::executeQueryStatement(const string &sql) {
+unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql) {
     return session->executeQueryStatement(sql);
 }
-SessionDataSet TableSession::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
+unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
     return session->executeQueryStatement(sql, timeoutInMs);
 }
 void TableSession::close() {

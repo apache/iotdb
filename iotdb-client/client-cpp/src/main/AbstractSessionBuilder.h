@@ -29,4 +29,4 @@ public:
     int fetchSize = 10000;
     std::string sqlDialect = "tree";
     std::string database = "";
-}
+};

@@ -163,6 +163,22 @@
                                     <sourceFile>${project.basedir}/src/main/Session.cpp</sourceFile>
                                     <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.cpp</destinationFile>
                                 </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/TableSession.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/TableSession.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/TableSession.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/TableSession.cpp</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/TableSessionBuilder.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/TableSessionBuilder.h</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${project.basedir}/src/main/AbstractSessionBuilder.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/AbstractSessionBuilder.h</destinationFile>
+                                </fileSet>
                             </fileSets>
                         </configuration>
                     </execution>

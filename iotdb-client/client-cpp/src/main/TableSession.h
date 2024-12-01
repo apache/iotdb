@@ -28,9 +28,9 @@ public:
     TableSession(Session* session) {
         this->session = session;
     }
-    void insert(Tablet &tablet, bool sorted = false);
-    void executeNonQueryStatement(const std::string &sql);
-    SessionDataSet executeQueryStatement(const std::string &sql);
-    SessionDataSet executeQueryStatement(const std::string &sql, int64_t timeoutInMs);
+    void insert(Tablet& tablet, bool sorted);
+    void executeNonQueryStatement(const std::string& sql);
+    unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
+    unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
     void close();
-}
+};
