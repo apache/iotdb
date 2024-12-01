@@ -553,12 +553,18 @@ enum class ColumnCategory {
 };
 
 template<typename T, typename Target>
-Target safe_cast(const T& value) {
+const Target* safe_cast(const T& value) {
     if (std::is_same<T, Target>::value) {
-        return *(Target*)(&value);
+        return (Target*)&value;
+    } if (std::is_same<T, int32_t>::value && std::is_same<Target, int64_t>::value) {
+        int32_t tmp = *(int32_t*)&value;
+        return (Target*)&(int64_t)tmp;
+    } if (std::is_same<T, float>::value && std::is_same<Target, double>::value) {
+        float tmp = *(float*)&value;
+        return (Target*)&(double)tmp;
     } else {
         throw UnSupportedDataTypeException("Parameter type " +
-                                           std::string(typeid(T).name()) + " is not the same as DataType" +
+                                           std::string(typeid(T).name()) + " cannot be converted to DataType" +
                                            std::string(typeid(Target).name()));
     }
 }
@@ -675,27 +681,27 @@ public:
         TSDataType::TSDataType dataType = schemas[schemaId].second;
         switch (dataType) {
             case TSDataType::BOOLEAN: {
-                ((bool*)values[schemaId])[rowIndex] = safe_cast<T, bool>(value);
+                ((bool*)values[schemaId])[rowIndex] = *safe_cast<T, bool>(value);
                 break;
             }
             case TSDataType::INT32: {
-                ((int*)values[schemaId])[rowIndex] =safe_cast<T, int>(value);
+                ((int*)values[schemaId])[rowIndex] = *safe_cast<T, int>(value);
                 break;
             }
             case TSDataType::INT64: {
-                ((int64_t*)values[schemaId])[rowIndex] = safe_cast<T, int64_t>(value);
+                ((int64_t*)values[schemaId])[rowIndex] = *safe_cast<T, int64_t>(value);
                 break;
             }
             case TSDataType::FLOAT: {
-                ((float*)values[schemaId])[rowIndex] = safe_cast<T, float>(value);
+                ((float*)values[schemaId])[rowIndex] = *safe_cast<T, float>(value);
                 break;
             }
             case TSDataType::DOUBLE: {
-                ((double*)values[schemaId])[rowIndex] = safe_cast<T, double>(value);
+                ((double*)values[schemaId])[rowIndex] = *safe_cast<T, double>(value);
                 break;
             }
             case TSDataType::TEXT: {
-                ((string*)values[schemaId])[rowIndex] = safe_cast<T, string>(value);
+                ((string*)values[schemaId])[rowIndex] = *safe_cast<T, string>(value);
                 break;
             }
             default:
