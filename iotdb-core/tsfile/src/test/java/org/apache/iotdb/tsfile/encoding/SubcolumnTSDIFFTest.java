@@ -158,7 +158,8 @@ public class SubcolumnTSDIFFTest {
 
         // startBitPosition = SubcolumnTest.SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnTest.SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
-        startBitPosition = SubcolumnTest.SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
+        // startBitPosition = SubcolumnTest.SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
+        startBitPosition = SubcolumnTest.SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
 
         return startBitPosition;
     }
@@ -181,7 +182,8 @@ public class SubcolumnTSDIFFTest {
 
         // startBitPosition = SubcolumnTest.SubcolumnBetaBPDecoder(encoded_result, startBitPosition, data_delta);
         // startBitPosition = SubcolumnTest.SubcolumnLBPDecoder(encoded_result, startBitPosition, data_delta);
-        startBitPosition = SubcolumnTest.SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, data_delta);
+        // startBitPosition = SubcolumnTest.SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, data_delta);
+        startBitPosition = SubcolumnTest.SubcolumnBetaDecoder(encoded_result, startBitPosition, data_delta);
 
         // System.out.println("data_delta_length: " + data_delta.length);
 
@@ -260,11 +262,11 @@ public class SubcolumnTSDIFFTest {
         // dataset_name.add("TY-Transport");
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
-        // dataset_block_size.add(1024);
-        dataset_block_size.add(128);
+        dataset_block_size.add(1024);
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "ts2diff_subcolumn_l_beta_bp.csv");
+        output_path_list.add(output_parent_dir + "ts2diff_subcolumn_beta2.csv");
+        // output_path_list.add(output_parent_dir + "test00.csv");
 
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
@@ -391,21 +393,12 @@ public class SubcolumnTSDIFFTest {
                 s = System.nanoTime();
                 // System.out.println("Decode");
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    // SubcolumnDecoder(encoded_result);
                     int[] data2_arr_decoded = BOSDecoder(encoded_result);
 
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // System.out.print(data2_arr_decoded[i] + " ");
                         assert data2_arr[i] == data2_arr_decoded[i]
                                 || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
-                        // assert data2_arr[i] == data2_arr_decoded[i];
-                        // if (data2_arr_decoded[i] != data2_arr[i]) {
-                        // System.out.println("Error");
-                        // System.out.println(i);
-                        // System.out.println(data2_arr_decoded[i]);
-                        // System.out.println(data2_arr[i]);
-                        // break;
-                        // }
                     }
                     // System.out.println();
 
@@ -419,7 +412,7 @@ public class SubcolumnTSDIFFTest {
 
                 String[] record = {
                         datasetName,
-                        "TS2DIFF+SubcolumnLBetaBP",
+                        "TS2DIFF+SubcolumnBeta",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
