@@ -31,6 +31,8 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
+  // TODO: read from configuration file
+  int SORT_THRESHOLD = 5000;
 
   boolean putLongWithFlushCheck(long t, long v);
 
@@ -84,6 +86,10 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   long count();
 
+  default long rowCount() {
+    return 0;
+  }
+
   IMeasurementSchema getSchema();
 
   /**
@@ -134,6 +140,10 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   default long getMaxTime() {
     return Long.MAX_VALUE;
+  }
+
+  default long getMinTime() {
+    return Long.MIN_VALUE;
   }
 
   /**
