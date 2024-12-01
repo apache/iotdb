@@ -128,7 +128,7 @@ public class PipeEventCommitManager {
           eventCommitterRestartTimesMap.computeIfAbsent(
               generateCommitterRestartTimesKey(committerKey), k -> 0);
       if (committerKey.getRestartTimes() < currentRestartTimes) {
-        LOGGER.warn(
+        LOGGER.debug(
             "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
             committerKey,
             event.coreReportMessage(),
