@@ -36,6 +36,9 @@ unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql
 string TableSession::getDatabase() {
     return session->getDatabase();
 }
+void TableSession::open(bool enableRPCCompression) {
+    session->open(enableRPCCompression);
+}
 void TableSession::close() {
     session->close();
 }

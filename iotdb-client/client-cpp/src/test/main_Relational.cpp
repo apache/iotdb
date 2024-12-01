@@ -30,6 +30,7 @@ struct SessionListener : Catch::TestEventListenerBase {
 
     void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
         // Perform some setup before a test case is run
+        session->open();
     }
 
     void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {

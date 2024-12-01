@@ -36,6 +36,7 @@ public:
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
     string getDatabase();
+    void open(bool enableRPCCompression = false);
     void close();
 };
 
