@@ -99,13 +99,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   void transfer(final Tablet tablet) throws UaException {
     final boolean isTreeModel = tablet.getDeviceId().startsWith("root.");
     if (isClientServerModel) {
-      transferTabletForClientServerModel(tablet, isTreeModel);
+      transferTabletForClientServerTreeModel(tablet, isTreeModel);
     } else {
       transferTabletForPubSubModel(tablet, isTreeModel);
     }
   }
 
-  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTreeModel) {
+  private void transferTabletForClientServerTreeModel(
+      final Tablet tablet, final boolean isTreeModel) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     final String[] segments = tablet.getDeviceId().split("\\.");
@@ -157,6 +158,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
+      if (!isTreeModel
+          && !tablet.getColumnTypes().get(i).equals(Tablet.ColumnCategory.MEASUREMENT)) {
+        continue;
+      }
       final IMeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       final String name = measurementSchema.getMeasurementName();
       final TSDataType type = measurementSchema.getType();
