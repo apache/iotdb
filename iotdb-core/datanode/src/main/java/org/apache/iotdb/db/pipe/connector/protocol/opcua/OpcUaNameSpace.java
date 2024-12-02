@@ -41,6 +41,7 @@ import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -174,10 +175,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       throw new PipeRuntimeCriticalException("The segments of tablets must exist");
     }
     final StringBuilder currentStr = new StringBuilder();
-    UaFolderNode folderNode = null;
+    UaNode folderNode = null;
     NodeId folderNodeId;
     for (final String segment : segments) {
-      final UaFolderNode nextFolderNode;
+      final UaNode nextFolderNode;
 
       currentStr.append(segment);
       folderNodeId = newNodeId(currentStr.toString());
@@ -192,7 +193,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 LocalizedText.english(segment));
         getNodeManager().addNode(nextFolderNode);
         if (Objects.nonNull(folderNode)) {
-          folderNode.addOrganizes(nextFolderNode);
+          folderNode.addReference(
+              new Reference(
+                  folderNode.getNodeId(),
+                  Identifiers.Organizes,
+                  nextFolderNode.getNodeId().expanded(),
+                  true));
         } else {
           nextFolderNode.addReference(
               new Reference(
@@ -204,15 +210,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         folderNode = nextFolderNode;
       } else {
         folderNode =
-            (UaFolderNode)
-                getNodeManager()
-                    .getNode(folderNodeId)
-                    .orElseThrow(
-                        () ->
-                            new PipeRuntimeCriticalException(
-                                String.format(
-                                    "The folder node for %s does not exist.",
-                                    Arrays.toString(segments))));
+            getNodeManager()
+                .getNode(folderNodeId)
+                .orElseThrow(
+                    () ->
+                        new PipeRuntimeCriticalException(
+                            String.format(
+                                "The folder node for %s does not exist.",
+                                Arrays.toString(segments))));
       }
     }
 
@@ -234,7 +239,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
         getNodeManager().addNode(measurementNode);
-        folderNode.addOrganizes(measurementNode);
+        folderNode.addReference(
+            new Reference(
+                folderNode.getNodeId(),
+                Identifiers.Organizes,
+                measurementNode.getNodeId().expanded(),
+                true));
       } else {
         // This must exist
         measurementNode =
