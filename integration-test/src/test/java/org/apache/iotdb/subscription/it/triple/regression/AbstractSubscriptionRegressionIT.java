@@ -29,6 +29,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.WrappedVoidSupplier;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 
 import org.apache.thrift.TException;
@@ -384,11 +385,6 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           InterruptedException,
           IoTDBConnectionException {
     consume_data(consumer, session_dest);
-  }
-
-  @FunctionalInterface
-  public interface WrappedVoidSupplier {
-    void get() throws Throwable;
   }
 
   public void consume_data_await(

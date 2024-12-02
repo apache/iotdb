@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH;
 
 /***
  * PushConsumer
@@ -189,16 +190,15 @@ public class IoTDBLooseAllTsDatasetPushConsumerSnapshotIT extends AbstractSubscr
     session_src.executeNonQueryStatement("flush");
     System.out.println("src: " + getCount(session_src, sql));
 
-    AWAIT.untilAsserted(
-        () -> {
-          check_count_non_strict(
-              9, "select count(s_0) from " + device, "Consumption data: s_0 " + device);
-          check_count_non_strict(
-              9, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
-          check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
-          check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
-          check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
-        });
+    AWAIT_WITH_FLUSH(session_src, () -> {
+      check_count_non_strict(
+          9, "select count(s_0) from " + device, "Consumption data: s_0 " + device);
+      check_count_non_strict(
+          9, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
+      check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
+      check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
+      check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
+    });
 
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -213,15 +213,14 @@ public class IoTDBLooseAllTsDatasetPushConsumerSnapshotIT extends AbstractSubscr
 
     // Consumption data: Progress is not retained after cancellation and re-subscription. Full
     // synchronization.
-    AWAIT.untilAsserted(
-        () -> {
-          check_count_non_strict(
-              11, "select count(s_0) from " + device, "consume data again: s_0 " + device);
-          check_count_non_strict(
-              11, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
-          check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
-          check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
-          check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
-        });
+    AWAIT_WITH_FLUSH(session_src, () -> {
+      check_count_non_strict(
+          11, "select count(s_0) from " + device, "consume data again: s_0 " + device);
+      check_count_non_strict(
+          11, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
+      check_count(0, "select count(s_0) from " + device2, "Consumption data: s_0 " + device2);
+      check_count(0, "select count(s_1) from " + device2, "Consumption data: s_1 " + device2);
+      check_count(0, "select count(s_0) from " + database2 + ".d_2", "Consumption data:d_2");
+    });
   }
 }

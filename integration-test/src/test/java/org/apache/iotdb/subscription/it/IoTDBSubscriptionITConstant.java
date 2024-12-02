@@ -19,12 +19,19 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.session.Session;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBSubscriptionITConstant {
+
+  public static final long SLEEP_NS = 1_000_000_000L;
+  public static final long POLL_TIMEOUT_MS = 10_000L;
+  public static final int MAX_RETRY_TIMES = 3;
+
+  //////////////////////////// awaitility ////////////////////////////
 
   private static final long AWAITILITY_POLL_DELAY_SECOND = 1L;
   private static final long AWAITILITY_POLL_INTERVAL_SECOND = 1L;
@@ -38,7 +45,15 @@ public class IoTDBSubscriptionITConstant {
               IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
           .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS);
 
-  public static final long SLEEP_NS = 1_000_000_000L;
-  public static final long POLL_TIMEOUT_MS = 10_000L;
-  public static final int MAX_RETRY_TIMES = 3;
+  @FunctionalInterface
+  public interface WrappedVoidSupplier {
+    void get() throws Throwable;
+  }
+
+  public static void AWAIT_WITH_FLUSH(final Session session, final WrappedVoidSupplier assertions) {
+    AWAIT.untilAsserted(() -> {
+      session.executeQueryStatement("flush");
+      assertions.get();
+    });
+  }
 }
