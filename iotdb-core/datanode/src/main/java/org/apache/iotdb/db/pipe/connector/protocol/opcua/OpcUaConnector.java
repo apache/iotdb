@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -169,7 +171,12 @@ public class OpcUaConnector implements PipeConnector {
                                             CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
                                         CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
                                     .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
-                                builder);
+                                builder,
+                                StorageEngine.getInstance()
+                                    .getDataRegion(
+                                        new DataRegionId(
+                                            configuration.getRuntimeEnvironment().getRegionId()))
+                                    .getDatabaseName());
                         nameSpace.startup();
                         newServer.startup().get();
                         return new Pair<>(new AtomicInteger(0), nameSpace);

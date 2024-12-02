@@ -56,6 +56,7 @@ import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -65,14 +66,17 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
+  private final String databaseName;
 
   OpcUaNameSpace(
       final OpcUaServer server,
       final boolean isClientServerModel,
-      final OpcUaServerBuilder builder) {
+      final OpcUaServerBuilder builder,
+      final String databaseName) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
+    this.databaseName = databaseName;
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -93,14 +97,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   void transfer(final Tablet tablet) throws UaException {
+    final boolean isTreeModel = tablet.getDeviceId().startsWith("root.");
     if (isClientServerModel) {
-      transferTabletForClientServerModel(tablet);
+      transferTabletForClientServerModel(tablet, isTreeModel);
     } else {
-      transferTabletForPubSubModel(tablet);
+      transferTabletForPubSubModel(tablet, isTreeModel);
     }
   }
 
-  private void transferTabletForClientServerModel(final Tablet tablet) {
+  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTreeModel) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     final String[] segments = tablet.getDeviceId().split("\\.");
@@ -243,22 +248,37 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
    * @param tablet the tablet to send
    * @throws UaException if failed to create {@link Event}
    */
-  private void transferTabletForPubSubModel(final Tablet tablet) throws UaException {
+  private void transferTabletForPubSubModel(final Tablet tablet, final boolean isTreeModel)
+      throws UaException {
     final BaseEventTypeNode eventNode =
         getServer()
             .getEventFactory()
             .createEvent(
                 new NodeId(getNamespaceIndex(), UUID.randomUUID()), Identifiers.BaseEventType);
+
+    List<String> sourceNameList = null;
+    if (!isTreeModel) {
+      sourceNameList = new ArrayList<>(tablet.getRowSize());
+      for (int i = 0; i < tablet.getRowSize(); ++i) {
+        sourceNameList.add(databaseName + TsFileConstant.PATH_SEPARATOR + tablet.getDeviceID(i));
+      }
+    }
+
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-
+      if (!isTreeModel
+          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.MEASUREMENT)) {
+        continue;
+      }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
 
       // Source name --> Sensor path, like root.test.d_0.s_0
-      eventNode.setSourceName(
-          tablet.getDeviceId()
-              + TsFileConstant.PATH_SEPARATOR
-              + tablet.getSchemas().get(columnIndex).getMeasurementName());
+      if (isTreeModel) {
+        eventNode.setSourceName(
+            tablet.getDeviceId()
+                + TsFileConstant.PATH_SEPARATOR
+                + tablet.getSchemas().get(columnIndex).getMeasurementName());
+      }
 
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));
@@ -267,6 +287,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         // Filter null value
         if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
           continue;
+        }
+
+        if (Objects.nonNull(sourceNameList)) {
+          eventNode.setSourceName(sourceNameList.get(rowIndex));
         }
 
         // Time --> TimeStamp
