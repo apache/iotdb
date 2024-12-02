@@ -1987,11 +1987,10 @@ class Session(object):
         )
         return request
 
-    @staticmethod
-    def __has_none_value(values_list) -> bool:
+    def __has_none_value(self, values_list) -> bool:
         for item in values_list:
             if isinstance(item, list):
-                if values_list.__has_none_value(item):
+                if self.__has_none_value(item):
                     return True
             elif item is None:
                 return True
