@@ -368,8 +368,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         if (Objects.nonNull(sourceNameList)) {
+          final String deviceId = sourceNameList.get(rowIndex);
+          if (Objects.isNull(deviceId)) {
+            continue;
+          }
           eventNode.setSourceName(
-              sourceNameList.get(rowIndex)
+              deviceId
                   + TsFileConstant.PATH_SEPARATOR
                   + tablet.getSchemas().get(columnIndex).getMeasurementName());
         }
