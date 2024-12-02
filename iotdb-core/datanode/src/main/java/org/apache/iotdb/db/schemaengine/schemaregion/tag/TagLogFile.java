@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TagLogFile implements AutoCloseable {
 
@@ -359,8 +360,10 @@ public class TagLogFile implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    fileChannel.force(true);
-    fileChannel.close();
-    fileChannel = null;
+    if (Objects.nonNull(fileChannel) && fileChannel.isOpen()) {
+      fileChannel.force(true);
+      fileChannel.close();
+      fileChannel = null;
+    }
   }
 }
