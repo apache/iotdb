@@ -71,6 +71,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
+  private final String qualifiedDatabaseName;
   private final String databaseName;
 
   OpcUaNameSpace(
@@ -81,6 +82,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
+    this.qualifiedDatabaseName = databaseName;
     this.databaseName = PathUtils.unQualifyDatabaseName(databaseName);
 
     subscriptionModel = new SubscriptionModel(server, this);
@@ -326,14 +328,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (!isTreeModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        StringBuilder idBuilder = new StringBuilder(databaseName + TsFileConstant.PATH_SEPARATOR);
+        StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           // Skip deviceID with "null"
           if (Objects.isNull(segment)) {
             idBuilder = null;
             break;
           } else {
-            idBuilder.append(segment);
+            idBuilder.append(TsFileConstant.PATH_SEPARATOR).append(segment);
           }
         }
         sourceNameList.add(Objects.nonNull(idBuilder) ? idBuilder.toString() : null);
@@ -366,7 +368,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         if (Objects.nonNull(sourceNameList)) {
-          eventNode.setSourceName(sourceNameList.get(rowIndex));
+          eventNode.setSourceName(
+              sourceNameList.get(rowIndex)
+                  + tablet.getSchemas().get(columnIndex).getMeasurementName());
         }
 
         // Time --> TimeStamp
