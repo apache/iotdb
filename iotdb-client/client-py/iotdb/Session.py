@@ -645,9 +645,9 @@ class Session(object):
             (
                 device_ids,
                 times,
-                filtered_measurements,
-                filtered_data_types,
-                filtered_values,
+                measurements_lst,
+                types_lst,
+                values_lst,
             ) = self.__filter_lists_by_values(
                 device_ids, times, measurements_lst, types_lst, values_lst
             )
@@ -774,9 +774,9 @@ class Session(object):
             (
                 device_ids,
                 times,
-                filtered_measurements,
-                filtered_data_types,
-                filtered_values,
+                measurements_lst,
+                types_lst,
+                values_lst,
             ) = self.__filter_lists_by_values(
                 device_ids, times, measurements_lst, types_lst, values_lst
             )
