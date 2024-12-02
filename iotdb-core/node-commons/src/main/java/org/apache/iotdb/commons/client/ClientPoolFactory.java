@@ -59,7 +59,7 @@ public class ClientPoolFactory {
               new SyncConfigNodeIServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>().build().getConfig());
@@ -80,7 +80,7 @@ public class ClientPoolFactory {
               new AsyncConfigNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -105,7 +105,7 @@ public class ClientPoolFactory {
               new SyncDataNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
@@ -128,7 +128,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -153,7 +153,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeExternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -179,7 +179,7 @@ public class ClientPoolFactory {
               new AsyncConfigNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
@@ -204,7 +204,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeInternalServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
@@ -231,7 +231,7 @@ public class ClientPoolFactory {
               new SyncDataNodeMPPDataExchangeServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncDataNodeMPPDataExchangeServiceClient>()
@@ -255,7 +255,7 @@ public class ClientPoolFactory {
               new AsyncDataNodeMPPDataExchangeServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
@@ -307,7 +307,7 @@ public class ClientPoolFactory {
               new AsyncAINodeServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
@@ -334,7 +334,7 @@ public class ClientPoolFactory {
               new AINodeClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<AINodeClient>()
