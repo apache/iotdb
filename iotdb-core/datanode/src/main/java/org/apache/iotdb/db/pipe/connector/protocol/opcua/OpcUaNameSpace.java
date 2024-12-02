@@ -265,7 +265,17 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (!isTreeModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        sourceNameList.add(databaseName + TsFileConstant.PATH_SEPARATOR + tablet.getDeviceID(i));
+        StringBuilder idBuilder = new StringBuilder(databaseName + TsFileConstant.PATH_SEPARATOR);
+        for (final Object segment : tablet.getDeviceID(i).getSegments()) {
+          // Skip deviceID with "null"
+          if (Objects.isNull(segment)) {
+            idBuilder = null;
+            break;
+          } else {
+            idBuilder.append(segment);
+          }
+        }
+        sourceNameList.add(Objects.nonNull(idBuilder) ? idBuilder.toString() : null);
       }
     }
 
