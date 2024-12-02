@@ -108,8 +108,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
   }
 
-  private void transferTabletForClientServerModel(
-      final Tablet tablet, final boolean isTreeModel) {
+  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTreeModel) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
@@ -151,7 +150,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         if (!isValid) {
           continue;
         }
-        int finalI = i;
+        final int finalI = i;
         transferTabletRowForClientServerModel(
             (String[]) segments,
             newSchemas,
