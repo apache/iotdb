@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -80,7 +81,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
-    this.databaseName = databaseName;
+    this.databaseName = PathUtils.unQualifyDatabaseName(databaseName);
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -142,18 +143,23 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         boolean isValid = true;
         final Object[] segments = tablet.getDeviceID(i).getSegments();
-        for (final Object id : segments) {
-          if (Objects.isNull(id)) {
+        final String[] folderSegments = new String[segments.length + 2];
+        folderSegments[0] = "root";
+        folderSegments[1] = databaseName;
+
+        for (int j = 0; j < segments.length; ++j) {
+          if (Objects.isNull(segments[j])) {
             isValid = false;
             break;
           }
+          folderSegments[j + 2] = (String) segments[j];
         }
         if (!isValid) {
           continue;
         }
         final int finalI = i;
         transferTabletRowForClientServerModel(
-            (String[]) segments,
+            folderSegments,
             newSchemas,
             Collections.singletonList(tablet.timestamps[i]),
             columnIndexes.stream()
