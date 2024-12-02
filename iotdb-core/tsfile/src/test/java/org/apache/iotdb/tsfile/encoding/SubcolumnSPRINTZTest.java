@@ -160,9 +160,10 @@ public class SubcolumnSPRINTZTest {
 
         // int m = bitWidth(min_delta[2]);
 
-        startBitPosition = SubcolumnTest.SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
+        // startBitPosition = SubcolumnTest.SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnTest.SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnTest.SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
+        startBitPosition = SubcolumnTest.SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
 
         return startBitPosition;
     }
@@ -183,9 +184,10 @@ public class SubcolumnSPRINTZTest {
 
         int[] data_delta = new int[remainder - 1];
 
-        startBitPosition = SubcolumnTest.SubcolumnBetaBPDecoder(encoded_result, startBitPosition, data_delta);
+        // startBitPosition = SubcolumnTest.SubcolumnBetaBPDecoder(encoded_result, startBitPosition, data_delta);
         // startBitPosition = SubcolumnTest.SubcolumnLBPDecoder(encoded_result, startBitPosition, data_delta);
         // startBitPosition = SubcolumnTest.SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, data_delta);
+        startBitPosition = SubcolumnTest.SubcolumnBetaDecoder(encoded_result, startBitPosition, data_delta);
 
         // System.out.println("data_delta_length: " + data_delta.length);
 
@@ -268,12 +270,11 @@ public class SubcolumnSPRINTZTest {
         // dataset_name.add("TY-Transport");
         // dataset_name.add("EPM-Education");
         input_path_list.add(input_parent_dir);
-        // dataset_block_size.add(1024);
-        dataset_block_size.add(128);
+        dataset_block_size.add(1024);
 
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "sprintz_subcolumn_beta_bp.csv");
+        output_path_list.add(output_parent_dir + "sprintz_subcolumn_beta.csv");
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
         // dataset_block_size.add(1024);
@@ -432,7 +433,7 @@ public class SubcolumnSPRINTZTest {
 
                 String[] record = {
                         datasetName,
-                        "SPRINTZ+SubcolumnBetaBP",
+                        "SPRINTZ+SubcolumnBeta",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         // String.valueOf(div),

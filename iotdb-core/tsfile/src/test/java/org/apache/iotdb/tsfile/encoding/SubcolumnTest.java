@@ -1102,6 +1102,57 @@ public class SubcolumnTest {
         return startBitPosition;
     }
 
+    public static int BPEncoder(int[] list, int startBitPosition, byte[] encoded_result) {
+        int list_length = list.length;
+        int maxValue = 0;
+        for (int i = 0; i < list_length; i++) {
+            if (list[i] > maxValue) {
+                maxValue = list[i];
+            }
+        }
+
+        int m = bitWidth(maxValue);
+
+        writeBits(encoded_result, startBitPosition, 8, m);
+        startBitPosition += 8;
+
+        // System.out.println("m: " + m);
+
+        bitPacking(list, encoded_result, startBitPosition, m);
+        startBitPosition += m * list_length;
+
+        // for (int i = 0; i < list_length; i++) {
+        // System.out.print(list[i] + " ");
+        // }
+        // System.out.println();
+
+        return startBitPosition;
+    }
+
+    public static int BPDecoder(byte[] encoded_result, int startBitPosition, int[] list) {
+        int list_length = list.length;
+
+        int m = readBits(encoded_result, startBitPosition, 8, 0);
+        startBitPosition += 8;
+
+        // System.out.println("m: " + m);
+
+        int[] new_list = bitUnpacking(encoded_result, startBitPosition, m, list_length);
+        startBitPosition += m * list_length;
+
+        // for (int i = 0; i < list_length; i++) {
+        // System.out.print(new_list[i] + " ");
+        // }
+        // System.out.println();
+
+        System.arraycopy(new_list, 0, list, 0, list_length);
+        // for (int i = 0; i < list_length; i++) {
+        // list[i] = new_list[i];
+        // }
+
+        return startBitPosition;
+    }
+
     public static int BOSEncoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
         int startBitPosition = 0;
@@ -1176,7 +1227,7 @@ public class SubcolumnTest {
     }
 
     /**
-     * 将 ts_block 中的数据，减去最小值，得到的结果写入 ts_block_delta
+     * 仅将数据处理为非负数，也就是将 ts_block 中的数据都减去最小值
      * @param ts_block
      * @param i
      * @param block_size
@@ -1234,7 +1285,8 @@ public class SubcolumnTest {
         // startBitPosition = SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
-        startBitPosition = SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
+        // startBitPosition = SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
+        startBitPosition = BPEncoder(data_delta, startBitPosition, encoded_result);
 
         return startBitPosition;
     }
@@ -1251,7 +1303,8 @@ public class SubcolumnTest {
         // startBitPosition = SubcolumnBetaBPDecoder(encoded_result, startBitPosition, block_data);
         // startBitPosition = SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, block_data);
         // startBitPosition = SubcolumnLBPDecoder(encoded_result, startBitPosition, block_data);
-        startBitPosition = SubcolumnBetaDecoder(encoded_result, startBitPosition, block_data);
+        // startBitPosition = SubcolumnBetaDecoder(encoded_result, startBitPosition, block_data);
+        startBitPosition = BPDecoder(encoded_result, startBitPosition, block_data);
 
         for (int i = 0; i < remainder; i++) {
             data[block_index * block_size + i] = block_data[i] + min_delta[0];
@@ -1324,11 +1377,13 @@ public class SubcolumnTest {
         byte[] encoded_result = new byte[8 * 4];
         int startBitPosition = 0;
         // startBitPosition = SubcolumnLBPEncoder(list, startBitPosition, encoded_result);
-        startBitPosition = SubcolumnBetaEncoder(list, startBitPosition, encoded_result);
+        // startBitPosition = SubcolumnBetaEncoder(list, startBitPosition, encoded_result);
+        startBitPosition = BPEncoder(list, startBitPosition, encoded_result);
 
         int[] decoded_list = new int[8];
         // startBitPosition = SubcolumnLBPDecoder(encoded_result, 0, decoded_list);
-        startBitPosition = SubcolumnBetaDecoder(encoded_result, 0, decoded_list);
+        // startBitPosition = SubcolumnBetaDecoder(encoded_result, 0, decoded_list);
+        startBitPosition = BPDecoder(encoded_result, 0, decoded_list);
 
         for (int i = 0; i < 8; i++) {
             System.out.println(decoded_list[i]);
@@ -1398,7 +1453,7 @@ public class SubcolumnTest {
 
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "subcolumn_beta.csv");
+        output_path_list.add(output_parent_dir + "bp.csv");
         // output_path_list.add(output_parent_dir + "/subcolumn_l_beta_bp.csv");
         // output_path_list.add(output_parent_dir + "/subcolumn_l_bp.csv");
 

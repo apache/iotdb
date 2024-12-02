@@ -265,7 +265,7 @@ public class SubcolumnTSDIFFTest {
         dataset_block_size.add(1024);
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "ts2diff_subcolumn_beta2.csv");
+        output_path_list.add(output_parent_dir + "ts2diff_subcolumn_beta.csv");
         // output_path_list.add(output_parent_dir + "test00.csv");
 
         // for (String value : dataset_name) {
