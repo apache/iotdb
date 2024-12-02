@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from iotdb.IoTDBContainer import IoTDBContainer
+from tests.integration.iotdb_container import IoTDBContainer
 from iotdb.dbapi import connect
 from iotdb.dbapi.Cursor import Cursor
 

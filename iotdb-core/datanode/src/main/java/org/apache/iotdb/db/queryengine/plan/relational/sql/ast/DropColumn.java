@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -36,18 +38,6 @@ public class DropColumn extends Statement {
   private final boolean columnIfExists;
 
   public DropColumn(
-      final QualifiedName table,
-      final Identifier field,
-      final boolean tableIfExists,
-      final boolean columnIfExists) {
-    super(null);
-    this.table = requireNonNull(table, "table is null");
-    this.field = requireNonNull(field, "field is null");
-    this.tableIfExists = tableIfExists;
-    this.columnIfExists = columnIfExists;
-  }
-
-  public DropColumn(
       final NodeLocation location,
       final QualifiedName table,
       final Identifier field,
@@ -58,6 +48,7 @@ public class DropColumn extends Statement {
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
+    throw new SemanticException("Drop column is unsupported yet.");
   }
 
   public QualifiedName getTable() {

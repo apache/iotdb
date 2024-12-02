@@ -17,20 +17,20 @@
 #
 import numpy as np
 
-from iotdb.Session import Session
+from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import ColumnType, Tablet
 
 # creating session connection.
-ip = "127.0.0.1"
-port_ = "6667"
-username_ = "root"
-password_ = "root"
-
 # don't specify database in constructor
-session = Session(ip, port_, username_, password_, sql_dialect="table", database="db1")
-session.open(False)
+config = TableSessionConfig(
+    node_urls=["localhost:6667"],
+    username="root",
+    password="root",
+    time_zone="UTC+8",
+)
+session = TableSession(config)
 
 session.execute_non_query_statement("CREATE DATABASE test1")
 session.execute_non_query_statement("CREATE DATABASE test2")
@@ -64,10 +64,14 @@ with session.execute_query_statement("SHOW TABLES FROM test1") as session_data_s
 session.close()
 
 # specify database in constructor
-session = Session(
-    ip, port_, username_, password_, sql_dialect="table", database="test1"
+config = TableSessionConfig(
+    node_urls=["localhost:6667"],
+    username="root",
+    password="root",
+    database="test1",
+    time_zone="UTC+8",
 )
-session.open(False)
+session = TableSession(config)
 
 # show tables from current database
 with session.execute_query_statement("SHOW TABLES") as session_data_set:
@@ -87,9 +91,13 @@ with session.execute_query_statement("SHOW TABLES") as session_data_set:
 
 session.close()
 
-# insert tablet by insert_relational_tablet
-session = Session(ip, port_, username_, password_, sql_dialect="table")
-session.open(False)
+# insert data by tablet
+config = TableSessionConfig(
+    node_urls=["localhost:6667"],
+    username="root",
+    password="root",
+)
+session = TableSession(config)
 session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
 session.execute_non_query_statement('USE "db1"')
 session.execute_non_query_statement(
@@ -115,7 +123,7 @@ for row in range(15):
     timestamps.append(row)
     values.append(["id:" + str(row), "attr:" + str(row), row * 1.0])
 tablet = Tablet("table5", column_names, data_types, values, timestamps, column_types)
-session.insert_relational_tablet(tablet)
+session.insert(tablet)
 
 session.execute_non_query_statement("FLush")
 
@@ -134,16 +142,16 @@ np_tablet = NumpyTablet(
     np_timestamps,
     column_types=column_types,
 )
-session.insert_relational_tablet(np_tablet)
+session.insert(np_tablet)
 
 with session.execute_query_statement("select * from table5 order by time") as dataset:
     print(dataset.get_column_names())
     while dataset.has_next():
         row_record = dataset.next()
-        # print(row_record.get_fields()[0].get_long_value())
-        # print(row_record.get_fields()[1].get_string_value())
-        # print(row_record.get_fields()[2].get_string_value())
-        # print(row_record.get_fields()[3].get_double_value())
+        print(row_record.get_fields()[0].get_long_value())
+        print(row_record.get_fields()[1].get_string_value())
+        print(row_record.get_fields()[2].get_string_value())
+        print(row_record.get_fields()[3].get_double_value())
         print(row_record)
 
 with session.execute_query_statement("select * from table5 order by time") as dataset:

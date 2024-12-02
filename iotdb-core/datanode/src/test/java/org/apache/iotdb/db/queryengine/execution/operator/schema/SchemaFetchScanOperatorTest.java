@@ -90,7 +90,7 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertEquals(
         Arrays.asList("s1", "s2"),
         measurementSchemaList.stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .sorted()
             .collect(Collectors.toList()));
 

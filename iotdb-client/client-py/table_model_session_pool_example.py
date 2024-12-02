@@ -19,7 +19,7 @@ import threading
 
 import numpy as np
 
-from iotdb.SessionPool import PoolConfig, SessionPool
+from iotdb.table_session_pool import TableSessionPool, TableSessionPoolConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import ColumnType, Tablet
@@ -48,7 +48,7 @@ def prepare_data():
     while res.has_next():
         print(res.next())
 
-    session_pool.put_back(session)
+    session.close()
 
 
 def insert_data(num: int):
@@ -74,7 +74,7 @@ def insert_data(num: int):
     tablet = Tablet(
         "table" + str(num), column_names, data_types, values, timestamps, column_types
     )
-    session.insert_relational_tablet(tablet)
+    session.insert(tablet)
     session.execute_non_query_statement("FLush")
 
     np_timestamps = np.arange(15, 30, dtype=np.dtype(">i8"))
@@ -92,8 +92,8 @@ def insert_data(num: int):
         np_timestamps,
         column_types=column_types,
     )
-    session.insert_relational_tablet(np_tablet)
-    session_pool.put_back(session)
+    session.insert(np_tablet)
+    session.close()
 
 
 def query_data():
@@ -110,38 +110,37 @@ def query_data():
     while res.has_next():
         print(res.next())
 
-    session_pool.put_back(session)
+    session.close()
 
 
 def delete_data():
     session = session_pool.get_session()
     session.execute_non_query_statement("drop database db1")
     print("data has been deleted. now the databases are:")
-    res = session.execute_statement("show databases")
+    res = session.execute_query_statement("show databases")
     while res.has_next():
         print(res.next())
-    session_pool.put_back(session)
+    session.close()
 
-
-ip = "127.0.0.1"
-port = "6667"
-username = "root"
-password = "root"
-pool_config = PoolConfig(
-    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
-    user_name=username,
-    password=password,
-    fetch_size=1024,
-    time_zone="UTC+8",
-    max_retry=3,
-    sql_dialect="table",
-    database="db1",
-)
-max_pool_size = 5
-wait_timeout_in_ms = 3000
 
 # Create a session pool
-session_pool = SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)
+username = "root"
+password = "root"
+node_urls = ["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"]
+fetch_size = 1024
+database = "db1"
+max_pool_size = 5
+wait_timeout_in_ms = 3000
+config = TableSessionPoolConfig(
+    node_urls=node_urls,
+    username=username,
+    password=password,
+    database=database,
+    max_pool_size=max_pool_size,
+    fetch_size=fetch_size,
+    wait_timeout_in_ms=wait_timeout_in_ms,
+)
+session_pool = TableSessionPool(config)
 
 prepare_data()
 

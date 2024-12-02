@@ -38,9 +38,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -448,10 +450,20 @@ public class AnalyzeUtils {
       } else if (currExp instanceof ComparisonExpression) {
         idPredicate =
             parseComparison(((ComparisonExpression) currExp), timeRange, idPredicate, table);
+      } else if (currExp instanceof IsNullPredicate) {
+        idPredicate = parseIsNull((IsNullPredicate) currExp, idPredicate, table);
+      } else {
+        throw new SemanticException("Unsupported expression: " + currExp + " in " + expression);
       }
     }
     if (idPredicate != null) {
       predicate.setIdPredicate(idPredicate);
+    }
+    if (timeRange.getStartTime() > timeRange.getEndTime()) {
+      throw new SemanticException(
+          String.format(
+              "Start time %d is greater than end time %d",
+              timeRange.getStartTime(), timeRange.getEndTime()));
     }
 
     return new TableDeletionEntry(predicate, timeRange.toTsFileTimeRange());
@@ -463,6 +475,35 @@ public class AnalyzeUtils {
       throw new SemanticException("Only support AND operator in deletion");
     }
     expressionQueue.addAll(expression.getTerms());
+  }
+
+  private static IDPredicate parseIsNull(
+      IsNullPredicate isNullPredicate, IDPredicate oldPredicate, TsTable table) {
+    Expression leftHandExp = isNullPredicate.getValue();
+    if (!(leftHandExp instanceof Identifier)) {
+      throw new SemanticException("Left hand expression is not an identifier: " + leftHandExp);
+    }
+    String columnName = ((Identifier) leftHandExp).getValue();
+    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    if (idColumnOrdinal == -1) {
+      throw new SemanticException(
+          "The column '" + columnName + "' does not exist or is not an id column");
+    }
+
+    // the first segment is the table name, so + 1
+    IDPredicate newPredicate = new SegmentExactMatch(null, idColumnOrdinal + 1);
+    return combinePredicates(oldPredicate, newPredicate);
+  }
+
+  private static IDPredicate combinePredicates(IDPredicate oldPredicate, IDPredicate newPredicate) {
+    if (oldPredicate == null) {
+      return newPredicate;
+    }
+    if (oldPredicate instanceof IDPredicate.And) {
+      ((And) oldPredicate).add(newPredicate);
+      return oldPredicate;
+    }
+    return new IDPredicate.And(oldPredicate, newPredicate);
   }
 
   private static IDPredicate parseComparison(
@@ -521,14 +562,7 @@ public class AnalyzeUtils {
     }
 
     IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
-    if (oldPredicate == null) {
-      return newPredicate;
-    }
-    if (oldPredicate instanceof IDPredicate.And) {
-      ((And) oldPredicate).add(newPredicate);
-      return oldPredicate;
-    }
-    return new IDPredicate.And(oldPredicate, newPredicate);
+    return combinePredicates(oldPredicate, newPredicate);
   }
 
   private static IDPredicate getIdPredicate(
@@ -540,13 +574,15 @@ public class AnalyzeUtils {
     String rightHandValue;
     if (right instanceof StringLiteral) {
       rightHandValue = ((StringLiteral) right).getValue();
+    } else if (right instanceof NullLiteral) {
+      throw new SemanticException(
+          "The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead");
     } else {
       throw new SemanticException(
           "The right hand value of id predicate must be a string: " + right);
     }
     // the first segment is the table name, so + 1
-    IDPredicate newPredicate = new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
-    return newPredicate;
+    return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
   }
 
   public interface DataPartitionQueryFunc {
