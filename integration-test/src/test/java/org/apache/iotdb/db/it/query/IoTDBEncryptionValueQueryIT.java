@@ -126,7 +126,7 @@ public class IoTDBEncryptionValueQueryIT {
         .getConfig()
         .getCommonConfig()
         .setEncryptFlag(true)
-        .setEncryptType("org.apache.tsfile.encrypt.AES128");
+        .setEncryptType("AES128");
     EnvFactory.getEnv().initClusterEnvironment();
     importData();
   }

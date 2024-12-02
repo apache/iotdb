@@ -52,7 +52,7 @@ public class IoTDBLoadEncryptedTsFileIT {
         .getConfig()
         .getCommonConfig()
         .setEncryptFlag(true)
-        .setEncryptType("org.apache.tsfile.encrypt.AES128");
+        .setEncryptType("AES128");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -99,7 +99,8 @@ public class IoTDBLoadEncryptedTsFileIT {
       }
       Assert.assertEquals(3, cnt);
     } catch (Exception e) {
-      Assert.fail(e.getMessage());
+      Assert.assertTrue(
+              e.getMessage().contains("TSFile encryption is enabled, and the Load TSFile function is disabled"));
     }
   }
 
@@ -116,7 +117,7 @@ public class IoTDBLoadEncryptedTsFileIT {
       Assert.fail();
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("The encryption way of the TsFile is not supported."));
+          e.getMessage().contains("TSFile encryption is enabled, and the Load TSFile function is disabled"));
     }
   }
 
