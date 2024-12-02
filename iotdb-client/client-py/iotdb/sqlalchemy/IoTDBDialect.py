@@ -73,6 +73,10 @@ class IoTDBDialect(default.DefaultDialect):
     def import_dbapi(cls):
         return dbapi
 
+    @classmethod
+    def dbapi(cls):
+        return dbapi
+
     def has_schema(self, connection, schema):
         return schema in self.get_schema_names(connection)
 
