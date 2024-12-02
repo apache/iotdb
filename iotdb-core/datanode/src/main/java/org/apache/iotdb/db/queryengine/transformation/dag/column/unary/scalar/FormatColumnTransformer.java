@@ -59,9 +59,9 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
     for (int i = 0; i < positionCount; i++) {
       if (selection[i]) {
-        builder.appendNull();
-      } else {
         transform(childrenColumns, builder, i);
+      } else {
+        builder.appendNull();
       }
     }
   }

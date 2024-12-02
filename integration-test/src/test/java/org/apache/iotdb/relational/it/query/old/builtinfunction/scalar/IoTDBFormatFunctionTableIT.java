@@ -40,6 +40,7 @@ public class IoTDBFormatFunctionTableIT {
         "CREATE TABLE boolean_table(device_id STRING ID, s1 BOOLEAN MEASUREMENT)",
         "CREATE TABLE timestamp_table(device_id STRING ID, s1 TIMESTAMP MEASUREMENT)",
         "CREATE TABLE date_table(device_id STRING ID, s1 DATE MEASUREMENT)",
+        "CREATE TABLE null_table(device_id STRING ID, s1 INT32 MEASUREMENT)",
         // data for number series
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (10, 'd1', 1000000, 1000000, 3.1415926, 3.1415926)",
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (20, 'd1', 1, 1, 1234567.25, 1234567.25)",
@@ -59,6 +60,9 @@ public class IoTDBFormatFunctionTableIT {
         // data for date series
         "INSERT INTO date_table(time, device_id, s1) VALUES (10, 'd1', '2024-01-01')",
         "INSERT INTO date_table(time, device_id, s1) VALUES (20, 'd1', '2006-07-04')",
+
+        // data for special series
+        "INSERT INTO null_table(time, device_id) VALUES (10, 'd1')",
       };
 
   @BeforeClass
@@ -155,5 +159,12 @@ public class IoTDBFormatFunctionTableIT {
         new String[] {"_col0"},
         new String[] {"2024-01-01 2024-01-01 2024-01-01,", "2006-07-04 2006-07-04 2006-07-04,"},
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testNullFormat() {
+    tableResultSetEqualTest(
+        "SELECT FORMAT('Value:%s', s1) FROM null_table",
+        new String[] {"_col0"}, new String[] {"Value:null,"}, DATABASE_NAME);
   }
 }
