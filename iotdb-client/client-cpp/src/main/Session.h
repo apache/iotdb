@@ -557,11 +557,11 @@ const Target* safe_cast(const T& value) {
     if (std::is_same<T, Target>::value) {
         return (Target*)&value;
     } if (std::is_same<T, int32_t>::value && std::is_same<Target, int64_t>::value) {
-        int32_t tmp = *(int32_t*)&value;
-        return (Target*)&(int64_t)tmp;
+        int64_t tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
     } if (std::is_same<T, float>::value && std::is_same<Target, double>::value) {
-        float tmp = *(float*)&value;
-        return (Target*)&(double)tmp;
+        double tmp = *(float*)&value;
+        return (Target*)&tmp;
     } else {
         throw UnSupportedDataTypeException("Parameter type " +
                                            std::string(typeid(T).name()) + " cannot be converted to DataType" +
