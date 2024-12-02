@@ -662,10 +662,6 @@ public class ExportData extends AbstractDataTool {
                               || field.getDataType() == TSDataType.STRING)
                           && !fieldStringValue.startsWith("root.")) {
                         fieldStringValue = "\"" + fieldStringValue + "\"";
-                      }else if(field.getDataType() == TSDataType.BLOB){
-                        fieldStringValue = fieldStringValue.replaceFirst("0x","X'")+"'";
-                      }else if(field.getDataType() == TSDataType.DATE){
-                        fieldStringValue = "'"+field.getDateV().toString()+"'";
                       }
                       csvPrinterWrapper.print(fieldStringValue);
                     } else {
@@ -759,14 +755,8 @@ public class ExportData extends AbstractDataTool {
                   headersTemp.remove(seriesList.get(index));
                   continue;
                 }
-                String dataType = timeseriesList.get(3).getStringValue();
-                final TSDataType tsDataType = TSDataType.valueOf(dataType);
-                if (TSDataType.TEXT == tsDataType) {
+                if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
                   values.add("\"" + value + "\"");
-                }else if(TSDataType.BLOB == tsDataType) {
-                  values.add(value.replaceFirst("0x","X'")+"'");
-                }else if(TSDataType.DATE == tsDataType){
-                  values.add("'"+fields.get(index).getDateV()+"'");
                 } else {
                   values.add(value);
                 }
