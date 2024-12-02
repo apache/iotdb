@@ -1720,7 +1720,7 @@ public class ProcedureManager {
     ProcedureType type;
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       type = ProcedureFactory.getProcedureType(procedure);
-      if (type == null) {
+      if (type == null || procedure.isFinished()) {
         continue;
       }
       // A table shall not be concurrently operated or else the dataNode cache
