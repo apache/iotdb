@@ -99,7 +99,7 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
             DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(column.getInt(i), zoneId));
         return DateTimeUtils.convertToLocalDate(timestamp, zoneId);
       case TIMESTAMP:
-        return DateTimeUtils.convertToLocalDate(column.getLong(i), zoneId);
+        return DateTimeUtils.convertToZonedDateTime(column.getLong(i), zoneId);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported source dataType: %s", type));
