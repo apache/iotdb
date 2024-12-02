@@ -247,7 +247,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                                 String.format("The Node %s does not exist.", nodeId)));
       }
 
-      final long utcTimestamp = timestampToUtc(timestamps.get(i));
+      final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
       if (Objects.isNull(measurementNode.getValue())
           || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
               < utcTimestamp) {
