@@ -370,6 +370,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         if (Objects.nonNull(sourceNameList)) {
           eventNode.setSourceName(
               sourceNameList.get(rowIndex)
+                  + TsFileConstant.PATH_SEPARATOR
                   + tablet.getSchemas().get(columnIndex).getMeasurementName());
         }
 
