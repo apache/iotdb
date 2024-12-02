@@ -867,7 +867,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
       throws SchemaQuotaExceededException {
-    final int notExistNum = mtree.getTableDeviceNotExistNum(tableName, deviceIdList);
+    final int notExistNum = mTree.getTableDeviceNotExistNum(tableName, deviceIdList);
     schemaQuotaManager.check(
         (long)
                 DataNodeTableCache.getInstance()

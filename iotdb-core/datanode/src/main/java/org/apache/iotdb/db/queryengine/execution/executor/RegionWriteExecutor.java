@@ -712,10 +712,10 @@ public class RegionWriteExecutor {
      * @return null if the quota is not exceeded, otherwise return the execution result.
      */
     private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
-        ISchemaRegion schemaRegion, PartialPath path, int size) {
+        final ISchemaRegion schemaRegion, final PartialPath path, final int size) {
       try {
         schemaRegion.checkSchemaQuota(path, size);
-      } catch (SchemaQuotaExceededException e) {
+      } catch (final SchemaQuotaExceededException e) {
         return RegionExecutionResult.create(
             false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
@@ -776,7 +776,7 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitAlterTimeSeries(
-        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+            final AlterTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return executeAlterTimeSeries(node, context, false);
     }
 
