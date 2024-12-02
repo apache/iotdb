@@ -54,7 +54,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH;
 
 /***
  * 1 consumer subscribes to 2 topics: historical data
@@ -229,7 +229,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     thread.start();
     thread.join();
 
-    AWAIT.untilAsserted(
+    AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           assertEquals(rowCount1.get(), 0, "pattern1");
           check_count(12, "select count(s_0) from " + device, "dataset pattern1");

@@ -54,7 +54,7 @@ public class IoTDBSubscriptionITConstant {
   public static void AWAIT_WITH_FLUSH(final Session session, final WrappedVoidSupplier assertions) {
     AWAIT.untilAsserted(
         () -> {
-          session.executeQueryStatement("flush");
+          session.executeNonQueryStatement("flush");
           assertions.get();
         });
   }
