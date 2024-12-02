@@ -418,7 +418,8 @@ public class SchemaEngine {
    * @param req heartbeat request
    * @param resp heartbeat response
    */
-  public void updateAndFillSchemaCountMap(TDataNodeHeartbeatReq req, TDataNodeHeartbeatResp resp) {
+  public void updateAndFillSchemaCountMap(
+      final TDataNodeHeartbeatReq req, final TDataNodeHeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
@@ -427,7 +428,7 @@ public class SchemaEngine {
       if (resp.getRegionDeviceUsageMap() == null) {
         resp.setRegionDeviceUsageMap(new HashMap<>());
       }
-      Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      final Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -446,7 +447,7 @@ public class SchemaEngine {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
-      Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      final Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
