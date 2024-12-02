@@ -776,7 +776,7 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitAlterTimeSeries(
-            final AlterTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
+        final AlterTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return executeAlterTimeSeries(node, context, false);
     }
 
