@@ -162,6 +162,7 @@ public class OpcUaConnector implements PipeConnector {
                                 .setSecurityDir(securityDir)
                                 .setEnableAnonymousAccess(enableAnonymousAccess);
                         final OpcUaServer newServer = builder.build();
+                        final int regionId = configuration.getRuntimeEnvironment().getRegionId();
                         nameSpace =
                             new OpcUaNameSpace(
                                 newServer,
@@ -172,11 +173,15 @@ public class OpcUaConnector implements PipeConnector {
                                         CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
                                     .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
                                 builder,
-                                StorageEngine.getInstance()
-                                    .getDataRegion(
-                                        new DataRegionId(
-                                            configuration.getRuntimeEnvironment().getRegionId()))
-                                    .getDatabaseName());
+                                regionId >= 0
+                                    ? StorageEngine.getInstance()
+                                        .getDataRegion(
+                                            new DataRegionId(
+                                                configuration
+                                                    .getRuntimeEnvironment()
+                                                    .getRegionId()))
+                                        .getDatabaseName()
+                                    : null);
                         nameSpace.startup();
                         newServer.startup().get();
                         return new Pair<>(new AtomicInteger(0), nameSpace);
