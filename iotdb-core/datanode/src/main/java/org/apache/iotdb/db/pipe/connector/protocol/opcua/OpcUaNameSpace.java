@@ -160,7 +160,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .map(
                     index ->
                         getTabletObjectValue4Opc(
-                            tablet.values[index], finalI, newSchemas.get(index).getType()))
+                            tablet.values[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
