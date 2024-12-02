@@ -88,7 +88,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     // Enable mods transfer
-    extractorAttributes.put("modes", "true");
+    extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
 
     connectorAttributes.put("connector.batch.enable", "false");
