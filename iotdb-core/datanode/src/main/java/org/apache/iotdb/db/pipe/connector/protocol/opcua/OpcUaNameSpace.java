@@ -102,13 +102,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   void transfer(final Tablet tablet) throws UaException {
     final boolean isTreeModel = tablet.getDeviceId().startsWith("root.");
     if (isClientServerModel) {
-      transferTabletForClientServerTreeModel(tablet, isTreeModel);
+      transferTabletForClientServerModel(tablet, isTreeModel);
     } else {
       transferTabletForPubSubModel(tablet, isTreeModel);
     }
   }
 
-  private void transferTabletForClientServerTreeModel(
+  private void transferTabletForClientServerModel(
       final Tablet tablet, final boolean isTreeModel) {
     new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
@@ -129,7 +129,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
       }
 
-      transferTabletForClientServerTreeModel(
+      transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
       final List<Integer> columnIndexes = new ArrayList<>();
@@ -152,7 +152,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           continue;
         }
         int finalI = i;
-        transferTabletForClientServerTreeModel(
+        transferTabletRowForClientServerModel(
             (String[]) segments,
             newSchemas,
             Collections.singletonList(tablet.timestamps[i]),
@@ -164,115 +164,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .collect(Collectors.toList()));
       }
     }
-
-    final String[] segments = tablet.getDeviceId().split("\\.");
-    if (segments.length == 0) {
-      throw new PipeRuntimeCriticalException("The segments of tablets must exist");
-    }
-    final StringBuilder currentStr = new StringBuilder();
-    UaFolderNode folderNode = null;
-    NodeId folderNodeId;
-    for (final String segment : segments) {
-      final UaFolderNode nextFolderNode;
-
-      currentStr.append(segment);
-      folderNodeId = newNodeId(currentStr.toString());
-      currentStr.append("/");
-
-      if (!getNodeManager().containsNode(folderNodeId)) {
-        nextFolderNode =
-            new UaFolderNode(
-                getNodeContext(),
-                folderNodeId,
-                newQualifiedName(segment),
-                LocalizedText.english(segment));
-        getNodeManager().addNode(nextFolderNode);
-        if (Objects.nonNull(folderNode)) {
-          folderNode.addOrganizes(nextFolderNode);
-        } else {
-          nextFolderNode.addReference(
-              new Reference(
-                  folderNodeId,
-                  Identifiers.Organizes,
-                  Identifiers.ObjectsFolder.expanded(),
-                  false));
-        }
-        folderNode = nextFolderNode;
-      } else {
-        folderNode =
-            (UaFolderNode)
-                getNodeManager()
-                    .getNode(folderNodeId)
-                    .orElseThrow(
-                        () ->
-                            new PipeRuntimeCriticalException(
-                                String.format(
-                                    "The folder node for %s does not exist.",
-                                    tablet.getDeviceId())));
-      }
-    }
-
-    final String currentFolder = currentStr.toString();
-    for (int i = 0; i < tablet.getSchemas().size(); ++i) {
-      if (!isTreeModel
-          && !tablet.getColumnTypes().get(i).equals(Tablet.ColumnCategory.MEASUREMENT)) {
-        continue;
-      }
-      final IMeasurementSchema measurementSchema = tablet.getSchemas().get(i);
-      final String name = measurementSchema.getMeasurementName();
-      final TSDataType type = measurementSchema.getType();
-      final NodeId nodeId = newNodeId(currentFolder + name);
-      final UaVariableNode measurementNode;
-      if (!getNodeManager().containsNode(nodeId)) {
-        measurementNode =
-            new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                .setNodeId(newNodeId(currentFolder + name))
-                .setAccessLevel(AccessLevel.READ_WRITE)
-                .setUserAccessLevel(AccessLevel.READ_ONLY)
-                .setBrowseName(newQualifiedName(name))
-                .setDisplayName(LocalizedText.english(name))
-                .setDataType(convertToOpcDataType(type))
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        getNodeManager().addNode(measurementNode);
-        folderNode.addOrganizes(measurementNode);
-      } else {
-        // This must exist
-        measurementNode =
-            (UaVariableNode)
-                getNodeManager()
-                    .getNode(nodeId)
-                    .orElseThrow(
-                        () ->
-                            new PipeRuntimeCriticalException(
-                                String.format("The Node %s does not exist.", nodeId)));
-      }
-
-      int lastNonnullIndex = -1;
-      for (int j = 0; j < tablet.getRowSize(); ++j) {
-        if (!tablet.bitMaps[i].isMarked(j)) {
-          lastNonnullIndex = j;
-          break;
-        }
-      }
-
-      if (lastNonnullIndex != -1) {
-        final long utcTimestamp = timestampToUtc(tablet.timestamps[lastNonnullIndex]);
-        if (Objects.isNull(measurementNode.getValue())
-            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-                < utcTimestamp) {
-          measurementNode.setValue(
-              new DataValue(
-                  new Variant(getTabletObjectValue4Opc(tablet.values[i], lastNonnullIndex, type)),
-                  StatusCode.GOOD,
-                  new DateTime(utcTimestamp),
-                  new DateTime()));
-        }
-      }
-    }
   }
 
-  private void transferTabletForClientServerTreeModel(
+  private void transferTabletRowForClientServerModel(
       final String[] segments,
       final List<IMeasurementSchema> measurementSchemas,
       final List<Long> timestamps,
@@ -354,13 +248,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                                 String.format("The Node %s does not exist.", nodeId)));
       }
 
-      final long utcTimestamp = timestampToUtc(timestamps[i]);
+      final long utcTimestamp = timestampToUtc(timestamps.get(i));
       if (Objects.isNull(measurementNode.getValue())
           || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
               < utcTimestamp) {
         measurementNode.setValue(
             new DataValue(
-                new Variant(values[i]),
+                new Variant(values.get(i)),
                 StatusCode.GOOD,
                 new DateTime(utcTimestamp),
                 new DateTime()));
