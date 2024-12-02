@@ -360,13 +360,14 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN")) {
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
-          Arrays.asList(
-              "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN tags (tag3=v3) attributes (attr4=v4)",
-              "insert into root.ln.wf01.wt01 (status) values (true)"))) {
+          "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN tags (tag3=v3) attributes (attr4=v4)")) {
         return;
       }
 
@@ -376,12 +377,6 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,RLE,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.** group by level=0",
-          "count(root.*.*.*.*),",
-          Collections.singleton("1,"));
     }
   }
 }
