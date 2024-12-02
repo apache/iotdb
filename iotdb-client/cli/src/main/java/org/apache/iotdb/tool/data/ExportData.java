@@ -242,6 +242,9 @@ public class ExportData extends AbstractDataTool {
             true);
         System.exit(CODE_ERROR);
       }
+    }else {
+      ioTPrinter.println(String.format("Invalid args: Required values for option '%s' not provided",FILE_TYPE_NAME));
+      System.exit(CODE_ERROR);
     }
     int exitCode = CODE_OK;
     try {
@@ -531,6 +534,11 @@ public class ExportData extends AbstractDataTool {
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
+    final File file = new File(targetDirectory);
+    if (!file.isDirectory()) {
+      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetDirectory));
+      System.exit(CODE_ERROR);
+    }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
       linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
     }
@@ -654,6 +662,10 @@ public class ExportData extends AbstractDataTool {
                               || field.getDataType() == TSDataType.STRING)
                           && !fieldStringValue.startsWith("root.")) {
                         fieldStringValue = "\"" + fieldStringValue + "\"";
+                      }else if(field.getDataType() == TSDataType.BLOB){
+                        fieldStringValue = fieldStringValue.replaceFirst("0x","X'")+"'";
+                      }else if(field.getDataType() == TSDataType.DATE){
+                        fieldStringValue = "'"+field.getDateV().toString()+"'";
                       }
                       csvPrinterWrapper.print(fieldStringValue);
                     } else {
@@ -747,8 +759,14 @@ public class ExportData extends AbstractDataTool {
                   headersTemp.remove(seriesList.get(index));
                   continue;
                 }
-                if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
+                String dataType = timeseriesList.get(3).getStringValue();
+                final TSDataType tsDataType = TSDataType.valueOf(dataType);
+                if (TSDataType.TEXT == tsDataType) {
                   values.add("\"" + value + "\"");
+                }else if(TSDataType.BLOB == tsDataType) {
+                  values.add(value.replaceFirst("0x","X'")+"'");
+                }else if(TSDataType.DATE == tsDataType){
+                  values.add("'"+fields.get(index).getDateV()+"'");
                 } else {
                   values.add(value);
                 }
