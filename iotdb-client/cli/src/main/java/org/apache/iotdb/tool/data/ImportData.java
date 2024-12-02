@@ -366,8 +366,10 @@ public class ImportData extends AbstractDataTool {
     }
     if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
       threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
-      if(threadNum<=0){
-        ioTPrinter.println(String.format("error: Invalid thread number '%s'. Please set a positive integer.",threadNum));
+      if (threadNum <= 0) {
+        ioTPrinter.println(
+            String.format(
+                "error: Invalid thread number '%s'. Please set a positive integer.", threadNum));
         System.exit(CODE_ERROR);
       }
     }
@@ -516,11 +518,15 @@ public class ImportData extends AbstractDataTool {
           System.exit(CODE_ERROR);
         }
       } else {
-        ioTPrinter.println(String.format("Invalid args: Required values for option '%s' not provided",FILE_TYPE_NAME));
+        ioTPrinter.println(
+            String.format(
+                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
         System.exit(CODE_ERROR);
       }
-    }else {
-      ioTPrinter.println(String.format("Invalid args: Required values for option '%s' not provided",FILE_TYPE_NAME));
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
       System.exit(CODE_ERROR);
     }
 

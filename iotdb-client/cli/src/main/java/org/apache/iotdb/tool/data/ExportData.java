@@ -242,8 +242,10 @@ public class ExportData extends AbstractDataTool {
             true);
         System.exit(CODE_ERROR);
       }
-    }else {
-      ioTPrinter.println(String.format("Invalid args: Required values for option '%s' not provided",FILE_TYPE_NAME));
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
       System.exit(CODE_ERROR);
     }
     int exitCode = CODE_OK;
@@ -536,7 +538,8 @@ public class ExportData extends AbstractDataTool {
     }
     final File file = new File(targetDirectory);
     if (!file.isDirectory()) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetDirectory));
+      ioTPrinter.println(
+          String.format("Source file or directory %s does not exist", targetDirectory));
       System.exit(CODE_ERROR);
     }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
