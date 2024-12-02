@@ -100,11 +100,11 @@ public class IoTDBOrderByIT {
 
   private static final String[] sql3 =
       new String[] {
-        "CREATE TIMESERIES root.db.d.v_timestamp WITH DATATYPE=TIMESTAMP, ENCODING=RLE",
-        "CREATE TIMESERIES root.db.d.v_string WITH DATATYPE=STRING, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d.v_date WITH DATATYPE=DATE, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d.v_blob WITH DATATYPE=BLOB, ENCODING=PLAIN",
-        "insert into root.sg.d(timestamp,v_timestamp,v_string,v_date,v_blob) values(1,2024-09-20T06:15:35.000+00:00,'sss','2012-12-12',X'108DCD62')",
+        "CREATE TIMESERIES root.sg33.d.v_timestamp WITH DATATYPE=TIMESTAMP, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg33.d.v_string WITH DATATYPE=STRING, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg33.d.v_date WITH DATATYPE=DATE, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg33.d.v_blob WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "insert into root.sg33.d(timestamp,v_timestamp,v_string,v_date,v_blob) values(1,2024-09-20T06:15:35.000+00:00,'sss','2012-12-12',X'108DCD62')",
       };
 
   @BeforeClass
