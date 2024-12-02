@@ -20,6 +20,7 @@
 package org.apache.iotdb.subscription.it;
 
 import org.apache.iotdb.session.Session;
+
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 
@@ -51,9 +52,10 @@ public class IoTDBSubscriptionITConstant {
   }
 
   public static void AWAIT_WITH_FLUSH(final Session session, final WrappedVoidSupplier assertions) {
-    AWAIT.untilAsserted(() -> {
-      session.executeQueryStatement("flush");
-      assertions.get();
-    });
+    AWAIT.untilAsserted(
+        () -> {
+          session.executeQueryStatement("flush");
+          assertions.get();
+        });
   }
 }

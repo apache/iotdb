@@ -52,7 +52,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH;
 
 /***
@@ -203,9 +202,11 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
     thread.start();
     thread.join();
 
-    AWAIT_WITH_FLUSH(session_src, () -> {
-      assertEquals(rowCount1.get(), 7, "pattern1");
-      assertEquals(rowCount2.get(), 5, "pattern2");
-    });
+    AWAIT_WITH_FLUSH(
+        session_src,
+        () -> {
+          assertEquals(rowCount1.get(), 7, "pattern1");
+          assertEquals(rowCount2.get(), 5, "pattern2");
+        });
   }
 }
