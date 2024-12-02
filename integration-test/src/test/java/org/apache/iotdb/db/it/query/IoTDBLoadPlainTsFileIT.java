@@ -44,11 +44,7 @@ import java.util.Map;
 public class IoTDBLoadPlainTsFileIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEncryptFlag(true)
-        .setEncryptType("AES128");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEncryptFlag(true).setEncryptType("AES128");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -96,7 +92,8 @@ public class IoTDBLoadPlainTsFileIT {
       Assert.assertEquals(3, cnt);
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("TSFile encryption is enabled, and the Load TSFile function is disabled"));
+          e.getMessage()
+              .contains("TSFile encryption is enabled, and the Load TSFile function is disabled"));
     }
   }
 
