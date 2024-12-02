@@ -159,6 +159,16 @@ public interface ISchemaRegion {
       throws SchemaQuotaExceededException;
 
   /**
+   * Check whether table device can be created.
+   *
+   * @param tableName the table of the created device
+   * @param deviceIdList the id segments of the created device
+   * @throws SchemaQuotaExceededException if the number of time series or devices exceeds the limit
+   */
+  void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
+      throws SchemaQuotaExceededException;
+
+  /**
    * Construct schema black list via setting matched time series to preDeleted.
    *
    * @param patternTree the patterns to construct black list
