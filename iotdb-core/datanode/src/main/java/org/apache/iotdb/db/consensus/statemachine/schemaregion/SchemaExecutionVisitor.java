@@ -95,10 +95,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
-  public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitCreateTimeSeries(
+      final CreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.createTimeSeries(node, -1);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -107,10 +108,25 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitCreateAlignedTimeSeries(
-      CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
+      final CreateAlignedTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createAlignedTimeSeries(node);
-    } catch (MetadataException e) {
+      if (node.isGeneratedByPipe()) {
+        final ICreateAlignedTimeSeriesPlan plan =
+            SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+                node.getDevicePath(),
+                node.getMeasurements(),
+                node.getDataTypes(),
+                node.getEncodings(),
+                node.getCompressors(),
+                node.getAliasList(),
+                node.getTagsList(),
+                node.getAttributesList());
+        ((CreateAlignedTimeSeriesPlanImpl) plan).setWithMerge(true);
+        schemaRegion.createAlignedTimeSeries(plan);
+      } else {
+        schemaRegion.createAlignedTimeSeries(node);
+      }
+    } catch (final MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -119,13 +135,13 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitCreateMultiTimeSeries(
-      CreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
-    Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
-    List<TSStatus> failingStatus = new ArrayList<>();
+      final CreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    final Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
+    final List<TSStatus> failingStatus = new ArrayList<>();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
     int size;
-    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+    for (final Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
       devicePath = entry.getKey();
       measurementGroup = entry.getValue();
       size = measurementGroup.getMeasurements().size();
@@ -148,7 +164,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
-      PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
+      final PartialPath devicePath, final MeasurementGroup measurementGroup, final int index) {
     return SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
         devicePath.concatAsMeasurementPath(measurementGroup.getMeasurements().get(index)),
         measurementGroup.getDataTypes().get(index),
