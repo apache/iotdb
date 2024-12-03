@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
@@ -82,7 +83,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropSubscription;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExcludedPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -115,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -124,14 +128,25 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OneOrMoreQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternAlternation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternConcatenation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternPermutation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternQuantifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternVariable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
@@ -141,6 +156,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
@@ -177,6 +193,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
@@ -185,6 +202,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
@@ -198,10 +216,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -266,11 +287,24 @@ import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalar
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ALL_OMIT_EMPTY;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ALL_SHOW_EMPTY;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ALL_WITH_UNMATCHED;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.RUNNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipPastLastRow;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToFirst;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToLast;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
@@ -308,6 +342,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitStandaloneType(RelationalSqlParser.StandaloneTypeContext context) {
     return visit(context.type());
+  }
+
+  @Override
+  public Node visitStandaloneRowPattern(RelationalSqlParser.StandaloneRowPatternContext context) {
+    return visit(context.rowPattern());
   }
 
   // ******************* statements **********************
@@ -2404,6 +2443,112 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitPatternRecognition(RelationalSqlParser.PatternRecognitionContext context) {
+    Relation child = (Relation) visit(context.aliasedRelation());
+
+    if (context.MATCH_RECOGNIZE() == null) {
+      return child;
+    }
+
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (context.ORDER() != null) {
+      orderBy =
+          Optional.of(
+              new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
+    }
+
+    PatternRecognitionRelation relation =
+        new PatternRecognitionRelation(
+            getLocation(context),
+            child,
+            visit(context.partition, Expression.class),
+            orderBy,
+            visit(context.measureDefinition(), MeasureDefinition.class),
+            getRowsPerMatch(context.rowsPerMatch()),
+            visitIfPresent(context.skipTo(), SkipTo.class),
+            (RowPattern) visit(context.rowPattern()),
+            visit(context.subsetDefinition(), SubsetDefinition.class),
+            visit(context.variableDefinition(), VariableDefinition.class));
+
+    if (context.identifier() == null) {
+      return relation;
+    }
+
+    List<Identifier> aliases = null;
+    if (context.columnAliases() != null) {
+      aliases = visit(context.columnAliases().identifier(), Identifier.class);
+    }
+
+    return new AliasedRelation(
+        getLocation(context), relation, (Identifier) visit(context.identifier()), aliases);
+  }
+
+  @Override
+  public Node visitMeasureDefinition(RelationalSqlParser.MeasureDefinitionContext context) {
+    return new MeasureDefinition(
+        getLocation(context),
+        (Expression) visit(context.expression()),
+        (Identifier) visit(context.identifier()));
+  }
+
+  private Optional<RowsPerMatch> getRowsPerMatch(RelationalSqlParser.RowsPerMatchContext context) {
+    if (context == null) {
+      return Optional.empty();
+    }
+
+    if (context.ONE() != null) {
+      return Optional.of(ONE);
+    }
+
+    if (context.emptyMatchHandling() == null) {
+      return Optional.of(ALL_SHOW_EMPTY);
+    }
+
+    if (context.emptyMatchHandling().SHOW() != null) {
+      return Optional.of(ALL_SHOW_EMPTY);
+    }
+
+    if (context.emptyMatchHandling().OMIT() != null) {
+      return Optional.of(ALL_OMIT_EMPTY);
+    }
+
+    return Optional.of(ALL_WITH_UNMATCHED);
+  }
+
+  @Override
+  public Node visitSkipTo(RelationalSqlParser.SkipToContext context) {
+    if (context.PAST() != null) {
+      return skipPastLastRow(getLocation(context));
+    }
+
+    if (context.NEXT() != null) {
+      return skipToNextRow(getLocation(context));
+    }
+
+    if (context.FIRST() != null) {
+      return skipToFirst(getLocation(context), (Identifier) visit(context.identifier()));
+    }
+
+    return skipToLast(getLocation(context), (Identifier) visit(context.identifier()));
+  }
+
+  @Override
+  public Node visitSubsetDefinition(RelationalSqlParser.SubsetDefinitionContext context) {
+    return new SubsetDefinition(
+        getLocation(context),
+        (Identifier) visit(context.name),
+        visit(context.union, Identifier.class));
+  }
+
+  @Override
+  public Node visitVariableDefinition(RelationalSqlParser.VariableDefinitionContext context) {
+    return new VariableDefinition(
+        getLocation(context),
+        (Identifier) visit(context.identifier()),
+        (Expression) visit(context.expression()));
+  }
+
+  @Override
   public Node visitAliasedRelation(RelationalSqlParser.AliasedRelationContext ctx) {
     Relation child = (Relation) visit(ctx.relationPrimary());
 
@@ -2901,12 +3046,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     boolean distinct = isDistinct(ctx.setQuantifier());
 
+    RelationalSqlParser.ProcessingModeContext processingMode = ctx.processingMode();
+
     if (name.toString().equalsIgnoreCase("if")) {
       check(
           ctx.expression().size() == 2 || ctx.expression().size() == 3,
           "Invalid number of arguments for 'if' function",
           ctx);
       check(!distinct, "DISTINCT not valid for 'if' function", ctx);
+      check(processingMode == null, "Running or final semantics not valid for 'if' function", ctx);
 
       Expression elseExpression = null;
       if (ctx.expression().size() == 3) {
@@ -2923,6 +3071,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("nullif")) {
       check(ctx.expression().size() == 2, "Invalid number of arguments for 'nullif' function", ctx);
       check(!distinct, "DISTINCT not valid for 'nullif' function", ctx);
+      check(
+          processingMode == null,
+          "Running or final semantics not valid for 'nullif' function",
+          ctx);
 
       return new NullIfExpression(
           getLocation(ctx),
@@ -2936,8 +3088,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           "The 'coalesce' function must have at least two arguments",
           ctx);
       check(!distinct, "DISTINCT not valid for 'coalesce' function", ctx);
+      check(
+          processingMode == null,
+          "Running or final semantics not valid for 'coalesce' function",
+          ctx);
 
       return new CoalesceExpression(getLocation(ctx), visit(ctx.expression(), Expression.class));
+    }
+
+    Optional<ProcessingMode> mode = Optional.empty();
+    if (processingMode != null) {
+      if (processingMode.RUNNING() != null) {
+        mode = Optional.of(new ProcessingMode(getLocation(processingMode), RUNNING));
+      } else if (processingMode.FINAL() != null) {
+        mode = Optional.of(new ProcessingMode(getLocation(processingMode), FINAL));
+      }
     }
 
     List<Expression> arguments = visit(ctx.expression(), Expression.class);
@@ -2994,7 +3159,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     }
 
-    return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+    return new FunctionCall(getLocation(ctx), name, distinct, mode, arguments);
   }
 
   public boolean isNumericLiteral(Expression expression) {
@@ -3087,6 +3252,105 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       pattern = unquote(context.getText());
     }
     return new Columns(getLocation(ctx), pattern);
+  }
+
+  @Override
+  public Node visitPatternAlternation(RelationalSqlParser.PatternAlternationContext context) {
+    List<RowPattern> parts = visit(context.rowPattern(), RowPattern.class);
+    return new PatternAlternation(getLocation(context), parts);
+  }
+
+  @Override
+  public Node visitPatternConcatenation(RelationalSqlParser.PatternConcatenationContext context) {
+    List<RowPattern> parts = visit(context.rowPattern(), RowPattern.class);
+    return new PatternConcatenation(getLocation(context), parts);
+  }
+
+  @Override
+  public Node visitQuantifiedPrimary(RelationalSqlParser.QuantifiedPrimaryContext context) {
+    RowPattern primary = (RowPattern) visit(context.patternPrimary());
+    if (context.patternQuantifier() != null) {
+      return new QuantifiedPattern(
+          getLocation(context), primary, (PatternQuantifier) visit(context.patternQuantifier()));
+    }
+    return primary;
+  }
+
+  @Override
+  public Node visitPatternVariable(RelationalSqlParser.PatternVariableContext context) {
+    return new PatternVariable(getLocation(context), (Identifier) visit(context.identifier()));
+  }
+
+  @Override
+  public Node visitEmptyPattern(RelationalSqlParser.EmptyPatternContext context) {
+    return new EmptyPattern(getLocation(context));
+  }
+
+  @Override
+  public Node visitPatternPermutation(RelationalSqlParser.PatternPermutationContext context) {
+    return new PatternPermutation(
+        getLocation(context), visit(context.rowPattern(), RowPattern.class));
+  }
+
+  @Override
+  public Node visitGroupedPattern(RelationalSqlParser.GroupedPatternContext context) {
+    // skip parentheses
+    return visit(context.rowPattern());
+  }
+
+  @Override
+  public Node visitPartitionStartAnchor(RelationalSqlParser.PartitionStartAnchorContext context) {
+    return new AnchorPattern(getLocation(context), PARTITION_START);
+  }
+
+  @Override
+  public Node visitPartitionEndAnchor(RelationalSqlParser.PartitionEndAnchorContext context) {
+    return new AnchorPattern(getLocation(context), PARTITION_END);
+  }
+
+  @Override
+  public Node visitExcludedPattern(RelationalSqlParser.ExcludedPatternContext context) {
+    return new ExcludedPattern(getLocation(context), (RowPattern) visit(context.rowPattern()));
+  }
+
+  @Override
+  public Node visitZeroOrMoreQuantifier(RelationalSqlParser.ZeroOrMoreQuantifierContext context) {
+    boolean greedy = context.reluctant == null;
+    return new ZeroOrMoreQuantifier(getLocation(context), greedy);
+  }
+
+  @Override
+  public Node visitOneOrMoreQuantifier(RelationalSqlParser.OneOrMoreQuantifierContext context) {
+    boolean greedy = context.reluctant == null;
+    return new OneOrMoreQuantifier(getLocation(context), greedy);
+  }
+
+  @Override
+  public Node visitZeroOrOneQuantifier(RelationalSqlParser.ZeroOrOneQuantifierContext context) {
+    boolean greedy = context.reluctant == null;
+    return new ZeroOrOneQuantifier(getLocation(context), greedy);
+  }
+
+  @Override
+  public Node visitRangeQuantifier(RelationalSqlParser.RangeQuantifierContext context) {
+    boolean greedy = context.reluctant == null;
+
+    Optional<LongLiteral> atLeast = Optional.empty();
+    Optional<LongLiteral> atMost = Optional.empty();
+    if (context.exactly != null) {
+      atLeast =
+          Optional.of(new LongLiteral(getLocation(context.exactly), context.exactly.getText()));
+      atMost =
+          Optional.of(new LongLiteral(getLocation(context.exactly), context.exactly.getText()));
+    }
+    if (context.atLeast != null) {
+      atLeast =
+          Optional.of(new LongLiteral(getLocation(context.atLeast), context.atLeast.getText()));
+    }
+    if (context.atMost != null) {
+      atMost = Optional.of(new LongLiteral(getLocation(context.atMost), context.atMost.getText()));
+    }
+    return new RangeQuantifier(getLocation(context), greedy, atLeast, atMost);
   }
 
   // ************** literals **************

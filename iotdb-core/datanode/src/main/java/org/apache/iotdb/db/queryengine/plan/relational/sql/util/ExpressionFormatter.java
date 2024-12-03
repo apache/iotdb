@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -86,6 +87,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
@@ -290,6 +292,10 @@ public final class ExpressionFormatter {
       }
 
       StringBuilder builder = new StringBuilder();
+
+      if (node.getProcessingMode().isPresent()) {
+        builder.append(node.getProcessingMode().get().getMode()).append(" ");
+      }
 
       String arguments = joinExpressions(node.getArguments());
       if (node.getArguments().isEmpty() && "count".equalsIgnoreCase(node.getName().getSuffix())) {
@@ -610,6 +616,25 @@ public final class ExpressionFormatter {
 
   public static String formatSortItems(List<SortItem> sortItems) {
     return sortItems.stream().map(sortItemFormatterFunction()).collect(joining(", "));
+  }
+
+  public static String formatSkipTo(SkipTo skipTo) {
+    switch (skipTo.getPosition()) {
+      case PAST_LAST:
+        return "AFTER MATCH SKIP PAST LAST ROW";
+      case NEXT:
+        return "AFTER MATCH SKIP TO NEXT ROW";
+      case LAST:
+        checkState(
+            skipTo.getIdentifier().isPresent(), "missing identifier in AFTER MATCH SKIP TO LAST");
+        return "AFTER MATCH SKIP TO LAST " + formatExpression(skipTo.getIdentifier().get());
+      case FIRST:
+        checkState(
+            skipTo.getIdentifier().isPresent(), "missing identifier in AFTER MATCH SKIP TO FIRST");
+        return "AFTER MATCH SKIP TO FIRST " + formatExpression(skipTo.getIdentifier().get());
+      default:
+        throw new IllegalArgumentException("Invalid input: " + skipTo.getPosition());
+    }
   }
 
   static String formatGroupBy(List<GroupingElement> groupingElements) {
