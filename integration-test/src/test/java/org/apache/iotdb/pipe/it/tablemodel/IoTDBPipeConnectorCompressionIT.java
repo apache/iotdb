@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -125,6 +126,9 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
             ? receiverDataNode.getPipeAirGapReceiverPort()
             : receiverDataNode.getPort();
 
+    final Consumer<String> handleFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
 
@@ -194,7 +198,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
 
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
     }
   }
 
@@ -204,6 +208,9 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+
+    final Consumer<String> handleFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -325,7 +332,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
       TableModelUtils.insertData("test", "test3", 0, 50, senderEnv, true);
 
-      TableModelUtils.assertCountData("test", "test1", 50, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 50, receiverEnv, handleFailure);
     }
   }
 }
