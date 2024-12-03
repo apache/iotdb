@@ -86,15 +86,17 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
-    super.serialize(stream);
-    ReadWriteIOUtils.writeVar(pathPattern.getFullPath(), stream);
+  public long serialize(OutputStream stream) throws IOException {
+    long size = super.serialize(stream);
+    size += ReadWriteIOUtils.writeVar(pathPattern.getFullPath(), stream);
+    return size;
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    super.serialize(buffer);
-    ReadWriteIOUtils.writeVar(pathPattern.getFullPath(), buffer);
+  public long serialize(ByteBuffer buffer) {
+    long size = super.serialize(buffer);
+    size += ReadWriteIOUtils.writeVar(pathPattern.getFullPath(), buffer);
+    return size;
   }
 
   @Override

@@ -534,7 +534,6 @@ public class TsFileInsertionEventParserTest {
     schemaList.add(new MeasurementSchema("s3", TSDataType.DATE));
 
     final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
-    t.rowSize = 2;
     t.addTimestamp(0, 1000);
     t.addTimestamp(1, 2000);
     t.addValue("s1", 0, 2L);

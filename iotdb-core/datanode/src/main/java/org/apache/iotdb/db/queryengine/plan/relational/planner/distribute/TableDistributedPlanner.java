@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -25,17 +26,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import java.util.Collections;
@@ -58,18 +58,32 @@ public class TableDistributedPlanner {
   private final List<PlanOptimizer> optimizers;
   private final Metadata metadata;
 
+  @TestOnly
   public TableDistributedPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       LogicalQueryPlan logicalQueryPlan,
       Metadata metadata) {
+    this(
+        analysis,
+        symbolAllocator,
+        logicalQueryPlan,
+        metadata,
+        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers());
+  }
+
+  public TableDistributedPlanner(
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      LogicalQueryPlan logicalQueryPlan,
+      Metadata metadata,
+      List<PlanOptimizer> distributedOptimizers) {
     this.analysis = analysis;
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
-    this.optimizers =
-        new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers();
+    this.optimizers = distributedOptimizers;
     this.metadata = metadata;
   }
 
@@ -79,7 +93,7 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
@@ -88,7 +102,7 @@ public class TableDistributedPlanner {
     adjustUpStream(outputNodeWithExchange, planContext);
     DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
@@ -107,7 +121,7 @@ public class TableDistributedPlanner {
     // distribute plan optimize rule
     PlanNode distributedPlan = distributedPlanResult.get(0);
 
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         distributedPlan =
             optimizer.optimize(

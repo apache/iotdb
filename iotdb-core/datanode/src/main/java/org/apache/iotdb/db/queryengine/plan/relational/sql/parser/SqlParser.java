@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -54,6 +55,10 @@ import java.util.function.Function;
 import static java.util.Objects.requireNonNull;
 
 public class SqlParser {
+
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   private static final ANTLRErrorListener LEXER_ERROR_LISTENER =
       new BaseErrorListener() {
         @Override
@@ -131,6 +136,7 @@ public class SqlParser {
       Optional<NodeLocation> location,
       Function<RelationalSqlParser, ParserRuleContext> parseFunction,
       ZoneId zoneId) {
+    long startTime = System.nanoTime();
     try {
       RelationalSqlLexer lexer =
           new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
@@ -190,6 +196,8 @@ public class SqlParser {
       return new AstBuilder(location.orElse(null), zoneId).visit(tree);
     } catch (StackOverflowError e) {
       throw new ParsingException(name + " is too large (stack overflow while parsing)");
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     }
   }
 

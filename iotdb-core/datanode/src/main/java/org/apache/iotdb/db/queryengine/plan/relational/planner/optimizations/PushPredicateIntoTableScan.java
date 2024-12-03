@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -439,15 +440,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
+
+      long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+      queryContext.setFetchSchemaCost(schemaFetchCost);
 
       if (deviceEntries.isEmpty()) {
-        if (analysis.noAggregates()) {
-          // no device entries, queries(except aggregation) can be finished
+        if (analysis.noAggregates() && !analysis.hasJoinNode()) {
+          // no device entries, queries(except aggregation and join) can be finished
+          analysis.setEmptyDataSource(true);
           analysis.setFinishQueryAfterAnalyze();
         }
-        analysis.setEmptyDataSource(true);
       } else {
         Filter timeFilter =
             tableScanNode
@@ -469,17 +473,19 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
-          if (analysis.noAggregates()) {
-            // no data partitions, queries(except aggregation) can be finished
+          if (analysis.noAggregates() && !analysis.hasJoinNode()) {
+            // no data partitions, queries(except aggregation and join) can be finished
+            analysis.setEmptyDataSource(true);
             analysis.setFinishQueryAfterAnalyze();
           }
-          analysis.setEmptyDataSource(true);
         } else {
           analysis.upsertDataPartition(dataPartition);
         }
 
+        long fetchPartitionCost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
-            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
+            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, fetchPartitionCost);
+        queryContext.setFetchPartitionCost(fetchPartitionCost);
       }
     }
 
@@ -638,6 +644,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
                 node.isSpillable());
+      }
+
+      if (((JoinNode) output).isCrossJoin()) {
+        throw new SemanticException(
+            "Cross join is not supported in current version, each table must have at least one equiJoinClause");
       }
 
       JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);

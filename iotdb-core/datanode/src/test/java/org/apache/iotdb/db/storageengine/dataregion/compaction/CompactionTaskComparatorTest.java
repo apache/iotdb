@@ -74,6 +74,27 @@ public class CompactionTaskComparatorTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
   }
 
+  /** Test comparation of tasks with different avg file size */
+  @Test
+  public void testAvgFileSizeCompare() throws InterruptedException {
+    AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
+    for (int i = 0; i < 10; ++i) {
+      List<TsFileResource> resources = new ArrayList<>();
+      for (int j = i; j < 10; ++j) {
+        resources.add(
+            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), i));
+      }
+      compactionTasks[i] =
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);
+      compactionTaskQueue.put(compactionTasks[i]);
+    }
+
+    for (int i = 0; i < 10; ++i) {
+      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      assertTrue(currentTask == compactionTasks[i]);
+    }
+  }
+
   /** Test comparation of tasks with different file num */
   @Test
   public void testFileNumCompare() throws InterruptedException {
@@ -82,7 +103,7 @@ public class CompactionTaskComparatorTest {
       List<TsFileResource> resources = new ArrayList<>();
       for (int j = i; j < 100; ++j) {
         resources.add(
-            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
+            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), 1));
       }
       compactionTasks[i] =
           new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);
@@ -205,7 +226,7 @@ public class CompactionTaskComparatorTest {
       List<TsFileResource> resources = new ArrayList<>();
       for (int j = i; j < 100; ++j) {
         resources.add(
-            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
+            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), 1));
       }
       innerCompactionTasks[i] =
           new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);

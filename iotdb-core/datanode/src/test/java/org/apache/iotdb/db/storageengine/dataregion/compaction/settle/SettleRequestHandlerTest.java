@@ -140,7 +140,7 @@ public class SettleRequestHandlerTest {
     for (int i = 0; i < 3; i++) {
       for (int j = 1; j <= 3; j++) {
         long timestamp = 3L * i + j;
-        record = new TSRecord(timestamp, deviceId);
+        record = new TSRecord(deviceId, timestamp);
         record.addTuple(
             DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(timestamp)));
         dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));

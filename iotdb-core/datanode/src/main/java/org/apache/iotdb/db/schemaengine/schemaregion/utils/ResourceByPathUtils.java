@@ -122,7 +122,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     for (IMeasurementSchema valueChunkMetadata : (alignedFullPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
-      valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
+      valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementName());
       valueMetadata.setTsDataType(valueChunkMetadata.getType());
       valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
@@ -336,7 +336,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementId());
+    timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementName());
     timeSeriesMetadata.setTsDataType(fullPath.getMeasurementSchema().getType());
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 

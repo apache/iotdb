@@ -497,6 +497,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
+      LOGGER.warn(
+          "All {} pipe(s) will be restarted because of forced restart policy.", stuckPipes.size());
+      return stuckPipes;
+    }
+
+    if (3 * PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()) {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        stuckPipes.add(pipeMeta);
+      }
+      LOGGER.warn(
+          "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
+          stuckPipes.size());
       return stuckPipes;
     }
 
@@ -527,16 +540,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         continue;
       }
 
-      // Only restart the stream mode pipes for releasing memTables.
-      if (extractors.get(0).isStreamMode()
-          && extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-          && (mayMemTablePinnedCountReachDangerousThreshold()
-              || mayWalSizeReachThrottleThreshold())) {
-        // Extractors of this pipe may be stuck and is pinning too many MemTables.
-        LOGGER.warn(
-            "Pipe {} needs to restart because too many memTables are pinned.",
-            pipeMeta.getStaticMeta());
-        stuckPipes.add(pipeMeta);
+      // Try to restart the stream mode pipes for releasing memTables.
+      if (extractors.get(0).isStreamMode()) {
+        if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
+            && (mayMemTablePinnedCountReachDangerousThreshold()
+                || mayWalSizeReachThrottleThreshold())) {
+          // Extractors of this pipe may be stuck and is pinning too many MemTables.
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many memTables are pinned.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        } else if (getFloatingMemoryUsageInByte(pipeName)
+            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                / pipeMetaKeeper.getPipeMetaCount()) {
+          // Extractors of this pipe may have too many insert nodes
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many insertNodes are extracted.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        }
       }
     }
 
@@ -582,7 +604,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     acquireWriteLock();
     try {
       final long startTime = System.currentTimeMillis();
-      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
       handleSinglePipeMetaChanges(originalPipeMeta);
       LOGGER.warn(

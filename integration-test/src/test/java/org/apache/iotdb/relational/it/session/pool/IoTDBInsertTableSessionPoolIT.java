@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.relational.it.session.pool;
 
-import org.apache.iotdb.isession.IPooledSession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -33,7 +33,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
@@ -48,6 +48,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -61,8 +62,8 @@ public class IoTDBInsertTableSessionPoolIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("create database if not exists test");
     }
   }
@@ -74,8 +75,8 @@ public class IoTDBInsertTableSessionPoolIT {
 
   @Test
   public void testPartialInsertTablet() {
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
@@ -85,43 +86,49 @@ public class IoTDBInsertTableSessionPoolIT {
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT);
-      Tablet tablet = new Tablet("sg6", schemaList, columnTypes, 300);
+              ColumnCategory.ID,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
+      Tablet tablet =
+          new Tablet(
+              "sg6",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
       }
       timestamp = System.currentTimeMillis();
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 4; s++) {
           long value = timestamp;
           if (s == 0) {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, "d1");
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, "d1");
           } else {
-            tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+            tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
           }
         }
         timestamp++;
       }
       try {
-        session.insertTablet(tablet);
+        session.insert(tablet);
       } catch (Exception e) {
         if (!e.getMessage().contains("507")) {
           fail(e.getMessage());
@@ -130,11 +137,11 @@ public class IoTDBInsertTableSessionPoolIT {
         session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       }
       try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
-        assertEquals(dataSet.getColumnNames().size(), 4);
-        assertEquals(dataSet.getColumnNames().get(0), "time");
-        assertEquals(dataSet.getColumnNames().get(1), "id1");
-        assertEquals(dataSet.getColumnNames().get(2), "s1");
-        assertEquals(dataSet.getColumnNames().get(3), "s2");
+        assertEquals(4, dataSet.getColumnNames().size());
+        assertEquals("time", dataSet.getColumnNames().get(0));
+        assertEquals("id1", dataSet.getColumnNames().get(1));
+        assertEquals("s1", dataSet.getColumnNames().get(2));
+        assertEquals("s2", dataSet.getColumnNames().get(3));
         int cnt = 0;
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
@@ -153,8 +160,8 @@ public class IoTDBInsertTableSessionPoolIT {
 
   @Test
   public void testInsertKeyword() throws IoTDBConnectionException, StatementExecutionException {
-    ISessionPool sessionPool = EnvFactory.getEnv().getSessionPool(1, "table");
-    try (final IPooledSession session = sessionPool.getPooledSession()) {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("USE \"test\"");
       session.executeNonQueryStatement(
           "create table table20 ("
@@ -184,26 +191,32 @@ public class IoTDBInsertTableSessionPoolIT {
       schemas.add(new MeasurementSchema("blob", TSDataType.BLOB));
       schemas.add(new MeasurementSchema("timestamp", TSDataType.TIMESTAMP));
       schemas.add(new MeasurementSchema("date", TSDataType.DATE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID,
-              ColumnType.ATTRIBUTE,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT,
-              ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table20", schemas, columnTypes, 10);
+      Tablet tablet =
+          new Tablet(
+              "table20",
+              IMeasurementSchema.getMeasurementNameList(schemas),
+              schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList()),
+              columnTypes,
+              10);
 
       for (long row = 0; row < 10; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("device_id", rowIndex, "1");
         tablet.addValue("attribute", rowIndex, "1");
@@ -218,7 +231,7 @@ public class IoTDBInsertTableSessionPoolIT {
         tablet.addValue("timestamp", rowIndex, 1L);
         tablet.addValue("date", rowIndex, LocalDate.parse("2024-08-15"));
       }
-      session.insertTablet(tablet);
+      session.insert(tablet);
 
       SessionDataSet rs1 =
           session.executeQueryStatement(

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -92,7 +92,7 @@ public class TableSchema {
     // TODO-Table: unify redundant definitions
     String tableName = this.getTableName();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnType> columnTypes = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
     for (ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
         continue;
@@ -110,7 +110,7 @@ public class TableSchema {
     // TODO-Table: unify redundant definitions
     String tableName = this.getTableName();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnType> columnTypes = new ArrayList<>();
+    List<ColumnCategory> columnTypes = new ArrayList<>();
     for (ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME
           || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
@@ -132,14 +132,14 @@ public class TableSchema {
     try {
       List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
-        final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementId();
+        final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementName();
         if (columnName == null || columnName.isEmpty()) {
           continue;
         }
 
         // TsFile should not contain attribute columns by design.
-        final ColumnType columnType = tsFileTableSchema.getColumnTypes().get(i);
-        if (columnType == ColumnType.ATTRIBUTE) {
+        final ColumnCategory columnType = tsFileTableSchema.getColumnTypes().get(i);
+        if (columnType == ColumnCategory.ATTRIBUTE) {
           continue;
         }
 

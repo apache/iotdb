@@ -561,7 +561,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -600,7 +601,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);

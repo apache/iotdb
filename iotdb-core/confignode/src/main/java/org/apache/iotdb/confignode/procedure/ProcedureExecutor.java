@@ -127,8 +127,8 @@ public class ProcedureExecutor<Env> {
         if (!proc.hasParent()) {
           rollbackStack.put(proc.getProcId(), new RootProcedureStack<>());
         }
+        procedures.putIfAbsent(proc.getProcId(), proc);
       }
-      procedures.putIfAbsent(proc.getProcId(), proc);
     }
     List<Procedure<Env>> runnableList = new ArrayList<>();
     List<Procedure<Env>> failedList = new ArrayList<>();

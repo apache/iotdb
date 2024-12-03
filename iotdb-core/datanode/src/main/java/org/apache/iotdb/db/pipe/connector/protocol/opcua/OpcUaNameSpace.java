@@ -153,7 +153,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final String currentFolder = currentStr.toString();
     for (int i = 0; i < tablet.getSchemas().size(); ++i) {
       final IMeasurementSchema measurementSchema = tablet.getSchemas().get(i);
-      final String name = measurementSchema.getMeasurementId();
+      final String name = measurementSchema.getMeasurementName();
       final TSDataType type = measurementSchema.getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
       final UaVariableNode measurementNode;
@@ -183,7 +183,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       int lastNonnullIndex = -1;
-      for (int j = 0; j < tablet.rowSize; ++j) {
+      for (int j = 0; j < tablet.getRowSize(); ++j) {
         if (!tablet.bitMaps[i].isMarked(j)) {
           lastNonnullIndex = j;
           break;
@@ -258,12 +258,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       eventNode.setSourceName(
           tablet.getDeviceId()
               + TsFileConstant.PATH_SEPARATOR
-              + tablet.getSchemas().get(columnIndex).getMeasurementId());
+              + tablet.getSchemas().get(columnIndex).getMeasurementName());
 
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));
 
-      for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
+      for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
         // Filter null value
         if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
           continue;

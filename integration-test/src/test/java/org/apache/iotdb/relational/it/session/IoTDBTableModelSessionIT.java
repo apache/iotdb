@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.relational.it.session;
 
-import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -61,8 +61,8 @@ public class IoTDBTableModelSessionIT {
     final String[] table2Names = new String[] {"table2"};
     final String[] table2ttls = new String[] {"6600000"};
 
-    try (final ISession session =
-        EnvFactory.getEnv().getSessionConnectionWithDB("table", "test2")) {
+    try (final ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB("test2")) {
 
       session.executeNonQueryStatement("CREATE DATABASE test1");
       session.executeNonQueryStatement("CREATE DATABASE test2");
@@ -106,6 +106,45 @@ public class IoTDBTableModelSessionIT {
           cnt++;
         }
         assertEquals(table1Names.length, cnt);
+      }
+
+    } catch (final IoTDBConnectionException | StatementExecutionException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateSessionWithCapitalDB() {
+    final String[] table2Names = new String[] {"table2"};
+    final String[] table2ttls = new String[] {"6600000"};
+
+    try (final ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB("TEST2")) {
+
+      session.executeNonQueryStatement("CREATE DATABASE test1");
+      session.executeNonQueryStatement("CREATE DATABASE test2");
+
+      // or use full qualified table name
+      session.executeNonQueryStatement(
+          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+
+      session.executeNonQueryStatement(
+          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+
+      try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+        int cnt = 0;
+        assertEquals(showTablesColumnHeaders.size(), dataSet.getColumnNames().size());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), dataSet.getColumnNames().get(i));
+        }
+        while (dataSet.hasNext()) {
+          final RowRecord rowRecord = dataSet.next();
+          assertEquals(table2Names[cnt], rowRecord.getFields().get(0).getStringValue());
+          assertEquals(table2ttls[cnt], rowRecord.getFields().get(1).getStringValue());
+          cnt++;
+        }
+        assertEquals(table2Names.length, cnt);
       }
 
     } catch (final IoTDBConnectionException | StatementExecutionException e) {

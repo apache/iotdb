@@ -839,7 +839,7 @@ public class ConfigMTree {
   // false if measurement column
   public boolean preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
-      throws MetadataException {
+      throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
