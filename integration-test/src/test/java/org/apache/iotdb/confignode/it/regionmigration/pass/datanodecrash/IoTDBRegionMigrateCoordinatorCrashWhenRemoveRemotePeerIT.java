@@ -40,11 +40,8 @@ public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
 
   @Test
   public void crashAfterNotifyPeersToRemoveSyncLogChannel() throws Exception {
-    if (isIoTV1) {
-      success(
-          IoTConsensusRemovePeerCoordinatorKillPoints
-              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
-    }
+    success(
+        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
   }
 
   @Test

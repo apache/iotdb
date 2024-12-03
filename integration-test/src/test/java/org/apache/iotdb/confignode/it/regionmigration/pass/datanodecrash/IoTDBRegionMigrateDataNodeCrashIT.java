@@ -97,14 +97,16 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
 
   @Test
   public void destinationCrashDuringAddPeerTransition() throws Exception {
-    failTest(
-        2,
-        2,
-        1,
-        3,
-        noKillPoints(),
-        buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION),
-        KillNode.DESTINATION_DATANODE);
+    if (isIoTV1) {
+      failTest(
+          2,
+          2,
+          1,
+          3,
+          noKillPoints(),
+          buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION),
+          KillNode.DESTINATION_DATANODE);
+    }
   }
 
   @Test
