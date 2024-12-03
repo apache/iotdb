@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.connector.util.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -60,7 +61,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     if (Objects.isNull(dataBaseName)) {
       new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     } else {
-      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+      new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     }
 
     try {

@@ -172,6 +172,14 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return new HashMap<>(pipeName2WeightMap);
   }
 
+  /**
+   * Converts a Tablet to a TSFile and returns the generated TSFile along with its corresponding
+   * database name.
+   *
+   * @return a list of pairs containing the database name and the generated TSFile
+   * @throws IOException if an I/O error occurs during the conversion process
+   * @throws WriteProcessException if an error occurs during the write process
+   */
   public synchronized List<Pair<String, File>> sealTsFiles()
       throws IOException, WriteProcessException {
     if (isClosed) {

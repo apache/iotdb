@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.util;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -66,13 +61,30 @@ public class PipeTableModelTabletEventSorter {
       return null;
     }
 
+    // The deviceIDTimeIndexList stores the last displacement of each DeviceID + 1, such as
+    // [A1,A1,B1,B1,A2,A2,A3], then the deviceIDTimeIndexList is [(A1,2),(B1,4),(A2,6),(A3,7)]
     deviceIDTimeIndexList = new ArrayList<>();
+
+    // The deviceIDToIndexMap stores the index of each DeviceID value in the List.
     HashMap<IDeviceID, Integer> deviceIDToIndexMap = new HashMap<>();
     final long[] timestamps = tablet.timestamps;
 
     IDeviceID lastDevice = tablet.getDeviceID(0);
     long previousTimestamp = tablet.timestamps[0];
     int lasIndex = 0;
+    // It is necessary to determine whether reordering and deduplication are required, and after the
+    // loop is completed, it is necessary to ensure that the displacement of each DeviceID is
+    // continuous on the Index. For example, the Index array obtained from
+    // [A1,A2,A3,A4,A2,A2,A4,A4],[0,1,2,3,4,5,6,7] becomes
+    // [A1,A2,A2,A2,A3,A4,A4,A4],[0,1,4,5,2,3,6,7],
+    //
+    // Tablets need to be sorted under the following conditions: 1. The timestamps of the same
+    // DeviceID are out of order 2. The same DeviceID is not continuous 3. The DeviceID is out of
+    // order
+    //
+    // Tablets need to be deduplicated under the following conditions:
+    // If Tablets need to be sorted, they must be deduplicated. The same DeviceID with the same time
+    // needs to be deduplicated
     for (int i = 1, size = tablet.rowSize; i < size; ++i) {
       final IDeviceID deviceID = tablet.getDeviceID(i);
       final long currentTimestamp = timestamps[i];
@@ -189,90 +201,16 @@ public class PipeTableModelTabletEventSorter {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] =
-            reorderValueList(deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
+            TabletSortUtil.reorderValueList(
+                deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] =
-              reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
+              TabletSortUtil.reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
       }
     }
     tablet.rowSize = deduplicatedSize;
-  }
-
-  private static Object reorderValueList(
-      final int deduplicatedSize,
-      final Object valueList,
-      final TSDataType dataType,
-      final Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        final boolean[] boolValues = (boolean[]) valueList;
-        final boolean[] deduplicatedBoolValues = new boolean[boolValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedBoolValues[i] = boolValues[index[i]];
-        }
-        return deduplicatedBoolValues;
-      case INT32:
-        final int[] intValues = (int[]) valueList;
-        final int[] deduplicatedIntValues = new int[intValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedIntValues[i] = intValues[index[i]];
-        }
-        return deduplicatedIntValues;
-      case DATE:
-        final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] deduplicatedDateValues = new LocalDate[dateValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedDateValues[i] = dateValues[index[i]];
-        }
-        return deduplicatedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        final long[] longValues = (long[]) valueList;
-        final long[] deduplicatedLongValues = new long[longValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedLongValues[i] = longValues[index[i]];
-        }
-        return deduplicatedLongValues;
-      case FLOAT:
-        final float[] floatValues = (float[]) valueList;
-        final float[] deduplicatedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedFloatValues[i] = floatValues[index[i]];
-        }
-        return deduplicatedFloatValues;
-      case DOUBLE:
-        final double[] doubleValues = (double[]) valueList;
-        final double[] deduplicatedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return deduplicatedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        final Binary[] binaryValues = (Binary[]) valueList;
-        final Binary[] deduplicatedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < deduplicatedSize; i++) {
-          deduplicatedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return deduplicatedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-  }
-
-  private static BitMap reorderBitMap(
-      final int deduplicatedSize, final BitMap bitMap, final Integer[] index) {
-    final BitMap deduplicatedBitMap = new BitMap(bitMap.getSize());
-    for (int i = 0; i < deduplicatedSize; i++) {
-      if (bitMap.isMarked(index[i])) {
-        deduplicatedBitMap.mark(i);
-      }
-    }
-    return deduplicatedBitMap;
   }
 
   private void updateDeviceIDIndex(

@@ -96,9 +96,9 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     }
 
     final List<SubscriptionEvent> events = new ArrayList<>();
-    final List<Pair<String, File>> tsFiles = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
-    for (final Pair<String, File> tsFile : tsFiles) {
+    final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
+    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
+    for (final Pair<String, File> tsFile : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(

@@ -178,13 +178,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<String, File>> sealedFiles = tsFileBatch.sealTsFiles();
+      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
       final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
       final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-      final AtomicInteger eventsReferenceCount = new AtomicInteger(sealedFiles.size());
+      final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
-      for (final Pair<String, File> sealedFile : sealedFiles) {
+      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
         transfer(
             new PipeTransferTsFileHandler(
                 this,
