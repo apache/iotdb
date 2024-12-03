@@ -453,9 +453,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
-    cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    dnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
+    cnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
     return this;
   }
 
