@@ -38,10 +38,10 @@ public class AllocatorConfig {
       CommonDescriptor.getInstance().getConfig().isEnableBinaryAllocator();
 
   /** Maximum wait time in milliseconds when shutting down the evictor */
-  public Duration durationEvictorShutdownTimeout = Duration.ofMillis(10000L);
+  public Duration durationEvictorShutdownTimeout = Duration.ofMillis(1000L);
 
   /** Time interval in milliseconds between two consecutive evictor runs */
-  public Duration durationBetweenEvictorRuns = Duration.ofMillis(10000L);
+  public Duration durationBetweenEvictorRuns = Duration.ofMillis(1000L);
 
   public int arenaPredictionWeight = 35;
 

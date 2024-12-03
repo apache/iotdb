@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
 import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
 import org.apache.iotdb.commons.binaryallocator.metric.BinaryAllocatorMetrics;
 import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
-import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -49,11 +49,9 @@ public class BinaryAllocator {
       new AtomicReference<>(BinaryAllocatorState.UNINITIALIZED);
 
   private final BinaryAllocatorMetrics metrics;
+  private Evictor sampleEvictor;
   private static final ThreadLocal<ThreadArenaRegistry> arenaRegistry =
       ThreadLocal.withInitial(ThreadArenaRegistry::new);
-
-  private Evictor evictor;
-  private static final String GC_EVICTOR_NAME = "binary-allocator-gc-evictor";
 
   private static final int WARNING_GC_TIME_PERCENTAGE = 10;
   private static final int HALF_GC_TIME_PERCENTAGE = 20;
@@ -75,12 +73,9 @@ public class BinaryAllocator {
     MetricService.getInstance().addMetricSet(this.metrics);
 
     if (allocatorConfig.enableBinaryAllocator) {
-      state.set(BinaryAllocatorState.OPEN);
-      evictor = new GCEvictor(GC_EVICTOR_NAME, allocatorConfig.durationEvictorShutdownTimeout);
-      evictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
+      start();
     } else {
       state.set(BinaryAllocatorState.CLOSE);
-      this.close(false);
     }
   }
 
@@ -134,10 +129,9 @@ public class BinaryAllocator {
       state.set(BinaryAllocatorState.PENDING);
     } else {
       state.set(BinaryAllocatorState.CLOSE);
-      if (evictor != null) {
-        evictor.stopEvictor();
-      }
     }
+
+    sampleEvictor.stopEvictor();
     for (Arena arena : heapArenas) {
       arena.close();
     }
@@ -145,9 +139,11 @@ public class BinaryAllocator {
 
   private void start() {
     state.set(BinaryAllocatorState.OPEN);
-    for (Arena arena : heapArenas) {
-      arena.start();
-    }
+    sampleEvictor =
+        new SampleEvictor(
+            ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
+            allocatorConfig.durationEvictorShutdownTimeout);
+    sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
   }
 
   @TestOnly
@@ -216,44 +212,56 @@ public class BinaryAllocator {
     }
   }
 
-  public class GCEvictor extends Evictor {
-    public GCEvictor(String name, Duration evictorShutdownTimeoutDuration) {
+  public void runGcEviction(long curGcTimePercent) {
+    if (state.get() == BinaryAllocatorState.CLOSE) {
+      return;
+    }
+
+    LOGGER.debug("Binary allocator running GC eviction");
+    if (state.get() == BinaryAllocatorState.PENDING) {
+      if (curGcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
+        start();
+      }
+      return;
+    }
+
+    if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
+      LOGGER.warn(
+          "Binary allocator is shutting down because of high GC time percentage {}%.",
+          curGcTimePercent);
+      for (Arena arena : heapArenas) {
+        arena.evict(1.0);
+      }
+      close(true);
+    } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
+      LOGGER.warn(
+          "Binary allocator is half evicting because of high GC time percentage {}%.",
+          curGcTimePercent);
+      for (Arena arena : heapArenas) {
+        arena.evict(0.5);
+      }
+    } else if (curGcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
+      LOGGER.warn(
+          "Binary allocator is running evictor because of high GC time percentage {}%.",
+          curGcTimePercent);
+      for (Arena arena : heapArenas) {
+        arena.evict(0.2);
+      }
+    }
+  }
+
+  public class SampleEvictor extends Evictor {
+
+    public SampleEvictor(String name, Duration evictorShutdownTimeoutDuration) {
       super(name, evictorShutdownTimeoutDuration);
     }
 
     @Override
     public void run() {
-      LOGGER.debug("Binary allocator running evictor");
-      long GcTimePercent = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
-      if (state.get() == BinaryAllocatorState.PENDING) {
-        if (GcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
-          start();
-        }
-        return;
-      }
+      LOGGER.debug("Binary allocator running sample eviction");
 
-      if (GcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
-        LOGGER.warn(
-            "Binary allocator is shutting down because of high GC time percentage {}%.",
-            GcTimePercent);
-        for (Arena arena : heapArenas) {
-          arena.evict(1.0);
-        }
-        close(true);
-      } else if (GcTimePercent > HALF_GC_TIME_PERCENTAGE) {
-        LOGGER.warn(
-            "Binary allocator is half evicting because of high GC time percentage {}%.",
-            GcTimePercent);
-        for (Arena arena : heapArenas) {
-          arena.evict(0.5);
-        }
-      } else if (GcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
-        LOGGER.warn(
-            "Binary allocator is running evictor because of high GC time percentage {}%.",
-            GcTimePercent);
-        for (Arena arena : heapArenas) {
-          arena.evict(0.2);
-        }
+      for (Arena arena : heapArenas) {
+        arena.runSampleEviction();
       }
     }
   }

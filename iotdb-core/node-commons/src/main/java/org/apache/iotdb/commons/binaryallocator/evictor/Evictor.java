@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.commons.binaryallocator.evictor;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public abstract class Evictor implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(Evictor.class);
@@ -31,6 +36,8 @@ public abstract class Evictor implements Runnable {
   private ScheduledFuture<?> scheduledFuture;
   private String name;
   private final Duration evictorShutdownTimeoutDuration;
+
+  private ScheduledExecutorService executor;
 
   public Evictor(String name, Duration evictorShutdownTimeoutDuration) {
     this.name = name;
@@ -56,11 +63,26 @@ public abstract class Evictor implements Runnable {
 
   public void startEvictor(final Duration delay) {
     LOGGER.info("Starting evictor with delay {}", delay);
-    EvictionTimer.schedule(this, delay, delay, name);
+
+    if (null == executor) {
+      executor = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name);
+    }
+    final ScheduledFuture<?> scheduledFuture =
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            executor, this, delay.toMillis(), delay.toMillis(), TimeUnit.MILLISECONDS);
+    this.setScheduledFuture(scheduledFuture);
   }
 
   public void stopEvictor() {
     LOGGER.info("Stopping evictor");
-    EvictionTimer.cancel(this, evictorShutdownTimeoutDuration, false);
+
+    cancel();
+
+    executor.shutdown();
+    try {
+      executor.awaitTermination(evictorShutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (final InterruptedException e) {
+    }
+    executor = null;
   }
 }
