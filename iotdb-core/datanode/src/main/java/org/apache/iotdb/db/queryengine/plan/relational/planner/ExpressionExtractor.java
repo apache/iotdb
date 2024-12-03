@@ -17,6 +17,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -80,14 +81,13 @@ public final class ExpressionExtractor {
       return lookup.resolve(node).accept(this, context);
     }
 
-    /*@Override
-    public Void visitAggregation(AggregationNode node, Void context)
-    {
-        for (Aggregation aggregation : node.getAggregations().values()) {
-            aggregation.getArguments().forEach(consumer);
-        }
-        return super.visitAggregation(node, context);
-    }*/
+    @Override
+    public Void visitAggregation(AggregationNode node, Void context) {
+      for (AggregationNode.Aggregation aggregation : node.getAggregations().values()) {
+        aggregation.getArguments().forEach(consumer);
+      }
+      return super.visitAggregation(node, context);
+    }
 
     @Override
     public Void visitFilter(FilterNode node, Void context) {
