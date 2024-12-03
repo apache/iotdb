@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
@@ -201,9 +202,9 @@ public class ReadOnlyMemChunk {
             // do nothing
         }
         pageStatistics.setEmpty(false);
+        tvListOffsets = timeValuePairIterator.getTVListOffsets();
+        cnt++;
       }
-      tvListOffsets = timeValuePairIterator.getTVListOffsets();
-      cnt++;
     }
     chunkStatistics.setEmpty(cnt == 0);
   }
@@ -223,8 +224,7 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
-  // we do not call getPointReader in MemChunkReader anymore. However, unit testcases
-  // still test this method.
+  @TestOnly
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
       TVList tvList = entry.getKey();

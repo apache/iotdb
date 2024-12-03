@@ -240,7 +240,7 @@ public class MemPageReader implements IPageReader {
 
   private void getTsBlock() {
     if (tsBlock == null) {
-      InitializeOffsets();
+      initializeOffsets();
       tsBlock = tsBlockSupplier.get();
       if (pageMetadata.getStatistics() == null) {
         initPageStatistics();
@@ -248,7 +248,7 @@ public class MemPageReader implements IPageReader {
     }
   }
 
-  private void InitializeOffsets() {
+  private void initializeOffsets() {
     if (pageStartOffsets != null) {
       mergeSortTvListIterator.setTVListOffsets(pageStartOffsets);
     }
@@ -302,7 +302,8 @@ public class MemPageReader implements IPageReader {
           }
           break;
         default:
-          // do nothing
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
       }
     }
   }

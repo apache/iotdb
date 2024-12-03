@@ -40,6 +40,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -196,11 +197,8 @@ public abstract class TVList implements WALEntryValue {
     indices.get(arrayIndex)[elementIndex] = value;
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected int[] cloneIndex(int[] array) {
-    int[] cloneArray = new int[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
+    return Arrays.copyOf(array, array.length);
   }
 
   /**
@@ -242,7 +240,7 @@ public abstract class TVList implements WALEntryValue {
    */
   public boolean isNullValue(int rowIndex) {
     if (rowIndex >= rowCount) {
-      return false;
+      throw new IndexOutOfBoundsException("Index out of bound error!");
     }
     if (bitMap == null || bitMap.get(rowIndex / ARRAY_SIZE) == null) {
       return false;
@@ -629,6 +627,9 @@ public abstract class TVList implements WALEntryValue {
     }
 
     public TimeValuePair next() {
+      if (!hasNext()) {
+        return null;
+      }
       return getTimeValuePair(index++);
     }
 

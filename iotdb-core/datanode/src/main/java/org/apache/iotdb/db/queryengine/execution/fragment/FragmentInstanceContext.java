@@ -664,6 +664,7 @@ public class FragmentInstanceContext extends QueryContext {
                 tvList,
                 this.getId());
             tvList.clear();
+            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
           } else {
             LOGGER.debug(
                 "TVList {} is owned by another query, FragmentInstance Id is {}",

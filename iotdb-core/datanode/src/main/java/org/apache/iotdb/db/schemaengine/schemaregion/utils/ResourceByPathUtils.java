@@ -385,7 +385,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     }
 
     // mutable tvlist
-    TVList list = memChunk.getTVList();
+    TVList list = memChunk.getWorkingTVList();
     list.lockQueryList();
     try {
       if (!isWorkMemTable) {
@@ -415,7 +415,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
           TVList cloneList = list.clone();
           cloneList.getQueryContextList().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
-          memChunk.setTVList(cloneList);
+          memChunk.setWorkingTVList(cloneList);
         }
       }
     } finally {

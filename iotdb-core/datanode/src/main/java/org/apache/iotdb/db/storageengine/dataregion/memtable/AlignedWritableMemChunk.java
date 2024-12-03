@@ -241,7 +241,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getTVList() {
+  public TVList getWorkingTVList() {
     return list;
   }
 

@@ -316,11 +316,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getTVList() {
+  public TVList getWorkingTVList() {
     return list;
   }
 
-  public void setTVList(TVList list) {
+  public void setWorkingTVList(TVList list) {
     this.list = list;
   }
 

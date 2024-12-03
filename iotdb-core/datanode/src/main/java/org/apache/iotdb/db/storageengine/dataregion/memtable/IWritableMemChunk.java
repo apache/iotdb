@@ -131,7 +131,7 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default TVList getTVList() {
+  default TVList getWorkingTVList() {
     return null;
   }
 

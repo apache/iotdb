@@ -127,7 +127,7 @@ public class PrimitiveMemTableTest {
     series.writeWithFlushCheck(99, 20);
     series.writeWithFlushCheck(20, 21);
     String str = series.toString();
-    Assert.assertFalse(series.getTVList().isSorted());
+    Assert.assertFalse(series.getWorkingTVList().isSorted());
     Assert.assertEquals(
         "MemChunk Size: 103"
             + System.lineSeparator()
