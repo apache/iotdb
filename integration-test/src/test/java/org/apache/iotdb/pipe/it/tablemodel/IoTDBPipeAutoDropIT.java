@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
 import static org.awaitility.Awaitility.await;
@@ -54,6 +55,9 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     boolean insertResult = true;
+
+    final Consumer<String> handleFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -94,7 +98,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("100,"),
-          "test");
+          "test",
+          handleFailure);
     }
 
     try (final Connection connection = closeQuietly(senderEnv.getConnection());
@@ -128,6 +133,9 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     boolean insertResult = true;
+
+    final Consumer<String> handleFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -169,7 +177,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("50,"),
-          "test");
+          "test",
+          handleFailure);
     }
 
     try (final Connection connection = closeQuietly(senderEnv.getConnection());
