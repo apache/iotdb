@@ -174,7 +174,8 @@ namespace TSDataType {
         DOUBLE = (char) 4,
         TEXT = (char) 5,
         VECTOR = (char) 6,
-        NULLTYPE = (char) 7
+        NULLTYPE = (char) 254,
+        INVALID_DATATYPE = (char) 255
     };
 }
 
@@ -190,9 +191,8 @@ namespace TSEncoding {
         REGULAR = (char) 7,
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
-	    CHIMP = (char) 11,
-	    SPRINTZ = (char) 12,
-	    RLBE = (char) 13
+	    FREQ = (char) 10,
+        INVALID_ENCODING = (char) 255
     };
 }
 
@@ -554,12 +554,30 @@ enum class ColumnCategory {
 
 template<typename T, typename Target>
 const Target* safe_cast(const T& value) {
-    if (std::is_same<T, Target>::value) {
+    /*
+        Target	Allowed Source Types
+        BOOLEAN	BOOLEAN
+        INT32	INT32
+        INT64	INT32 INT64
+        FLOAT	INT32 FLOAT
+        DOUBLE	INT32 INT64 FLOAT DOUBLE
+        TEXT	TEXT
+    */
+    if (std::is_same<Target, T>::value) {
         return (Target*)&value;
-    } if (std::is_same<T, int32_t>::value && std::is_same<Target, int64_t>::value) {
+    } else if (std::is_same<Target, int64_t>::value && std::is_same<T, int32_t>::value) {
         int64_t tmp = *(int32_t*)&value;
         return (Target*)&tmp;
-    } if (std::is_same<T, float>::value && std::is_same<Target, double>::value) {
+    } else if (std::is_same<Target, float>::value && std::is_same<T, int32_t>::value) {
+        float tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, int32_t>::value) {
+        double tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, int64_t>::value) {
+        double tmp = *(int64_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, float>::value) {
         double tmp = *(float*)&value;
         return (Target*)&tmp;
     } else {

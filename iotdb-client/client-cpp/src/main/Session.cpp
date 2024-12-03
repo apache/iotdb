@@ -34,16 +34,15 @@ static const int64_t QUERY_TIMEOUT_MS = -1;
 LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
 TSDataType::TSDataType getTSDataTypeFromString(const string &str) {
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, NULLTYPE
+    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, BLOB, TIMESTAMP, DATE, NULLTYPE
     if (str == "BOOLEAN") return TSDataType::BOOLEAN;
-    else if (str == "INT32") return TSDataType::INT32;
-    else if (str == "INT64") return TSDataType::INT64;
+    else if (str == "INT32" || str == "DATE") return TSDataType::INT32;
+    else if (str == "INT64" || str == "TIMESTAMP") return TSDataType::INT64;
     else if (str == "FLOAT") return TSDataType::FLOAT;
     else if (str == "DOUBLE") return TSDataType::DOUBLE;
-    else if (str == "TEXT") return TSDataType::TEXT;
-    else if (str == "TIMESTAMP") return TSDataType::INT64;
+    else if (str == "TEXT" || str == "STRING" || str == "BLOB") return TSDataType::TEXT;
     else if (str == "NULLTYPE") return TSDataType::NULLTYPE;
-    return TSDataType::TEXT;
+    return TSDataType::INVALID_DATATYPE;
 }
 
 void RpcUtils::verifySuccess(const TSStatus &status) {
