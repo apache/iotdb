@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -117,7 +119,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -3099,6 +3103,26 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
   }
