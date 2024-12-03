@@ -768,23 +768,6 @@ public abstract class AbstractDataTool {
     }
   }
 
-  public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
-    final Session session1 = new Session("172.20.31.56", 6667, "root", "root");
-    session1.open();
-    session1.insertRecordsOfOneDevice(
-        "root.ddd.fff.ppp",
-        Arrays.asList(1l),
-        Arrays.asList(Arrays.asList("sss")),
-        Arrays.asList(Arrays.asList(TSDataType.BLOB)),
-        Arrays.asList(Arrays.asList(new Binary("Session", TSFileConfig.STRING_CHARSET))));
-    final Binary binary = new Binary(parseHexStringToByteArray("53657373696f6e"));
-    System.out.println(binary.getStringValue(TSFileConfig.STRING_CHARSET));
-    session1.executeNonQueryStatement(
-        "insert into root.ddd.fff.ppp(time,sss) values(2,X'30783532363136363734346336663637333131633038303132323138306131363061')");
-    session1.close();
-  }
-
   private static byte[] parseHexStringToByteArray(String hexString) {
     byte[] bytes = new byte[hexString.length() / 2];
     for (int i = 0; i < hexString.length(); i += 2) {
