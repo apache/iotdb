@@ -28,34 +28,39 @@ package org.apache.iotdb.commons.utils.binaryallocator;
  *     |              ----------              |
  *     |              |        |              |
  *     |              v        |              v
- * UNINITIALIZED --> OPEN ---> TMP_CLOSE --> CLOSE
+ * UNINITIALIZED --> OPEN ---> PENDING -->  CLOSE
  *                    |                       ^
  *                    |                       |
  *                    -------------------------
  * </pre>
+ *
+ * State Transition Logic:
+ *
+ * <ul>
+ *   <li><b>UNINITIALIZED -> CLOSE</b>: When enable_binary_allocator = false
+ *   <li><b>UNINITIALIZED -> OPEN</b>: When enable_binary_allocator = true
+ *   <li><b>OPEN -> CLOSE</b>: When enable_binary_allocator is hot reload to false
+ *   <li><b>PENDING -> CLOSE</b>: When enable_binary_allocator is hot reload to false
+ *   <li><b>OPEN -> PENDING</b>: When in OPEN state and GC time percentage exceeds 30%, indicating
+ *       allocator ineffectiveness
+ *   <li><b>PENDING -> OPEN</b>: When GC time percentage drops below 5%, returning to normal state
+ *       and re-enabling the allocator
+ * </ul>
  */
 public enum BinaryAllocatorState {
-  /**
-   * Binary allocator is open for allocation.
-   *
-   * <p>1.When configuration 'enableBinaryAllocator' is set to true, binary allocator state becomes
-   * OPEN.
-   *
-   * <p>2.When current state is TMP_CLOSE and severe GC overhead is detected, the state will be set
-   * to OPEN.
-   */
+  /** Binary allocator is open for allocation. */
   OPEN,
 
-  /**
-   * Binary allocator is close. When configuration 'enableBinaryAllocator' is set to false, binary
-   * allocator state becomes CLOSE.
-   */
+  /** Binary allocator is close. All allocations are from the JVM heap. */
   CLOSE,
 
-  /** Binary allocator is temporarily closed by GC evictor. */
-  TMP_CLOSE,
+  /**
+   * Binary allocator is temporarily closed by GC evictor. All allocations are from the JVM heap.
+   * Allocator can be restarted afterward.
+   */
+  PENDING,
 
-  /** The initial state of a binary allocator. */
+  /** The initial state of the allocator. */
   UNINITIALIZED;
 
   @Override

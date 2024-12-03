@@ -31,8 +31,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This file is modified from org.apache.commons.pool2.impl.EvictTimer to make some adaptations for
- * IoTDB.
+ * This file is modified from {@link org.apache.commons.pool2.impl.EvictionTimer} to make some
+ * adaptations for IoTDB.
  */
 public class EvictionTimer {
   private static ScheduledThreadPoolExecutor executor;

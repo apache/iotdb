@@ -52,7 +52,7 @@ public class BinaryAllocator {
   private static final int WARNING_GC_TIME_PERCENTAGE = 10;
   private static final int HALF_GC_TIME_PERCENTAGE = 20;
   private static final int SHUTDOWN_GC_TIME_PERCENTAGE = 30;
-  private static final int RESTART_GC_TIME_PERCENTAGE = 20;
+  private static final int RESTART_GC_TIME_PERCENTAGE = 5;
 
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
@@ -135,7 +135,7 @@ public class BinaryAllocator {
 
   public void close(boolean needReopen) {
     if (needReopen) {
-      state.set(BinaryAllocatorState.TMP_CLOSE);
+      state.set(BinaryAllocatorState.PENDING);
     } else {
       state.set(BinaryAllocatorState.CLOSE);
       if (evictor != null) {
@@ -229,8 +229,8 @@ public class BinaryAllocator {
     public void run() {
       LOGGER.debug("Binary allocator running evictor");
       long GcTimePercent = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
-      if (state.get() == BinaryAllocatorState.TMP_CLOSE) {
-        if (GcTimePercent > RESTART_GC_TIME_PERCENTAGE) {
+      if (state.get() == BinaryAllocatorState.PENDING) {
+        if (GcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
           restart();
         }
         return;

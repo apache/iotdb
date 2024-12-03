@@ -22,8 +22,10 @@ package org.apache.iotdb.commons.utils.binaryallocator;
 import static java.lang.Math.max;
 
 /**
- * This file is modified from JDK17 src/hotspot/share/gc/shared/gcUtil.hpp. But some necessary
- * modifications are made to adapt to the usage of binary allocator:
+ * This file is modified from <a
+ * href="https://github.com/openjdk/jdk17/blob/master/src/hotspot/share/gc/shared/gcUtil.hpp">JDK17
+ * AdaptiveWeightedAverage</a>. But some necessary modifications are made to adapt to the usage of
+ * binary allocator:
  *
  * <p>Adaptive weighted average implementation for memory allocation tracking. During each eviction
  * cycle, records the peak memory allocation size via sampling, then uses this peak to calculate a
