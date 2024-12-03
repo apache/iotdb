@@ -247,7 +247,7 @@ public class PipeTabletEventSorterTest {
     List<Pair<IDeviceID, Integer>> list =
         new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     Assert.assertEquals(WriteUtils.splitTabletByDevice(tablet), list);
-    for (int i = 1; i < tablet.rowSize; i++) {
+    for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = tablet.timestamps[i];
       Assert.assertTrue(time > tablet.timestamps[i - 1]);
       Assert.assertEquals(
@@ -282,18 +282,24 @@ public class PipeTabletEventSorterTest {
     schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
 
-    final List<Tablet.ColumnType> columnTypes =
+    final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnType.ID,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT);
-    final Tablet tablet = new Tablet(tableName, schemaList, columnTypes, deviceIDNum * 1000);
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypes,
+            deviceIDNum * 1000);
     tablet.initBitMaps();
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
@@ -325,7 +331,7 @@ public class PipeTabletEventSorterTest {
             tablet.addValue(
                 "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
             rowIndex++;
-            tablet.rowSize++;
+            tablet.setRowSize(tablet.getRowSize() + 1);
             if (!hasDuplicates) {
               break;
             }
