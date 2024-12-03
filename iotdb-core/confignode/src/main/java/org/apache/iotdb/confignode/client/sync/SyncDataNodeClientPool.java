@@ -38,7 +38,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -115,9 +114,6 @@ public class SyncDataNodeClientPool {
     actionMapBuilder.put(
         CnToDnSyncRequestType.UPDATE_TEMPLATE,
         (req, client) -> client.updateTemplate((TUpdateTemplateReq) req));
-    actionMapBuilder.put(
-        CnToDnSyncRequestType.UPDATE_TABLE,
-        (req, client) -> client.updateTable((TUpdateTableReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.CREATE_NEW_REGION_PEER,
         (req, client) -> client.createNewRegionPeer((TCreatePeerReq) req));
