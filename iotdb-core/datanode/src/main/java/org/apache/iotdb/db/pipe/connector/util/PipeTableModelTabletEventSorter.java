@@ -44,7 +44,7 @@ public class PipeTableModelTabletEventSorter {
 
   public PipeTableModelTabletEventSorter(final Tablet tablet) {
     this.tablet = tablet;
-    deduplicatedSize = tablet == null ? 0 : tablet.rowSize;
+    deduplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   /**
@@ -57,7 +57,7 @@ public class PipeTableModelTabletEventSorter {
    *     last index in the Tablet.
    */
   public List<Pair<IDeviceID, Integer>> deduplicateAndSortTimestampsIfNecessary() {
-    if (tablet == null || tablet.rowSize < 1) {
+    if (tablet == null || tablet.getRowSize() < 1) {
       return null;
     }
 
@@ -85,7 +85,7 @@ public class PipeTableModelTabletEventSorter {
     // Tablets need to be deduplicated under the following conditions:
     // If Tablets need to be sorted, they must be deduplicated. The same DeviceID with the same time
     // needs to be deduplicated
-    for (int i = 1, size = tablet.rowSize; i < size; ++i) {
+    for (int i = 1, size = tablet.getRowSize(); i < size; ++i) {
       final IDeviceID deviceID = tablet.getDeviceID(i);
       final long currentTimestamp = timestamps[i];
       final int deviceComparison = deviceID.compareTo(lastDevice);
@@ -108,7 +108,7 @@ public class PipeTableModelTabletEventSorter {
       lasIndex = i;
       previousTimestamp = currentTimestamp;
     }
-    updateDeviceIDIndex(deviceIDToIndexMap, lastDevice, lasIndex, tablet.rowSize);
+    updateDeviceIDIndex(deviceIDToIndexMap, lastDevice, lasIndex, tablet.getRowSize());
 
     if (!isUnSorted && !hasDuplicates) {
       return deviceIDTimeIndexList;
@@ -150,7 +150,7 @@ public class PipeTableModelTabletEventSorter {
     deviceIndexRange.sort(Comparator.comparing(a -> a.left));
 
     // Deduplication and update Index array
-    final long[] timestamps = new long[tablet.rowSize];
+    final long[] timestamps = new long[tablet.getRowSize()];
     final long[] tabletTimestamps = tablet.timestamps;
     final Integer[] copyIndex = new Integer[index.length];
 
@@ -210,7 +210,7 @@ public class PipeTableModelTabletEventSorter {
         columnIndex++;
       }
     }
-    tablet.rowSize = deduplicatedSize;
+    tablet.setRowSize(deduplicatedSize);
   }
 
   private void updateDeviceIDIndex(
@@ -245,8 +245,8 @@ public class PipeTableModelTabletEventSorter {
     if (Objects.nonNull(index)) {
       return;
     }
-    index = new Integer[tablet.rowSize];
-    for (int i = 0, size = tablet.rowSize; i < size; i++) {
+    index = new Integer[tablet.getRowSize()];
+    for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
       index[i] = i;
     }
   }

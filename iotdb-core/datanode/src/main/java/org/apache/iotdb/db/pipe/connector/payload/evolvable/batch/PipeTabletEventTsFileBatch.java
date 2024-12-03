@@ -77,7 +77,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final List<Tablet> tablets = insertNodeTabletInsertionEvent.convertToTablets();
       for (int i = 0; i < tablets.size(); ++i) {
         final Tablet tablet = tablets.get(i);
-        if (tablet.rowSize == 0) {
+        if (tablet.getRowSize() == 0) {
           continue;
         }
         // table Model
@@ -101,7 +101,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
       final Tablet tablet = rawTabletInsertionEvent.convertToTablet();
-      if (tablet.rowSize == 0) {
+      if (tablet.getRowSize() == 0) {
         return true;
       }
       // table Model

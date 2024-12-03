@@ -216,7 +216,7 @@ public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
         final Tablet tablet = tablets.peekFirst();
         if (Objects.isNull(lastTablet)
             // lastTablet.rowSize is not 0
-            || lastTablet.timestamps[lastTablet.rowSize - 1] < tablet.timestamps[0]) {
+            || lastTablet.timestamps[lastTablet.getRowSize() - 1] < tablet.timestamps[0]) {
           tabletsToWrite.add(tablet);
           lastTablet = tablet;
           tablets.pollFirst();
@@ -263,7 +263,7 @@ public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
             }
           }
 
-          fileWriter.write(tablet);
+          fileWriter.writeTree(tablet);
         }
       }
     }

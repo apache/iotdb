@@ -37,15 +37,15 @@ public class PipeTreeModelTabletEventSorter {
 
   public PipeTreeModelTabletEventSorter(final Tablet tablet) {
     this.tablet = tablet;
-    deduplicatedSize = tablet == null ? 0 : tablet.rowSize;
+    deduplicatedSize = tablet == null ? 0 : tablet.getRowSize();
   }
 
   public void deduplicateAndSortTimestampsIfNecessary() {
-    if (tablet == null || tablet.rowSize == 0) {
+    if (tablet == null || tablet.getRowSize() == 0) {
       return;
     }
 
-    for (int i = 1, size = tablet.rowSize; i < size; ++i) {
+    for (int i = 1, size = tablet.getRowSize(); i < size; ++i) {
       final long currentTimestamp = tablet.timestamps[i];
       final long previousTimestamp = tablet.timestamps[i - 1];
 
@@ -62,8 +62,8 @@ public class PipeTreeModelTabletEventSorter {
       return;
     }
 
-    index = new Integer[tablet.rowSize];
-    for (int i = 0, size = tablet.rowSize; i < size; i++) {
+    index = new Integer[tablet.getRowSize()];
+    for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
       index[i] = i;
     }
 
@@ -85,12 +85,12 @@ public class PipeTreeModelTabletEventSorter {
 
   private void sortTimestamps() {
     Arrays.sort(index, Comparator.comparingLong(i -> tablet.timestamps[i]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    Arrays.sort(tablet.timestamps, 0, tablet.getRowSize());
   }
 
   private void deduplicateTimestamps() {
     deduplicatedSize = 1;
-    for (int i = 1, size = tablet.rowSize; i < size; i++) {
+    for (int i = 1, size = tablet.getRowSize(); i < size; i++) {
       if (tablet.timestamps[i] != tablet.timestamps[i - 1]) {
         index[deduplicatedSize] = index[i];
         tablet.timestamps[deduplicatedSize] = tablet.timestamps[i];
@@ -98,7 +98,7 @@ public class PipeTreeModelTabletEventSorter {
         ++deduplicatedSize;
       }
     }
-    tablet.rowSize = deduplicatedSize;
+    tablet.setRowSize(deduplicatedSize);
   }
 
   private void sortAndDeduplicateValuesAndBitMaps() {
