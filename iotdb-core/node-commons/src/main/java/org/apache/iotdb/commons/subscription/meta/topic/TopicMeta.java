@@ -188,7 +188,7 @@ public class TopicMeta {
     extractorAttributes.put("inclusion.exclusion", "data.delete");
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
-      // table model: database name and table name'
+      // table model: database name and table name
       extractorAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
     } else {
       // tree model: path or pattern
