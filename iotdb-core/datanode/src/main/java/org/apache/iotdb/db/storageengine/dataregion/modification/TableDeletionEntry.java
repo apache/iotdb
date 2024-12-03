@@ -148,4 +148,8 @@ public class TableDeletionEntry extends ModEntry {
   public int hashCode() {
     return Objects.hash(predicate, timeRange);
   }
+
+  public DeletionPredicate getPredicate() {
+    return predicate;
+  }
 }
