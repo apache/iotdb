@@ -45,10 +45,12 @@ import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +58,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -176,7 +179,6 @@ public abstract class AbstractDataTool {
   protected static Boolean aligned;
   protected static Session session;
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
-  protected static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
 
   protected static final String DATATYPE_BOOLEAN = "boolean";
   protected static final String DATATYPE_INT = "int";
@@ -192,6 +194,8 @@ public abstract class AbstractDataTool {
   protected static final String DATATYPE_NULL = "null";
   protected static int batchPointSize = 100_000;
 
+  protected static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
+
   static {
     TYPE_INFER_KEY_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
     TYPE_INFER_KEY_DICT.put(DATATYPE_INT, TSDataType.FLOAT);
@@ -200,7 +204,7 @@ public abstract class AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
     TYPE_INFER_KEY_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
     TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
   }
 
@@ -214,7 +218,7 @@ public abstract class AbstractDataTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
   }
 
@@ -689,6 +693,8 @@ public abstract class AbstractDataTool {
       // "NaN" is returned if the NaN Literal is given in Parser
     } else if (DATATYPE_NAN.equals(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
+    } else if (isBlob(strValue)) {
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_BLOB);
     } else if (strValue.length() <= 512) {
       return STRING;
     } else {
@@ -706,6 +712,10 @@ public abstract class AbstractDataTool {
       return false;
     }
     return true;
+  }
+
+  private static boolean isBlob(String s) {
+    return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
   private static boolean isBoolean(String s) {
@@ -745,14 +755,43 @@ public abstract class AbstractDataTool {
         case DOUBLE:
           return Double.parseDouble(value);
         case TIMESTAMP:
+          return Long.parseLong(value);
         case DATE:
+          return LocalDate.parse(value);
         case BLOB:
+          return new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
         default:
           return null;
       }
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  public static void main(String[] args)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final Session session1 = new Session("172.20.31.56", 6667, "root", "root");
+    session1.open();
+    session1.insertRecordsOfOneDevice(
+        "root.ddd.fff.ppp",
+        Arrays.asList(1l),
+        Arrays.asList(Arrays.asList("sss")),
+        Arrays.asList(Arrays.asList(TSDataType.BLOB)),
+        Arrays.asList(Arrays.asList(new Binary("Session", TSFileConfig.STRING_CHARSET))));
+    final Binary binary = new Binary(parseHexStringToByteArray("53657373696f6e"));
+    System.out.println(binary.getStringValue(TSFileConfig.STRING_CHARSET));
+    session1.executeNonQueryStatement(
+        "insert into root.ddd.fff.ppp(time,sss) values(2,X'30783532363136363734346336663637333131633038303132323138306131363061')");
+    session1.close();
+  }
+
+  private static byte[] parseHexStringToByteArray(String hexString) {
+    byte[] bytes = new byte[hexString.length() / 2];
+    for (int i = 0; i < hexString.length(); i += 2) {
+      int value = Integer.parseInt(hexString.substring(i, i + 2), 16);
+      bytes[i / 2] = (byte) value;
+    }
+    return bytes;
   }
 
   private static long parseTimestamp(String str) {
