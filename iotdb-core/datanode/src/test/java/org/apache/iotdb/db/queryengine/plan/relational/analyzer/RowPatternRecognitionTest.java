@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
@@ -34,7 +35,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.junit.Assert.fail;
 
 public class RowPatternRecognitionTest {
-  private static final NopAccessControl nopAccessControl = new NopAccessControl();
+  private static final AccessControl nopAccessControl = new AllowAllAccessControl();
 
   // table1's columns: time, tag1, tag2, tag3, attr1, attr2, s1, s2, s3
 
@@ -453,6 +454,4 @@ public class RowPatternRecognitionTest {
             NOOP);
     analyzer.analyze(statement);
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }
