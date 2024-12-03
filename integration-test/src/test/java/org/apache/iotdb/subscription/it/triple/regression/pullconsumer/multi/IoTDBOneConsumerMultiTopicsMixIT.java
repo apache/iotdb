@@ -55,7 +55,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH;
 
 /***
  * 1 consumer subscribes to 2 topics: Historical data
@@ -271,7 +271,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     String sql2 = "select count(s_1) from " + device + " where time <= " + timestamp;
 
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql1));
-    AWAIT.untilAsserted(
+    AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           // Consumption data
           check_count(6, sql1, "Consumption data:" + pattern);
@@ -300,7 +301,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     thread3.start();
     thread3.join(5000);
     System.out.println(FORMAT.format(new Date()));
-    AWAIT.untilAsserted(
+    AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           assertEquals(
               rowCount.get(), 12, "Re-consume data: tsfile consumer " + FORMAT.format(new Date()));
