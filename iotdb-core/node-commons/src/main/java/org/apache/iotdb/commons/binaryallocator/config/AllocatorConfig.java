@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import java.time.Duration;
 
 public class AllocatorConfig {
+
   public int minAllocateSize = CommonDescriptor.getInstance().getConfig().getMinAllocateSize();
 
   public int maxAllocateSize = CommonDescriptor.getInstance().getConfig().getMaxAllocateSize();
@@ -45,10 +46,6 @@ public class AllocatorConfig {
   public int arenaPredictionWeight = 35;
 
   public static final AllocatorConfig DEFAULT_CONFIG = new AllocatorConfig();
-
-  public void setEvictionShutdownTimeoutMillis(long timeout) {
-    this.durationEvictorShutdownTimeout = Duration.ofMillis(timeout);
-  }
 
   public void setTimeBetweenEvictorRunsMillis(long time) {
     this.durationBetweenEvictorRuns = Duration.ofMillis(time);
