@@ -134,10 +134,8 @@ public class WALNodeRecoverTask implements Runnable {
             logDirectory);
       }
 
-      // IoTConsensusV2 stream mode will not only delete WAL node folder, but also register WAL
-      // node.
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
-          && config.getIotConsensusV2Mode().equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)) {
+      // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
         // register wal node
         WALManager.getInstance()
             .registerWALNode(

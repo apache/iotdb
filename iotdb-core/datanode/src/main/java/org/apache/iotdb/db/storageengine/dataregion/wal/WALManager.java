@@ -105,12 +105,9 @@ public class WALManager implements IService {
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !(config
-                    .getDataRegionConsensusProtocolClass()
-                    .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-                && config
-                    .getIotConsensusV2Mode()
-                    .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))) {
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
       return;
     }
 
@@ -123,12 +120,9 @@ public class WALManager implements IService {
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !(config
-                    .getDataRegionConsensusProtocolClass()
-                    .equals(ConsensusFactory.IOT_CONSENSUS_V2)
-                && config
-                    .getIotConsensusV2Mode()
-                    .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))) {
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
       return;
     }
 
