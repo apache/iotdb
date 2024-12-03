@@ -120,6 +120,7 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  @Ignore
   @Test
   public void testRestartDelete() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

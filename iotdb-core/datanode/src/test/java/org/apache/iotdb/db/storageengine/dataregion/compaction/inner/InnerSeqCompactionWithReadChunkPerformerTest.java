@@ -404,7 +404,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
   @Test
   public void testAppendPage() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(128);
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(100);
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
