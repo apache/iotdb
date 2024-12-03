@@ -57,9 +57,8 @@ public class DescBinaryTypeJoinKeyComparator implements JoinKeyComparator {
       int rightColumnIndex,
       int rightRowIndex) {
     return left.getColumn(leftColumnIndex)
-            .getBinary(leftRowIndex)
-            .compareTo(right.getColumn(rightColumnIndex).getBinary(rightRowIndex))
-        == 0;
+        .getBinary(leftRowIndex)
+        .equals(right.getColumn(rightColumnIndex).getBinary(rightRowIndex));
   }
 
   @Override

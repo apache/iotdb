@@ -30,13 +30,14 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator.buildResultTsBlock;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 /**
  * This Operator is used to implement the simple nested loop join algorithm for Cartesian product.
@@ -102,18 +103,19 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
     if (!buildFinished) {
-      TsBlock block = buildSource.next();
-      if (block != null && !block.isEmpty()) {
-        buildBlocks.add(block);
-        memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
-      }
-      if (!buildSource.hasNext()) {
+      if (!buildSource.hasNextWithTimer()) {
         buildFinished = true;
+      } else {
+        TsBlock block = buildSource.nextWithTimer();
+        if (block != null && !block.isEmpty()) {
+          buildBlocks.add(block);
+          memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+        }
       }
       // probeSource could still be blocked by now, so we need to check it again
       return null;
     }
-    cachedProbeBlock = cachedProbeBlock == null ? probeSource.next() : cachedProbeBlock;
+    cachedProbeBlock = cachedProbeBlock == null ? probeSource.nextWithTimer() : cachedProbeBlock;
     if (cachedProbeBlock == null || cachedProbeBlock.isEmpty()) {
       // TsBlock returned by probeSource is null or empty, we need to wait for another round
       cachedProbeBlock = null;
@@ -134,7 +136,9 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
       return null;
     }
 
-    resultTsBlock = buildResultTsBlock(resultBuilder);
+    resultTsBlock =
+        resultBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
     return checkTsBlockSizeAndGetResult();
   }
 
@@ -168,9 +172,11 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
       return true;
     }
     if (!buildFinished) {
-      return buildSource.hasNext();
+      return true;
     }
-    return probeSource.hasNext();
+    return !buildBlocks.isEmpty()
+        && ((cachedProbeBlock != null && !cachedProbeBlock.isEmpty())
+            || probeSource.hasNextWithTimer());
   }
 
   @Override
@@ -204,9 +210,18 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
       return false;
     }
 
-    return (cachedProbeBlock == null || cachedProbeBlock.isEmpty())
-        && probeSource.isFinished()
-        && buildFinished;
+    if (buildFinished) { // build side is finished
+      // no remaining rows in probe side is finished
+      if (buildBlocks.isEmpty()) {
+        // no rows in build side
+        return true;
+      } else {
+        return (cachedProbeBlock == null || cachedProbeBlock.isEmpty()) && probeSource.isFinished();
+      }
+    } else {
+      // build side is not finished
+      return false;
+    }
   }
 
   @Override

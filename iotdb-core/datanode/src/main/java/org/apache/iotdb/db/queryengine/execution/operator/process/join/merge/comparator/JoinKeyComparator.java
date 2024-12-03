@@ -23,6 +23,10 @@ import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface JoinKeyComparator {
 
+  /**
+   * Get values at the given position from the TsBlocks and then compare these two values. Return
+   * true if the left value is less than the right value.
+   */
   boolean lessThan(
       TsBlock left,
       int leftColumnIndex,
@@ -31,6 +35,10 @@ public interface JoinKeyComparator {
       int rightColumnIndex,
       int rightRowIndex);
 
+  /**
+   * Get values at the given position from the TsBlocks and then compare these two values. Return
+   * true if the left value equals to the right value.
+   */
   boolean equalsTo(
       TsBlock left,
       int leftColumnIndex,
@@ -39,6 +47,10 @@ public interface JoinKeyComparator {
       int rightColumnIndex,
       int rightRowIndex);
 
+  /**
+   * Get values at the given position from the TsBlocks and then compare these two values. Return
+   * true if the left value is less than or equals to the right value.
+   */
   boolean lessThanOrEqual(
       TsBlock left,
       int leftColumnIndex,

@@ -167,15 +167,8 @@ public class TableInnerJoinOperator extends AbstractOperator {
     }
 
     while (!resultBuilder.isFull()) {
-      TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
       // all right block value is not matched
-      if (!comparator.lessThanOrEqual(
-          leftBlock,
-          leftJoinKeyPosition,
-          leftIndex,
-          lastRightTsBlock,
-          rightJoinKeyPosition,
-          lastRightTsBlock.getPositionCount() - 1)) {
+      if (allRightLessThanLeft()) {
         resetRightBlockList();
         break;
       }
