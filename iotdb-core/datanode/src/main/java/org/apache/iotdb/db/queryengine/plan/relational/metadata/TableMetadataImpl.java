@@ -61,9 +61,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN_OR_EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -90,7 +88,14 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    String databaseName = name.getDatabaseName();
+    String tableName = name.getObjectName();
+    // get TableSchema of internal table
+    if (databaseName.equals(INFORMATION_SCHEMA)) {
+      return InformationSchemaTable.getTableSchemaFromStringValue(tableName);
+    }
+
+    TsTable table = tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }

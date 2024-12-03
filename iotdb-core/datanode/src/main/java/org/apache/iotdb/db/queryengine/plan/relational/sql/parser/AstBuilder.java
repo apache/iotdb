@@ -137,6 +137,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueries;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -1060,7 +1061,27 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowQueriesStatement(RelationalSqlParser.ShowQueriesStatementContext ctx) {
-    return super.visitShowQueriesStatement(ctx);
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (ctx.ORDER() != null) {
+      orderBy =
+          Optional.of(new OrderBy(getLocation(ctx.ORDER()), visit(ctx.sortItem(), SortItem.class)));
+    }
+
+    Optional<Offset> offset = Optional.empty();
+    if (ctx.limitOffsetClause().OFFSET() != null) {
+      offset = visitIfPresent(ctx.limitOffsetClause().offset, Offset.class);
+    }
+
+    Optional<Node> limit = Optional.empty();
+    if (ctx.limitOffsetClause().LIMIT() != null) {
+      if (ctx.limitOffsetClause().limit == null) {
+        throw new IllegalStateException("Missing LIMIT value");
+      }
+      limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
+    }
+
+    return new ShowQueries(
+        getLocation(ctx), visitIfPresent(ctx.where, Expression.class), orderBy, offset, limit);
   }
 
   @Override

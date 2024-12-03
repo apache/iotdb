@@ -604,4 +604,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitShowQueries(ShowQueries node, C context) {
+    return visitStatement(node, context);
+  }
 }

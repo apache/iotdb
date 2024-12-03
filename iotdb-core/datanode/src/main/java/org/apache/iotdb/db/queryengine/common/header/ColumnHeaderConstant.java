@@ -196,6 +196,7 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String SQL_DIALECT = "SqlDialect";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";

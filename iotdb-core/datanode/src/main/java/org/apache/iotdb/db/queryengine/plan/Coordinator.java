@@ -85,6 +85,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionState
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -140,6 +142,7 @@ public class Coordinator {
 
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
+  private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final AccessControl accessControl;
@@ -149,6 +152,9 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.statementRewrite =
+        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata)
+            .getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
                 new PlannerContext(
@@ -337,6 +343,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             accessControl);
@@ -403,6 +410,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             accessControl);

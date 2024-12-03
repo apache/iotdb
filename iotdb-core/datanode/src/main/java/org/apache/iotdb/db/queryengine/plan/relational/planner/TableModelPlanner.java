@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -64,6 +65,7 @@ public class TableModelPlanner implements IPlanner {
 
   private final SqlParser sqlParser;
   private final Metadata metadata;
+  private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -93,6 +95,7 @@ public class TableModelPlanner implements IPlanner {
           syncInternalServiceClientManager,
       final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager,
+      final StatementRewrite statementRewrite,
       final List<PlanOptimizer> logicalPlanOptimizers,
       final List<PlanOptimizer> distributionPlanOptimizers,
       final AccessControl accessControl) {
@@ -104,6 +107,7 @@ public class TableModelPlanner implements IPlanner {
     this.scheduledExecutor = scheduledExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
+    this.statementRewrite = statementRewrite;
     this.logicalPlanOptimizers = logicalPlanOptimizers;
     this.distributionPlanOptimizers = distributionPlanOptimizers;
     this.accessControl = accessControl;
@@ -117,6 +121,7 @@ public class TableModelPlanner implements IPlanner {
             new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
+            statementRewrite,
             warningCollector)
         .analyze(statement);
   }

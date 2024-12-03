@@ -40,7 +40,8 @@ public class ShowQueriesNode extends VirtualSourceNode {
           ColumnHeaderConstant.QUERY_ID,
           ColumnHeaderConstant.DATA_NODE_ID,
           ColumnHeaderConstant.ELAPSED_TIME,
-          ColumnHeaderConstant.STATEMENT);
+          ColumnHeaderConstant.STATEMENT,
+          ColumnHeaderConstant.MODEL);
 
   public ShowQueriesNode(PlanNodeId id, TDataNodeLocation dataNodeLocation) {
     super(id, dataNodeLocation);

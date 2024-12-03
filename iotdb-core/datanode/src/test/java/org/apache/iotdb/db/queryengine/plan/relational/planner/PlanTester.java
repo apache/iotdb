@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
 import java.time.ZoneId;
 import java.util.Collections;
@@ -158,6 +159,7 @@ public class PlanTester {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
+              new StatementRewriteFactory(metadata).getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (Exception e) {
