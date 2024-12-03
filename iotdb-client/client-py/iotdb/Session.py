@@ -510,6 +510,15 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
+        if self.__has_none_value(string_values):
+            filtered_measurements, filtered_values = zip(
+                *[(m, v) for m, v in zip(measurements, string_values) if v is not None]
+            )
+            measurements = list(filtered_measurements)
+            values = list(filtered_values)
+            if len(measurements) is 0 or len(values) is 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_str_record_req(
             device_id, timestamp, measurements, string_values
         )
@@ -541,6 +550,15 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
+        if self.__has_none_value(string_values):
+            filtered_measurements, filtered_values = zip(
+                *[(m, v) for m, v in zip(measurements, string_values) if v is not None]
+            )
+            measurements = list(filtered_measurements)
+            values = list(filtered_values)
+            if len(measurements) is 0 or len(values) is 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_str_record_req(
             device_id, timestamp, measurements, string_values, True
         )
@@ -576,6 +594,20 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
+        if self.__has_none_value(values):
+            filtered_measurements, filtered_data_types, filtered_values = zip(
+                *[
+                    (m, d, v)
+                    for m, d, v in zip(measurements, data_types, values)
+                    if v is not None
+                ]
+            )
+            measurements = list(filtered_measurements)
+            data_types = list(filtered_data_types)
+            values = list(filtered_values)
+            if len(measurements) is 0 or len(data_types) is 0 or len(values) is 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -609,6 +641,19 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
+        if self.__has_none_value(values_lst):
+            (
+                device_ids,
+                times,
+                measurements_lst,
+                types_lst,
+                values_lst,
+            ) = self.__filter_lists_by_values(
+                device_ids, times, measurements_lst, types_lst, values_lst
+            )
+            if len(device_ids) is 0:
+                logger.info("All inserting values are none!")
+                return
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -678,6 +723,20 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
+        if self.__has_none_value(values):
+            filtered_measurements, filtered_data_types, filtered_values = zip(
+                *[
+                    (m, d, v)
+                    for m, d, v in zip(measurements, data_types, values)
+                    if v is not None
+                ]
+            )
+            measurements = list(filtered_measurements)
+            data_types = list(filtered_data_types)
+            values = list(filtered_values)
+            if len(measurements) is 0 or len(data_types) is 0 or len(values) is 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
@@ -711,6 +770,19 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
+        if self.__has_none_value(values_lst):
+            (
+                device_ids,
+                times,
+                measurements_lst,
+                types_lst,
+                values_lst,
+            ) = self.__filter_lists_by_values(
+                device_ids, times, measurements_lst, types_lst, values_lst
+            )
+            if len(device_ids) is 0:
+                logger.info("All inserting values are none!")
+                return
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -1914,6 +1986,49 @@ class Session(object):
             is_aligned,
         )
         return request
+
+    def __has_none_value(self, values_list) -> bool:
+        for item in values_list:
+            if isinstance(item, list):
+                if self.__has_none_value(item):
+                    return True
+            elif item is None:
+                return True
+        return False
+
+    @staticmethod
+    def __filter_lists_by_values(
+        device_lst, time_lst, measurements_lst, types_lst, values_lst
+    ):
+        filtered_devices = []
+        filtered_times = []
+        filtered_measurements = []
+        filtered_types = []
+        filtered_values = []
+
+        for device, time_, measurements, types, values in zip(
+            device_lst, time_lst, measurements_lst, types_lst, values_lst
+        ):
+            filtered_row = [
+                (m, t, v)
+                for m, t, v in zip(measurements, types, values)
+                if v is not None
+            ]
+            if filtered_row:
+                f_measurements, f_types, f_values = zip(*filtered_row)
+                filtered_measurements.append(list(f_measurements))
+                filtered_types.append(list(f_types))
+                filtered_values.append(list(f_values))
+                filtered_devices.append(device)
+                filtered_times.append(time_)
+
+        return (
+            filtered_devices,
+            filtered_times,
+            filtered_measurements,
+            filtered_types,
+            filtered_values,
+        )
 
     def create_schema_template(self, template: Template):
         warnings.warn(
