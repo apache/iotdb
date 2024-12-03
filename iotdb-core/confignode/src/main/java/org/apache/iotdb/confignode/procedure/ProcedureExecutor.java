@@ -341,7 +341,7 @@ public class ProcedureExecutor<Env> {
               case LOCK_ACQUIRED:
                 break;
               case LOCK_EVENT_WAIT:
-                LOG.info("LOCK_EVENT_WAIT rollback " + proc);
+                LOG.info("LOCK_EVENT_WAIT rollback {}", proc);
                 rootProcStack.unsetRollback();
                 break;
               case LOCK_YIELD_WAIT:
@@ -788,9 +788,7 @@ public class ProcedureExecutor<Env> {
       return getName() + "(pid=" + (p == null ? NO_PROC_ID : p.getProcId() + ")");
     }
 
-    /**
-     * @return the time since the current procedure is running
-     */
+    /** @return the time since the current procedure is running */
     public long getCurrentRunTime() {
       return System.currentTimeMillis() - startTime.get();
     }
