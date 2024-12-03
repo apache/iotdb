@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;

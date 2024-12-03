@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator.arena;
 
 /**
  * This interface defines a strategy for choosing a {@link Arena} from an array of {@link Arena}s.

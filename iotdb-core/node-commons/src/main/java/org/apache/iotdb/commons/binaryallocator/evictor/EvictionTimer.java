@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator.evictor;
 
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;

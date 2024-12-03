@@ -17,8 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator;
 
+import org.apache.iotdb.commons.binaryallocator.arena.Arena;
+import org.apache.iotdb.commons.binaryallocator.arena.ArenaStrategy;
+import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
+import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
+import org.apache.iotdb.commons.binaryallocator.metric.BinaryAllocatorMetrics;
+import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator.config;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 

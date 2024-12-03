@@ -17,7 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator.arena;
+
+import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
+import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
+import org.apache.iotdb.commons.binaryallocator.ema.AdaptiveWeightedAverage;
+import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
+import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

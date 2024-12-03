@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.binaryallocator;
+package org.apache.iotdb.commons.binaryallocator.evictor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,12 +54,12 @@ public abstract class Evictor implements Runnable {
     return getClass().getName() + " [scheduledFuture=" + scheduledFuture + "]";
   }
 
-  void startEvictor(final Duration delay) {
+  public void startEvictor(final Duration delay) {
     LOGGER.info("Starting evictor with delay {}", delay);
     EvictionTimer.schedule(this, delay, delay, name);
   }
 
-  void stopEvictor() {
+  public void stopEvictor() {
     EvictionTimer.cancel(this, evictorShutdownTimeoutDuration, false);
   }
 }
