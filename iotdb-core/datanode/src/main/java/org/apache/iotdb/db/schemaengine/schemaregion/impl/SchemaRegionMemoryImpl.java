@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -583,8 +584,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias(),
-              (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+              plan instanceof CreateTimeSeriesPlanImpl
+                      && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
+                  || plan instanceof CreateTimeSeriesNode
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
