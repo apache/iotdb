@@ -22,8 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -60,25 +58,20 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new ExplainAnalyzeNode(getPlanNodeId(), newChildren.get(0), verbose, queryId, timeout);
+  }
+
+  // ExplainAnalyze should be at the same region as Coordinator all the time. Therefore, there will
+  // be no serialization and deserialization process.
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.EXPLAIN_ANALYZE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(verbose, byteBuffer);
+    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.EXPLAIN_ANALYZE.serialize(stream);
-    ReadWriteIOUtils.write(verbose, stream);
-    ReadWriteIOUtils.write(queryId, stream);
-    ReadWriteIOUtils.write(timeout, stream);
-  }
-
-  public static ExplainAnalyzeNode deserialize(ByteBuffer byteBuffer) {
-    boolean verbose = ReadWriteIOUtils.readBool(byteBuffer);
-    long queryId = ReadWriteIOUtils.readLong(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    long timeout = ReadWriteIOUtils.readLong(byteBuffer);
-    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId, timeout);
+    throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
   }
 
   public boolean isVerbose() {

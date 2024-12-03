@@ -128,7 +128,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionR
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, (row + 1) * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -152,7 +152,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionR
     // Write data before subscribing
     insert_data(1704038399000L, device); // 2023-12-31 23:59:59+08:00
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
 
     consumer =
         new SubscriptionPushConsumer.Builder()
@@ -205,7 +205,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionR
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
 
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full

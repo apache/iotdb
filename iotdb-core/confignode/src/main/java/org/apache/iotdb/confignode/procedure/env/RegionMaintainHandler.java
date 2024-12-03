@@ -157,8 +157,8 @@ public class RegionMaintainHandler {
       currentPeerNodes = Collections.emptyList();
     }
 
-    String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
-    TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
+    String database = configManager.getPartitionManager().getRegionDatabase(regionId);
+    TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, database);
 
     status =
         (TSStatus)
@@ -342,6 +342,7 @@ public class RegionMaintainHandler {
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
+        break;
       }
     }
     LOGGER.warn(

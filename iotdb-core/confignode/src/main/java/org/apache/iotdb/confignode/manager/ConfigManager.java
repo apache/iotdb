@@ -164,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
@@ -193,6 +194,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -228,6 +230,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
@@ -746,10 +749,36 @@ public class ConfigManager implements IManager {
       // remove wild
       final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
+
+      // Filter by model
+      final int size = deleteDatabaseSchemaMap.size();
+      final boolean isTableModel = tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel();
+      final List<String> mismatchDatabaseNames = new ArrayList<>();
+      deleteDatabaseSchemaMap
+          .entrySet()
+          .removeIf(
+              entry -> {
+                if (entry.getValue().isIsTableModel() != isTableModel) {
+                  mismatchDatabaseNames.add(entry.getKey());
+                  return true;
+                }
+                return false;
+              });
+
       if (deleteDatabaseSchemaMap.isEmpty()) {
-        return RpcUtils.getStatus(
-            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
-            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+        if (size == 0) {
+          return RpcUtils.getStatus(
+              TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+              String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+        } else if (size == 1) {
+          final DatabaseModelException exception =
+              new DatabaseModelException(mismatchDatabaseNames.get(0), !isTableModel);
+          return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+        } else {
+          final DatabaseModelException exception =
+              new DatabaseModelException(mismatchDatabaseNames, !isTableModel);
+          return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+        }
       }
       final ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
@@ -1443,7 +1472,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    final long rpcTimeoutInMS = COMMON_CONF.getConnectionTimeoutInMS();
+    final long rpcTimeoutInMS = COMMON_CONF.getCnConnectionTimeoutInMS();
     final long retryIntervalInMS = 1000;
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
@@ -1506,18 +1535,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropFunction(String udfName) {
+  public TSStatus dropFunction(TDropFunctionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.dropFunction(udfName)
+        ? udfManager.dropFunction(req.getModel(), req.getUdfName())
         : status;
   }
 
   @Override
-  public TGetUDFTableResp getUDFTable() {
+  public TGetUDFTableResp getUDFTable(TGetUdfTableReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.getUDFTable()
+        ? udfManager.getUDFTable(req.getModel())
         : new TGetUDFTableResp(status, Collections.emptyList());
   }
 

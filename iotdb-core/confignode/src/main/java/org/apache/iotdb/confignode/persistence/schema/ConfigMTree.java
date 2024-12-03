@@ -816,11 +816,19 @@ public class ConfigMTree {
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
-    final TsTable table = getTable(database, tableName);
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    final TsTable table = ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
     tableProperties.forEach(
         (k, v) -> {
           if (Objects.nonNull(v)) {
             table.addProp(k, v);
+          } else if (k.equals(TsTable.TTL_PROPERTY)
+              && databaseNode.getDatabaseSchema().isSetTTL()) {
+            table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
           } else {
             table.removeProp(k);
           }
@@ -831,7 +839,7 @@ public class ConfigMTree {
   // false if measurement column
   public boolean preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
-      throws MetadataException {
+      throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {

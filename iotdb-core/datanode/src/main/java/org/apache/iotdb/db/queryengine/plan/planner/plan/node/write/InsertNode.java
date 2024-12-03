@@ -272,7 +272,7 @@ public abstract class InsertNode extends SearchNode {
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
       measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      measurements[i] = measurementSchemas[i].getMeasurementName();
       dataTypes[i] = measurementSchemas[i].getType();
     }
   }
@@ -280,7 +280,7 @@ public abstract class InsertNode extends SearchNode {
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
     for (int i = 0; i < measurements.length; i++) {
       measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      measurements[i] = measurementSchemas[i].getMeasurementName();
     }
   }
 
@@ -400,7 +400,7 @@ public abstract class InsertNode extends SearchNode {
     for (int i = 0; i < measurements.length; i++) {
       if (measurementSchemas[i] != null) {
         // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
       } else {
         rawMeasurements[i] = measurements[i];
       }

@@ -31,8 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -89,7 +88,7 @@ public class LoadTsFileTableSchemaCache {
   // tableName -> Pair<device column count, device column mapping>
   private Map<String, Pair<Integer, Map<Integer, Integer>>> tableIdColumnMapper = new HashMap<>();
 
-  private Collection<Modification> currentModifications;
+  private Collection<ModEntry> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchTable2DevicesMemoryUsageSizeInBytes = 0;
@@ -320,9 +319,9 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = resource.getModFile().getModifications();
-    for (final Modification modification : currentModifications) {
-      currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+    currentModifications = resource.getAllModEntries();
+    for (final ModEntry modification : currentModifications) {
+      currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
     }
 
     // If there are too many modifications, a larger memory block is needed to avoid frequent

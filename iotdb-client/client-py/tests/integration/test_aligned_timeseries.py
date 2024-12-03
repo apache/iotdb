@@ -20,7 +20,7 @@
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 
 # whether the test has passed
 final_flag = True

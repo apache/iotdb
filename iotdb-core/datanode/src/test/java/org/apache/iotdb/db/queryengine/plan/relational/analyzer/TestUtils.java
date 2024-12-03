@@ -25,9 +25,9 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -41,6 +41,7 @@ import org.junit.Assert;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -127,8 +128,9 @@ public class TestUtils {
       List<Symbol> rightOutputSymbols) {
     assertEquals(joinType, joinNode.getJoinType());
     assertEquals(joinCriteria, joinNode.getCriteria());
-    assertEquals(leftOutputSymbols, joinNode.getLeftOutputSymbols());
-    assertEquals(rightOutputSymbols, joinNode.getRightOutputSymbols());
+    assertEquals(new HashSet<>(leftOutputSymbols), new HashSet<>(joinNode.getLeftOutputSymbols()));
+    assertEquals(
+        new HashSet<>(rightOutputSymbols), new HashSet<>(joinNode.getRightOutputSymbols()));
   }
 
   public static void assertNodeMatches(PlanNode node, Class... classes) {

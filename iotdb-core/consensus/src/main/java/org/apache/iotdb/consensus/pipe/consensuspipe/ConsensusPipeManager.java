@@ -37,6 +37,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY;
@@ -69,17 +71,29 @@ public class ConsensusPipeManager {
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
         params = buildPipeParams(senderPeer, receiverPeer, senderPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        false);
   }
 
   /** This method is used when executing region migration */
   public void createConsensusPipe(
-      Peer senderPeer, Peer receiverPeer, Peer regionMigrationCoordinatorPeer) throws Exception {
+      Peer senderPeer,
+      Peer receiverPeer,
+      Peer regionMigrationCoordinatorPeer,
+      boolean needManuallyStart)
+      throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
         params = buildPipeParams(senderPeer, receiverPeer, regionMigrationCoordinatorPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        needManuallyStart);
   }
 
   public Triple<
@@ -103,6 +117,8 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+              .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
+              .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
               .build();
     } else {
       extractorParams =
@@ -119,6 +135,8 @@ public class ConsensusPipeManager {
                   EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                   String.valueOf(consensusPipeName.getReceiverDataNodeId()))
               .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+              .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
+              .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
               .put(
                   EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
                   String.valueOf(new ConsensusPipeName(senderPeer, regionMigrationCoordinatorPeer)))

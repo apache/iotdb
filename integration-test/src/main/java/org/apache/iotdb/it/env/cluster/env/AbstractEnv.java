@@ -34,8 +34,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.*;
@@ -54,7 +56,9 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
@@ -436,11 +440,18 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      final DataNodeWrapper dataNode, final String username, final String password)
+      final DataNodeWrapper dataNode,
+      final String username,
+      final String password,
+      String sqlDialect)
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(
-            dataNode, null, username, password, TREE_SQL_DIALECT),
+            dataNode,
+            null,
+            username,
+            password,
+            TABLE_SQL_DIALECT.equals(sqlDialect) ? TABLE_SQL_DIALECT : TREE_SQL_DIALECT),
         Collections.emptyList());
   }
 
@@ -469,38 +480,17 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISession getSessionConnection(final String sqlDialect) throws IoTDBConnectionException {
+  public ISession getSessionConnection() throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     final Session session =
-        new Session.Builder()
-            .host(dataNode.getIp())
-            .port(dataNode.getPort())
-            .sqlDialect(sqlDialect)
-            .build();
+        new Session.Builder().host(dataNode.getIp()).port(dataNode.getPort()).build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnectionWithDB(final String sqlDialect, final String database)
-      throws IoTDBConnectionException {
-    final DataNodeWrapper dataNode =
-        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    final Session session =
-        new Session.Builder()
-            .host(dataNode.getIp())
-            .port(dataNode.getPort())
-            .sqlDialect(sqlDialect)
-            .database(database)
-            .build();
-    session.open();
-    return session;
-  }
-
-  @Override
-  public ISession getSessionConnection(
-      final String userName, final String password, final String sqlDialect)
+  public ISession getSessionConnection(final String userName, final String password)
       throws IoTDBConnectionException {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
@@ -510,14 +500,13 @@ public abstract class AbstractEnv implements BaseEnv {
             .port(dataNode.getPort())
             .username(userName)
             .password(password)
-            .sqlDialect(sqlDialect)
             .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnection(final List<String> nodeUrls, final String sqlDialect)
+  public ISession getSessionConnection(final List<String> nodeUrls)
       throws IoTDBConnectionException {
     final Session session =
         new Session.Builder()
@@ -530,14 +519,47 @@ public abstract class AbstractEnv implements BaseEnv {
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
             .version(SessionConfig.DEFAULT_VERSION)
-            .sqlDialect(sqlDialect)
             .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISessionPool getSessionPool(final int maxSize, final String sqlDialect) {
+  public ITableSession getTableSessionConnection() throws IoTDBConnectionException {
+    final DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+        .build();
+  }
+
+  @Override
+  public ITableSession getTableSessionConnectionWithDB(final String database)
+      throws IoTDBConnectionException {
+    final DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+        .database(database)
+        .build();
+  }
+
+  public ITableSession getTableSessionConnection(List<String> nodeUrls)
+      throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(nodeUrls)
+        .username(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .zoneId(null)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .build();
+  }
+
+  @Override
+  public ISessionPool getSessionPool(final int maxSize) {
     final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool.Builder()
@@ -546,23 +568,31 @@ public abstract class AbstractEnv implements BaseEnv {
         .user(SessionConfig.DEFAULT_USER)
         .password(SessionConfig.DEFAULT_PASSWORD)
         .maxSize(maxSize)
-        .sqlDialect(sqlDialect)
         .build();
   }
 
   @Override
-  public ISessionPool getSessionPool(
-      final int maxSize, final String sqlDialect, final String database) {
-    DataNodeWrapper dataNode =
+  public ITableSessionPool getTableSessionPool(final int maxSize) {
+    final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new SessionPool.Builder()
-        .host(dataNode.getIp())
-        .port(dataNode.getPort())
+    return new TableSessionPoolBuilder()
+        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
         .user(SessionConfig.DEFAULT_USER)
         .password(SessionConfig.DEFAULT_PASSWORD)
         .maxSize(maxSize)
-        .sqlDialect(sqlDialect)
+        .build();
+  }
+
+  @Override
+  public ITableSessionPool getTableSessionPool(final int maxSize, final String database) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new TableSessionPoolBuilder()
+        .nodeUrls(Collections.singletonList(dataNode.getIpAndPortString()))
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
         .database(database)
+        .maxSize(maxSize)
         .build();
   }
 
