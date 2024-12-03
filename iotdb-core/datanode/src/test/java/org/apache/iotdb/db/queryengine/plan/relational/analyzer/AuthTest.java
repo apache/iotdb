@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
@@ -52,32 +53,41 @@ public class AuthTest {
 
   private final ZoneId zoneId = ZoneId.systemDefault();
 
-  private final QualifiedObjectName TESTDB_TABLE1 = new QualifiedObjectName(DB1, TABLE1);
+  private final QualifiedObjectName testdbTable1 = new QualifiedObjectName(DB1, TABLE1);
+
+  private final String userRoot = "root";
+
+  private final String user1 = "user1";
+
+  private final String user2 = "user2";
 
   @Test
   public void testQueryRelatedAuth() {
     String sql = String.format("SELECT * FROM %s.%s", DB1, TABLE1);
     ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
     // user `root` always succeed
-    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq("root"), any(), any());
+    Mockito.doNothing().when(authChecker).checkTablePrivilege(eq(userRoot), any(), any());
     // user `user1` don't hava testdb.table1's SELECT privilege
-    String errorMsg = "user1 doesn't have SELECT privilege on TABLE testdb.table1";
+    String errorMsg =
+        String.format(
+            "%s doesn't have %s privilege on TABLE %s.%s",
+            user1, TableModelPrivilege.SELECT, DB1, TABLE1);
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
-        .checkTablePrivilege(eq("user1"), eq(TESTDB_TABLE1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
     // user `user2` hava testdb.table1's SELECT privilege
     Mockito.doNothing()
         .when(authChecker)
-        .checkTablePrivilege(eq("user2"), eq(TESTDB_TABLE1), eq(TableModelPrivilege.SELECT));
+        .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
 
-    String userName = "root";
+    String userName = userRoot;
     try {
       analyzeSQL(sql, userName, authChecker);
     } catch (Exception e) {
       fail(e.getMessage());
     }
 
-    userName = "user1";
+    userName = user1;
     try {
       analyzeSQL(sql, userName, authChecker);
       fail("user1 should be denied");
@@ -87,12 +97,105 @@ public class AuthTest {
       fail("Unexpected exception : " + e.getMessage());
     }
 
-    userName = "user2";
+    userName = user2;
     try {
       analyzeSQL(sql, userName, authChecker, DB1);
     } catch (Exception e) {
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testDatabaseManagementRelatedAuth() {
+
+    // create database
+    String databaseTest1 = "test1";
+    String sql = String.format("CREATE DATABASE %s", databaseTest1);
+    ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    // user `root` always succeed
+    Mockito.doNothing().when(authChecker).checkDatabasePrivilege(eq(userRoot), any(), any());
+    // user `user1` don't hava test1's CREATE privilege
+    String errorMsg =
+        String.format(
+            "%s doesn't have %s privilege on DATABASE %s",
+            user1, TableModelPrivilege.CREATE, databaseTest1);
+    Mockito.doThrow(new AccessDeniedException(errorMsg))
+        .when(authChecker)
+        .checkDatabasePrivilege(eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+    // user `user2` hava test1's CREATE privilege
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkDatabasePrivilege(eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
+
+    String userName = userRoot;
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    userName = user1;
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+      fail("user1 should be denied");
+    } catch (AccessDeniedException e) {
+      assertEquals(AccessDeniedException.PREFIX + errorMsg, e.getMessage());
+    } catch (Exception e) {
+      fail("Unexpected exception : " + e.getMessage());
+    }
+
+    userName = user2;
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    // use database
+    String databaseTest2 = "test2";
+    // user `root` always succeed
+    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(userRoot), any());
+    // user `user1` can't see DATABASE test1
+    errorMsg = String.format("%s has no privileges on DATABASE %s", user1, databaseTest1);
+    Mockito.doThrow(new AccessDeniedException(errorMsg))
+        .when(authChecker)
+        .checkDatabaseVisibility(eq(user1), eq(databaseTest1));
+    // user `user1` can see DATABASE test2
+    Mockito.doNothing().when(authChecker).checkDatabaseVisibility(eq(user1), eq(databaseTest2));
+
+    sql = String.format("USE %s", databaseTest1);
+    userName = userRoot;
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    userName = user1;
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+      fail("user1 should be denied");
+    } catch (AccessDeniedException e) {
+      assertEquals(AccessDeniedException.PREFIX + errorMsg, e.getMessage());
+    } catch (Exception e) {
+      fail("Unexpected exception : " + e.getMessage());
+    }
+
+    sql = String.format("USE %s", databaseTest2);
+    try {
+      analyzeConfigTask(sql, userName, authChecker);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    // TODO show databases
+
+    // TODO show databases
+
+    // TODO drop database
+
+    // TODO alter database
+
   }
 
   private void analyzeSQL(String sql, String userName, ITableAuthChecker authChecker) {
@@ -120,5 +223,30 @@ public class AuthTest {
             Collections.emptyMap(),
             NOOP);
     analyzer.analyze(statement);
+  }
+
+  private void analyzeConfigTask(String sql, String userName, ITableAuthChecker authChecker) {
+    Statement statement = sqlParser.createStatement(sql, zoneId);
+    SessionInfo session =
+        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
+
+    statement.accept(
+        new TableConfigTaskVisitor(
+            Mockito.mock(IClientSession.class), TEST_MATADATA, new AccessControlImpl(authChecker)),
+        context);
+  }
+
+  private void analyzeConfigTask(
+      String sql, String userName, ITableAuthChecker authChecker, IClientSession clientSession) {
+    Statement statement = sqlParser.createStatement(sql, zoneId);
+    SessionInfo session =
+        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
+
+    statement.accept(
+        new TableConfigTaskVisitor(
+            clientSession, TEST_MATADATA, new AccessControlImpl(authChecker)),
+        context);
   }
 }
