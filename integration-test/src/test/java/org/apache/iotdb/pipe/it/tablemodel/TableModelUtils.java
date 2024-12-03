@@ -334,6 +334,18 @@ public class TableModelUtils {
         baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
   }
 
+  public static void assertCountData(
+      String database, String table, int count, BaseEnv baseEnv, Consumer<String> handleFailure) {
+    TestUtils.executeNonQueryWithRetry(baseEnv, "flush");
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        getQueryCountSql(table),
+        "_col0,",
+        Collections.singleton(count + ","),
+        database,
+        handleFailure);
+  }
+
   public static String getDateStr(int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
