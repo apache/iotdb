@@ -44,13 +44,13 @@ public class BinaryAllocator {
   private final AllocatorConfig allocatorConfig;
 
   public static final BinaryAllocator DEFAULT = new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
-  private ArenaStrategy arenaStrategy = new LeastUsedArenaStrategy();
-  private AtomicReference<BinaryAllocatorState> state =
+  private final ArenaStrategy arenaStrategy = new LeastUsedArenaStrategy();
+  private final AtomicReference<BinaryAllocatorState> state =
       new AtomicReference<>(BinaryAllocatorState.UNINITIALIZED);
 
-  private BinaryAllocatorMetrics metrics;
-  private static ThreadLocal<ThreadArenaRegistry> arenaRegistry =
-      ThreadLocal.withInitial(() -> new ThreadArenaRegistry());
+  private final BinaryAllocatorMetrics metrics;
+  private static final ThreadLocal<ThreadArenaRegistry> arenaRegistry =
+      ThreadLocal.withInitial(ThreadArenaRegistry::new);
 
   private Evictor evictor;
   private static final String GC_EVICTOR_NAME = "binary-allocator-gc-evictor";
@@ -107,12 +107,6 @@ public class BinaryAllocator {
     }
   }
 
-  public void deallocateBatch(PooledBinary[] blobs) {
-    for (PooledBinary blob : blobs) {
-      deallocateBinary(blob);
-    }
-  }
-
   public long getTotalUsedMemory() {
     long totalUsedMemory = 0;
     for (Arena arena : heapArenas) {
@@ -135,10 +129,6 @@ public class BinaryAllocator {
     }
   }
 
-  public boolean isOpen() {
-    return state.get() == BinaryAllocatorState.OPEN;
-  }
-
   public void close(boolean needReopen) {
     if (needReopen) {
       state.set(BinaryAllocatorState.PENDING);
@@ -153,10 +143,10 @@ public class BinaryAllocator {
     }
   }
 
-  private void restart() {
+  private void start() {
     state.set(BinaryAllocatorState.OPEN);
     for (Arena arena : heapArenas) {
-      arena.restart();
+      arena.start();
     }
   }
 
@@ -200,7 +190,7 @@ public class BinaryAllocator {
     }
   }
 
-  private class LeastUsedArenaStrategy implements ArenaStrategy {
+  private static class LeastUsedArenaStrategy implements ArenaStrategy {
     @Override
     public Arena choose(Arena[] arenas) {
       Arena boundArena = arenaRegistry.get().getArena();
@@ -237,14 +227,14 @@ public class BinaryAllocator {
       long GcTimePercent = JvmGcMonitorMetrics.getInstance().getGcData().getGcTimePercentage();
       if (state.get() == BinaryAllocatorState.PENDING) {
         if (GcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
-          restart();
+          start();
         }
         return;
       }
 
       if (GcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
         LOGGER.warn(
-            "Binary allocator is shutting down because of high GC time percentage{}",
+            "Binary allocator is shutting down because of high GC time percentage {}%.",
             GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(1.0);
@@ -252,14 +242,14 @@ public class BinaryAllocator {
         close(true);
       } else if (GcTimePercent > HALF_GC_TIME_PERCENTAGE) {
         LOGGER.warn(
-            "Binary allocator is half evicting because of high GC time percentage{}",
+            "Binary allocator is half evicting because of high GC time percentage {}%.",
             GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(0.5);
         }
       } else if (GcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
         LOGGER.warn(
-            "Binary allocator is running evictor because of high GC time percentage{}",
+            "Binary allocator is running evictor because of high GC time percentage {}%.",
             GcTimePercent);
         for (Arena arena : heapArenas) {
           arena.evict(0.2);

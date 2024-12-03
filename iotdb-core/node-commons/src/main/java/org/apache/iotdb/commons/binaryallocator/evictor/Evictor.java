@@ -60,6 +60,7 @@ public abstract class Evictor implements Runnable {
   }
 
   public void stopEvictor() {
+    LOGGER.info("Stopping evictor");
     EvictionTimer.cancel(this, evictorShutdownTimeoutDuration, false);
   }
 }

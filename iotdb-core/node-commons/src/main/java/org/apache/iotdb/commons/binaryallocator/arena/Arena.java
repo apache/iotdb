@@ -35,15 +35,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Arena {
   private static final Logger LOGGER = LoggerFactory.getLogger(Arena.class);
+  private static final int EVICT_SAMPLE_COUNT = 100;
+
   private final int arenaID;
-  private SlabRegion[] regions;
+  private final SlabRegion[] regions;
   private final SizeClasses sizeClasses;
   private Evictor sampleEvictor;
   private final BinaryAllocator binaryAllocator;
   public AtomicInteger numRegisterThread = new AtomicInteger(0);
 
   private int sampleCount;
-  private static final int EVICT_SAMPLE_COUNT = 100;
 
   private final Duration evictorShutdownTimeoutDuration;
   private final Duration durationBetweenEvictionRuns;
@@ -63,7 +64,7 @@ public class Arena {
 
     sampleCount = 0;
 
-    restart();
+    start();
   }
 
   public int getArenaID() {
@@ -95,7 +96,7 @@ public class Arena {
     sampleEvictor.stopEvictor();
   }
 
-  public void restart() {
+  public void start() {
     sampleEvictor =
         new SampleEvictor("arena-" + arenaID + "-sample-evictor", evictorShutdownTimeoutDuration);
     sampleEvictor.startEvictor(durationBetweenEvictionRuns);
@@ -112,7 +113,7 @@ public class Arena {
   public long getActiveMemory() {
     long totalActiveMemory = 0;
     for (SlabRegion region : regions) {
-      totalActiveMemory += region.size * (region.allocations.get() - region.deallocations.get());
+      totalActiveMemory += region.size * (region.allocations.get() - region.deAllocations.get());
     }
     return totalActiveMemory;
   }
@@ -160,7 +161,7 @@ public class Arena {
 
     private final AtomicInteger allocations;
     private final AtomicInteger allocationsFromJVM;
-    private final AtomicInteger deallocations;
+    private final AtomicInteger deAllocations;
     private final AtomicInteger evictions;
 
     public int prevAllocations;
@@ -173,7 +174,7 @@ public class Arena {
       queue = new ConcurrentLinkedQueue<>();
       allocations = new AtomicInteger(0);
       allocationsFromJVM = new AtomicInteger(0);
-      deallocations = new AtomicInteger(0);
+      deAllocations = new AtomicInteger(0);
       evictions = new AtomicInteger(0);
       prevAllocations = 0;
       prevAllocationsFromJVM = 0;
@@ -190,7 +191,7 @@ public class Arena {
     }
 
     public void deallocate(byte[] bytes) {
-      deallocations.incrementAndGet();
+      deAllocations.incrementAndGet();
       queue.add(bytes);
     }
 
@@ -225,11 +226,11 @@ public class Arena {
 
     // ConcurrentLinkedQueue::size() is O(n)
     private int getQueueSize() {
-      return deallocations.get() - allocations.get() - evictions.get();
+      return deAllocations.get() - allocations.get() - evictions.get();
     }
 
     private int getActiveSize() {
-      return allocations.get() + allocationsFromJVM.get() - deallocations.get();
+      return allocations.get() + allocationsFromJVM.get() - deAllocations.get();
     }
   }
 }

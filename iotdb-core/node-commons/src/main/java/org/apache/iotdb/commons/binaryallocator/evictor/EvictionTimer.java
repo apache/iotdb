@@ -159,8 +159,6 @@ public class EvictionTimer {
 
   @Override
   public String toString() {
-    final StringBuilder builder = new StringBuilder();
-    builder.append("EvictionTimer []");
-    return builder.toString();
+    return "EvictionTimer []";
   }
 }
