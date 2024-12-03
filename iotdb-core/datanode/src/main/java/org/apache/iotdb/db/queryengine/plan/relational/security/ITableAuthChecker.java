@@ -66,10 +66,11 @@ public interface ITableAuthChecker {
   void checkTableVisibility(String userName, QualifiedObjectName tableName);
 
   /**
-   * Check if user has global maintain privilege
+   * Check if user has the specified global privilege
    *
    * @param userName name of user
+   * @param privilege specified global privilege to be checked
    * @throws AccessDeniedException if not allowed
    */
-  void checkMaintainPrivilege(String userName);
+  void checkGlobalPrivilege(String userName, TableModelPrivilege privilege);
 }
