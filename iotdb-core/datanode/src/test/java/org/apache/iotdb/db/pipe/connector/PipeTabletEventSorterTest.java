@@ -331,7 +331,7 @@ public class PipeTabletEventSorterTest {
             tablet.addValue(
                 "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
             rowIndex++;
-            tablet.setRowSize(tablet.getRowSize() + 1);
+            tablet.setRowSize(rowIndex);
             if (!hasDuplicates) {
               break;
             }
