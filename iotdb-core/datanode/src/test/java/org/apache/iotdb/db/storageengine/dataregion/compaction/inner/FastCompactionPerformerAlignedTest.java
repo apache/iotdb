@@ -138,7 +138,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -213,7 +213,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -279,7 +279,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -348,7 +348,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -415,7 +415,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -484,7 +484,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -554,7 +554,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
@@ -635,7 +635,7 @@ public class FastCompactionPerformerAlignedTest {
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
         (e) -> {
-          measurementIds.add(e.getMeasurementId());
+          measurementIds.add(e.getMeasurementName());
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);

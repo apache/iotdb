@@ -83,9 +83,4 @@ public class ExplainAnalyze extends Statement {
   public String toString() {
     return toStringHelper(this).add("statement", statement).add("verbose", verbose).toString();
   }
-
-  @Override
-  public boolean isQuery() {
-    return true;
-  }
 }

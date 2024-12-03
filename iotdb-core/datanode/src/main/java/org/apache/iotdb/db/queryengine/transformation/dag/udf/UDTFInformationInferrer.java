@@ -83,7 +83,7 @@ public class UDTFInformationInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes)
       throws Exception {
-    UDTF udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
+    UDTF udtf = UDFManagementService.getInstance().reflect(functionName, UDTF.class);
     UDFParameters parameters =
         UDFParametersFactory.buildUdfParameters(
             childExpressions, childExpressionDataTypes, attributes);

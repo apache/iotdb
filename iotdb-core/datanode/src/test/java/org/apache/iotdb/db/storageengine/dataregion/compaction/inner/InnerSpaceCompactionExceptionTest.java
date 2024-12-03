@@ -308,7 +308,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
     }
@@ -335,7 +335,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     Assert.assertEquals(seqResources.size(), modifications.size());
     for (ModEntry modification : modifications) {
       Assert.assertEquals(
-          deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName(),
           ((TreeDeletionEntry) modification).getPathPattern().getFullPath());
     }
 
@@ -373,7 +373,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
@@ -438,7 +438,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 5));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
@@ -453,7 +453,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum + 10, i * ptNum + 15));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -484,7 +484,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Assert.assertEquals(2, modifications.size());
       for (ModEntry modification : modifications) {
         Assert.assertEquals(
-            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementId(),
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName(),
             ((TreeDeletionEntry) modification).getPathPattern().getFullPath());
       }
     }

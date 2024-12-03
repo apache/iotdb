@@ -613,6 +613,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreatePipe(CreatePipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
+    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                node.getPipeName(), ExtractorAttribute));
+      }
+    }
+
     // Inject table model into the extractor attributes
     node.getExtractorAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
@@ -623,6 +632,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+
+    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                node.getPipeName(), ExtractorAttribute));
+      }
+    }
+    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // modified, the original sql-dialect is used.
+    if (node.isReplaceAllExtractorAttributes()) {
+      node.getExtractorAttributes()
+          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    }
+
     return new AlterPipeTask(node);
   }
 

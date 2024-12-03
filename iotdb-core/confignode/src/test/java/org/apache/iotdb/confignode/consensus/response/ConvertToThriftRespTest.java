@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -51,15 +52,16 @@ public class ConvertToThriftRespTest {
         new FunctionTableResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
             ImmutableList.of(
-                new UDFInformation("test1", "test1", false, true, "test1.jar", "12345"),
-                new UDFInformation("test2", "test2", false, true, "test2.jar", "12342")));
+                new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345"),
+                new UDFInformation(
+                    "test2", "test2", Model.TREE, true, true, "test2.jar", "12342")));
     TGetUDFTableResp tGetUDFTableResp = functionTableResp.convertToThriftResponse();
     Assert.assertEquals(functionTableResp.getStatus(), tGetUDFTableResp.status);
     Assert.assertEquals(
-        functionTableResp.getAllUdfInformation().get(0),
+        functionTableResp.getUdfInformation().get(0),
         UDFInformation.deserialize(tGetUDFTableResp.allUDFInformation.get(0)));
     Assert.assertEquals(
-        functionTableResp.getAllUdfInformation().get(1),
+        functionTableResp.getUdfInformation().get(1),
         UDFInformation.deserialize(tGetUDFTableResp.allUDFInformation.get(1)));
   }
 
@@ -116,15 +118,16 @@ public class ConvertToThriftRespTest {
         new FunctionTableResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
             ImmutableList.of(
-                new UDFInformation("test1", "test1", false, true, "test1.jar", "12345"),
-                new UDFInformation("test2", "test2", false, true, "test2.jar", "12342")));
+                new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345"),
+                new UDFInformation(
+                    "test2", "test2", Model.TREE, true, true, "test2.jar", "12342")));
     TGetUDFTableResp tGetUDFTableResp = functionTableResp.convertToThriftResponse();
     Assert.assertEquals(functionTableResp.getStatus(), tGetUDFTableResp.status);
     Assert.assertEquals(
-        functionTableResp.getAllUdfInformation().get(0),
+        functionTableResp.getUdfInformation().get(0),
         UDFInformation.deserialize(tGetUDFTableResp.allUDFInformation.get(0)));
     Assert.assertEquals(
-        functionTableResp.getAllUdfInformation().get(1),
+        functionTableResp.getUdfInformation().get(1),
         UDFInformation.deserialize(tGetUDFTableResp.allUDFInformation.get(1)));
   }
 }

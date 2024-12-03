@@ -26,6 +26,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -105,7 +106,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     }
 
     // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection();
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify source ('source.pattern'='root.test2')");
     } catch (SQLException e) {
@@ -120,6 +121,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("__system.sql-dialect=tree"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test2"));
       Assert.assertTrue(

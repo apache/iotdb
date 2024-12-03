@@ -666,6 +666,12 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
+  public R visitExplainAnalyze(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
     return visitSingleChildProcess(node, context);
@@ -724,6 +730,11 @@ public abstract class PlanVisitor<R, C> {
   public R visitAggregation(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
       C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitTableExchange(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

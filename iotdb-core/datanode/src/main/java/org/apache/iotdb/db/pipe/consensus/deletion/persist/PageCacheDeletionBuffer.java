@@ -41,6 +41,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -142,7 +143,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   public boolean isAllDeletionFlushed() {
     buffersLock.lock();
     try {
-      return deletionResources.isEmpty() && serializeBuffer.position() == 0;
+      int pos = Optional.ofNullable(serializeBuffer).map(ByteBuffer::position).orElse(0);
+      return deletionResources.isEmpty() && pos == 0;
     } finally {
       buffersLock.unlock();
     }

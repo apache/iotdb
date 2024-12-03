@@ -157,7 +157,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
         isFirstRow = false;
       }
 
-      final int rowIndex = tablet.rowSize;
+      final int rowIndex = tablet.getRowSize();
 
       tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
 
@@ -171,9 +171,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
             field == null ? null : field.getObjectValue(schemas.get(i).getType()));
       }
 
-      tablet.rowSize++;
-
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         break;
       }
     }

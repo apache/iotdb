@@ -246,6 +246,6 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public String getStatementType() {
-    return statementType.name();
+    return statementType == null ? null : statementType.name();
   }
 }

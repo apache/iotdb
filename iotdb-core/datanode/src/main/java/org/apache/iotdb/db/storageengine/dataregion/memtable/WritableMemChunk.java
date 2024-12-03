@@ -240,7 +240,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush(boolean ignoreAllNullRows) {
+  public synchronized void sortTvListForFlush() {
     sortTVList();
   }
 

@@ -536,7 +536,7 @@ public class CompactionCheckerUtils {
         }
         List<String> existedMeasurements =
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList());
         IFullPath seriesPath;
         if (isAlign) {

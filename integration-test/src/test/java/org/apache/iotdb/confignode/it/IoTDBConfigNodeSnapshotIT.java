@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
@@ -71,9 +73,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -183,7 +187,7 @@ public class IoTDBConfigNodeSnapshotIT {
       }
 
       assertTriggerInformation(createTriggerReqs, client.getTriggerTable());
-      assertUDFInformation(createFunctionReqs, client.getUDFTable());
+      assertUDFInformation(createFunctionReqs, client.getUDFTable(new TGetUdfTableReq(Model.TREE)));
 
       TShowCQResp showCQResp = client.showCQ();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), showCQResp.getStatus().getCode());
@@ -283,12 +287,14 @@ public class IoTDBConfigNodeSnapshotIT {
 
     TCreateFunctionReq createFunctionReq1 =
         new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setModel(Model.TREE)
             .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
 
     TCreateFunctionReq createFunctionReq2 =
         new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setModel(Model.TREE)
             .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
@@ -307,11 +313,13 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   private void assertUDFInformation(List<TCreateFunctionReq> req, TGetUDFTableResp resp) {
+    Map<String, TCreateFunctionReq> nameToReqMap =
+        req.stream().collect(Collectors.toMap(r -> r.getUdfName().toUpperCase(), r -> r));
     for (int i = 0; i < req.size(); i++) {
-      TCreateFunctionReq createFunctionReq = req.get(i);
       UDFInformation udfInformation =
           UDFInformation.deserialize(resp.getAllUDFInformation().get(i));
-
+      assertTrue(nameToReqMap.containsKey(udfInformation.getFunctionName()));
+      TCreateFunctionReq createFunctionReq = nameToReqMap.get(udfInformation.getFunctionName());
       assertEquals(createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
       assertEquals(createFunctionReq.getClassName(), udfInformation.getClassName());
       assertEquals(createFunctionReq.getJarName(), udfInformation.getJarName());

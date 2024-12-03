@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
@@ -323,13 +325,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, MPPQueryContext context) {
-    return new DropFunctionTask(dropFunctionStatement);
+    return new DropFunctionTask(Model.TREE, dropFunctionStatement.getUdfName());
   }
 
   @Override
   public IConfigTask visitShowFunctions(
       ShowFunctionsStatement showFunctionsStatement, MPPQueryContext context) {
-    return new ShowFunctionsTask();
+    return new ShowFunctionsTask(Model.TREE);
   }
 
   @Override
@@ -462,6 +464,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       CreatePipeStatement createPipeStatement, MPPQueryContext context) {
+    for (String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                createPipeStatement.getPipeName(), ExtractorAttribute));
+      }
+    }
+
     // Inject tree model into the extractor attributes
     createPipeStatement
         .getExtractorAttributes()
@@ -473,6 +484,24 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitAlterPipe(
       AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+
+    for (String ExtractorAttribute : alterPipeStatement.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                alterPipeStatement.getPipeName(), ExtractorAttribute));
+      }
+    }
+
+    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // modified, the original sql-dialect is used.
+    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+      alterPipeStatement
+          .getExtractorAttributes()
+          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    }
+
     return new AlterPipeTask(alterPipeStatement);
   }
 

@@ -181,7 +181,6 @@ public class TsFileManager {
     try {
       for (TsFileResource resource : tsFileResourceList) {
         remove(resource, sequence);
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
       }
     } finally {
       writeLock("removeAll");
@@ -194,6 +193,7 @@ public class TsFileManager {
    */
   public void insertToPartitionFileList(
       TsFileResource tsFileResource, long timePartition, boolean sequence, int insertPos) {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
@@ -211,6 +211,7 @@ public class TsFileManager {
   }
 
   public void add(TsFileResource tsFileResource, boolean sequence) {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
@@ -228,6 +229,7 @@ public class TsFileManager {
   }
 
   public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    registerTsFileResourceToResourceManager(tsFileResource);
     writeLock("keepOrderInsert");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
@@ -252,6 +254,13 @@ public class TsFileManager {
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  private void registerTsFileResourceToResourceManager(TsFileResource resource) {
+    TsFileResourceStatus status = resource.getStatus();
+    if (status != TsFileResourceStatus.UNCLOSED && status != TsFileResourceStatus.DELETED) {
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
     }
   }
 
