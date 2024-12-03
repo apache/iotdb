@@ -210,7 +210,7 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
@@ -1743,6 +1743,10 @@ public class StatementAnalyzer {
       }
 
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
+
+      // access control
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -1756,37 +1760,12 @@ public class StatementAnalyzer {
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
 
-      //      boolean addRowIdColumn = updateKind.isPresent();
-      //
-      //      if (addRowIdColumn) {
-      //        // Add the row id field
-      //        ColumnHandle rowIdColumnHandle = metadata.getMergeRowIdColumnHandle(session,
-      // tableHandle.get());
-      //        Type type = metadata.getColumnMetadata(session, tableHandle.get(),
-      // rowIdColumnHandle).getType();
-      //        Field field = Field.newUnqualified(Optional.empty(), type);
-      //        fields.add(field);
-      //        analysis.setColumn(field, rowIdColumnHandle);
-      //      }
-
       List<Field> outputFields = fields.build();
 
       RelationType relationType = new RelationType(outputFields);
-      Scope accessControlScope =
-          Scope.builder().withRelationType(RelationId.anonymous(), relationType).build();
-      //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
-      // accessControlScope);
       analysis.registerTable(table, tableSchema, name);
 
-      Scope tableScope = createAndAssignScope(table, scope, relationType);
-
-      //      if (addRowIdColumn) {
-      //        FieldReference reference = new FieldReference(outputFields.size() - 1);
-      //        analyzeExpression(reference, tableScope);
-      //        analysis.setRowIdField(table, reference);
-      //      }
-
-      return tableScope;
+      return createAndAssignScope(table, scope, relationType);
     }
 
     private Scope createScopeForCommonTableExpression(

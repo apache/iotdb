@@ -96,17 +96,6 @@ public class Analyzer {
       context.setAnalyzeCost(analyzeCost);
     }
 
-    // TODO access control
-    // check column access permissions for each table
-    //    analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
-    //        tableColumnReferences.forEach((tableName, columns) ->
-    //            accessControlInfo.getAccessControl().checkCanSelectFromColumns(
-    //                accessControlInfo.getSecurityContext(session.getRequiredTransactionId(),
-    // session.getQueryId(),
-    //                    session.getStart()),
-    //                tableName,
-    //                columns)));
-
     return analysis;
   }
 }

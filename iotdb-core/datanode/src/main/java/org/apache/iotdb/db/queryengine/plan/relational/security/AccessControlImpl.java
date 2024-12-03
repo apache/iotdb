@@ -21,64 +21,71 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
-public class AllowAllAccessControl implements AccessControl {
+public class AccessControlImpl implements AccessControl {
+
+  private final ITableAuthChecker authChecker;
+
+  public AccessControlImpl(ITableAuthChecker authChecker) {
+    this.authChecker = authChecker;
+  }
+
   @Override
   public void checkCanCreateDatabase(String userName, String databaseName) {
-    // allow anything
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropDatabase(String userName, String databaseName) {
-    // allow anything
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterDatabase(String userName, String databaseName) {
-    // allow anything
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanShowOrUseDatabase(String userName, String databaseName) {
-    // allow anything
+    authChecker.checkDatabaseVisibility(userName, databaseName);
   }
 
   @Override
   public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE);
   }
 
   @Override
   public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP);
   }
 
   @Override
   public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER);
   }
 
   @Override
   public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT);
   }
 
   @Override
   public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
   }
 
   @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
 
   @Override
   public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
-    // allow anything
+    authChecker.checkTableVisibility(userName, tableName);
   }
 
   @Override
   public void checkUserHasMaintainPrivilege(String userName) {
-    // allow anything
+    authChecker.checkMaintainPrivilege(userName);
   }
 }
