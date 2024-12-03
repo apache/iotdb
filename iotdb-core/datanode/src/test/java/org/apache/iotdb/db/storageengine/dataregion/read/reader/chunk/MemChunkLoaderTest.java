@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,12 +66,17 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(3L);
 
     Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.BOOLEAN);
@@ -109,13 +115,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildBooleanTvListMap() {
-    TVList tvList = TVList.newList(TSDataType.BOOLEAN);
-    if (tvList != null) {
-      tvList.putBoolean(1L, true);
-      tvList.putBoolean(2L, true);
-    }
+    TVList tvList1 = TVList.newList(TSDataType.BOOLEAN);
+    tvList1.putBoolean(1L, true);
+    tvList1.putBoolean(2L, true);
+    TVList tvList2 = TVList.newList(TSDataType.BOOLEAN);
+    tvList2.putBoolean(1L, true);
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 
@@ -134,8 +141,13 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
@@ -178,13 +190,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildInt32TvListMap() {
-    TVList tvList = TVList.newList(TSDataType.INT32);
-    if (tvList != null) {
-      tvList.putInt(1L, 1);
-      tvList.putInt(2L, 2);
-    }
+    TVList tvList1 = TVList.newList(TSDataType.INT32);
+    tvList1.putInt(1L, 1);
+    tvList1.putInt(2L, 2);
+    TVList tvList2 = TVList.newList(TSDataType.INT32);
+    tvList2.putInt(1L, 1);
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 
@@ -203,8 +216,13 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
@@ -247,13 +265,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildInt64TvListMap() {
-    TVList tvList = TVList.newList(TSDataType.INT64);
-    if (tvList != null) {
-      tvList.putLong(1L, 1L);
-      tvList.putLong(2L, 2L);
-    }
+    TVList tvList1 = TVList.newList(TSDataType.INT64);
+    tvList1.putLong(1L, 1L);
+    tvList1.putLong(2L, 2L);
+    TVList tvList2 = TVList.newList(TSDataType.INT64);
+    tvList2.putLong(1L, 1L);
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 
@@ -272,8 +291,13 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
@@ -316,13 +340,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildFloatTvListMap() {
-    TVList tvList = TVList.newList(TSDataType.FLOAT);
-    if (tvList != null) {
-      tvList.putFloat(1L, 1.1f);
-      tvList.putFloat(2L, 2.1f);
-    }
+    TVList tvList1 = TVList.newList(TSDataType.FLOAT);
+    tvList1.putFloat(1L, 1.1f);
+    tvList1.putFloat(2L, 2.1f);
+    TVList tvList2 = TVList.newList(TSDataType.FLOAT);
+    tvList2.putFloat(1L, 1.1f);
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 
@@ -341,8 +366,13 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
@@ -385,13 +415,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildDoubleTvListMap() {
-    TVList tvList = TVList.newList(TSDataType.DOUBLE);
-    if (tvList != null) {
-      tvList.putDouble(1L, 1.1d);
-      tvList.putDouble(2L, 2.1d);
-    }
+    TVList tvList1 = TVList.newList(TSDataType.DOUBLE);
+    tvList1.putDouble(1L, 1.1d);
+    tvList1.putDouble(2L, 2.1d);
+    TVList tvList2 = TVList.newList(TSDataType.DOUBLE);
+    tvList2.putDouble(1L, 1.1d);
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 
@@ -410,8 +441,13 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
+    Statistics pageStatitstics = Mockito.mock(Statistics.class);
+    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
+    ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics statistics = Mockito.mock(Statistics.class);
@@ -454,13 +490,14 @@ public class MemChunkLoaderTest {
   }
 
   private Map<TVList, Integer> buildTextTvListMap() {
-    TVList tvList = TVList.newList(TSDataType.TEXT);
-    if (tvList != null) {
-      tvList.putBinary(1L, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
-      tvList.putBinary(2L, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
-    }
+    TVList tvList1 = TVList.newList(TSDataType.TEXT);
+    tvList1.putBinary(1L, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
+    tvList1.putBinary(2L, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
+    TVList tvList2 = TVList.newList(TSDataType.TEXT);
+    tvList2.putBinary(1L, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
     Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
-    tvListMap.put(tvList, 2);
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
     return tvListMap;
   }
 }
