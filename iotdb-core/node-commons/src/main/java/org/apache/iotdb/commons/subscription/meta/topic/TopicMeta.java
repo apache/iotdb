@@ -186,6 +186,7 @@ public class TopicMeta {
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
+    // sql dialect
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
       // table model: database name and table name
@@ -200,10 +201,8 @@ public class TopicMeta {
     extractorAttributes.putAll(config.getAttributesWithSourceRealtimeMode());
     // source mode
     extractorAttributes.putAll(config.getAttributesWithSourceMode());
-    // loose range
-    extractorAttributes.putAll(config.getAttributesWithSourceLooseRange());
-    // strict
-    extractorAttributes.putAll(config.getAttributesWithSourceStrict());
+    // loose range or strict
+    extractorAttributes.putAll(config.getAttributesWithSourceLooseRangeOrStrict());
     return extractorAttributes;
   }
 

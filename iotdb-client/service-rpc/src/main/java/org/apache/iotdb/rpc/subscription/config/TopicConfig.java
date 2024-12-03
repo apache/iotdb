@@ -30,12 +30,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_LIVE_VALUE;
-import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 
 public class TopicConfig extends PipeParameters {
 
@@ -66,9 +62,9 @@ public class TopicConfig extends PipeParameters {
       Collections.singletonMap("format", "hybrid");
 
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
-      Collections.singletonMap("mode", MODE_SNAPSHOT_VALUE);
+      Collections.singletonMap("mode", TopicConstant.MODE_SNAPSHOT_VALUE);
   private static final Map<String, String> LIVE_MODE_CONFIG =
-      Collections.singletonMap("mode", MODE_LIVE_VALUE);
+      Collections.singletonMap("mode", TopicConstant.MODE_LIVE_VALUE);
 
   private static final Map<String, String> STRICT_MODE_CONFIG =
       Collections.singletonMap("mode.strict", "true");
@@ -95,8 +91,8 @@ public class TopicConfig extends PipeParameters {
   /////////////////////////////// utilities ///////////////////////////////
 
   public boolean isTableTopic() {
-    return Objects.equals(
-        SQL_DIALECT_TABLE_VALUE, attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
+    return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(
+        attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
   }
 
   /////////////////////////////// extractor attributes mapping ///////////////////////////////
@@ -149,26 +145,27 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    return MODE_SNAPSHOT_VALUE.equalsIgnoreCase(
+    return TopicConstant.MODE_SNAPSHOT_VALUE.equalsIgnoreCase(
             attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
         ? SNAPSHOT_MODE_CONFIG
         : LIVE_MODE_CONFIG;
   }
 
-  public Map<String, String> getAttributesWithSourceLooseRange() {
-    final String looseRangeValue =
-        attributes.getOrDefault(
-            TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_DEFAULT_VALUE);
-    return LOOSE_RANGE_KEY_SET.stream()
-        .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
-  }
-
-  public Map<String, String> getAttributesWithSourceStrict() {
-    return Objects.equals(
-            TopicConstant.STRICT_DEFAULT_VALUE,
-            attributes.getOrDefault(TopicConstant.STRICT_KEY, TopicConstant.STRICT_DEFAULT_VALUE))
-        ? STRICT_MODE_CONFIG
-        : Collections.emptyMap();
+  public Map<String, String> getAttributesWithSourceLooseRangeOrStrict() {
+    if (attributes.containsKey(TopicConstant.LOOSE_RANGE_KEY)
+        && !attributes.containsKey(TopicConstant.STRICT_KEY)) {
+      // for forwards compatibility
+      final String looseRangeValue =
+          attributes.getOrDefault(
+              TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_DEFAULT_VALUE);
+      return LOOSE_RANGE_KEY_SET.stream()
+          .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
+    } else {
+      // only consider strict
+      return Collections.singletonMap(
+          TopicConstant.STRICT_KEY,
+          attributes.getOrDefault(TopicConstant.STRICT_KEY, TopicConstant.STRICT_DEFAULT_VALUE));
+    }
   }
 
   /////////////////////////////// processor attributes mapping ///////////////////////////////
