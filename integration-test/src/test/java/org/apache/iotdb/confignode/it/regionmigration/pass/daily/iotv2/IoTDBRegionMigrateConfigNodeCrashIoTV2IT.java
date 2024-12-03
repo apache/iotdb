@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateConfigNodeCrashIoTV2IT
+    extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   @Ignore
   public void cnCrashDuringPreCheckTest() throws Exception {

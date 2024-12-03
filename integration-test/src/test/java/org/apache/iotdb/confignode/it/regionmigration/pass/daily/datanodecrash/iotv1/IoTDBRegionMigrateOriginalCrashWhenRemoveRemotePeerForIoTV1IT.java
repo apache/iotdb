@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv1;
 
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
@@ -30,8 +30,8 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerIT
-    extends IoTDBRegionMigrateDataNodeCrashITFramework {
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV1IT
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1 {
   @Test
   public void crashBeforeInactivate() throws Exception {
     success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);

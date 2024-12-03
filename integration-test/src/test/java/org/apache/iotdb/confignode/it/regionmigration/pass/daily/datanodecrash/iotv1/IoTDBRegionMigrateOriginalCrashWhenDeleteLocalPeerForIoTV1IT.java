@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv1;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
@@ -30,27 +30,15 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
-    extends IoTDBRegionMigrateDataNodeCrashITFramework {
-
+public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV1IT
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1 {
   @Test
-  public void initCrash() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
+  public void crashBeforeDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
   }
 
   @Test
-  public void crashAfterNotifyPeersToRemoveSyncLogChannel() throws Exception {
-    success(
-        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
-  }
-
-  @Test
-  public void crashAfterInactivePeer() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
-  }
-
-  @Test
-  public void crashAfterFinish() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
+  public void crashAfterDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 }
