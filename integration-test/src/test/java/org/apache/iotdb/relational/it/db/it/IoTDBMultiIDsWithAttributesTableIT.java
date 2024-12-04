@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Arrays;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
@@ -1803,6 +1804,31 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void innerJoinOnTwoColumns() {
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    sql =
+        "SELECT "
+            + "  t1.time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "FROM "
+            + "  tableA t1, tableB t2 "
+            + "where t1.time = t2.time and t1.device = t2.device order by t1.time";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,", "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select table1.s1 from table1 t1 join table2 t2 on t1.time = t2.time and t1.device = t2.device";
+    tableAssertTestFail(
+        sql, "701: Only support time column equi-join in current version", DATABASE_NAME);
   }
 
   public static String[] buildHeaders(int length) {

@@ -550,8 +550,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       // Create new projections for the new join clauses
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
+      boolean hasFilter = false;
+      Expression lastEquiJoinConjunct = null;
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
         if (joinEqualityExpressionOnTimeColumn(conjunct, node)) {
+          lastEquiJoinConjunct = conjunct;
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =
@@ -572,7 +575,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
           joinFilterBuilder.add(conjunct);
+          hasFilter = true;
         }
+      }
+
+      // todo: Remove this check after supporting join on multiple columns.
+      checkArgument(equiJoinClauses.size() <= 1, "Only support Join on one column for now.");
+      if (!equiJoinClauses.isEmpty() && hasFilter) {
+        equiJoinClauses.clear();
+        joinFilterBuilder.add(lastEquiJoinConjunct);
       }
 
       List<Expression> joinFilter = joinFilterBuilder.build();
@@ -698,7 +709,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       ComparisonExpression equality = (ComparisonExpression) conjunct;
       // After Optimization, some subqueries are transformed into Join.
       // For now, Users can only use join on time. And the join is implemented using MergeSortJoin.
-      // However, it's assumed that need to use Filter + NestedLoopJoin is better than MergeSortJoin
+      // However, it's assumed that use Filter + NestedLoopJoin is better than MergeSortJoin
       // for scalar subquery, since sorting the left table is not necessary.
       // So, we want to find out whether the join is on time column. If it is not on time column, we
       // will use Filter + NestedLoopJoin instead.

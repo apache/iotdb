@@ -98,7 +98,6 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
     if (retainedTsBlock != null) {
       getResultFromRetainedTsBlock();
     }
-    resultBuilder.reset();
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -139,6 +138,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
     resultTsBlock =
         resultBuilder.build(
             new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+    resultBuilder.reset();
     return checkTsBlockSizeAndGetResult();
   }
 
