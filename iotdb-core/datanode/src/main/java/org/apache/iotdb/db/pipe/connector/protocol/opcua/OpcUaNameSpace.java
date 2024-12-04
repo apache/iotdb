@@ -73,17 +73,20 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final OpcUaServerBuilder builder;
   private final String qualifiedDatabaseName;
   private final String unQualifiedDatabaseName;
+  private final String placeHolder;
 
   OpcUaNameSpace(
       final OpcUaServer server,
       final boolean isClientServerModel,
       final OpcUaServerBuilder builder,
-      final String qualifiedDatabaseName) {
+      final String qualifiedDatabaseName,
+      final String placeHolder) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
     this.qualifiedDatabaseName = qualifiedDatabaseName;
     this.unQualifiedDatabaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
+    this.placeHolder = placeHolder;
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -142,22 +145,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
       }
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        boolean isValid = true;
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
         folderSegments[0] = "root";
         folderSegments[1] = unQualifiedDatabaseName;
 
         for (int j = 0; j < segments.length; ++j) {
-          if (Objects.isNull(segments[j])) {
-            isValid = false;
-            break;
-          }
-          folderSegments[j + 2] = (String) segments[j];
+          folderSegments[j + 2] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
         }
-        if (!isValid) {
-          continue;
-        }
+
         final int finalI = i;
         transferTabletRowForClientServerModel(
             folderSegments,
@@ -327,17 +323,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
+        final StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
-          // Skip deviceID with "null"
-          if (Objects.isNull(segment)) {
-            idBuilder = null;
-            break;
-          } else {
-            idBuilder.append(TsFileConstant.PATH_SEPARATOR).append(segment);
-          }
+          idBuilder
+              .append(TsFileConstant.PATH_SEPARATOR)
+              .append(Objects.isNull(segment) ? placeHolder : segment);
         }
-        sourceNameList.add(Objects.nonNull(idBuilder) ? idBuilder.toString() : null);
+        sourceNameList.add(idBuilder.toString());
       }
     }
 
