@@ -818,7 +818,7 @@ primaryExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
-    | processingMode? qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'                 #functionCall
+    | processingMode? qualifiedName '(' (setQuantifier? expression (',' expression)*)?')' #functionCall
     | '(' query ')'                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS '(' query ')'                                                                #exists
