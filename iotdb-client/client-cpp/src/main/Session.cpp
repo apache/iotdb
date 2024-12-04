@@ -34,15 +34,15 @@ static const int64_t QUERY_TIMEOUT_MS = -1;
 LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
 TSDataType::TSDataType getTSDataTypeFromString(const string &str) {
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
+    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, BLOB, TIMESTAMP, DATE, NULLTYPE
     if (str == "BOOLEAN") return TSDataType::BOOLEAN;
-    else if (str == "INT32") return TSDataType::INT32;
-    else if (str == "INT64") return TSDataType::INT64;
+    else if (str == "INT32" || str == "DATE") return TSDataType::INT32;
+    else if (str == "INT64" || str == "TIMESTAMP") return TSDataType::INT64;
     else if (str == "FLOAT") return TSDataType::FLOAT;
     else if (str == "DOUBLE") return TSDataType::DOUBLE;
-    else if (str == "TEXT") return TSDataType::TEXT;
+    else if (str == "TEXT" || str == "STRING" || str == "BLOB") return TSDataType::TEXT;
     else if (str == "NULLTYPE") return TSDataType::NULLTYPE;
-    return TSDataType::TEXT;
+    return TSDataType::INVALID_DATATYPE;
 }
 
 void RpcUtils::verifySuccess(const TSStatus &status) {
@@ -178,56 +178,6 @@ void Tablet::deleteColumns() {
             default:
                 throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
-    }
-}
-
-void Tablet::addValue(size_t schemaId, size_t rowIndex, void* value) {
-    if (schemaId >= schemas.size()) {
-        char tmpStr[100];
-        sprintf(tmpStr, "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.", schemaId, schemas.size());
-        throw std::out_of_range(tmpStr);
-    }
-
-    if (rowIndex >= rowSize) {
-        char tmpStr[100];
-        sprintf(tmpStr, "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.", rowIndex, rowSize);
-        throw std::out_of_range(tmpStr);
-    }
-
-    TSDataType::TSDataType dataType = schemas[schemaId].second;
-    switch (dataType) {
-        case TSDataType::BOOLEAN: {
-            bool* valueBuf = (bool*)(values[schemaId]);
-            valueBuf[rowIndex] = *((bool*)value);
-            break;
-        }
-        case TSDataType::INT32: {
-            int* valueBuf = (int*)(values[schemaId]);
-            valueBuf[rowIndex] = *((int*)value);
-            break;
-        }
-        case TSDataType::INT64: {
-            int64_t* valueBuf = (int64_t*)(values[schemaId]);
-            valueBuf[rowIndex] = *((int64_t*)value);
-            break;
-        }
-        case TSDataType::FLOAT: {
-            float* valueBuf = (float*)(values[schemaId]);
-            valueBuf[rowIndex] = *((float*)value);
-            break;
-        }
-        case TSDataType::DOUBLE: {
-            double* valueBuf = (double*)(values[schemaId]);
-            valueBuf[rowIndex] = *((double*)value);
-            break;
-        }
-        case TSDataType::TEXT: {
-            string* valueBuf = (string*)(values[schemaId]);
-            valueBuf[rowIndex] = *(string*)value;
-            break;
-        }
-        default:
-            throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
     }
 }
 
@@ -876,6 +826,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
 
     std::map<std::string, std::string> configuration;
     configuration["version"] = getVersionString(version);
+    configuration["sql_dialect"] = sqlDialect;
+    if (database != "") {
+        configuration["db"] = database;
+    }
 
     TSOpenSessionReq openReq;
     openReq.__set_username(username);
@@ -1386,6 +1340,35 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
     insertTablet(request);
 }
 
+void Session::insertRelationalTablet(Tablet &tablet, bool sorted) {
+    TSInsertTabletReq request;
+    buildInsertTabletReq(request, sessionId, tablet, sorted);
+    request.__set_writeToTable(true);
+    std::vector<int8_t> columnCategories;
+    for (auto &category: tablet.columnTypes) {
+        columnCategories.push_back(static_cast<int8_t>(category));
+    }
+    request.__set_columnCategories(columnCategories);
+    try {
+        TSStatus respStatus;
+        client->insertTablet(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        log_debug(e.what());
+        throw IoTDBException(e.what());
+    }
+}
+
+void Session::insertRelationalTablet(Tablet &tablet) {
+    insertRelationalTablet(tablet, false);
+}
+
 void Session::insertAlignedTablet(Tablet &tablet) {
     insertAlignedTablet(tablet, false);
 }
@@ -1653,6 +1636,18 @@ void Session::deleteStorageGroups(const vector<string> &storageGroups) {
     }
 }
 
+void Session::createDatabase(const string &database) {
+    this->setStorageGroup(database);
+}
+
+void Session::deleteDatabase(const string &database) {
+    this->deleteStorageGroups(vector<string>{database});
+}
+
+void Session::deleteDatabases(const vector<string> &databases) {
+    this->deleteStorageGroups(databases);
+}
+
 void Session::createTimeseries(const string &path,
                                TSDataType::TSDataType dataType,
                                TSEncoding::TSEncoding encoding,
@@ -1917,7 +1912,10 @@ void Session::executeNonQueryStatement(const string &sql) {
     req.__set_timeout(0);  //0 means no timeout. This value keep consistent to JAVA SDK.
     TSExecuteStatementResp resp;
     try {
-        client->executeUpdateStatement(resp, req);
+        client->executeUpdateStatementV2(resp, req);
+        if (resp.database != "") {
+            database = resp.database;
+        }
         RpcUtils::verifySuccess(resp.status);
     } catch (const TTransportException &e) {
         log_debug(e.what());
