@@ -67,13 +67,32 @@ public class ConfigExecution implements IQueryExecution {
               Arrays.asList(
                   TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(),
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode(),
+                  TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(),
                   TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.TABLE_NOT_EXISTS.getStatusCode(),
                   TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(),
                   TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode(),
                   TSStatusCode.DATABASE_MODEL.getStatusCode(),
-                  TSStatusCode.DATABASE_CONFLICT.getStatusCode())));
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
+                  TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
+                  TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.NO_PERMISSION.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode(),
+                  TSStatusCode.ROLE_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.ROLE_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())));
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
