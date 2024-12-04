@@ -21,7 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
 import java.util.ArrayList;
@@ -135,6 +138,28 @@ public class WALInfoEntry extends WALEntry {
   @Override
   public boolean isSignal() {
     return false;
+  }
+
+  public long getMemorySize() {
+    switch (type) {
+      case INSERT_TABLET_NODE:
+        ((InsertTabletNode) value).serializeToWAL(buffer, tabletInfo.tabletRangeList);
+        break;
+      case INSERT_ROW_NODE:
+      case INSERT_ROWS_NODE:
+        return InsertNodeMemoryEstimator.sizeOf((InsertNode) value);
+      case DELETE_DATA_NODE:
+      case RELATIONAL_DELETE_DATA_NODE:
+      case MEMORY_TABLE_SNAPSHOT:
+        return ((IMemTable) value).getTVListsRamCost();
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        value.serializeToWAL(buffer);
+        break;
+      case MEMORY_TABLE_CHECKPOINT:
+        throw new RuntimeException("Cannot serialize checkpoint to wal files.");
+      default:
+        throw new RuntimeException("Unsupported wal entry type " + type);
+    }
   }
 
   @Override
