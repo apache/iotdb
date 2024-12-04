@@ -608,4 +608,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowQueries(ShowQueries node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitKillQuery(KillQuery node, C context) {
+    return visitStatement(node, context);
+  }
 }

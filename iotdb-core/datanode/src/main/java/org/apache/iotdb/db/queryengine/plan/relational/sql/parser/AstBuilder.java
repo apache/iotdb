@@ -92,6 +92,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -1086,7 +1087,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
-    return super.visitKillQueryStatement(ctx);
+    if (ctx.queryId == null) {
+      return new KillQuery(null, getLocation(ctx));
+    }
+    return new KillQuery(((StringLiteral) visit(ctx.queryId)).getValue(), getLocation(ctx));
   }
 
   @Override

@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -808,5 +810,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
+  }
+
+  @Override
+  protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new KillQueryTask(node);
   }
 }
