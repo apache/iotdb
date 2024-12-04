@@ -116,13 +116,13 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   private void scheduledMonitoring() {
     calculateGCTimePercentageWithinObservedInterval();
 
-    // Run GC eviction
-    BinaryAllocator.DEFAULT.runGcEviction(curData.getGcTimePercentage());
-
     // Alert if necessary
     if (alertHandler != null && curData.getGcTimePercentage() > MAX_GC_TIME_PERCENTAGE) {
       alertHandler.alert(curData.clone());
     }
+
+    // Run GC eviction
+    BinaryAllocator.getInstance().runGcEviction(curData.getGcTimePercentage());
   }
 
   private long getTotalGCTime() {

@@ -28,7 +28,7 @@ public interface ArenaStrategy {
   /**
    * Chooses a {@link Arena} from the given array of {@link Arena}s.
    *
-   * @param arenas an array of {@link Arena}s to choose from
+   * @param arenas an array of {@link Arena}s to choose from, should not be null or length == 0
    * @return the selected {@link Arena}
    */
   Arena choose(Arena[] arenas);

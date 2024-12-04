@@ -2862,7 +2862,7 @@ public class IoTDBDescriptor {
                           ConfigurationFileUtils.getConfigurationDefaultValue(
                               "enable_binary_allocator"))));
       if (!commonDescriptor.getConfig().isEnableBinaryAllocator()) {
-        BinaryAllocator.DEFAULT.close(false);
+        BinaryAllocator.getInstance().close(false);
       }
     } catch (Exception e) {
       if (e instanceof InterruptedException) {

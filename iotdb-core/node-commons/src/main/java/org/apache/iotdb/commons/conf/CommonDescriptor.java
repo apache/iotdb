@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.conf;
 
-import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -759,8 +758,6 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "log2_size_class_group", String.valueOf(config.getLog2SizeClassGroup()))));
-
-    BinaryAllocator.DEFAULT.allocateBinary(100);
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

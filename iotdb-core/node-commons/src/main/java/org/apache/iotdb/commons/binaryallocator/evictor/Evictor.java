@@ -34,7 +34,7 @@ public abstract class Evictor implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(Evictor.class);
 
   private ScheduledFuture<?> scheduledFuture;
-  private String name;
+  private final String name;
   private final Duration evictorShutdownTimeoutDuration;
 
   private ScheduledExecutorService executor;
@@ -62,8 +62,6 @@ public abstract class Evictor implements Runnable {
   }
 
   public void startEvictor(final Duration delay) {
-    LOGGER.info("Starting evictor with delay {}", delay);
-
     if (null == executor) {
       executor = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name);
     }
@@ -74,14 +72,21 @@ public abstract class Evictor implements Runnable {
   }
 
   public void stopEvictor() {
-    LOGGER.info("Stopping evictor");
+    LOGGER.info("Stopping {}", name);
 
     cancel();
 
     executor.shutdown();
     try {
-      executor.awaitTermination(evictorShutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
-    } catch (final InterruptedException e) {
+      boolean result =
+          executor.awaitTermination(
+              evictorShutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
+      if (!result) {
+        LOGGER.info(
+            "unable to stop evictor after {} ms", evictorShutdownTimeoutDuration.toMillis());
+      }
+    } catch (final InterruptedException ignored) {
+      Thread.currentThread().interrupt();
     }
     executor = null;
   }

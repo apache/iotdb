@@ -43,7 +43,6 @@ public class BinaryAllocator {
   private final Arena[] heapArenas;
   private final AllocatorConfig allocatorConfig;
 
-  public static final BinaryAllocator DEFAULT = new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
   private final ArenaStrategy arenaStrategy = new LeastUsedArenaStrategy();
   private final AtomicReference<BinaryAllocatorState> state =
       new AtomicReference<>(BinaryAllocatorState.UNINITIALIZED);
@@ -61,7 +60,7 @@ public class BinaryAllocator {
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
 
-    heapArenas = newArenaArray(allocatorConfig.arenaNum);
+    heapArenas = new Arena[allocatorConfig.arenaNum];
     SizeClasses sizeClasses = new SizeClasses(allocatorConfig);
 
     for (int i = 0; i < heapArenas.length; i++) {
@@ -70,7 +69,6 @@ public class BinaryAllocator {
     }
 
     this.metrics = new BinaryAllocatorMetrics(this);
-    MetricService.getInstance().addMetricSet(this.metrics);
 
     if (allocatorConfig.enableBinaryAllocator) {
       start();
@@ -79,9 +77,34 @@ public class BinaryAllocator {
     }
   }
 
+  private synchronized void start() {
+    state.set(BinaryAllocatorState.OPEN);
+    MetricService.getInstance().addMetricSet(this.metrics);
+    sampleEvictor =
+        new SampleEvictor(
+            ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
+            allocatorConfig.durationEvictorShutdownTimeout);
+    sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
+  }
+
+  public synchronized void close(boolean needReopen) {
+    if (needReopen) {
+      state.set(BinaryAllocatorState.PENDING);
+    } else {
+      state.set(BinaryAllocatorState.CLOSE);
+      MetricService.getInstance().removeMetricSet(this.metrics);
+    }
+
+    sampleEvictor.stopEvictor();
+    for (Arena arena : heapArenas) {
+      arena.close();
+    }
+  }
+
   public PooledBinary allocateBinary(int reqCapacity) {
     if (reqCapacity < allocatorConfig.minAllocateSize
-        || reqCapacity > allocatorConfig.maxAllocateSize) {
+        || reqCapacity > allocatorConfig.maxAllocateSize
+        || state.get() != BinaryAllocatorState.OPEN) {
       return new PooledBinary(new byte[reqCapacity]);
     }
 
@@ -93,7 +116,8 @@ public class BinaryAllocator {
   public void deallocateBinary(PooledBinary binary) {
     if (binary != null
         && binary.getLength() >= allocatorConfig.minAllocateSize
-        && binary.getLength() <= allocatorConfig.maxAllocateSize) {
+        && binary.getLength() <= allocatorConfig.maxAllocateSize
+        && state.get() == BinaryAllocatorState.OPEN) {
       int arenaIndex = binary.getArenaIndex();
       if (arenaIndex != -1) {
         Arena arena = heapArenas[arenaIndex];
@@ -118,34 +142,6 @@ public class BinaryAllocator {
     return totalActiveMemory;
   }
 
-  public void evict(double ratio) {
-    for (Arena arena : heapArenas) {
-      arena.evict(ratio);
-    }
-  }
-
-  public void close(boolean needReopen) {
-    if (needReopen) {
-      state.set(BinaryAllocatorState.PENDING);
-    } else {
-      state.set(BinaryAllocatorState.CLOSE);
-    }
-
-    sampleEvictor.stopEvictor();
-    for (Arena arena : heapArenas) {
-      arena.close();
-    }
-  }
-
-  private void start() {
-    state.set(BinaryAllocatorState.OPEN);
-    sampleEvictor =
-        new SampleEvictor(
-            ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
-            allocatorConfig.durationEvictorShutdownTimeout);
-    sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
-  }
-
   @TestOnly
   public void resetArenaBinding() {
     arenaRegistry.get().unbindArena();
@@ -155,9 +151,19 @@ public class BinaryAllocator {
     return metrics;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Arena[] newArenaArray(int size) {
-    return new Arena[size];
+  private void evict(double ratio) {
+    for (Arena arena : heapArenas) {
+      arena.evict(ratio);
+    }
+  }
+
+  public static BinaryAllocator getInstance() {
+    return BinaryAllocatorHolder.INSTANCE;
+  }
+
+  private static class BinaryAllocatorHolder {
+    private static final BinaryAllocator INSTANCE =
+        new BinaryAllocator(AllocatorConfig.DEFAULT_CONFIG);
   }
 
   private static class ThreadArenaRegistry {
@@ -169,13 +175,13 @@ public class BinaryAllocator {
 
     public void bindArena(Arena arena) {
       threadArenaBinding = arena;
-      arena.numRegisterThread.incrementAndGet();
+      arena.incRegisteredThread();
     }
 
     public void unbindArena() {
       Arena arena = threadArenaBinding;
       if (arena != null) {
-        arena.numRegisterThread.decrementAndGet();
+        arena.decRegisteredThread();
         threadArenaBinding = null;
       }
     }
@@ -194,15 +200,11 @@ public class BinaryAllocator {
         return boundArena;
       }
 
-      if (arenas == null || arenas.length == 0) {
-        return null;
-      }
-
       Arena minArena = arenas[0];
 
       for (int i = 1; i < arenas.length; i++) {
         Arena arena = arenas[i];
-        if (arena.numRegisterThread.get() < minArena.numRegisterThread.get()) {
+        if (arena.getNumRegisteredThread() < minArena.getNumRegisteredThread()) {
           minArena = arena;
         }
       }
@@ -226,27 +228,15 @@ public class BinaryAllocator {
     }
 
     if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
-      LOGGER.warn(
+      LOGGER.info(
           "Binary allocator is shutting down because of high GC time percentage {}%.",
           curGcTimePercent);
-      for (Arena arena : heapArenas) {
-        arena.evict(1.0);
-      }
+      evict(1.0);
       close(true);
     } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
-      LOGGER.warn(
-          "Binary allocator is half evicting because of high GC time percentage {}%.",
-          curGcTimePercent);
-      for (Arena arena : heapArenas) {
-        arena.evict(0.5);
-      }
+      evict(0.5);
     } else if (curGcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
-      LOGGER.warn(
-          "Binary allocator is running evictor because of high GC time percentage {}%.",
-          curGcTimePercent);
-      for (Arena arena : heapArenas) {
-        arena.evict(0.2);
-      }
+      evict(0.2);
     }
   }
 
@@ -258,8 +248,6 @@ public class BinaryAllocator {
 
     @Override
     public void run() {
-      LOGGER.debug("Binary allocator running sample eviction");
-
       for (Arena arena : heapArenas) {
         arena.runSampleEviction();
       }

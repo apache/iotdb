@@ -32,12 +32,14 @@ import static java.lang.Math.max;
  * weighted moving average.
  */
 public class AdaptiveWeightedAverage {
+
+  private static final int OLD_THRESHOLD = 100;
+
   private float average;
   private int sampleCount;
   private int tmpMaxSample;
   private final int weight;
   private boolean isOld; // Enable to have enough historical data
-  private static final int OLD_THRESHOLD = 100;
 
   public AdaptiveWeightedAverage(int weight) {
     this.weight = weight;
@@ -68,6 +70,7 @@ public class AdaptiveWeightedAverage {
     average = 0f;
     sampleCount = 0;
     tmpMaxSample = 0;
+    isOld = false;
   }
 
   void incrementCount() {
