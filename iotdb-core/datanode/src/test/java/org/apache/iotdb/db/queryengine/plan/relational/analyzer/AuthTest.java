@@ -75,7 +75,7 @@ public class AuthTest {
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
         .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
-    // user `user2` hava testdb.table1's SELECT privilege
+    // user `user2` has testdb.table1's SELECT privilege
     Mockito.doNothing()
         .when(authChecker)
         .checkTablePrivilege(eq(user2), eq(testdbTable1), eq(TableModelPrivilege.SELECT));
@@ -122,7 +122,7 @@ public class AuthTest {
     Mockito.doThrow(new AccessDeniedException(errorMsg))
         .when(authChecker)
         .checkDatabasePrivilege(eq(user1), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
-    // user `user2` hava test1's CREATE privilege
+    // user `user2` has test1's CREATE privilege
     Mockito.doNothing()
         .when(authChecker)
         .checkDatabasePrivilege(eq(user2), eq(databaseTest1), eq(TableModelPrivilege.CREATE));
