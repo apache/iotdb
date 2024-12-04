@@ -39,7 +39,7 @@ import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataS
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBUncorrelatedSubqueryInWhereClauseIT {
+public class IoTDBUncorrelatedScalarSubqueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -54,6 +54,7 @@ public class IoTDBUncorrelatedSubqueryInWhereClauseIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // region test in where clause
   @Test
   public void testScalarSubqueryAfterComparisonInOneTable() {
     String sql;
@@ -280,4 +281,92 @@ public class IoTDBUncorrelatedSubqueryInWhereClauseIT {
         "mismatched input",
         DATABASE_NAME);
   }
+
+  // endregion
+
+  // region test in select clause
+  @Test
+  public void testScalarSubqueryInSelectClause() {
+    String sql;
+    String[] expectedHeader;
+    String[] retArray;
+
+    // Test case: select scalar subquery as one constant column
+    sql =
+        "SELECT cast((SELECT max(%s) from table1 where device_id = 'd01') AS INT32) as %s from table1 where device_id = 'd01'";
+    retArray = new String[] {"70,", "70,", "70,", "70,", "70,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+
+    // Test case: scalar subquery in arithmetic expression and function expression
+    sql =
+        "SELECT cast((s1 + (SELECT max(%s) from table1 where device_id = 'd01')) AS INT32) as %s from table1 where device_id = 'd01'";
+    retArray = new String[] {"100,", "110,", "120,", "130,", "140,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+
+    sql =
+        "SELECT  cast(((SELECT max(%s) from table1 where device_id = 'd01') + (SELECT max(%s) from table1 where device_id = 'd01')) AS INT32) as %s from table1 where device_id = 'd01'";
+    retArray = new String[] {"140,", "140,", "140,", "140,", "140,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+
+    // Test case: scalar subquery in udf expression
+    sql =
+        "SELECT cast(floor(sin((SELECT max(%s) from table1 where device_id = 'd01'))) AS INT32) as %s from table1 where device_id = 'd01'";
+    retArray = new String[] {"0,", "0,", "0,", "0,", "0,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+  }
+
+  // endregion
+
+  // region test in having clause
+  @Test
+  public void testScalarSubqueryInHavingClause() {
+    String sql;
+    String[] expectedHeader;
+    String[] retArray;
+
+    // Test case: scalar subquery in having clause
+    sql =
+        "SELECT device_id, count(*) from table1 group by device_id having count(*) > 3 + (SELECT count(*) from table2 where device_id = 'd01')";
+    expectedHeader = new String[] {"device_id", "_col1"};
+    retArray =
+        new String[] {
+          "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
+        };
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+  }
+  // endregion
 }
