@@ -67,7 +67,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to create consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to create consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to create consensus pipe", e);
     }
   }
@@ -82,7 +82,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to start consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to start consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to start consensus pipe", e);
     }
   }
@@ -97,7 +97,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to stop consensus pipe", e);
     }
   }
@@ -114,7 +114,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to drop consensus pipe", e);
     }
     // Release corresponding receiver's resource
