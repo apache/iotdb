@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
   // once you add field for this class you need to change the serialize and deserialize methods
@@ -132,10 +134,16 @@ public class PlanFragment {
     if (root instanceof VirtualSourceNode) {
       return ((VirtualSourceNode) root).getDataNodeLocation();
     } else if (root instanceof InformationSchemaTableScanNode) {
-      return ((InformationSchemaTableScanNode) root)
-          .getRegionReplicaSet()
-          .getDataNodeLocations()
-          .get(0);
+      TRegionReplicaSet regionReplicaSet =
+          ((InformationSchemaTableScanNode) root).getRegionReplicaSet();
+
+      checkArgument(
+          regionReplicaSet != null, "InformationSchemaTableScanNode must have regionReplicaSet");
+      checkArgument(
+          regionReplicaSet.getDataNodeLocations().size() == 1,
+          "each InformationSchemaTableScanNode have only one DataNodeLocation");
+
+      return regionReplicaSet.getDataNodeLocations().get(0);
     }
     for (PlanNode child : root.getChildren()) {
       TDataNodeLocation result = getNodeLocation(child);

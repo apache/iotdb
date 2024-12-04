@@ -99,7 +99,8 @@ public class InformationSchemaTableScanNode extends TableScanNode {
         assignments,
         pushDownPredicate,
         pushDownLimit,
-        pushDownOffset);
+        pushDownOffset,
+        regionReplicaSet);
   }
 
   @Override
