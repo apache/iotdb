@@ -188,7 +188,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
       int[] currTvListOffsets =
           ((MergeSortTvListIterator) timeValuePairIterator).getTVListOffsets();
       for (int i = 0; i < pageEndOffsets.length; i++) {
-        if (currTvListOffsets[i] > pageEndOffsets[i]) {
+        if (currTvListOffsets[i] >= pageEndOffsets[i]) {
           return true;
         }
       }

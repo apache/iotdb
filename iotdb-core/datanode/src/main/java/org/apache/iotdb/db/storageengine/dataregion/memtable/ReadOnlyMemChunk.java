@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -158,14 +159,15 @@ public class ReadOnlyMemChunk {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     MergeSortTvListIterator timeValuePairIterator =
         new MergeSortTvListIterator(dataType, encoding, floatPrecision, tvLists);
-    int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
+      int[] tvListOffsetsBeforeNext = timeValuePairIterator.getLastTVListOffsets();
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       if (!isPointDeleted(tvPair.getTimestamp(), deletionList, deleteCursor)) {
         if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
           Statistics stats = Statistics.getStatsByType(dataType);
           pageStatisticsList.add(stats);
-          pageOffsetsList.add(tvListOffsets);
+          pageOffsetsList.add(
+              Arrays.copyOf(tvListOffsetsBeforeNext, tvListOffsetsBeforeNext.length));
         }
 
         Statistics pageStatistics = pageStatisticsList.get(pageStatisticsList.size() - 1);
@@ -202,7 +204,6 @@ public class ReadOnlyMemChunk {
             // do nothing
         }
         pageStatistics.setEmpty(false);
-        tvListOffsets = timeValuePairIterator.getTVListOffsets();
         cnt++;
       }
     }
