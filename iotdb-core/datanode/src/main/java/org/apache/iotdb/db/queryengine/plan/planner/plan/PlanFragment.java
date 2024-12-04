@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelTypeProviderExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -130,6 +131,11 @@ public class PlanFragment {
   private TDataNodeLocation getNodeLocation(PlanNode root) {
     if (root instanceof VirtualSourceNode) {
       return ((VirtualSourceNode) root).getDataNodeLocation();
+    } else if (root instanceof InformationSchemaTableScanNode) {
+      return ((InformationSchemaTableScanNode) root)
+          .getRegionReplicaSet()
+          .getDataNodeLocations()
+          .get(0);
     }
     for (PlanNode child : root.getChildren()) {
       TDataNodeLocation result = getNodeLocation(child);

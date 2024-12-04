@@ -24,9 +24,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -35,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -142,7 +143,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
-    public PlanAndMappings visitTableScan(TableScanNode node, UnaliasContext context) {
+    public PlanAndMappings visitDeviceTableScan(DeviceTableScanNode node, UnaliasContext context) {
       Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
       SymbolMapper mapper = symbolMapper(mapping);
 
@@ -157,7 +158,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               });
 
       return new PlanAndMappings(
-          new TableScanNode(
+          new DeviceTableScanNode(
               node.getPlanNodeId(),
               node.getQualifiedObjectName(),
               newOutputs,
@@ -170,6 +171,34 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownLimit(),
               node.getPushDownOffset(),
               node.isPushLimitToEachDevice()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitInformationSchemaTableScan(
+        InformationSchemaTableScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      node.getAssignments()
+          .forEach(
+              (symbol, handle) -> {
+                Symbol newSymbol = mapper.map(symbol);
+                newAssignments.put(newSymbol, handle);
+              });
+
+      return new PlanAndMappings(
+          new InformationSchemaTableScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset()),
           mapping);
     }
 

@@ -46,11 +46,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -106,15 +106,16 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLit
  * forms(CNF).
  *
  * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
- * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
+ * or pushed down into ScanOperators, or it can only be used in FilterNode above with
+ * DeviceTableScanNode.
  *
  * <ul>
  *   <li>For metadata query expressions, it will be used in {@code tableIndexScan} method to
- *       generate the deviceEntries and DataPartition used for TableScanNode.
- *   <li>For expressions which can be pushed into TableScanNode, we will execute {@code
+ *       generate the deviceEntries and DataPartition used for DeviceTableScanNode.
+ *   <li>For expressions which can be pushed into DeviceTableScanNode, we will execute {@code
  *       extractGlobalTimeFilter}, to extract the timePredicate and pushDownValuePredicate.
- *   <li>Expression which can not be pushed down into TableScanNode, will be used in the FilterNode
- *       above of TableScanNode.
+ *   <li>Expression which can not be pushed down into DeviceTableScanNode, will be used in the
+ *       FilterNode above of DeviceTableScanNode.
  * </ul>
  *
  * <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule need
@@ -199,7 +200,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       Expression predicate = combineConjuncts(node.getPredicate(), context.inheritedPredicate);
 
-      // when exist diff function, predicate can not be pushed down into TableScanNode
+      // when exist diff function, predicate can not be pushed down into DeviceTableScanNode
       if (containsDiffFunction(predicate)) {
         node.setChild(node.getChild().accept(this, new RewriteContext()));
         node.setPredicate(predicate);
@@ -300,7 +301,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode tableScanNode, RewriteContext context) {
+    public PlanNode visitDeviceTableScan(
+        DeviceTableScanNode tableScanNode, RewriteContext context) {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
@@ -312,7 +314,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
-    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+    public PlanNode combineFilterAndScan(DeviceTableScanNode tableScanNode, Expression predicate) {
       SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
@@ -323,7 +325,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 ? expressions.get(0)
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions);
 
-        // extract global time filter and set it to TableScanNode
+        // extract global time filter and set it to DeviceTableScanNode
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
         if (resultPair.left != null) {
@@ -362,7 +364,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return tableScanNode;
     }
 
-    private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
+    private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
       Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;
@@ -414,7 +416,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions, String timeColumnName) {
+        DeviceTableScanNode tableScanNode,
+        List<Expression> metadataExpressions,
+        String timeColumnName) {
 
       List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
