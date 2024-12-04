@@ -3259,7 +3259,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && ifNotExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to create table {}.{} in config node, status is {}.",
             database,
             table.getTableName(),
@@ -3282,7 +3282,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDescTableResp resp = configNodeClient.describeTable(database, tableName, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to describe tables in database {} in config node, status is {}.",
             database,
             resp.getStatus());
@@ -3312,7 +3312,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TShowTableResp resp = configNodeClient.showTables(database, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to show tables in database {} in config node, status is {}.",
             database,
             resp.getStatus());
@@ -3380,7 +3380,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && tableIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to rename table to {} from table {}.{}, status is {}.",
             targetName,
             database,
@@ -3422,7 +3422,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to add column to table {}.{}, status is {}.", database, tableName, tsStatus);
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
@@ -3469,7 +3469,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to rename column from {} to {} for table {}.{}, status is {}.",
             oldName,
             newName,
@@ -3519,7 +3519,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to drop column {} for table {}.{}, status is {}.",
             columnName,
             database,
@@ -3565,7 +3565,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to set properties {} to table {}.{}, status is {}.",
             properties,
             database,
@@ -3600,7 +3600,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
+        LOGGER.info("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
@@ -3669,7 +3669,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         DeleteDeviceTask.buildTSBlock(resp.getDeletedNum(), future);
       } else {
-        LOGGER.warn(
+        LOGGER.info(
             "Failed to delete devices from table {}.{}, status is {}.",
             deleteDevice.getDatabase(),
             deleteDevice.getTableName(),
