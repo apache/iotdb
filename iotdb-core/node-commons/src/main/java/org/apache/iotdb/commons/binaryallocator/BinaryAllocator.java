@@ -77,7 +77,11 @@ public class BinaryAllocator {
     }
   }
 
-  private synchronized void start() {
+  public synchronized void start() {
+    if (state.get() == BinaryAllocatorState.OPEN) {
+      return;
+    }
+
     state.set(BinaryAllocatorState.OPEN);
     MetricService.getInstance().addMetricSet(this.metrics);
     sampleEvictor =

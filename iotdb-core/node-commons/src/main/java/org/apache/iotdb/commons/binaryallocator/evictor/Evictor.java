@@ -74,8 +74,11 @@ public abstract class Evictor implements Runnable {
   public void stopEvictor() {
     LOGGER.info("Stopping {}", name);
 
-    cancel();
+    if (executor == null) {
+      return;
+    }
 
+    cancel();
     executor.shutdown();
     try {
       boolean result =

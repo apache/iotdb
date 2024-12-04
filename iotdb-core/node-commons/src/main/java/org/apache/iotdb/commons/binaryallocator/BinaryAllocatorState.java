@@ -29,7 +29,7 @@ package org.apache.iotdb.commons.binaryallocator;
  *     |              |        |              |
  *     |              v        |              v
  * UNINITIALIZED --> OPEN ---> PENDING -->  CLOSE
- *                    |                       ^
+ *                    ^                       ^
  *                    |                       |
  *                    -------------------------
  * </pre>
@@ -40,11 +40,12 @@ package org.apache.iotdb.commons.binaryallocator;
  *   <li><b>UNINITIALIZED -> CLOSE</b>: When enable_binary_allocator = false
  *   <li><b>UNINITIALIZED -> OPEN</b>: When enable_binary_allocator = true
  *   <li><b>OPEN -> CLOSE</b>: When enable_binary_allocator is hot reload to false
+ *   <li><b>CLOSE -> OPEN</b>: When enable_binary_allocator is hot reload to true
  *   <li><b>PENDING -> CLOSE</b>: When enable_binary_allocator is hot reload to false
  *   <li><b>OPEN -> PENDING</b>: When in OPEN state and GC time percentage exceeds 30%, indicating
  *       allocator ineffectiveness
  *   <li><b>PENDING -> OPEN</b>: When GC time percentage drops below 5%, returning to normal state
- *       and re-enabling the allocator
+ *       and re-enabling the allocator. Or when enable_binary_allocator is hot reload to true.
  * </ul>
  */
 public enum BinaryAllocatorState {

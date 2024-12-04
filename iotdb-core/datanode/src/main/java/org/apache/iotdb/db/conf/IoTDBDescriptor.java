@@ -2861,7 +2861,9 @@ public class IoTDBDescriptor {
                       .orElse(
                           ConfigurationFileUtils.getConfigurationDefaultValue(
                               "enable_binary_allocator"))));
-      if (!commonDescriptor.getConfig().isEnableBinaryAllocator()) {
+      if (commonDescriptor.getConfig().isEnableBinaryAllocator()) {
+        BinaryAllocator.getInstance().start();
+      } else {
         BinaryAllocator.getInstance().close(false);
       }
     } catch (Exception e) {
