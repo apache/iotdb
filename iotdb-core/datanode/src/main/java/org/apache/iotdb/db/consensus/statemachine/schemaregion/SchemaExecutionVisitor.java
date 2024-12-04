@@ -148,8 +148,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       // todo implement batch creation of one device in SchemaRegion
       for (int i = 0; i < size; i++) {
         try {
-          schemaRegion.createTimeSeries(
-              transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
+          final ICreateTimeSeriesPlan createTimeSeriesPlan =
+              transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i);
+          ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(node.isGeneratedByPipe());
+          schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
         } catch (final MetadataException e) {
           logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
           failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
