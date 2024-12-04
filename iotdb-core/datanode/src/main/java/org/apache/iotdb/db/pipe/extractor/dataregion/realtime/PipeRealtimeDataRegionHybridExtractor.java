@@ -250,9 +250,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     return 3
             * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
             * PipeDataNodeAgent.task().getPipeCount()
-        >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-                - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
-            * 2;
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
   }
 
   @Override
