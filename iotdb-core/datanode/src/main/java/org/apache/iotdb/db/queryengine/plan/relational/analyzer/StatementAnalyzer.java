@@ -496,7 +496,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
