@@ -443,8 +443,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
     return this;
   }
 

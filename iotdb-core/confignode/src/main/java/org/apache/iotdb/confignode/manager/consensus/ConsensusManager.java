@@ -68,7 +68,7 @@ public class ConsensusManager {
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
   private static final int SEED_CONFIG_NODE_ID = 0;
   private static final long MAX_WAIT_READY_TIME_MS =
-      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2;
+      CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2;
   private static final long RETRY_WAIT_TIME_MS = 100;
 
   /** There is only one ConfigNodeGroup */
@@ -218,14 +218,14 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisPeriodicSnapshotInterval())
                                       .setRetryTimesMax(10)
                                       .setRetryWaitMillis(
-                                          COMMON_CONF.getConnectionTimeoutInMS() / 10)
+                                          COMMON_CONF.getCnConnectionTimeoutInMS() / 10)
                                       .build())
                               .setRead(
                                   RatisConfig.Read.newBuilder()
                                       // use thrift connection timeout to unify read timeout
                                       .setReadTimeout(
                                           TimeDuration.valueOf(
-                                              COMMON_CONF.getConnectionTimeoutInMS(),
+                                              COMMON_CONF.getCnConnectionTimeoutInMS(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .build())

@@ -121,11 +121,11 @@ public class CommonDescriptor {
                     String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setSelectorNumOfClientManager(
@@ -144,11 +144,11 @@ public class CommonDescriptor {
                     String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setDnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(config.getDnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setRpcThriftCompressionEnabled(
