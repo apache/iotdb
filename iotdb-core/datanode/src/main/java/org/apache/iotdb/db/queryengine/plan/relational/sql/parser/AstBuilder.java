@@ -222,6 +222,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
@@ -454,7 +455,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             .map(QualifiedName::toString)
             .orElse(clientSession.getDatabaseName());
     if (databaseName == null) {
-      throw new SemanticException("Database not specified");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     tableName = tableName.toLowerCase();
     databaseName = databaseName.toLowerCase();
