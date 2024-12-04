@@ -56,8 +56,8 @@ public class UDFTypeTest {
   public void testPublicInterfaces() {
     List<UDFType> tree =
         Arrays.asList(
-            UDFType.of(Model.TREE, FunctionType.NULL, true),
-            UDFType.of(Model.TREE, FunctionType.NULL, false));
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            UDFType.of(Model.TREE, FunctionType.NONE, false));
     List<UDFType> table =
         Arrays.asList(
             UDFType.of(Model.TABLE, FunctionType.SCALAR, true),
@@ -70,12 +70,12 @@ public class UDFTypeTest {
     for (UDFType udfType : tree) {
       Assert.assertTrue(udfType.isTreeModel());
       Assert.assertFalse(udfType.isTableModel());
-      Assert.assertEquals(FunctionType.NULL, udfType.getType());
+      Assert.assertEquals(FunctionType.NONE, udfType.getType());
     }
     for (UDFType udfType : table) {
       Assert.assertFalse(udfType.isTreeModel());
       Assert.assertTrue(udfType.isTableModel());
-      Assert.assertNotEquals(FunctionType.NULL, udfType.getType());
+      Assert.assertNotEquals(FunctionType.NONE, udfType.getType());
     }
   }
 }

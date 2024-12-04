@@ -576,7 +576,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
-      FunctionType functionType = FunctionType.NULL;
+      FunctionType functionType = FunctionType.NONE;
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF

@@ -30,8 +30,8 @@ import java.nio.ByteBuffer;
 
 /** UDFType is an enum class that represents the type of UDF. */
 public enum UDFType {
-  TREE_AVAILABLE(Model.TREE, FunctionType.NULL, Available.AVAILABLE),
-  TREE_UNAVAILABLE(Model.TREE, FunctionType.NULL, Available.UNAVAILABLE),
+  TREE_AVAILABLE(Model.TREE, FunctionType.NONE, Available.AVAILABLE),
+  TREE_UNAVAILABLE(Model.TREE, FunctionType.NONE, Available.UNAVAILABLE),
 
   TABLE_AVAILABLE_SCALAR(Model.TABLE, FunctionType.SCALAR, Available.AVAILABLE),
   TABLE_AVAILABLE_AGGREGATE(Model.TABLE, FunctionType.AGGREGATE, Available.AVAILABLE),
@@ -50,7 +50,7 @@ public enum UDFType {
 
   private final Model model;
 
-  /** For Tree Model: null. For Table Model: scalar, aggregate, table. */
+  /** For Tree Model: none. For Table Model: scalar, aggregate, table. */
   private final FunctionType type;
 
   private final Available available;

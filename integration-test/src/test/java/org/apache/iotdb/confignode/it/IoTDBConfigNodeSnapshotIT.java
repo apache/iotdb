@@ -289,7 +289,7 @@ public class IoTDBConfigNodeSnapshotIT {
     TCreateFunctionReq createFunctionReq1 =
         new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
             .setModel(Model.TREE)
-            .setFunctionType(FunctionType.NULL)
+            .setFunctionType(FunctionType.NONE)
             .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
@@ -297,7 +297,7 @@ public class IoTDBConfigNodeSnapshotIT {
     TCreateFunctionReq createFunctionReq2 =
         new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
             .setModel(Model.TREE)
-            .setFunctionType(FunctionType.NULL)
+            .setFunctionType(FunctionType.NONE)
             .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);

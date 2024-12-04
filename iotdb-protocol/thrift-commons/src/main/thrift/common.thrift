@@ -309,7 +309,7 @@ enum Model{
 }
 
 enum FunctionType{
-  NULL=0,
+  NONE=0,
   SCALAR=1,
   AGGREGATE=2,
   TABLE=3

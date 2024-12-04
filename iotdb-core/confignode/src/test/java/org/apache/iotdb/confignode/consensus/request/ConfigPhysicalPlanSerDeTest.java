@@ -1481,7 +1481,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new UDFInformation(
             "test1",
             "test1",
-            UDFType.of(Model.TREE, FunctionType.NULL, true),
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
             true,
             "test1.jar",
             "12345");
