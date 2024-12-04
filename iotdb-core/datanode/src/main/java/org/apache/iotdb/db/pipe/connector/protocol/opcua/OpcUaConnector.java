@@ -185,7 +185,9 @@ public class OpcUaConnector implements PipeConnector {
                                         CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
                                     .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
                                 builder,
-                                Objects.nonNull(region) ? region.getDatabaseName() : null,
+                                Objects.nonNull(region)
+                                    ? region.getDatabaseName()
+                                    : "root.__temp_db",
                                 placeHolder);
                         nameSpace.startup();
                         newServer.startup().get();
