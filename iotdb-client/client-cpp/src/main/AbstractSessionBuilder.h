@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+#ifndef IOTDB_ABSTRACTSESSIONBUILDER_H
+#define IOTDB_ABSTRACTSESSIONBUILDER_H
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+#include <string>
 
-public class IoTDBRegionMigrateDataNodeCrashITFramework
-    extends IoTDBRegionMigrateReliabilityITFramework {
-  @SafeVarargs
-  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
-  }
-}
+class AbstractSessionBuilder {
+public:
+    std::string host = "localhost";
+    int rpcPort = 6667;
+    std::string username = "root";
+    std::string password = "root";
+    std::string zoneId = "";
+    int fetchSize = 10000;
+    std::string sqlDialect = "tree";
+    std::string database = "";
+};
+
+#endif // IOTDB_ABSTRACTSESSIONBUILDER_H

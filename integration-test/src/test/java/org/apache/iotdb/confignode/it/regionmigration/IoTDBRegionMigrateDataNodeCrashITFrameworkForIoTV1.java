@@ -17,27 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass;
+package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
+import org.junit.Before;
 
-@Category({ClusterIT.class})
-@RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
-  @Test
-  public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
+public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1
+    extends IoTDBRegionMigrateReliabilityITFramework {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
   }
 
-  @Test
-  public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
+  @SafeVarargs
+  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
   }
 }

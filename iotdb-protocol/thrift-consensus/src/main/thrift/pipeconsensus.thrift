@@ -52,6 +52,7 @@ struct TPipeConsensusBatchTransferResp {
 struct TSetActiveReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required bool isActive
+  3: required bool isForDeletionPurpose
 }
 
 struct TSetActiveResp {

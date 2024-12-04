@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils; // package org.apache.iotdb.db.utils;
+package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.TrimProperties;
 
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchRule;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.Assert;
@@ -28,11 +32,13 @@ import org.junit.Test;
 
 import java.util.Properties;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 public class PropertiesTest {
   @Test
   public void PropertiesWithSpace() {
     IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
-    Properties properties = new Properties();
+    TrimProperties properties = new TrimProperties();
     properties.setProperty("load_active_listening_max_thread_num", "8 "); // data type: int
     properties.setProperty("load_active_listening_enable", "true "); // data type: Boolean
     properties.setProperty("into_operation_buffer_size_in_byte", "104857600 "); // data type: long
@@ -78,5 +84,28 @@ public class PropertiesTest {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void TrimPropertiesOnly() {
+    JavaClasses allClasses =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("org.apache.iotdb");
+
+    ArchRule rule =
+        noClasses()
+            .that()
+            .areAssignableTo("org.apache.iotdb.db.conf.IoTDBDescriptor")
+            .or()
+            .areAssignableTo("org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor")
+            .or()
+            .areAssignableTo("org.apache.iotdb.commons.conf.CommonDescriptor")
+            .should()
+            .callMethod(Properties.class, "getProperty", String.class)
+            .orShould()
+            .callMethod(Properties.class, "getProperty", String.class, String.class);
+
+    rule.check(allClasses);
   }
 }
