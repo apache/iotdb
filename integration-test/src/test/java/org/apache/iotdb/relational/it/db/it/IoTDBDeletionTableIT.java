@@ -32,6 +32,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -43,6 +45,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -50,25 +58,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDeletionTableIT {
 
-  private static String[] creationSqls =
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDeletionTableIT.class);
+  private static final String[] creationSqls =
       new String[] {
         "CREATE DATABASE IF NOT EXISTS test",
         "USE test",
         "CREATE TABLE IF NOT EXISTS vehicle0(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
       };
 
-  private String insertTemplate =
+  private final String insertTemplate =
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
-  private String deleteAllTemplate = "DROP TABLE IF EXISTS vehicle%d";
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     Locale.setDefault(Locale.ENGLISH);
 
     EnvFactory.getEnv()
@@ -82,22 +89,18 @@ public class IoTDBDeletionTableIT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  /**
-   * Should delete this case after the deletion value filter feature be implemented
-   *
-   * @throws SQLException
-   */
+  /** Should delete this case after the deletion value filter feature be implemented */
   @Test
   public void testUnsupportedValueFilter() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
-          "CREATE TABLE vehicle1(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)");
+          "CREATE TABLE vehicle1(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT, attr1 ATTRIBUTE)");
 
       statement.execute("insert into vehicle1(time, deviceId, s0) values (10, 'd0', 310)");
       statement.execute("insert into vehicle1(time, deviceId, s3) values (10, 'd0','text')");
@@ -108,6 +111,21 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals("701: The column 's0' does not exist or is not an id column", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE s1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals("701: The column 's1' does not exist or is not an id column", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE attr1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The column 'attr1' does not exist or is not an id column", e.getMessage());
       }
 
       try {
@@ -147,6 +165,20 @@ public class IoTDBDeletionTableIT {
         assertEquals(
             "701: The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead",
             e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1 WHERE true");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals("701: Unsupported expression: true in true", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicleNonExist");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals("701: Table vehiclenonexist not found", e.getMessage());
       }
 
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
@@ -237,8 +269,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("CREATE DATABASE ln3");
       statement.execute("use ln3");
       statement.execute(
-          String.format(
-              "CREATE TABLE vehicle3(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)"));
+          "CREATE TABLE vehicle3(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)");
 
       statement.execute(
           "INSERT INTO vehicle3(time, deviceId, s4) " + "values(1509465600000, 'd0', true)");
@@ -310,7 +341,6 @@ public class IoTDBDeletionTableIT {
       }
       cleanData(5);
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -346,7 +376,7 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  public void testDelFlushingMemtable() throws SQLException {
+  public void testDelFlushingMemTable() throws SQLException {
     int testNum = 7;
     int deviceId = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -376,7 +406,7 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  public void testDelMultipleFlushingMemtable() throws SQLException {
+  public void testDelMultipleFlushingMemTable() throws SQLException {
     int testNum = 8;
     int deviceId = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -530,7 +560,7 @@ public class IoTDBDeletionTableIT {
 
       statement.execute("DROP TABLE vehicle" + testNum);
 
-      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+      try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");
       } catch (SQLException e) {
         assertEquals("701: Table 'test.vehicle12' does not exist", e.getMessage());
@@ -561,33 +591,58 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  public void testMultiDevice() throws SQLException {
+  public void testSingleDeviceDeletionMultiExecution() throws SQLException {
     int testNum = 13;
-    prepareData(testNum, 2);
+    prepareData(testNum, 5);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
 
-      // init d0[1, 400] d1[1, 400]
+      // init d0[1, 400] d1[1, 400] d2[1, 400] d3[1, 400] d4[1, 400]
 
-      // remain d1[10, 400]
+      // remain d1[10, 400] d2[10, 400] d3[10, 400] d4[10, 400]
       statement.execute("DELETE FROM vehicle" + testNum + "  WHERE time < 10 or deviceId = 'd0'");
+      int[] expectedPointNumOfDevice = new int[] {0, 391, 391, 391, 391};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
 
+      // remain d1[50, 400] d2[10, 400] d3[10, 400] d4[10, 400]
+      statement.execute("DELETE FROM vehicle" + testNum + "  WHERE time < 50 and deviceId = 'd1'");
+      expectedPointNumOfDevice = new int[] {0, 351, 391, 391, 391};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d1[50, 400] d2[101, 400] d3[10, 400] d4[10, 400]
+      statement.execute(
+          "DELETE FROM vehicle" + testNum + "  WHERE time <= 100 and deviceId = 'd2'");
+      expectedPointNumOfDevice = new int[] {0, 351, 300, 391, 391};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d1[50, 400] d2[101, 400] d3[301, 400] d4[10, 400]
+      statement.execute(
+          "DELETE FROM vehicle" + testNum + "  WHERE time <= 300 and deviceId = 'd3'");
+      expectedPointNumOfDevice = new int[] {0, 351, 300, 100, 391};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d1[50, 400] d2[101, 400] d3[301, 400] d4[10, 100]
+      statement.execute("DELETE FROM vehicle" + testNum + "  WHERE time > 100 and deviceId = 'd4'");
+      expectedPointNumOfDevice = new int[] {0, 351, 300, 100, 91};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+    }
+    cleanData(testNum);
+  }
+
+  private void checkDevicePoint(int[] expectedPointNumOfDevice, Statement statement, int testNum)
+      throws SQLException {
+    for (int i = 0; i < expectedPointNumOfDevice.length; i++) {
       try (ResultSet set =
-          statement.executeQuery("SELECT * FROM vehicle" + testNum + " where deviceId = 'd1'")) {
+          statement.executeQuery(
+              "SELECT * FROM vehicle" + testNum + " where deviceId = 'd" + i + "'")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(391, cnt);
-      }
-
-      try (ResultSet set =
-          statement.executeQuery("SELECT * FROM vehicle" + testNum + " where deviceId = 'd0'")) {
-        assertFalse(set.next());
+        assertEquals(expectedPointNumOfDevice[i], cnt);
       }
     }
-    cleanData(testNum);
   }
 
   @Test
@@ -657,19 +712,109 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  public void testIllegalRange() {
-    int testNum = 15;
+  public void testIllegalRange() throws SQLException {
+    int testNum = 16;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
           "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
 
-      statement.execute("delete from t" + testNum + " where time > 10 and time <= 1");
-      fail("Exception expected");
-    } catch (SQLException e) {
-      assertEquals("701: Start time 11 is greater than end time 1", e.getMessage());
+      try {
+        statement.execute("delete from t" + testNum + " where time > 10 and time <= 1");
+        fail("Exception expected");
+      } catch (SQLException e) {
+        assertEquals("701: Start time 11 is greater than end time 1", e.getMessage());
+      }
     }
+  }
+
+  @Test
+  public void testMultiDevicePartialDeletionMultiExecution() throws SQLException {
+    int testNum = 17;
+    prepareData(testNum, 5);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      // init d0[1, 400] d1[1, 400] d2[1, 400] d3[1, 400] d4[1, 400]
+
+      // remain d0[10, 400] d1[10, 400] d2[1, 400] d3[1, 400] d4[1, 400]
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE time < 10 and (deviceId = 'd0' or deviceId = 'd1')");
+      int[] expectedPointNumOfDevice = new int[] {391, 391, 400, 400, 400};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d0[10, 400] d1[50, 400] d2[50, 400] d3[50, 400] d4[1, 400]
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE time < 50 and (deviceId = 'd1' or deviceId = 'd2' or deviceId = 'd3')");
+      expectedPointNumOfDevice = new int[] {391, 351, 351, 351, 400};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d0[101, 400] d1[50, 400] d2[101, 400] d3[101, 400] d4[101, 400]
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE time <= 100 and (deviceId = 'd2' or deviceId = 'd3' or deviceId = 'd4' or deviceId = 'd0')");
+      expectedPointNumOfDevice = new int[] {300, 351, 300, 300, 300};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d0[101, 150] d1[50, 150] d2[101, 150] d3[101, 150] d4[101, 150]
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE time > 150 and (deviceId = 'd2' or deviceId = 'd3' or deviceId = 'd4' or deviceId = 'd0' or deviceId = 'd1')");
+      expectedPointNumOfDevice = new int[] {50, 101, 50, 50, 50};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testMultiDeviceFullDeletionMultiExecution() throws SQLException {
+    int testNum = 18;
+    prepareData(testNum, 5);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      // init d0[1, 400] d1[1, 400] d2[1, 400] d3[1, 400] d4[1, 400]
+
+      // remain  d2[1, 400] d3[1, 400] d4[1, 400]
+      statement.execute(
+          "DELETE FROM vehicle" + testNum + " WHERE (deviceId = 'd0' or deviceId = 'd1')");
+      int[] expectedPointNumOfDevice = new int[] {0, 0, 400, 400, 400};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain d4[1, 400]
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE (deviceId = 'd1' or deviceId = 'd2' or deviceId = 'd3')");
+      expectedPointNumOfDevice = new int[] {0, 0, 0, 0, 400};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      // remain nothing
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE (deviceId = 'd2' or deviceId = 'd3' or deviceId = 'd4' or deviceId = 'd0')");
+      expectedPointNumOfDevice = new int[] {0, 0, 0, 0, 0};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+
+      /// remain nothing
+      statement.execute(
+          "DELETE FROM vehicle"
+              + testNum
+              + " WHERE (deviceId = 'd2' or deviceId = 'd3' or deviceId = 'd4' or deviceId = 'd0' or deviceId = 'd1')");
+      expectedPointNumOfDevice = new int[] {0, 0, 0, 0, 0};
+      checkDevicePoint(expectedPointNumOfDevice, statement, testNum);
+    }
+    cleanData(testNum);
   }
 
   @Test
@@ -715,7 +860,110 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  @Ignore
+  @Ignore("long test")
+  @Test
+  public void testConcurrentFlushAndDeletion() throws InterruptedException, ExecutionException {
+    //    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    //        Statement statement = connection.createStatement()) {
+    //      statement.execute("SET CONFIGURATION enable_seq_space_compaction='false'");
+    //    } catch (SQLException e) {
+    //      throw new RuntimeException(e);
+    //    }
+
+    AtomicLong writtenPointCounter = new AtomicLong();
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    Future<Void> writeThread =
+        threadPool.submit(() -> concurrentWrite(writtenPointCounter, threadPool));
+    Future<Void> deletionThread =
+        threadPool.submit(() -> concurrentDeletion(writtenPointCounter, threadPool));
+    writeThread.get();
+    deletionThread.get();
+    threadPool.shutdown();
+    boolean success = threadPool.awaitTermination(1, TimeUnit.MINUTES);
+    assertTrue(success);
+  }
+
+  private Void concurrentWrite(AtomicLong writtenPointCounter, ExecutorService allThreads)
+      throws SQLException {
+    int fileNumMax = 10000;
+    int pointPerFile = 100;
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+
+      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+
+      for (int i = 1; i <= fileNumMax; i++) {
+        for (int j = 0; j < pointPerFile; j++) {
+          statement.execute(
+              String.format(
+                  "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
+                  writtenPointCounter.get(), writtenPointCounter.get()));
+          writtenPointCounter.incrementAndGet();
+          if (Thread.interrupted()) {
+            return null;
+          }
+        }
+        statement.execute("FLUSH");
+      }
+    } catch (Throwable e) {
+      allThreads.shutdownNow();
+      throw e;
+    }
+    return null;
+  }
+
+  private Void concurrentDeletion(AtomicLong writtenPointCounter, ExecutorService allThreads)
+      throws SQLException, InterruptedException {
+    // delete every 10 points in 100 points
+    int deletionOffset = 0;
+    int deletionInterval = 100;
+    int deletionRange = 10;
+    long nextPointNumToDelete = deletionInterval;
+    // pointPerFile * fileNumMax
+    long deletionEnd = 100 * 10000;
+
+    long deletedCnt = 0;
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+      while (deletionOffset < deletionEnd && !Thread.interrupted()) {
+        if (writtenPointCounter.get() >= nextPointNumToDelete) {
+          statement.execute(
+              "delete from test.table1 where time >= "
+                  + deletionOffset
+                  + " and time < "
+                  + (deletionOffset + deletionRange));
+          deletedCnt += deletionRange;
+          LOGGER.info("{} points deleted", deletedCnt);
+
+          try (ResultSet set =
+              statement.executeQuery(
+                  "select count(*) from table1 where time < " + nextPointNumToDelete)) {
+            assertTrue(set.next());
+            assertEquals(nextPointNumToDelete * 9 / 10, set.getLong(1));
+          }
+          deletionOffset += deletionInterval;
+          nextPointNumToDelete += deletionInterval;
+
+        } else {
+          Thread.sleep(10);
+        }
+      }
+    } catch (Throwable e) {
+      allThreads.shutdownNow();
+      throw e;
+    }
+    return null;
+  }
+
+  @Ignore("performance")
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
     int fileNumMax = 10000;
@@ -765,7 +1013,7 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  @Ignore
+  @Ignore("performance")
   @Test
   public void testDeletionReadPerformance() throws SQLException, IOException {
     int fileNumMax = 100;
@@ -838,7 +1086,7 @@ public class IoTDBDeletionTableIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -893,6 +1141,7 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
+      String deleteAllTemplate = "DROP TABLE IF EXISTS vehicle%d";
       statement.execute(String.format(deleteAllTemplate, testNum));
     }
   }

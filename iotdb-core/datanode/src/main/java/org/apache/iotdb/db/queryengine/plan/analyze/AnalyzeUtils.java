@@ -411,14 +411,14 @@ public class AnalyzeUtils {
       List<Expression> leftList, List<Expression> rightList, Operator operator) {
     List<Expression> results = new ArrayList<>();
     for (Expression leftExp : leftList) {
-      List<Expression> terms = new ArrayList<>();
-      if (leftExp instanceof LogicalExpression) {
-        terms.addAll(((LogicalExpression) leftExp).getTerms());
-      } else {
-        terms.add(leftExp);
-      }
-
       for (Expression rightExp : rightList) {
+        List<Expression> terms = new ArrayList<>();
+        if (leftExp instanceof LogicalExpression) {
+          terms.addAll(((LogicalExpression) leftExp).getTerms());
+        } else {
+          terms.add(leftExp);
+        }
+
         if (rightExp instanceof LogicalExpression) {
           terms.addAll(((LogicalExpression) rightExp).getTerms());
         } else {
