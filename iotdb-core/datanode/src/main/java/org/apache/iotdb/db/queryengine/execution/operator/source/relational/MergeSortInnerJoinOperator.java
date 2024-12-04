@@ -61,9 +61,8 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
   protected int rightBlockListIdx;
   protected int rightIndex; // start index of rightTsBlock
   protected final int[] rightOutputSymbolIdx;
-  protected TsBlock cachedNextRightBlock;
-  // if all data of right child are consumed up
-  protected boolean rightConsumedUp = false;
+  protected TsBlock cachedNextRightBlock; // next candidate right block after rightBlockList
+  protected boolean rightConsumedUp = false; // if all data of right child are consumed up
 
   protected final JoinKeyComparator comparator;
   protected final TsBlockBuilder resultBuilder;
