@@ -221,7 +221,8 @@ public class PipeConsensusServerImpl {
                     "{}: cannot create consensus pipe between {} and {}",
                     e.getMessage(),
                     thisNode,
-                    peer);
+                    peer,
+                    e);
                 return false;
               }
             })
