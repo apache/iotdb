@@ -113,11 +113,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTreeModel) {
-    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (isTreeModel) {
+      new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+
       final List<Long> timestamps = new ArrayList<>();
       final List<Object> values = new ArrayList<>();
 
