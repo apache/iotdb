@@ -21,6 +21,7 @@ package org.apache.iotdb.udf;
 
 import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -46,7 +47,7 @@ public class ScalarFunctionExample implements ScalarFunction {
    * s1_isnull, contain_null(s2) as s2_isnull FROM t1;
    */
   @Override
-  public void validate(FunctionParameters parameters) throws Exception {
+  public void validate(FunctionParameters parameters) throws UDFException {
     if (parameters.getChildExpressionsSize() < 1) {
       throw new UDFParameterNotValidException("At least one parameter is required.");
     }
@@ -58,7 +59,7 @@ public class ScalarFunctionExample implements ScalarFunction {
   }
 
   @Override
-  public Object evaluate(Record input) throws Exception {
+  public Object evaluate(Record input) throws UDFException {
     for (int i = 0; i < input.size(); i++) {
       if (input.isNull(i)) {
         return true;
