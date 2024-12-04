@@ -27,26 +27,31 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
-public class ContainNull implements ScalarFunction {
+import java.time.LocalDate;
+
+public class DatePlusOne implements ScalarFunction {
   @Override
   public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() < 1) {
-      throw new UDFParameterNotValidException("At least one parameter is required.");
+    if (parameters.getChildExpressionsSize() != 2) {
+      throw new UDFParameterNotValidException("Only two parameter is required.");
+    }
+    if (parameters.getDataType(0) != Type.DATE) {
+      throw new UDFParameterNotValidException("The first parameter should be DATE type.");
+    }
+    if (parameters.getDataType(1) != Type.INT32 && parameters.getDataType(1) != Type.INT64) {
+      throw new UDFParameterNotValidException("The second parameter should be INT type.");
     }
   }
 
   @Override
   public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.BOOLEAN);
+    configurations.setOutputDataType(Type.DATE);
   }
 
   @Override
   public Object evaluate(Record input) {
-    for (int i = 0; i < input.size(); i++) {
-      if (input.isNull(i)) {
-        return true;
-      }
-    }
-    return false;
+    LocalDate date = input.getLocalDate(0);
+    int days = input.getInt(1);
+    return date.plusDays(days);
   }
 }

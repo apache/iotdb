@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.example.relational;
 
 import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -35,7 +36,7 @@ public class AllSum implements ScalarFunction {
   private Type outputDataType;
 
   @Override
-  public void validate(FunctionParameters parameters) throws Exception {
+  public void validate(FunctionParameters parameters) throws UDFException {
     if (parameters.getChildExpressionsSize() < 1) {
       throw new UDFParameterNotValidException("At least one parameter is required.");
     }
@@ -69,7 +70,7 @@ public class AllSum implements ScalarFunction {
   }
 
   @Override
-  public Object evaluate(Record input) throws Exception {
+  public Object evaluate(Record input) {
     double res = 0;
     for (int i = 0; i < input.size(); i++) {
       if (!input.isNull(i)) {

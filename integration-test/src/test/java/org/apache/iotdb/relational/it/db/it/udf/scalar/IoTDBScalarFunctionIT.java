@@ -55,7 +55,12 @@ public class IoTDBScalarFunctionIT {
         "insert into vehicle(time, device_id, s1, s2, s3, s4, s5) values (3, 'd0', 3, 3, null, null, false)",
         "insert into vehicle(time, device_id, s5) values (5, 'd0', true)",
         "CREATE FUNCTION contain_null as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
-        "CREATE FUNCTION all_sum as 'org.apache.iotdb.db.query.udf.example.relational.AllSum'"
+        "CREATE FUNCTION all_sum as 'org.apache.iotdb.db.query.udf.example.relational.AllSum'",
+        "CREATE TABLE t2 (device_id string id, s1 DATE measurement)",
+        "insert into t2(time, device_id, s1) values (1, 'd0', '2024-02-28')",
+        "insert into t2(time, device_id, s1) values (2, 'd0', '2024-02-29')",
+        "insert into t2(time, device_id, s1) values (3, 'd0', '2024-03-01')",
+        "CREATE FUNCTION date_plus as 'org.apache.iotdb.db.query.udf.example.relational.DatePlusOne'"
       };
 
   @Before
@@ -177,6 +182,25 @@ public class IoTDBScalarFunctionIT {
           row++;
         }
         assertEquals(4, row);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDateFunction() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      List<String> expectedResult = Arrays.asList("2024-02-29", "2024-03-01", "2024-03-02");
+      int row = 0;
+      try (ResultSet resultSet = statement.executeQuery("select date_plus(s1, 1) from t2")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(expectedResult.get(row), resultSet.getString(1));
+          row++;
+        }
+        assertEquals(3, row);
       }
     } catch (Exception e) {
       fail(e.getMessage());

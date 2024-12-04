@@ -21,6 +21,7 @@ package org.apache.iotdb.udf.api.relational;
 
 import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
 public interface ScalarFunction extends SQLFunction {
@@ -29,9 +30,9 @@ public interface ScalarFunction extends SQLFunction {
    * This method is used to validate {@linkplain FunctionParameters}.
    *
    * @param parameters parameters used to validate
-   * @throws Exception if any parameter is not valid
+   * @throws UDFException if any parameter is not valid
    */
-  void validate(FunctionParameters parameters) throws Exception;
+  void validate(FunctionParameters parameters) throws UDFException;
 
   /**
    * This method is mainly used to initialize {@linkplain ScalarFunction} and set the output data
@@ -56,10 +57,10 @@ public interface ScalarFunction extends SQLFunction {
    * may be called multiple times.
    *
    * @param input original input data row
-   * @throws Exception the user can throw errors if necessary
+   * @throws UDFException the user can throw errors if necessary
    * @throws UnsupportedOperationException if the user does not override this method
    */
-  Object evaluate(Record input) throws Exception;
+  Object evaluate(Record input) throws UDFException;
 
   /** This method is mainly used to release the resources used in the SQLFunction. */
   default void beforeDestroy() {
