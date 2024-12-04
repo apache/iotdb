@@ -125,7 +125,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int i = 0; i < schemas.size(); ++i) {
         for (int j = 0; j < tablet.getRowSize(); ++j) {
-          if (!tablet.bitMaps[i].isMarked(j)) {
+          if (Objects.isNull(tablet.bitMaps)
+              || Objects.isNull(tablet.bitMaps[i])
+              || !tablet.bitMaps[i].isMarked(j)) {
             newSchemas.add(schemas.get(i));
             timestamps.add(tablet.timestamps[j]);
             values.add(getTabletObjectValue4Opc(tablet.values[i], j, schemas.get(i).getType()));
