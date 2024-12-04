@@ -1839,6 +1839,11 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
+    public String getSQLDialect() {
+      return null;
+    }
+
+    @Override
     public void start() {}
 
     @Override

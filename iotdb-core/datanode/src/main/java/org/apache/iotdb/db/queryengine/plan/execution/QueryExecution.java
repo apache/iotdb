@@ -684,6 +684,11 @@ public class QueryExecution implements IQueryExecution {
     return analysis.getStatementType();
   }
 
+  @Override
+  public String getSQLDialect() {
+    return context.getSession().getSqlDialect().toString();
+  }
+
   public MPPQueryContext getContext() {
     return context;
   }

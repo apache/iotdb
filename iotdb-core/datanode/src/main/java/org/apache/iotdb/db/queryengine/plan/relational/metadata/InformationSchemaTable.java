@@ -50,9 +50,12 @@ public enum InformationSchemaTable {
           "queries",
           ImmutableList.of(
               new ColumnSchema(ColumnHeaderConstant.TIME, TIMESTAMP, false, TIME),
-              new ColumnSchema(ColumnHeaderConstant.QUERY_ID, STRING, false, MEASUREMENT),
-              new ColumnSchema(ColumnHeaderConstant.DATA_NODE_ID, INT32, false, MEASUREMENT),
-              new ColumnSchema(ColumnHeaderConstant.ELAPSED_TIME, FLOAT, false, MEASUREMENT),
+              new ColumnSchema(
+                  ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, STRING, false, MEASUREMENT),
+              new ColumnSchema(
+                  ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, INT32, false, MEASUREMENT),
+              new ColumnSchema(
+                  ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, FLOAT, false, MEASUREMENT),
               new ColumnSchema(ColumnHeaderConstant.STATEMENT, STRING, false, MEASUREMENT),
               new ColumnSchema(ColumnHeaderConstant.SQL_DIALECT, STRING, false, MEASUREMENT))));
 
