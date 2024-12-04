@@ -71,9 +71,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
@@ -1255,8 +1255,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
-                  TableInnerJoinOperator.class.getSimpleName());
-      return new TableInnerJoinOperator(
+                  MergeSortInnerJoinOperator.class.getSimpleName());
+      return new MergeSortInnerJoinOperator(
           operatorContext,
           leftChild,
           leftJoinKeyPosition,
@@ -1274,8 +1274,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
-                  TableFullOuterJoinOperator.class.getSimpleName());
-      return new TableFullOuterJoinOperator(
+                  MergeSortFullOuterJoinOperator.class.getSimpleName());
+      return new MergeSortFullOuterJoinOperator(
           operatorContext,
           leftChild,
           leftJoinKeyPosition,

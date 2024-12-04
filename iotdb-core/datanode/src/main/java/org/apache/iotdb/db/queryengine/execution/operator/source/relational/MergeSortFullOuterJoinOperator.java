@@ -43,18 +43,15 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
-public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
+public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableFullOuterJoinOperator.class);
-
-  private boolean leftFinished;
-  private boolean rightFinished;
+      RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
 
   private TsBlock lastMatchedRightBlock;
 
   private boolean lastMatchedRightBlockIsNull = true;
 
-  public TableFullOuterJoinOperator(
+  public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
       int leftJoinKeyPosition,
@@ -84,8 +81,7 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       return true;
     }
 
-    return (leftBlockNotEmpty() || leftChild.hasNextWithTimer())
-        || (rightBlockNotEmpty() || rightChild.hasNextWithTimer());
+    return !leftFinished || !rightFinished;
   }
 
   @Override
@@ -93,12 +89,9 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    resultBuilder.reset();
 
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-    long start = System.nanoTime();
     // prepare leftBlock and rightBlockList with cachedNextRightBlock
-    if (!prepareInput(start, maxRuntime)) {
+    if (!prepareInput()) {
       return null;
     }
 
@@ -108,11 +101,10 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
         resetRightBlockList();
       } else {
         appendLeftWithEmptyRight();
-        leftBlock = null;
-        leftIndex = 0;
+        resetLeftBlock();
       }
 
-      resultTsBlock = buildResultTsBlock(resultBuilder);
+      buildResultTsBlock();
       return checkTsBlockSizeAndGetResult();
     }
 
@@ -120,19 +112,20 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
     if (allRightLessThanLeft()) {
       appendRightWithEmptyLeft();
       resetRightBlockList();
-      resultTsBlock = buildResultTsBlock(resultBuilder);
+      buildResultTsBlock();
       return checkTsBlockSizeAndGetResult();
     }
 
     // all the leftTsBlock is less than rightTsBlock, append left with empty right
     else if (allLeftLessThanRight()) {
       appendLeftWithEmptyRight();
-      leftBlock = null;
-      leftIndex = 0;
-      resultTsBlock = buildResultTsBlock(resultBuilder);
+      resetLeftBlock();
+      buildResultTsBlock();
       return checkTsBlockSizeAndGetResult();
     }
 
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
     while (!resultBuilder.isFull()) {
       // all right block time is not matched
       TsBlock lastRightBlock = rightBlockList.get(rightBlockList.size() - 1);
@@ -151,8 +144,11 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       appendResult();
 
       if (leftIndex >= leftBlock.getPositionCount()) {
-        leftBlock = null;
-        leftIndex = 0;
+        resetLeftBlock();
+        break;
+      }
+
+      if (System.nanoTime() - start > maxRuntime) {
         break;
       }
     }
@@ -161,50 +157,21 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
       return null;
     }
 
-    resultTsBlock = buildResultTsBlock(resultBuilder);
+    buildResultTsBlock();
     return checkTsBlockSizeAndGetResult();
   }
 
   @Override
-  protected boolean prepareInput(long start, long maxRuntime) throws Exception {
+  protected boolean prepareInput() throws Exception {
+    gotCandidateBlocks();
 
-    if (!leftFinished && (leftBlock == null || leftBlock.getPositionCount() == leftIndex)) {
-      if (leftChild.hasNextWithTimer()) {
-        leftBlock = leftChild.nextWithTimer();
-        leftIndex = 0;
-      } else {
-        leftFinished = true;
-      }
+    if (leftFinished) {
+      return rightBlockNotEmpty() && gotNextRightBlock();
     }
-
-    if (!rightFinished) {
-      if (rightBlockList.isEmpty()) {
-        if (hasCachedNextRightBlock && cachedNextRightBlock != null) {
-          rightBlockList.add(cachedNextRightBlock);
-          hasCachedNextRightBlock = false;
-          cachedNextRightBlock = null;
-          tryCachedNextRightTsBlock();
-        } else if (rightChild.hasNextWithTimer()) {
-          TsBlock block = rightChild.nextWithTimer();
-          if (block != null) {
-            rightBlockList.add(block);
-            tryCachedNextRightTsBlock();
-          }
-        } else {
-          rightFinished = true;
-          hasCachedNextRightBlock = true;
-          cachedNextRightBlock = null;
-        }
-      } else {
-        if (!hasCachedNextRightBlock) {
-          tryCachedNextRightTsBlock();
-        }
-      }
+    if (rightFinished) {
+      return leftBlockNotEmpty();
     }
-
-    return (leftBlockNotEmpty() && rightBlockNotEmpty() && hasCachedNextRightBlock)
-        || (leftBlockNotEmpty() && rightFinished)
-        || (leftFinished && rightBlockNotEmpty() && hasCachedNextRightBlock);
+    return leftBlockNotEmpty() && rightBlockNotEmpty() && gotNextRightBlock();
   }
 
   protected void appendResult() {
@@ -232,7 +199,7 @@ public class TableFullOuterJoinOperator extends TableInnerJoinOperator {
         appendOneRightRowWithEmptyLeft();
       }
 
-      if (rightBlockFinish()) {
+      if (rightFinishedWithIncIndex()) {
         return;
       }
     }
