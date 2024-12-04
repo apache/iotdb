@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -373,14 +375,17 @@ public class PipeConsensusServerImpl {
     return stateMachine.read(request);
   }
 
-  public void setRemotePeerActive(Peer peer, boolean isActive)
+  public void setRemotePeerActive(Peer peer, boolean isActive, boolean isForDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
     try (SyncPipeConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
       try {
         TSetActiveResp res =
             client.setActive(
-                new TSetActiveReq(peer.getGroupId().convertToTConsensusGroupId(), isActive));
+                new TSetActiveReq(
+                    peer.getGroupId().convertToTConsensusGroupId(),
+                    isActive,
+                    isForDeletionPurpose));
         if (!RpcUtils.SUCCESS_STATUS.equals(res.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
               String.format(
@@ -441,6 +446,7 @@ public class PipeConsensusServerImpl {
       Peer targetPeer, Peer regionMigrationCoordinatorPeer, boolean needManuallyStart)
       throws ConsensusGroupModifyPeerException {
     try {
+      KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
       consensusPipeManager.createConsensusPipe(
           thisNode, targetPeer, regionMigrationCoordinatorPeer, needManuallyStart);
       peerManager.addAndPersist(targetPeer);

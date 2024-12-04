@@ -20,9 +20,24 @@
 package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 
-public class IoTDBRegionMigrateDataNodeCrashITFramework
+import org.junit.Before;
+
+public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1
     extends IoTDBRegionMigrateReliabilityITFramework {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+  }
+
   @SafeVarargs
   public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
     successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
