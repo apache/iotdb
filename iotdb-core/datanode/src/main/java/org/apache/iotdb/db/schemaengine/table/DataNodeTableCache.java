@@ -338,6 +338,7 @@ public class DataNodeTableCache implements ITableCache {
                     final Pair<TsTable, Long> existingPair =
                         preUpdateTableMap.get(database).get(tableName);
                     if (Objects.isNull(existingPair)
+                        || Objects.isNull(existingPair.getLeft())
                         || !Objects.equals(
                             existingPair.getRight(),
                             previousVersions.get(database).get(tableName))) {

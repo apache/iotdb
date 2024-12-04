@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Properties;
 
 public class CommonDescriptor {
 
@@ -71,7 +70,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) throws IOException {
+  public void loadCommonProps(TrimProperties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -121,11 +120,11 @@ public class CommonDescriptor {
                     String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setSelectorNumOfClientManager(
@@ -144,11 +143,11 @@ public class CommonDescriptor {
                     String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setDnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(config.getDnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setRpcThriftCompressionEnabled(
@@ -247,7 +246,7 @@ public class CommonDescriptor {
     loadRetryProperties(properties);
   }
 
-  private void loadPipeProps(Properties properties) {
+  private void loadPipeProps(TrimProperties properties) {
     config.setPipeNonForwardingEventsProgressReportInterval(
         Integer.parseInt(
             properties.getProperty(
@@ -633,7 +632,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getPipeEventReferenceEliminateIntervalSeconds()))));
   }
 
-  private void loadSubscriptionProps(Properties properties) {
+  private void loadSubscriptionProps(TrimProperties properties) {
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -721,7 +720,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
   }
 
-  public void loadRetryProperties(Properties properties) throws IOException {
+  public void loadRetryProperties(TrimProperties properties) throws IOException {
     config.setRemoteWriteMaxRetryDurationInMs(
         Long.parseLong(
             properties.getProperty(

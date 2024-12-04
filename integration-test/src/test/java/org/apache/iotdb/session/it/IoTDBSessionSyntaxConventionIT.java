@@ -271,8 +271,8 @@ public class IoTDBSessionSyntaxConventionIT {
     Object[] values = tablet.values;
 
     for (long time = 0; time < 10; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
       long[] sensor = (long[]) values[0];
       sensor[row] = time;
       double[] sensor2 = (double[]) values[1];

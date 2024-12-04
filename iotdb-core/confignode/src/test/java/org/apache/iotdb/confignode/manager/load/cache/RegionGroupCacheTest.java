@@ -123,7 +123,7 @@ public class RegionGroupCacheTest {
         2, new RegionHeartbeatSample(currentTime, RegionStatus.Removing));
     disabledRegionGroup2.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Disabled,
+        RegionGroupStatus.Available,
         disabledRegionGroup2.getCurrentStatistics().getRegionGroupStatus());
   }
 }

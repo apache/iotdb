@@ -62,7 +62,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       List<List<TimeRange>> valueColumnsDeletionList)
       throws QueryProcessException {
     super(context);
-    this.timeChunkName = schema.getMeasurementId();
+    this.timeChunkName = schema.getMeasurementName();
     this.valueChunkNames = schema.getSubMeasurementsList();
     this.dataTypes = schema.getSubMeasurementsTSDataTypeList();
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();

@@ -293,6 +293,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
+
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("__system.sql-dialect=table"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));

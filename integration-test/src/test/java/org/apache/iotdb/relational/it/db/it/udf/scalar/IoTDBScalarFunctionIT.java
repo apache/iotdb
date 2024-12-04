@@ -36,6 +36,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Types;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -193,15 +194,29 @@ public class IoTDBScalarFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE test");
-      List<String> expectedResult = Arrays.asList("2024-02-29", "2024-03-01", "2024-03-02");
+      List<LocalDate> expectedResult =
+          Arrays.asList(
+              LocalDate.of(2024, 2, 29), LocalDate.of(2024, 3, 1), LocalDate.of(2024, 3, 2));
       int row = 0;
       try (ResultSet resultSet = statement.executeQuery("select date_plus(s1, 1) from t2")) {
         while (resultSet.next()) {
-          Assert.assertEquals(expectedResult.get(row), resultSet.getString(1));
+          Assert.assertEquals(expectedResult.get(row), resultSet.getDate(1).toLocalDate());
           row++;
         }
         assertEquals(3, row);
       }
+      expectedResult =
+          Arrays.asList(
+              LocalDate.of(2024, 3, 1), LocalDate.of(2024, 3, 2), LocalDate.of(2024, 3, 3));
+      row = 0;
+      try (ResultSet resultSet = statement.executeQuery("select date_plus(s1, 2) from t2")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(expectedResult.get(row), resultSet.getDate(1).toLocalDate());
+          row++;
+        }
+        assertEquals(3, row);
+      }
+
     } catch (Exception e) {
       fail(e.getMessage());
     }

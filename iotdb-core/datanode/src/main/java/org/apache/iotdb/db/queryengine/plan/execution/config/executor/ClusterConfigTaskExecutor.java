@@ -197,7 +197,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionT
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
@@ -310,6 +310,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -2228,7 +2229,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      ShowSubscriptionTask.buildTSBlock(
+      ShowSubscriptionsTask.buildTSBlock(
           showSubscriptionResp.isSetSubscriptionInfoList()
               ? showSubscriptionResp.getSubscriptionInfoList()
               : Collections.emptyList(),
@@ -3104,7 +3105,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showDatabases(final ShowDB showDB) {
+  public SettableFuture<ConfigTaskResult> showDatabases(
+      final ShowDB showDB, final Function<String, Boolean> canSeenDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
@@ -3115,7 +3117,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
-      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails());
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }

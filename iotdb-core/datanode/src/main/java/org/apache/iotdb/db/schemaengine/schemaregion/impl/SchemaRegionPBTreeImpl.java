@@ -858,13 +858,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override

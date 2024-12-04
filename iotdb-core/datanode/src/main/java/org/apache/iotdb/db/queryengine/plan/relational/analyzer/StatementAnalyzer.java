@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -117,7 +119,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -206,7 +210,7 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
@@ -533,6 +537,9 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
+      if (true) {
+        throw new SemanticException("Delete statement is not supported yet.");
+      }
       final Scope ret = Scope.create();
       AnalyzeUtils.analyzeDelete(node, queryContext);
       analysis.setScope(node, ret);
@@ -1736,6 +1743,10 @@ public class StatementAnalyzer {
       }
 
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
+
+      // access control
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -1749,37 +1760,12 @@ public class StatementAnalyzer {
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
 
-      //      boolean addRowIdColumn = updateKind.isPresent();
-      //
-      //      if (addRowIdColumn) {
-      //        // Add the row id field
-      //        ColumnHandle rowIdColumnHandle = metadata.getMergeRowIdColumnHandle(session,
-      // tableHandle.get());
-      //        Type type = metadata.getColumnMetadata(session, tableHandle.get(),
-      // rowIdColumnHandle).getType();
-      //        Field field = Field.newUnqualified(Optional.empty(), type);
-      //        fields.add(field);
-      //        analysis.setColumn(field, rowIdColumnHandle);
-      //      }
-
       List<Field> outputFields = fields.build();
 
       RelationType relationType = new RelationType(outputFields);
-      Scope accessControlScope =
-          Scope.builder().withRelationType(RelationId.anonymous(), relationType).build();
-      //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
-      // accessControlScope);
       analysis.registerTable(table, tableSchema, name);
 
-      Scope tableScope = createAndAssignScope(table, scope, relationType);
-
-      //      if (addRowIdColumn) {
-      //        FieldReference reference = new FieldReference(outputFields.size() - 1);
-      //        analyzeExpression(reference, tableScope);
-      //        analysis.setRowIdField(table, reference);
-      //      }
-
-      return tableScope;
+      return createAndAssignScope(table, scope, relationType);
     }
 
     private Scope createScopeForCommonTableExpression(
@@ -3096,6 +3082,26 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
   }

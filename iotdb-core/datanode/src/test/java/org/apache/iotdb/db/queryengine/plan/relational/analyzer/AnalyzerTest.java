@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -112,7 +113,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
-  private static final NopAccessControl nopAccessControl = new NopAccessControl();
+  private static final AccessControl nopAccessControl = new AllowAllAccessControl();
 
   QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
@@ -1264,6 +1265,4 @@ public class AnalyzerTest {
             NOOP);
     return analyzer.analyze(statement);
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }

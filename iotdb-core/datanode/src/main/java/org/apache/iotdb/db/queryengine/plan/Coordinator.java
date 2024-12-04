@@ -52,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -82,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -142,6 +145,7 @@ public class Coordinator {
 
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
+  private final AccessControl accessControl;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -158,6 +162,7 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
+    this.accessControl = new AllowAllAccessControl();
   }
 
   private ExecutionResult execution(
@@ -336,7 +341,8 @@ public class Coordinator {
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             logicalPlanOptimizers,
-            distributionPlanOptimizers);
+            distributionPlanOptimizers,
+            accessControl);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -372,6 +378,7 @@ public class Coordinator {
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
         || statement instanceof PipeStatement
+        || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
         || statement instanceof ShowCurrentUser
         || statement instanceof ShowCurrentDatabase
@@ -386,7 +393,8 @@ public class Coordinator {
           queryContext,
           null,
           executor,
-          statement.accept(new TableConfigTaskVisitor(clientSession, metadata), queryContext));
+          statement.accept(
+              new TableConfigTaskVisitor(clientSession, metadata, accessControl), queryContext));
     }
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
@@ -402,7 +410,8 @@ public class Coordinator {
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             logicalPlanOptimizers,
-            distributionPlanOptimizers);
+            distributionPlanOptimizers,
+            accessControl);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
