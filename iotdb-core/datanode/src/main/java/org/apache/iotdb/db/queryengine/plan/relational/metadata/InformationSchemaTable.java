@@ -19,8 +19,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
  * under the License.
  */
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -59,9 +57,6 @@ public enum InformationSchemaTable {
               new ColumnSchema(ColumnHeaderConstant.SQL_DIALECT, STRING, false, MEASUREMENT))));
 
   public static final String INFORMATION_SCHEMA = "information_schema";
-
-  public static final TConsensusGroupId FAKE_GROUP_ID =
-      new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
 
   private final TableSchema tableSchema;
 

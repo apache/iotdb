@@ -84,7 +84,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.FAKE_GROUP_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.getTargetDataNodes;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
@@ -549,7 +548,7 @@ public class TableDistributedPlanGenerator
                     node.getPushDownPredicate(),
                     node.getPushDownLimit(),
                     node.getPushDownOffset(),
-                    new TRegionReplicaSet(FAKE_GROUP_ID, ImmutableList.of(dataNodeLocation)))));
+                    new TRegionReplicaSet(null, ImmutableList.of(dataNodeLocation)))));
     return resultTableScanNodeList;
   }
 
