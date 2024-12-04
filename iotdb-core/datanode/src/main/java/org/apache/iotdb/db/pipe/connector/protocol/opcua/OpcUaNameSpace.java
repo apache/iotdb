@@ -103,19 +103,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             });
   }
 
-  void transfer(final Tablet tablet) throws UaException {
-    final boolean isTreeModel = tablet.getDeviceId().startsWith("root.");
+  void transfer(final Tablet tablet, final boolean isTableModel) throws UaException {
     if (isClientServerModel) {
-      transferTabletForClientServerModel(tablet, isTreeModel);
+      transferTabletForClientServerModel(tablet, isTableModel);
     } else {
-      transferTabletForPubSubModel(tablet, isTreeModel);
+      transferTabletForPubSubModel(tablet, isTableModel);
     }
   }
 
-  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTreeModel) {
+  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTableModel) {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
-    if (isTreeModel) {
+    if (!isTableModel) {
       new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
       final List<Long> timestamps = new ArrayList<>();
@@ -316,7 +315,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
    * @param tablet the tablet to send
    * @throws UaException if failed to create {@link Event}
    */
-  private void transferTabletForPubSubModel(final Tablet tablet, final boolean isTreeModel)
+  private void transferTabletForPubSubModel(final Tablet tablet, final boolean isTableModel)
       throws UaException {
     final BaseEventTypeNode eventNode =
         getServer()
@@ -325,7 +324,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 new NodeId(getNamespaceIndex(), UUID.randomUUID()), Identifiers.BaseEventType);
 
     List<String> sourceNameList = null;
-    if (!isTreeModel) {
+    if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
@@ -344,14 +343,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-      if (!isTreeModel
+      if (isTableModel
           && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.MEASUREMENT)) {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
 
       // Source name --> Sensor path, like root.test.d_0.s_0
-      if (isTreeModel) {
+      if (!isTableModel) {
         eventNode.setSourceName(
             tablet.getDeviceId()
                 + TsFileConstant.PATH_SEPARATOR

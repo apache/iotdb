@@ -247,7 +247,7 @@ public class OpcUaConnector implements PipeConnector {
     }
     try {
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
-        nameSpace.transfer(tablet);
+        nameSpace.transfer(tablet, pipeInsertNodeTabletInsertionEvent.isTableModelEvent());
       }
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -262,7 +262,9 @@ public class OpcUaConnector implements PipeConnector {
       return;
     }
     try {
-      nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
+      nameSpace.transfer(
+          pipeRawTabletInsertionEvent.convertToTablet(),
+          pipeRawTabletInsertionEvent.isTableModelEvent());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
     }
