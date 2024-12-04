@@ -90,7 +90,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
-  protected boolean isIoTV1 = true;
   ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 
   public static Consumer<KillPointContext> actionOfKillNode =
@@ -122,7 +121,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    this.isIoTV1 = false;
   }
 
   @After

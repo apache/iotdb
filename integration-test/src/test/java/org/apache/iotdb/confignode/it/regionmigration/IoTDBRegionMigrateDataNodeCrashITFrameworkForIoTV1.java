@@ -36,7 +36,6 @@ public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1
         .getConfig()
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-    this.isIoTV1 = true;
   }
 
   @SafeVarargs

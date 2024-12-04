@@ -51,7 +51,6 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
         .getConfig()
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-    this.isIoTV1 = true;
   }
 
   @Test
@@ -112,16 +111,14 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
 
   @Test
   public void destinationCrashDuringAddPeerTransition() throws Exception {
-    if (isIoTV1) {
-      failTest(
-          2,
-          2,
-          1,
-          3,
-          noKillPoints(),
-          buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION),
-          KillNode.DESTINATION_DATANODE);
-    }
+    failTest(
+        2,
+        2,
+        1,
+        3,
+        noKillPoints(),
+        buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION),
+        KillNode.DESTINATION_DATANODE);
   }
 
   @Test

@@ -45,7 +45,6 @@ public class IoTDBRegionMigrateClusterCrashIoTV1IT
         .getConfig()
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-    this.isIoTV1 = true;
   }
 
   @Test

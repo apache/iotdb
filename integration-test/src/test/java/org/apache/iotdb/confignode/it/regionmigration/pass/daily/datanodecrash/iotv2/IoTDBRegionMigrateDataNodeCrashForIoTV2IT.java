@@ -97,20 +97,6 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2IT
   }
 
   @Test
-  public void destinationCrashDuringAddPeerTransition() throws Exception {
-    if (isIoTV1) {
-      failTest(
-          2,
-          2,
-          1,
-          3,
-          noKillPoints(),
-          buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION),
-          KillNode.DESTINATION_DATANODE);
-    }
-  }
-
-  @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
