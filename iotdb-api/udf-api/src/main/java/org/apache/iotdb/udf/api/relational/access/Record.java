@@ -111,14 +111,6 @@ public interface Record {
   LocalDate getLocalDate(int columnIndex);
 
   /**
-   * Returns the object value at the specified column in this row.
-   *
-   * @param columnIndex index of the specified column
-   * @return the object value at the specified column in this row
-   */
-  Object getObject(int columnIndex);
-
-  /**
    * Returns the actual data type of the value at the specified column in this row.
    *
    * @param columnIndex index of the specified column

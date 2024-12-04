@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.relational;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -1005,8 +1006,8 @@ public class ColumnTransformerBuilder
           context.sessionInfo.getZoneId());
     } else {
       // user defined function
-      ScalarFunction scalarFunction = TableUDFUtils.tryGetScalarFunction(functionName);
-      if (scalarFunction != null) {
+      if (TableUDFUtils.isScalarFunction(functionName)) {
+        ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
         List<ColumnTransformer> childrenColumnTransformer =
             children.stream().map(child -> process(child, context)).collect(Collectors.toList());
         FunctionParameters parameters =
@@ -1023,7 +1024,10 @@ public class ColumnTransformerBuilder
             returnType, scalarFunction, childrenColumnTransformer);
       }
     }
-    throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
+    throw new IllegalArgumentException(
+        String.format(
+            "Unknown function %s on DataNode: %d.",
+            functionName, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
   }
 
   @Override

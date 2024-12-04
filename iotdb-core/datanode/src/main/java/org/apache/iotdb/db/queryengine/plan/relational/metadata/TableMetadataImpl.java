@@ -631,8 +631,9 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // User-defined scalar function
-    ScalarFunction scalarFunction = TableUDFUtils.tryGetScalarFunction(functionName);
-    if (scalarFunction != null) {
+
+    if (TableUDFUtils.isScalarFunction(functionName)) {
+      ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
       FunctionParameters functionParameters =
           new FunctionParameters(
               argumentTypes.stream()
@@ -659,7 +660,7 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 

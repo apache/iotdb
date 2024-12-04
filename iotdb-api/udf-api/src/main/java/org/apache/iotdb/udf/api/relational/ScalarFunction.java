@@ -26,7 +26,7 @@ import org.apache.iotdb.udf.api.relational.access.Record;
 public interface ScalarFunction extends SQLFunction {
 
   /**
-   * This method is used to validate {@link FunctionParameters}.
+   * This method is used to validate {@linkplain FunctionParameters}.
    *
    * @param parameters parameters used to validate
    * @throws Exception if any parameter is not valid
@@ -34,13 +34,13 @@ public interface ScalarFunction extends SQLFunction {
   void validate(FunctionParameters parameters) throws Exception;
 
   /**
-   * This method is mainly used to initialize {@link ScalarFunction}. In this method, the user can
-   * do the following things:
+   * This method is mainly used to initialize {@linkplain ScalarFunction} and set the output data
+   * type. In this method, the user need to do the following things:
    *
    * <ul>
-   *   <li>Use {@link FunctionParameters}. to get input data types and infer output data type.
-   *   <li>Use {@link FunctionParameters}. to get necessary attributes.
-   *   <li>Set the output data type in {@link ScalarFunctionConfig}..
+   *   <li>Use {@linkplain FunctionParameters} to get input data types and infer output data type.
+   *   <li>Use {@linkplain FunctionParameters} to get necessary attributes.
+   *   <li>Set the output data type in {@linkplain ScalarFunctionConfig}.
    * </ul>
    *
    * <p>This method is called after the ScalarFunction is instantiated and before the beginning of

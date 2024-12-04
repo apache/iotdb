@@ -144,12 +144,12 @@ public class ShowFunctionsTask implements IConfigTask {
     }
     appendFunctions(
         builder,
-        TableBuiltinScalarFunction.getNativeFunctionNames(),
+        TableBuiltinScalarFunction.getBuiltInScalarFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     appendFunctions(
         builder,
-        TableBuiltinAggregationFunction.getNativeFunctionNames(),
+        TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
@@ -261,12 +261,11 @@ public class ShowFunctionsTask implements IConfigTask {
           return BINARY_MAP.get(FUNCTION_TYPE_EXTERNAL_UDAF);
         }
       } else {
-        if (TableUDFUtils.tryGetScalarFunction(udfInformation.getFunctionName()) != null) {
+        if (TableUDFUtils.isScalarFunction(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
-        } else if (TableUDFUtils.tryGetAggregateFunction(udfInformation.getFunctionName())
-            != null) {
+        } else if (TableUDFUtils.isAggregateFunction(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
-        } else if (TableUDFUtils.tryGetTableFunction(udfInformation.getFunctionName()) != null) {
+        } else if (TableUDFUtils.isTableFunction(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
         }
       }

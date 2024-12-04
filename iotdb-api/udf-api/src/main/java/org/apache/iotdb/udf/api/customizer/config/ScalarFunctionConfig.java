@@ -23,6 +23,12 @@ import org.apache.iotdb.udf.api.type.Type;
 
 public class ScalarFunctionConfig extends UDFConfigurations {
 
+  /**
+   * Set the output data type of the scalar function.
+   *
+   * @param outputDataType the output data type of the scalar function
+   * @return this
+   */
   public ScalarFunctionConfig setOutputDataType(Type outputDataType) {
     this.outputDataType = outputDataType;
     return this;

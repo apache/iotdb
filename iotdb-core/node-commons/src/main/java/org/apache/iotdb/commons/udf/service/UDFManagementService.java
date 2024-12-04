@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 import org.apache.iotdb.udf.api.relational.SQLFunction;
 
@@ -60,7 +61,7 @@ public class UDFManagementService {
           new UDFInformation(
               functionName.toUpperCase(),
               builtinTimeSeriesGeneratingFunction.getClassName(),
-              UDFType.TREE_BUILT_IN));
+              UDFType.TREE_AVAILABLE));
       udfTable.addFunctionAndClass(
           Model.TREE, functionName, builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }
@@ -116,9 +117,9 @@ public class UDFManagementService {
               .contains(functionName.toUpperCase())
           || BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     } else {
-      return TableBuiltinScalarFunction.getNativeFunctionNames()
+      return TableBuiltinScalarFunction.getBuiltInScalarFunctionName()
               .contains(functionName.toLowerCase())
-          || TableBuiltinAggregationFunction.getNativeFunctionNames()
+          || TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
               .contains(functionName.toLowerCase());
     }
   }
@@ -237,7 +238,7 @@ public class UDFManagementService {
               "Failed to reflect UDF instance, because UDF %s has not been registered.",
               functionName.toUpperCase());
       LOGGER.warn(errorMessage);
-      throw new RuntimeException(errorMessage);
+      throw new UDFException(errorMessage);
     }
 
     try {
@@ -252,12 +253,16 @@ public class UDFManagementService {
               "Failed to reflect UDF %s(%s) instance, because %s",
               functionName, information.getClassName(), e);
       LOGGER.warn(errorMessage, e);
-      throw new RuntimeException(errorMessage);
+      throw new UDFException(errorMessage);
     }
   }
 
   public UDFInformation[] getUDFInformation(Model model) {
     return udfTable.getUDFInformationList(model).toArray(new UDFInformation[0]);
+  }
+
+  public UDFInformation getUDFInformation(Model model, String functionName) {
+    return udfTable.getUDFInformation(model, functionName);
   }
 
   @TestOnly

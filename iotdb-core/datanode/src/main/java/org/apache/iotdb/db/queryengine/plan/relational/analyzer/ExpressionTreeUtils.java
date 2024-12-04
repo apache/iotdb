@@ -93,7 +93,7 @@ public final class ExpressionTreeUtils {
 
   static boolean isAggregationFunction(String functionName) {
     // TODO consider UDAF
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
         .contains(functionName.toLowerCase());
   }
 }

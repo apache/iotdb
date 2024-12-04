@@ -48,7 +48,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSQLFunctionManagementIT {
 
   private static final int BUILTIN_SCALAR_FUNCTIONS_COUNT =
-      TableBuiltinScalarFunction.getNativeFunctionNames().size();
+      TableBuiltinScalarFunction.getBuiltInScalarFunctionName().size();
   private static final int BUILTIN_AGGREGATE_FUNCTIONS_COUNT =
       TableBuiltinAggregationFunction.values().length;
 

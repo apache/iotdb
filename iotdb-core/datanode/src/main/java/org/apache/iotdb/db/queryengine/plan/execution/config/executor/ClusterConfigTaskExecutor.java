@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -275,6 +276,9 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -571,11 +575,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
+      FunctionType functionType = FunctionType.NULL;
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF
         Class<?> clazz = Class.forName(className, true, classLoader);
-        baseClazz.cast(clazz.getDeclaredConstructor().newInstance());
+        Object o = baseClazz.cast(clazz.getDeclaredConstructor().newInstance());
+        if (Model.TABLE.equals(model)) {
+          // we check function type for table model
+          if (o instanceof ScalarFunction) {
+            functionType = FunctionType.SCALAR;
+          } else if (o instanceof AggregateFunction) {
+            functionType = FunctionType.AGGREGATE;
+          } else if (o instanceof TableFunction) {
+            functionType = FunctionType.TABLE;
+          }
+        }
+        tCreateFunctionReq.setFunctionType(functionType);
       } catch (ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException

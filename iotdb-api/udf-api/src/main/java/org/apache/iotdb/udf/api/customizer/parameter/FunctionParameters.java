@@ -24,6 +24,10 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * FunctionParameters is used to provide the information of the function parameters to the UDF
+ * implementation. It contains the data types of the child expressions, system attributes, etc.
+ */
 public class FunctionParameters {
   private final List<Type> childExpressionDataTypes;
   private final Map<String, String> systemAttributes;
@@ -34,22 +38,49 @@ public class FunctionParameters {
     this.systemAttributes = systemAttributes;
   }
 
+  /**
+   * Get the data types of the input children expressions.
+   *
+   * @return a list of data types of the input children expressions
+   */
   public List<Type> getChildExpressionDataTypes() {
     return childExpressionDataTypes;
   }
 
+  /**
+   * Get the number of the input children expressions.
+   *
+   * @return the number of the input children expressions
+   */
   public int getChildExpressionsSize() {
     return childExpressionDataTypes.size();
   }
 
+  /**
+   * Get the data type of the input child expression at the specified index.
+   *
+   * @param index column index
+   * @return the data type of the input child expression at the specified index
+   */
   public Type getDataType(int index) {
     return childExpressionDataTypes.get(index);
   }
 
+  /**
+   * Check if the system attribute exists.
+   *
+   * @param attributeKey the key of the system attribute
+   * @return true if the system attribute exists, false otherwise
+   */
   public boolean hasSystemAttribute(String attributeKey) {
     return systemAttributes.containsKey(attributeKey);
   }
 
+  /**
+   * Get all the system attributes.
+   *
+   * @return a map of the system attributes
+   */
   public Map<String, String> getSystemAttributes() {
     return systemAttributes;
   }

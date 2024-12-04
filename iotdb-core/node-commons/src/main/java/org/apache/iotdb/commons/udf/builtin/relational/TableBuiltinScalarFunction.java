@@ -76,13 +76,13 @@ public enum TableBuiltinScalarFunction {
     return functionName;
   }
 
-  private static final Set<String> NATIVE_FUNCTION_NAMES =
+  private static final Set<String> BUILT_IN_SCALAR_FUNCTION_NAME =
       new HashSet<>(
           Arrays.stream(TableBuiltinScalarFunction.values())
               .map(TableBuiltinScalarFunction::getFunctionName)
               .collect(Collectors.toList()));
 
-  public static Set<String> getNativeFunctionNames() {
-    return NATIVE_FUNCTION_NAMES;
+  public static Set<String> getBuiltInScalarFunctionName() {
+    return BUILT_IN_SCALAR_FUNCTION_NAME;
   }
 }
