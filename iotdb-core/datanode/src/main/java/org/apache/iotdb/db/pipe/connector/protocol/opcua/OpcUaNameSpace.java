@@ -72,18 +72,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
   private final String qualifiedDatabaseName;
-  private final String databaseName;
+  private final String unQualifiedDatabaseName;
 
   OpcUaNameSpace(
       final OpcUaServer server,
       final boolean isClientServerModel,
       final OpcUaServerBuilder builder,
-      final String databaseName) {
+      final String qualifiedDatabaseName) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
-    this.qualifiedDatabaseName = databaseName;
-    this.databaseName = PathUtils.unQualifyDatabaseName(databaseName);
+    this.qualifiedDatabaseName = qualifiedDatabaseName;
+    this.unQualifiedDatabaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -146,7 +146,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
         folderSegments[0] = "root";
-        folderSegments[1] = databaseName;
+        folderSegments[1] = unQualifiedDatabaseName;
 
         for (int j = 0; j < segments.length; ++j) {
           if (Objects.isNull(segments[j])) {
