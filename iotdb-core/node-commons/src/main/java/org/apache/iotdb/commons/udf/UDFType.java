@@ -99,9 +99,10 @@ public enum UDFType {
   public static UDFType deserialize(ByteBuffer buffer) {
     byte readByte = ReadWriteIOUtils.readByte(buffer);
     for (UDFType udfType : values()) {
-      if (udfType.model.getValue() == (readByte & MODEL_MASK)
-          && udfType.type.getValue() == (readByte & TYPE_MASK)
-          && udfType.available.getValue() == (readByte & AVAILABLE_MASK)) {
+      if ((byte) (udfType.model.getValue() << MODEL_SHIFT) == (readByte & MODEL_MASK)
+          && (byte) (udfType.type.getValue() << TYPE_SHIFT) == (readByte & TYPE_MASK)
+          && (byte) (udfType.available.getValue() << AVAILABLE_SHIFT)
+              == (readByte & AVAILABLE_MASK)) {
         return udfType;
       }
     }

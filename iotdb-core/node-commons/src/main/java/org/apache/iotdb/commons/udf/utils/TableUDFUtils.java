@@ -30,6 +30,10 @@ import org.apache.iotdb.udf.api.relational.TableFunction;
 
 public class TableUDFUtils {
 
+  private TableUDFUtils() {
+    // private constructor
+  }
+
   public static boolean isScalarFunction(String functionName) {
     UDFInformation information =
         UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName);
