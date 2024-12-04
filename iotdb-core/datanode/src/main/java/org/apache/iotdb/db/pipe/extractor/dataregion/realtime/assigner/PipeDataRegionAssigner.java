@@ -102,7 +102,7 @@ public class PipeDataRegionAssigner implements Closeable {
     }
   }
 
-  public void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
+  private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
     realtimeEvent.gcSchemaInfo();
     realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
 
@@ -113,7 +113,7 @@ public class PipeDataRegionAssigner implements Closeable {
     }
   }
 
-  public void assignToExtractor(
+  private void assignToExtractor(
       final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
     if (disruptor.isClosed()) {
       return;
