@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -169,7 +170,11 @@ public class OpcUaConnector implements PipeConnector {
                                 .setSecurityDir(securityDir)
                                 .setEnableAnonymousAccess(enableAnonymousAccess);
                         final OpcUaServer newServer = builder.build();
-                        final int regionId = configuration.getRuntimeEnvironment().getRegionId();
+                        final DataRegion region =
+                            StorageEngine.getInstance()
+                                .getDataRegion(
+                                    new DataRegionId(
+                                        configuration.getRuntimeEnvironment().getRegionId()));
                         nameSpace =
                             new OpcUaNameSpace(
                                 newServer,
@@ -180,15 +185,7 @@ public class OpcUaConnector implements PipeConnector {
                                         CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
                                     .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
                                 builder,
-                                regionId >= 0
-                                    ? StorageEngine.getInstance()
-                                        .getDataRegion(
-                                            new DataRegionId(
-                                                configuration
-                                                    .getRuntimeEnvironment()
-                                                    .getRegionId()))
-                                        .getDatabaseName()
-                                    : null,
+                                Objects.nonNull(region) ? region.getDatabaseName() : null,
                                 placeHolder);
                         nameSpace.startup();
                         newServer.startup().get();
