@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -2849,6 +2850,26 @@ public class IoTDBDescriptor {
 
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
+
+      // update binary allocator
+      commonDescriptor
+          .getConfig()
+          .setEnableBinaryAllocator(
+              Boolean.parseBoolean(
+                  Optional.ofNullable(
+                          properties.getProperty(
+                              "enable_binary_allocator",
+                              ConfigurationFileUtils.getConfigurationDefaultValue(
+                                  "enable_binary_allocator")))
+                      .map(String::trim)
+                      .orElse(
+                          ConfigurationFileUtils.getConfigurationDefaultValue(
+                              "enable_binary_allocator"))));
+      if (commonDescriptor.getConfig().isEnableBinaryAllocator()) {
+        BinaryAllocator.getInstance().start();
+      } else {
+        BinaryAllocator.getInstance().close(true);
+      }
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
