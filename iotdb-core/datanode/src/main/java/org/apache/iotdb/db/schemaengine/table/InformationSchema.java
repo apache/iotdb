@@ -22,7 +22,7 @@ package org.apache.iotdb.db.schemaengine.table;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
 public class InformationSchema {
-  public static final String INFORMATION_DATABASE = "information_schema";
+  private static final String INFORMATION_DATABASE = "information_schema";
 
   public static void checkDBNameInWrite(final String dbName) {
     if (dbName.equals(INFORMATION_DATABASE)) {
