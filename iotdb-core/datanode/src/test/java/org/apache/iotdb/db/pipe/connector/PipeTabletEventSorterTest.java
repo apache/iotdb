@@ -245,7 +245,7 @@ public class PipeTabletEventSorterTest {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
 
     List<Pair<IDeviceID, Integer>> list =
-        new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+        new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
     Assert.assertEquals(WriteUtils.splitTabletByDevice(tablet), list);
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = tablet.timestamps[i];

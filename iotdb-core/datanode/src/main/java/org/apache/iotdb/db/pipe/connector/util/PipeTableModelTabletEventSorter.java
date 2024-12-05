@@ -56,7 +56,7 @@ public class PipeTableModelTabletEventSorter {
    * @return A list of pairs, each containing an instance of {@link IDeviceID} and the corresponding
    *     last index in the Tablet.
    */
-  public List<Pair<IDeviceID, Integer>> deduplicateAndSortTimestampsIfNecessary() {
+  public List<Pair<IDeviceID, Integer>> sortAndDeduplicateByDevIdTimestamp() {
     if (tablet == null || tablet.getRowSize() < 1) {
       return null;
     }

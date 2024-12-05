@@ -148,7 +148,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
     final List<Pair<IDeviceID, Integer>> deviceID2Index =
-        new PipeTableModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+        new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
     if (deviceID2Index == null) {
       return;
