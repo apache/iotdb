@@ -187,6 +187,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
@@ -532,6 +533,8 @@ public class StatementAnalyzer {
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
+      accessControl.checkCanInsertIntoTable(sessionContext.getUserName(), new QualifiedObjectName(unQualifyDatabaseName(insert.getDatabase()), insert.getTableName()));
+
       return ret;
     }
 
@@ -543,6 +546,7 @@ public class StatementAnalyzer {
       final Scope ret = Scope.create();
       AnalyzeUtils.analyzeDelete(node, queryContext);
       analysis.setScope(node, ret);
+      accessControl.checkCanDeleteFromTable(sessionContext.getUserName(), new QualifiedObjectName(unQualifyDatabaseName(node.getDatabaseName()), node.getTable().getName().getSuffix()));
       return ret;
     }
 
