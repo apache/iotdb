@@ -46,6 +46,8 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     times = insertTabletStatement.getTimes();
     nullBitMaps = insertTabletStatement.getBitMaps();
     columns = insertTabletStatement.getColumns();
+    deviceIDs = insertTabletStatement.getRawTableDeviceIDs();
+    singleDevice = insertTabletStatement.isSingleDevice();
     rowCount = insertTabletStatement.getRowCount();
   }
 

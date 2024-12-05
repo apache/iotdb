@@ -52,6 +52,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     time = insertRowStatement.getTime();
     values = insertRowStatement.getValues();
     isNeedInferType = insertRowStatement.isNeedInferType();
+    deviceID = insertRowStatement.getRawTableDeviceID();
   }
 
   @Override
