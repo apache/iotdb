@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.schemaengine.table.InformationSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -84,6 +85,7 @@ public class ShowDBTask implements IConfigTask {
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    InformationSchema.buildDatabaseTsBlock(canSeenDB, builder, false);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       final String dbName = PathUtils.unQualifyDatabaseName(entry.getKey());
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
@@ -123,6 +125,7 @@ public class ShowDBTask implements IConfigTask {
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    InformationSchema.buildDatabaseTsBlock(canSeenDB, builder, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       final String dbName = entry.getKey().substring(5);
       if (!canSeenDB.test(dbName)) {

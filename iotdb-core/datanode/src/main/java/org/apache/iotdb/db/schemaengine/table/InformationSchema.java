@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public class InformationSchema {
-  public static final String INFORMATION_DATABASE = "information_schema";
+  private static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
 
   static {
@@ -40,19 +45,26 @@ public class InformationSchema {
     }
   }
 
-  public static TDatabaseInfo getTDatabaseInfo() {
-    return new TDatabaseInfo()
-        .setDataRegionNum(0)
-        .setMaxDataRegionNum(0)
-        .setMinDataRegionNum(0)
-        .setSchemaRegionNum(0)
-        .setMaxSchemaRegionNum(0)
-        .setMinSchemaRegionNum(0)
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1)
-        .setTimePartitionInterval(0)
-        .setIsTableModel(true)
-        .setTTL(Long.MAX_VALUE);
+  public static void buildDatabaseTsBlock(
+      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
+    if (!canSeenDB.test(INFORMATION_DATABASE)) {
+      return;
+    }
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+
+    builder.getColumnBuilder(2).appendNull();
+    builder.getColumnBuilder(3).appendNull();
+    builder.getColumnBuilder(4).appendNull();
+    if (details) {
+      builder.getColumnBuilder(5).writeBinary(new Binary("TABLE", TSFileConfig.STRING_CHARSET));
+    }
+    builder.declarePosition();
   }
 
   private InformationSchema() {

@@ -255,7 +255,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
-import org.apache.iotdb.db.schemaengine.table.InformationSchema;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3034,8 +3033,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
       final TShowDatabaseResp resp = client.showDatabase(req);
-      resp.getDatabaseInfoMap()
-          .put(InformationSchema.INFORMATION_DATABASE, InformationSchema.getTDatabaseInfo());
       // build TSBlock
       ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
     } catch (final IOException | ClientManagerException | TException e) {
