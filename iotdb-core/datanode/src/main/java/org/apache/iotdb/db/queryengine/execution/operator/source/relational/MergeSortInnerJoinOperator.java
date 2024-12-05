@@ -75,19 +75,19 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
 
   @Override
   protected boolean processFinished() {
-    // all the rightTsBlock is less than leftTsBlock, just skip right
+    // all the join keys in rightTsBlock are less than leftTsBlock, just skip right
     if (allRightLessThanLeft()) {
       resetRightBlockList();
       return true;
     }
 
-    // all the leftTsBlock is less than rightTsBlock, just skip left
+    // all the join Keys in leftTsBlock are less than rightTsBlock, just skip left
     if (allLeftLessThanRight()) {
       resetLeftBlock();
       return true;
     }
 
-    // continue right < left, unless right >= left
+    // continue right < left, until right >= left
     while (comparator.lessThan(
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPosition,
@@ -103,7 +103,7 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    // continue left < right, unless left >= right
+    // continue left < right, until left >= right
     while (comparator.lessThan(
         leftBlock,
         leftJoinKeyPosition,
