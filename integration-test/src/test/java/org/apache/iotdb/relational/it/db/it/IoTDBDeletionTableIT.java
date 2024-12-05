@@ -823,6 +823,10 @@ public class IoTDBDeletionTableIT {
   @Category(ManualIT.class)
   @Test
   public void testRepeatedlyWriteAndDeletion() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
     // repeat 100 times
     // each time write 10000 points and delete 1000 of them randomly
     int repetition = 100;
@@ -930,6 +934,11 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndSequentialDeletion()
       throws InterruptedException, ExecutionException, SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
+
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
@@ -952,6 +961,11 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndRandomDeletion()
       throws InterruptedException, ExecutionException, SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
+
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
