@@ -148,7 +148,7 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
-  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+  CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
   CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
       int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);

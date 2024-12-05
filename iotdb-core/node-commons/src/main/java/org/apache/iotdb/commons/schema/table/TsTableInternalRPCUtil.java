@@ -55,8 +55,7 @@ public class TsTableInternalRPCUtil {
     return outputStream.toByteArray();
   }
 
-  public static Map<String, List<TsTable>> deserializeBatchTsTable(final byte[] bytes) {
-    final InputStream inputStream = new ByteArrayInputStream(bytes);
+  public static Map<String, List<TsTable>> deserializeBatchTsTable(final InputStream inputStream) {
     final Map<String, List<TsTable>> result = new HashMap<>();
     try {
       final int dbNum = ReadWriteIOUtils.readInt(inputStream);
@@ -133,7 +132,8 @@ public class TsTableInternalRPCUtil {
 
   public static Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>>
       deserializeTableInitializationInfo(final byte[] bytes) {
-    return new Pair<>(deserializeBatchTsTable(bytes), deserializeBatchTsTable(bytes));
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
+    return new Pair<>(deserializeBatchTsTable(inputStream), deserializeBatchTsTable(inputStream));
   }
 
   public static byte[] serializeTableFetchResult(

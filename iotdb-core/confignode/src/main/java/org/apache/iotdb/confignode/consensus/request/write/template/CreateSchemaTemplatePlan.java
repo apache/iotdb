@@ -38,7 +38,7 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.CreateSchemaTemplate);
   }
 
-  public CreateSchemaTemplatePlan(byte[] templateData) {
+  public CreateSchemaTemplatePlan(final byte[] templateData) {
     this();
     this.templateData = templateData;
   }
@@ -48,33 +48,33 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
   }
 
   public Template getTemplate() {
-    Template template = new Template();
+    final Template template = new Template();
     template.deserialize(ByteBuffer.wrap(templateData));
     return template;
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     stream.writeInt(templateData.length);
     stream.write(templateData);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int length = ReadWriteIOUtils.readInt(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    final int length = ReadWriteIOUtils.readInt(buffer);
     this.templateData = ReadWriteIOUtils.readBytes(buffer, length);
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
+    final CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
     return Arrays.equals(that.templateData, templateData);
   }
 

@@ -23,7 +23,7 @@ import java.nio.ByteBuffer;
 
 public interface BufferSerializable {
 
-  void serialize(ByteBuffer buffer);
+  long serialize(ByteBuffer buffer);
 
   void deserialize(ByteBuffer buffer);
 }

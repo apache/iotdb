@@ -59,24 +59,27 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
-  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
+  public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     this.measurementIndexMap = new LinkedHashMap<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
       dataTypeList.add(schemaList.get(i).getType());
     }
     this.list = AlignedTVList.newAlignedList(dataTypeList);
+    this.ignoreAllNullRows = !isTableModel;
   }
 
-  private AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, AlignedTVList list) {
+  private AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList, AlignedTVList list, boolean isTableModel) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
     this.list = list;
+    this.ignoreAllNullRows = !isTableModel;
   }
 
   public Set<String> getAllMeasurements() {
@@ -213,13 +216,13 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
       if (measurementSchema != null) {
-        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementId());
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementName());
         // Index is null means this measurement was not in this AlignedTVList before.
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
           index = measurementIndexMap.size();
-          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
+          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
           reorderedColumnValues =
@@ -244,6 +247,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
+    if (!ignoreAllNullRows && measurementIndexMap.isEmpty()) {
+      return list.rowCount();
+    }
     return (long) list.rowCount() * measurementIndexMap.size();
   }
 
@@ -279,7 +285,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<TSDataType> dataTypeList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(
-          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
+          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
       dataTypeList.add(measurementSchema.getType());
     }
     return list.getTvListByColumnIndex(columnIndexList, dataTypeList, ignoreAllNullRows);
@@ -297,8 +303,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush(boolean ignoreAllNullRows) {
-    this.ignoreAllNullRows = ignoreAllNullRows;
+  public synchronized void sortTvListForFlush() {
     sortTVList();
   }
 
@@ -322,7 +327,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     schemaList.remove(schemaToBeRemoved);
     measurementIndexMap.clear();
     for (int i = 0; i < schemaList.size(); i++) {
-      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
   }
 
@@ -533,7 +538,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     list.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunk deserialize(DataInputStream stream) throws IOException {
+  public static AlignedWritableMemChunk deserialize(DataInputStream stream, boolean isTableModel)
+      throws IOException {
     int schemaListSize = stream.readInt();
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
     for (int i = 0; i < schemaListSize; i++) {
@@ -542,7 +548,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     AlignedTVList list = (AlignedTVList) TVList.deserialize(stream);
-    return new AlignedWritableMemChunk(schemaList, list);
+    return new AlignedWritableMemChunk(schemaList, list, isTableModel);
   }
 
   public List<IMeasurementSchema> getSchemaList() {

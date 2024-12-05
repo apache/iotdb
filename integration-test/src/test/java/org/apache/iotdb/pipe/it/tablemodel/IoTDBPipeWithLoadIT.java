@@ -68,8 +68,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -88,7 +88,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     // Enable mods transfer
-    extractorAttributes.put("modes", "true");
+    extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
 
     connectorAttributes.put("connector.batch.enable", "false");

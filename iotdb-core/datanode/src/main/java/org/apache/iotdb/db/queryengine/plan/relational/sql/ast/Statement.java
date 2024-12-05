@@ -31,8 +31,4 @@ public abstract class Statement extends Node {
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitStatement(this, context);
   }
-
-  public boolean isQuery() {
-    return false;
-  }
 }

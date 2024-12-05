@@ -73,7 +73,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementId(), k -> new WritableMemChunk(schema));
+        schema.getMeasurementName(), k -> new WritableMemChunk(schema));
   }
 
   @Override

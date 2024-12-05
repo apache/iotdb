@@ -117,8 +117,11 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
   }
 
+  // Reset table device, will alter the schema statistics as well
   public void resetTableDevice(final String table) {
-    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> 0L);
+    final long num = tableDeviceNumber.remove(table);
+    devicesNumber.addAndGet(-num);
+    schemaEngineStatistics.deleteDevice(num);
   }
 
   public void addDevice() {

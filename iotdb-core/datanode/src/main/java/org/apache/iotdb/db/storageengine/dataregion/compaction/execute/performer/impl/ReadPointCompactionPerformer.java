@@ -167,7 +167,7 @@ public class ReadPointCompactionPerformer
     }
     List<String> existedMeasurements =
         measurementSchemas.stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
 
     fragmentInstanceContext.setIgnoreAllNullRows(device.getTableName().startsWith("root."));

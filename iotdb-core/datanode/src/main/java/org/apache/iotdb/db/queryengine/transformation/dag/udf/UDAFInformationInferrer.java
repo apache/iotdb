@@ -65,7 +65,7 @@ public class UDAFInformationInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes)
       throws Exception {
-    UDAF udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
+    UDAF udaf = UDFManagementService.getInstance().reflect(functionName, UDAF.class);
 
     UDFParameters parameters =
         UDFParametersFactory.buildUdfParameters(

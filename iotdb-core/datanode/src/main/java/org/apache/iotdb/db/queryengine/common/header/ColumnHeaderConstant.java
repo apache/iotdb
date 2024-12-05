@@ -106,6 +106,7 @@ public class ColumnHeaderConstant {
   public static final String FUNCTION_NAME = "FunctionName";
   public static final String FUNCTION_TYPE = "FunctionType";
   public static final String CLASS_NAME_UDF = "ClassName(UDF)";
+  public static final String FUNCTION_STATE = "State";
 
   // column names for show triggers statement
   public static final String TRIGGER_NAME = "TriggerName";
@@ -416,7 +417,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(FUNCTION_NAME, TSDataType.TEXT),
           new ColumnHeader(FUNCTION_TYPE, TSDataType.TEXT),
-          new ColumnHeader(CLASS_NAME_UDF, TSDataType.TEXT));
+          new ColumnHeader(CLASS_NAME_UDF, TSDataType.TEXT),
+          new ColumnHeader(FUNCTION_STATE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTriggersColumnHeaders =
       ImmutableList.of(

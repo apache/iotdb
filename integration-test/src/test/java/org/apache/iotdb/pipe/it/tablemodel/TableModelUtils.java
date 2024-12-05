@@ -221,7 +221,7 @@ public class TableModelUtils {
   public static Set<String> generateExpectedResults(Tablet tablet) {
     Set<String> expectedResSet = new HashSet<>();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       StringBuilder stringBuffer = new StringBuilder();
       for (int j = 0; j < tablet.getSchemas().size(); j++) {
         BitMap bitMap = tablet.bitMaps[j];
@@ -352,18 +352,24 @@ public class TableModelUtils {
     schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
     schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
 
-    final List<Tablet.ColumnType> columnTypes =
+    final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnType.ID,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT,
-            Tablet.ColumnType.MEASUREMENT);
-    Tablet tablet = new Tablet(tableName, schemaList, columnTypes, end - start);
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypes,
+            end - start);
     tablet.initBitMaps();
     Random random = new Random();
 
@@ -371,7 +377,7 @@ public class TableModelUtils {
     for (long row = 0; row < end - start; row++) {
       int randomNumber = allowNullValue ? random.nextInt(9) : 9;
       long value = start + row;
-      int rowIndex = tablet.rowSize++;
+      int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, value);
       tablet.addValue(
           "s0", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));

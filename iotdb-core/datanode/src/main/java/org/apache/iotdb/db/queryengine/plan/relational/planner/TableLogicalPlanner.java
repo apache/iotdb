@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -67,6 +67,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.ArrayList;
@@ -127,7 +128,7 @@ public class TableLogicalPlanner {
     final Statement statement = analysis.getStatement();
     PlanNode planNode = planStatement(analysis, statement);
 
-    if (statement.isQuery()) {
+    if (analysis.isQuery()) {
       long logicalPlanCostTime = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, logicalPlanCostTime);
@@ -448,13 +449,16 @@ public class TableLogicalPlanner {
   private RelationPlan planExplainAnalyze(final ExplainAnalyze statement, final Analysis analysis) {
     RelationPlan originalQueryPlan =
         createRelationPlan(analysis, (Query) (statement.getStatement()));
+    Symbol symbol =
+        symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
     PlanNode newRoot =
         new ExplainAnalyzeNode(
             queryContext.getQueryId().genPlanNodeId(),
             originalQueryPlan.getRoot(),
             statement.isVerbose(),
             queryContext.getLocalQueryId(),
-            queryContext.getTimeOut());
+            queryContext.getTimeOut(),
+            symbol);
     return new RelationPlan(
         newRoot,
         originalQueryPlan.getScope(),

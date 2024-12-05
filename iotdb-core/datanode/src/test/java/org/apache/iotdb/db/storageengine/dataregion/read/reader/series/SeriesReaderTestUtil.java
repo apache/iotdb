@@ -166,7 +166,7 @@ public class SeriesReaderTestUtil {
     TsFileWriter fileWriter = new TsFileWriter(file);
     Map<String, IMeasurementSchema> template = new HashMap<>();
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
-      template.put(measurementSchema.getMeasurementId(), measurementSchema);
+      template.put(measurementSchema.getMeasurementName(), measurementSchema);
     }
     fileWriter.registerSchemaTemplate("template0", template, false);
     for (String deviceId : deviceIds) {
@@ -174,20 +174,20 @@ public class SeriesReaderTestUtil {
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {
-        TSRecord record = new TSRecord(i, deviceId);
+        TSRecord record = new TSRecord(deviceId, i);
         for (IMeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchema.getType(),
-                  measurementSchema.getMeasurementId(),
+                  measurementSchema.getMeasurementName(),
                   String.valueOf(i + valueOffset)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), i);
         tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();

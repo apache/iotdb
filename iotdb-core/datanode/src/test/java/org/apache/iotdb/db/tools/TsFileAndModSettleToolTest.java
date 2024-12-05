@@ -202,15 +202,15 @@ public class TsFileAndModSettleToolTest {
       for (long timestamp = 0; timestamp < maxTimestamp; timestamp += 1000) {
         for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
           String device = entry.getKey();
-          TSRecord tsRecord = new TSRecord(timestamp, device);
+          TSRecord tsRecord = new TSRecord(device, timestamp);
           for (String sensor : entry.getValue()) {
             DataPoint dataPoint = new LongDataPoint(sensor, timestamp + VALUE_OFFSET);
             tsRecord.addTuple(dataPoint);
           }
-          tsFileWriter.write(tsRecord);
+          tsFileWriter.writeRecord(tsRecord);
         }
       }
-      tsFileWriter.flushAllChunkGroups();
+      tsFileWriter.flush();
       tsFileWriter.close();
     } catch (Throwable e) {
       Assert.fail(e.getMessage());

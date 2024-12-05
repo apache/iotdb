@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -164,6 +165,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
@@ -193,6 +195,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -255,7 +258,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1470,7 +1472,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    final long rpcTimeoutInMS = COMMON_CONF.getConnectionTimeoutInMS();
+    final long rpcTimeoutInMS = COMMON_CONF.getCnConnectionTimeoutInMS();
     final long retryIntervalInMS = 1000;
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
@@ -1533,18 +1535,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus dropFunction(String udfName) {
+  public TSStatus dropFunction(TDropFunctionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.dropFunction(udfName)
+        ? udfManager.dropFunction(req.getModel(), req.getUdfName())
         : status;
   }
 
   @Override
-  public TGetUDFTableResp getUDFTable() {
+  public TGetUDFTableResp getUDFTable(TGetUdfTableReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.getUDFTable()
+        ? udfManager.getUDFTable(req.getModel())
         : new TGetUDFTableResp(status, Collections.emptyList());
   }
 
@@ -1670,7 +1672,7 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
       File file = new File(url.getFile());
-      Properties properties = new Properties();
+      TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
       try {
         ConfigurationFileUtils.updateConfigurationFile(file, properties);

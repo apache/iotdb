@@ -26,6 +26,11 @@ public class TopicConstant {
   public static final String PATTERN_KEY = "pattern";
   public static final String PATTERN_DEFAULT_VALUE = "root";
 
+  public static final String DATABASE_NAME_KEY = "database-name";
+  public static final String TABLE_NAME_KEY = "table-name";
+  public static final String DATABASE_NAME_DEFAULT_VALUE = ".*";
+  public static final String TABLE_NAME_DEFAULT_VALUE = ".*";
+
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";
   public static final String NOW_TIME_VALUE = "now";
@@ -45,6 +50,9 @@ public class TopicConstant {
   public static final String LOOSE_RANGE_PATH_VALUE = "path";
   public static final String LOOSE_RANGE_ALL_VALUE = "all";
   public static final String LOOSE_RANGE_DEFAULT_VALUE = "";
+
+  public static final String STRICT_KEY = "strict";
+  public static final String STRICT_DEFAULT_VALUE = "true";
 
   private TopicConstant() {
     throw new IllegalStateException("Utility class");

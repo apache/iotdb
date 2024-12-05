@@ -497,6 +497,24 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because of forced restart policy.",
+            stuckPipes.size());
+      }
+      return stuckPipes;
+    }
+
+    if (3 * PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()) {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        stuckPipes.add(pipeMeta);
+      }
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
+            stuckPipes.size());
+      }
       return stuckPipes;
     }
 
@@ -527,7 +545,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         continue;
       }
 
-      // Only restart the stream mode pipes for releasing memTables.
+      // Try to restart the stream mode pipes for releasing memTables.
       if (extractors.get(0).isStreamMode()) {
         if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
             && (mayMemTablePinnedCountReachDangerousThreshold()
@@ -538,8 +556,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               pipeMeta.getStaticMeta());
           stuckPipes.add(pipeMeta);
         } else if (getFloatingMemoryUsageInByte(pipeName)
-            >= (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
-                    - PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes())
+            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
                 / pipeMetaKeeper.getPipeMetaCount()) {
           // Extractors of this pipe may have too many insert nodes
           LOGGER.warn(

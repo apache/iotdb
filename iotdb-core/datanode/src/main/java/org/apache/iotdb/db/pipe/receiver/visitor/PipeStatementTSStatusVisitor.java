@@ -97,7 +97,8 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   private TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
       return new TSStatus(
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
