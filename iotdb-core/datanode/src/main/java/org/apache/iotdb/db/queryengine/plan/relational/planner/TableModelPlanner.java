@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -84,6 +85,8 @@ public class TableModelPlanner implements IPlanner {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
   public TableModelPlanner(
       final Statement statement,
       final SqlParser sqlParser,
@@ -98,7 +101,8 @@ public class TableModelPlanner implements IPlanner {
       final StatementRewrite statementRewrite,
       final List<PlanOptimizer> logicalPlanOptimizers,
       final List<PlanOptimizer> distributionPlanOptimizers,
-      final AccessControl accessControl) {
+      final AccessControl accessControl,
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -111,6 +115,7 @@ public class TableModelPlanner implements IPlanner {
     this.logicalPlanOptimizers = logicalPlanOptimizers;
     this.distributionPlanOptimizers = distributionPlanOptimizers;
     this.accessControl = accessControl;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   @Override
@@ -142,7 +147,12 @@ public class TableModelPlanner implements IPlanner {
   public DistributedQueryPlan doDistributionPlan(
       final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
     return new TableDistributedPlanner(
-            (Analysis) analysis, symbolAllocator, logicalPlan, metadata, distributionPlanOptimizers)
+            (Analysis) analysis,
+            symbolAllocator,
+            logicalPlan,
+            metadata,
+            distributionPlanOptimizers,
+            dataNodeLocationSupplier)
         .plan();
   }
 

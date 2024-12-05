@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
@@ -147,6 +148,7 @@ public class Coordinator {
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final AccessControl accessControl;
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -167,6 +169,7 @@ public class Coordinator {
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
     this.accessControl = new AllowAllAccessControl();
+    this.dataNodeLocationSupplier = new DataNodeLocationSupplierFactory().getSupplier();
   }
 
   private ExecutionResult execution(
@@ -347,7 +350,8 @@ public class Coordinator {
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl);
+            accessControl,
+            dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -415,7 +419,8 @@ public class Coordinator {
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl);
+            accessControl,
+            dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -510,5 +515,9 @@ public class Coordinator {
 
   public List<PlanOptimizer> getLogicalPlanOptimizers() {
     return logicalPlanOptimizers;
+  }
+
+  public DataNodeLocationSupplierFactory.DataNodeLocationSupplier getDataNodeLocationSupplier() {
+    return dataNodeLocationSupplier;
   }
 }

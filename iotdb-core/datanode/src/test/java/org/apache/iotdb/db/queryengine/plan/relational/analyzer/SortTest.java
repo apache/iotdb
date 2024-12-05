@@ -117,7 +117,8 @@ public class SortTest {
     // to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -175,7 +176,8 @@ public class SortTest {
     // LogicalPlan: `Output-Offset-Limit-StreamSort-TableScan`
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     // DistributedPlan: `Output-Offset-TopK-Limit-TableScan`
@@ -221,7 +223,8 @@ public class SortTest {
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-Project-Filter-TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -301,7 +304,8 @@ public class SortTest {
 
     // DistributePlan: optimize `Output-Project-MergeSort-Project-Filter-TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -384,7 +388,8 @@ public class SortTest {
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan` to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -465,7 +470,8 @@ public class SortTest {
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -693,7 +699,8 @@ public class SortTest {
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode sinkNode =
@@ -732,7 +739,8 @@ public class SortTest {
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -804,7 +812,8 @@ public class SortTest {
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =

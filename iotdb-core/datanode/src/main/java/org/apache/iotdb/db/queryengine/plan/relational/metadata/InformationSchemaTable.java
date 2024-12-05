@@ -19,26 +19,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
  * under the License.
  */
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.thrift.TException;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
-import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
@@ -85,33 +74,6 @@ public enum InformationSchemaTable {
     } catch (IllegalArgumentException e) {
       // No matched table
       return Optional.empty();
-    }
-  }
-
-  public static List<TDataNodeLocation> getTargetDataNodes(String value) {
-    switch (value) {
-      case "queries":
-        return getRunningDataNodeLocations();
-      default:
-        throw new UnsupportedOperationException();
-    }
-  }
-
-  private static List<TDataNodeLocation> getRunningDataNodeLocations() {
-    try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
-      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(
-            "An error occurred when executing getRunningDataNodeLocations():"
-                + showDataNodesResp.getStatus().getMessage(),
-            QUERY_PROCESS_ERROR.getStatusCode());
-      }
-      return showDataNodesResp.getDataNodeLocationList();
-    } catch (ClientManagerException | TException e) {
-      throw new IoTDBRuntimeException(
-          "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage(),
-          QUERY_PROCESS_ERROR.getStatusCode());
     }
   }
 }

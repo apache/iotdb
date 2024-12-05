@@ -167,7 +167,8 @@ public class JoinTest {
      *       └──DeviceTableScanNode-150
      */
     distributedQueryPlan =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA)
+        new TableDistributedPlanner(
+                analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
     assertEquals(5, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -312,7 +313,8 @@ public class JoinTest {
      *       └──DeviceTableScanNode-164
      */
     distributedQueryPlan =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA)
+        new TableDistributedPlanner(
+                analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     identitySinkNode =

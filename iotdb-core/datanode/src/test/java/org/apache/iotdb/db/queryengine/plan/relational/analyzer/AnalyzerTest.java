@@ -207,7 +207,8 @@ public class AnalyzerTest {
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
 
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     assertTrue(
@@ -250,7 +251,8 @@ public class AnalyzerTest {
     assertEquals(ASC, this.deviceTableScanNode.getScanOrder());
 
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -305,7 +307,8 @@ public class AnalyzerTest {
             .collect(Collectors.toSet()));
 
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -473,7 +476,8 @@ public class AnalyzerTest {
     assertEquals(
         Arrays.asList("tag1", "attr1", "s1", "s2"), deviceTableScanNode.getOutputColumnNames());
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -810,7 +814,8 @@ public class AnalyzerTest {
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
     distributedQueryPlan =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA)
+        new TableDistributedPlanner(
+                analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
             .plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
@@ -963,7 +968,8 @@ public class AnalyzerTest {
     // distributed plan: `IdentitySink - OutputNode - ProjectNode - LimitNode - CollectNode -
     // DeviceTableScanNode`, `IdentitySink - TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertTrue(
         getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4)
@@ -998,7 +1004,8 @@ public class AnalyzerTest {
     assertTrue(getChildrenNode(rootNode, 3) instanceof DeviceTableScanNode);
     // distributed plan: `IdentitySink - OutputNode - ProjectNode - DeviceTableScanNode`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertTrue(
         distributedQueryPlan.getFragments().get(0).getPlanNodeTree() instanceof IdentitySinkNode);
@@ -1020,7 +1027,8 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     // distributed plan: `IdentitySink - OutputNode - ProjectNode - LimitNode - DeviceTableScanNode`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     List<PlanFragment> fragments = distributedQueryPlan.getFragments();
     identitySinkNode = (IdentitySinkNode) fragments.get(0).getPlanNodeTree();
@@ -1041,7 +1049,8 @@ public class AnalyzerTest {
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("time"));
     assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("Time"));
@@ -1174,7 +1183,8 @@ public class AnalyzerTest {
     assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
 
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getInstances().size());
   }
@@ -1219,7 +1229,8 @@ public class AnalyzerTest {
     assertEquals(StatementTestUtils.genTimestamps()[0], insertNode.getTime());
 
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(1, distributedQueryPlan.getInstances().size());
   }

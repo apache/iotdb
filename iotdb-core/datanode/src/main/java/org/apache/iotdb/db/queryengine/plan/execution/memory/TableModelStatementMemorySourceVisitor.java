@@ -91,7 +91,8 @@ public class TableModelStatementMemorySourceVisitor
                 symbolAllocator,
                 logicalPlan,
                 LocalExecutionPlanner.getInstance().metadata,
-                Coordinator.getInstance().getDistributionPlanOptimizers())
+                Coordinator.getInstance().getDistributionPlanOptimizers(),
+                Coordinator.getInstance().getDataNodeLocationSupplier())
             .generateDistributedPlanWithOptimize(planContext);
 
     final List<String> lines =

@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Abstr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -84,7 +85,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.getTargetDataNodes;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -103,12 +103,17 @@ public class TableDistributedPlanGenerator
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   public TableDistributedPlanGenerator(
-      MPPQueryContext queryContext, Analysis analysis, SymbolAllocator symbolAllocator) {
+      MPPQueryContext queryContext,
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   public List<PlanNode> genResult(PlanNode node, PlanContext context) {
@@ -533,8 +538,9 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitInformationSchemaTableScan(
       InformationSchemaTableScanNode node, PlanContext context) {
     List<TDataNodeLocation> dataNodeLocations =
-        getTargetDataNodes(node.getQualifiedObjectName().getObjectName());
-    checkArgument(!dataNodeLocations.isEmpty());
+        dataNodeLocationSupplier.getDataNodeLocations(
+            node.getQualifiedObjectName().getObjectName());
+    checkArgument(!dataNodeLocations.isEmpty(), "DataNodeLocations shouldn't be empty");
 
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     dataNodeLocations.forEach(

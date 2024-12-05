@@ -86,7 +86,7 @@ public class LimitOffsetPushDownTest {
     // DistributePlan: `Output - Project - Offset - Limit - Collect - TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
-            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     CollectNode collectNode =
@@ -132,7 +132,7 @@ public class LimitOffsetPushDownTest {
     // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Project - TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
-            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -173,7 +173,7 @@ public class LimitOffsetPushDownTest {
     // DistributePlan: `IdentitySink - Output - TopK - TableScan`
     distributionPlanner =
         new TableDistributedPlanner(
-            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+            this.analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     topKNode =
@@ -220,7 +220,8 @@ public class LimitOffsetPushDownTest {
     // DistributePlan: `Identity - Output - Offset - Project - TopK - Limit - StreamSort - Project -
     // TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -267,7 +268,8 @@ public class LimitOffsetPushDownTest {
     // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
@@ -313,7 +315,8 @@ public class LimitOffsetPushDownTest {
     // DistributePlan-1 `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
     // DistributePlan-2 `Identity - TopK - Project - TableScan`
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
