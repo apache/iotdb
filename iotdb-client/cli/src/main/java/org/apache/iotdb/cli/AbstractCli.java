@@ -590,7 +590,7 @@ public abstract class AbstractCli {
             }
             ctx.getPrinter()
                 .println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
               if ("".equals(br.readLine())) {
                 maxSizeList = new ArrayList<>(columnLength);
