@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
@@ -145,6 +147,16 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteInListExpression(
       InListExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteExists(
+      ExistsPredicate node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteSubqueryExpression(
+      SubqueryExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 
