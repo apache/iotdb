@@ -245,6 +245,7 @@ public class CommonDescriptor {
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
     loadRetryProperties(properties);
+    loadBinaryAllocatorProps(properties);
   }
 
   private void loadPipeProps(Properties properties) {
@@ -724,6 +725,30 @@ public class CommonDescriptor {
                 "enable_retry_for_unknown_error",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "enable_retry_for_unknown_error"))));
+  }
+
+  public void loadBinaryAllocatorProps(TrimProperties properties) {
+    config.setEnableBinaryAllocator(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_binary_allocator", Boolean.toString(config.isEnableBinaryAllocator()))));
+    config.setMinAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "small_blob_object", String.valueOf(config.getMinAllocateSize()))));
+    config.setMaxAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "huge_blob_object", String.valueOf(config.getMaxAllocateSize()))));
+    int arenaNum =
+        Integer.parseInt(properties.getProperty("arena_num", String.valueOf(config.getArenaNum())));
+    if (arenaNum > 0) {
+      config.setArenaNum(arenaNum);
+    }
+    config.setLog2SizeClassGroup(
+        Integer.parseInt(
+            properties.getProperty(
+                "log2_size_class_group", String.valueOf(config.getLog2SizeClassGroup()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
