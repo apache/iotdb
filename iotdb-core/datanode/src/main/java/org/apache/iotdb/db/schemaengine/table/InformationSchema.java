@@ -63,7 +63,7 @@ public class InformationSchema {
 
     // Show databases
     final TsTable databaseTable = new TsTable("databases");
-    databaseTable.addColumnSchema(new IdColumnSchema("database", TSDataType.TIMESTAMP));
+    databaseTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
     databaseTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
     databaseTable.addColumnSchema(
         new IdColumnSchema(
@@ -77,7 +77,7 @@ public class InformationSchema {
 
     // Show databases details
     final TsTable databaseDetailsTable = new TsTable("databases_details");
-    databaseDetailsTable.addColumnSchema(new IdColumnSchema("database", TSDataType.TIMESTAMP));
+    databaseDetailsTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
     databaseDetailsTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
     databaseDetailsTable.addColumnSchema(
         new IdColumnSchema(

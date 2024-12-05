@@ -370,12 +370,75 @@ public class IoTDBDatabaseIT {
                   "tables_description_details,INF,",
                   "queries,INF,",
                   "tables_description,INF,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc databases"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "ttl(ms),STRING,null,",
+                  "schemareplicationfactor,INT32,null,",
+                  "datareplicationfactor,INT32,null,",
+                  "timepartitioninterval,INT64,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc databases_details"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "ttl(ms),STRING,null,",
+                  "schemareplicationfactor,INT32,null,",
+                  "datareplicationfactor,INT32,null,",
+                  "timepartitioninterval,INT64,null,",
+                  "model,STRING,null,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
                   "database,STRING,null,", "tablename,STRING,null,", "ttl(ms),STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables_details"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "tablename,STRING,null,",
+                  "ttl(ms),STRING,null,",
+                  "status,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables_description_details"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "tablename,STRING,null,",
+                  "columnname,STRING,null,",
+                  "datatype,STRING,null,",
+                  "category,STRING,null,",
+                  "status,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc queries"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,null,",
+                  "query_id,STRING,null,",
+                  "datanode_id,INT32,null,",
+                  "elapsed_time,FLOAT,null,",
+                  "statement,STRING,null,",
+                  "sql_dialect,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables_description"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "tablename,STRING,null,",
+                  "columnname,STRING,null,",
+                  "datatype,STRING,null,",
+                  "category,STRING,null,")));
     }
   }
 }
