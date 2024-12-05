@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class InformationSchema {
   private static final String INFORMATION_DATABASE = "information_schema";
+  private static final Map<String, TsTable> schemaTables = Collections.unmodifiableMap(new HashMap<>());
 
   public static void checkDBNameInWrite(final String dbName) {
     if (dbName.equals(INFORMATION_DATABASE)) {
