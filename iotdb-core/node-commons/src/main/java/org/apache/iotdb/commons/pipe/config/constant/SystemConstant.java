@@ -28,6 +28,8 @@ import java.util.Set;
 
 public class SystemConstant {
 
+  public static final String SYSTEM_PREFIX_KEY = "__system";
+
   public static final String RESTART_KEY = "__system.restart";
   public static final boolean RESTART_DEFAULT_VALUE = false;
 

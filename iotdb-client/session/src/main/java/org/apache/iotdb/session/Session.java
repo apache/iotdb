@@ -2729,6 +2729,9 @@ public class Session implements ISession {
    */
   public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (tablet.getRowSize() == 0) {
+      return;
+    }
     if (enableRedirection) {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
@@ -2750,6 +2753,8 @@ public class Session implements ISession {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
       relationalTabletGroup.put(defaultSessionConnection, tablet);
+    } else if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
+      relationalTabletGroup.put(getSessionConnection(tablet.getDeviceID(0)), tablet);
     } else {
       for (int i = 0; i < tablet.getRowSize(); i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);

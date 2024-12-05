@@ -334,7 +334,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
     return this;
   }
 

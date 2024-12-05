@@ -326,7 +326,7 @@ public class NodeManager {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2);
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
     if (clusterId == null) {
