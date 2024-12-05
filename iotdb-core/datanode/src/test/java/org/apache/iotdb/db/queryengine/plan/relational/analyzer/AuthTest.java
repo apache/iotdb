@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecke
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -221,6 +222,7 @@ public class AuthTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
+            StatementRewrite.NOOP,
             NOOP);
     analyzer.analyze(statement);
   }
