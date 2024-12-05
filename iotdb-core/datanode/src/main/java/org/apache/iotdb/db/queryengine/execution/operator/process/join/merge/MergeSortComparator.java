@@ -70,11 +70,13 @@ public class MergeSortComparator {
     Comparator<SortKey> comparator;
     switch (dataType) {
       case INT32:
+      case DATE:
         comparator =
             Comparator.comparingInt(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
         break;
       case INT64:
+      case TIMESTAMP:
         comparator =
             Comparator.comparingLong(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
@@ -90,6 +92,8 @@ public class MergeSortComparator {
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         comparator =
             Comparator.comparing(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
