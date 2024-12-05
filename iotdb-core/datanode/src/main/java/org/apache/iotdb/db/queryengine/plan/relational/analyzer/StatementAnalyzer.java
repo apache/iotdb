@@ -3005,13 +3005,7 @@ public class StatementAnalyzer {
                 name,
                 new TableSchema(
                     originalSchema.getTableName(),
-                    originalSchema.getColumns().stream()
-                        .filter(
-                            columnSchema ->
-                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                    || columnSchema.getColumnCategory()
-                                        == TsTableColumnCategory.ATTRIBUTE)
-                        .collect(Collectors.toList()))));
+                    originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
