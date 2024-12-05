@@ -442,7 +442,7 @@ cn_selector_thread_nums_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-cn_max_client_count_for_each_node_in_client_manager=300
+cn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -502,7 +502,7 @@ dn_selector_thread_count_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-dn_max_client_count_for_each_node_in_client_manager=300
+dn_max_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
