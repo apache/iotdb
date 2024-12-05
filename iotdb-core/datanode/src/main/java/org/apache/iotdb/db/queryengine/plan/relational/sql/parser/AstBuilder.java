@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -136,7 +138,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
@@ -666,13 +670,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private Map<String, String> parseExtractorAttributesClause(
       List<RelationalSqlParser.ExtractorAttributeClauseContext> contexts) {
-    final Map<String, String> collectorMap = new HashMap<>();
+    final Map<String, String> extractorMap = new HashMap<>();
     for (RelationalSqlParser.ExtractorAttributeClauseContext context : contexts) {
-      collectorMap.put(
+      extractorMap.put(
           ((StringLiteral) visit(context.extractorKey)).getValue(),
           ((StringLiteral) visit(context.extractorValue)).getValue());
     }
-    return collectorMap;
+    return extractorMap;
   }
 
   private Map<String, String> parseProcessorAttributesClause(
@@ -812,6 +816,53 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowPipePluginsStatement(
       RelationalSqlParser.ShowPipePluginsStatementContext ctx) {
     return new ShowPipePlugins();
+  }
+
+  @Override
+  public Node visitCreateTopicStatement(RelationalSqlParser.CreateTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> topicAttributes =
+        ctx.topicAttributesClause() != null
+            ? parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause())
+            : new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+
+    return new CreateTopic(topicName, hasIfNotExistsCondition, topicAttributes);
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> tppicMap = new HashMap<>();
+    for (RelationalSqlParser.TopicAttributeClauseContext context : contexts) {
+      tppicMap.put(
+          ((StringLiteral) visit(context.topicKey)).getValue(),
+          ((StringLiteral) visit(context.topicValue)).getValue());
+    }
+    return tppicMap;
+  }
+
+  @Override
+  public Node visitDropTopicStatement(RelationalSqlParser.DropTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropTopic(topicName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitShowTopicsStatement(RelationalSqlParser.ShowTopicsStatementContext ctx) {
+    final String topicName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    return new ShowTopics(topicName);
+  }
+
+  @Override
+  public Node visitShowSubscriptionsStatement(
+      RelationalSqlParser.ShowSubscriptionsStatementContext ctx) {
+    final String topicName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    return new ShowSubscriptions(topicName);
   }
 
   @Override

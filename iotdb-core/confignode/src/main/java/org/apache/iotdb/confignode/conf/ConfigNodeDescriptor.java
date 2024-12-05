@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -46,7 +47,6 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Properties;
 
 public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
@@ -118,13 +118,13 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    Properties commonProperties = new Properties();
+    TrimProperties trimProperties = new TrimProperties();
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("start reading ConfigNode conf file: {}", url);
-        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-        loadProperties(commonProperties);
+        trimProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        loadProperties(trimProperties);
       } catch (IOException | BadNodeUrlException e) {
         LOGGER.error("Couldn't load ConfigNode conf file, reject ConfigNode startup.", e);
         System.exit(-1);
@@ -133,7 +133,7 @@ public class ConfigNodeDescriptor {
         commonDescriptor
             .getConfig()
             .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
-        MetricConfigDescriptor.getInstance().loadProps(commonProperties, true);
+        MetricConfigDescriptor.getInstance().loadProps(trimProperties, true);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
@@ -145,7 +145,7 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+  private void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -401,7 +401,7 @@ public class ConfigNodeDescriptor {
     loadCQConfig(properties);
   }
 
-  private void loadRatisConsensusConfig(Properties properties) {
+  private void loadRatisConsensusConfig(TrimProperties properties) {
     conf.setDataRegionRatisConsensusLogAppenderBufferSize(
         Long.parseLong(
             properties
@@ -813,7 +813,7 @@ public class ConfigNodeDescriptor {
                 .trim()));
   }
 
-  private void loadCQConfig(Properties properties) {
+  private void loadCQConfig(TrimProperties properties) {
     int cqSubmitThread =
         Integer.parseInt(
             properties
@@ -871,7 +871,7 @@ public class ConfigNodeDescriptor {
     }
   }
 
-  public void loadHotModifiedProps(Properties properties) {
+  public void loadHotModifiedProps(TrimProperties properties) {
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
   }

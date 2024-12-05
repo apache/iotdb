@@ -68,8 +68,7 @@ public class TableModelPlanner implements IPlanner {
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
 
-  // TODO access control
-  private final AccessControl accessControl = new NopAccessControl();
+  private final AccessControl accessControl;
 
   private final WarningCollector warningCollector = WarningCollector.NOOP;
 
@@ -95,7 +94,8 @@ public class TableModelPlanner implements IPlanner {
       final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager,
       final List<PlanOptimizer> logicalPlanOptimizers,
-      final List<PlanOptimizer> distributionPlanOptimizers) {
+      final List<PlanOptimizer> distributionPlanOptimizers,
+      final AccessControl accessControl) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -106,6 +106,7 @@ public class TableModelPlanner implements IPlanner {
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.logicalPlanOptimizers = logicalPlanOptimizers;
     this.distributionPlanOptimizers = distributionPlanOptimizers;
+    this.accessControl = accessControl;
   }
 
   @Override
@@ -227,6 +228,4 @@ public class TableModelPlanner implements IPlanner {
       }
     }
   }
-
-  public static class NopAccessControl implements AccessControl {}
 }
