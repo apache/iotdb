@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2;
 
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
@@ -31,7 +31,8 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateClusterCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateClusterCrashIoTV2IT
+    extends IoTDBRegionMigrateReliabilityITFramework {
 
   @Test
   public void clusterCrash1() throws Exception {

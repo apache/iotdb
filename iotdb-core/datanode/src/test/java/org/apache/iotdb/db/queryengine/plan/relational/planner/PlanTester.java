@@ -37,7 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.Plan
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
@@ -149,7 +149,7 @@ public class PlanTester {
       SessionInfo session) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, new NopAccessControl());
+          new StatementAnalyzerFactory(metadata, sqlParser, new AllowAllAccessControl());
 
       Analyzer analyzer =
           new Analyzer(
@@ -175,6 +175,4 @@ public class PlanTester {
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }

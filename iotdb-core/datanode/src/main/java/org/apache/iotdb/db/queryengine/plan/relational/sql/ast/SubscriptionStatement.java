@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+import com.google.common.collect.ImmutableList;
 
-public class IoTDBRegionMigrateDataNodeCrashITFramework
-    extends IoTDBRegionMigrateReliabilityITFramework {
-  @SafeVarargs
-  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
+import java.util.List;
+
+public abstract class SubscriptionStatement extends Statement {
+
+  protected SubscriptionStatement() {
+    super(null);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
+    return ImmutableList.of();
   }
 }

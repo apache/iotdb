@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,29 +39,35 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowSubscriptionTask implements IConfigTask {
+public class ShowSubscriptionsTask implements IConfigTask {
 
   private final ShowSubscriptionsStatement showSubscriptionsStatement;
 
-  public ShowSubscriptionTask(ShowSubscriptionsStatement showSubscriptionsStatement) {
+  public ShowSubscriptionsTask(final ShowSubscriptionsStatement showSubscriptionsStatement) {
     this.showSubscriptionsStatement = showSubscriptionsStatement;
   }
 
+  public ShowSubscriptionsTask(final ShowSubscriptions showSubscriptions) {
+    this.showSubscriptionsStatement = new ShowSubscriptionsStatement();
+    this.showSubscriptionsStatement.setTopicName(showSubscriptions.getTopicName());
+  }
+
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showSubscriptions(showSubscriptionsStatement);
   }
 
   public static void buildTSBlock(
-      List<TShowSubscriptionInfo> subscriptionInfoList, SettableFuture<ConfigTaskResult> future) {
+      final List<TShowSubscriptionInfo> subscriptionInfoList,
+      final SettableFuture<ConfigTaskResult> future) {
     final TsBlockBuilder builder =
         new TsBlockBuilder(
             ColumnHeaderConstant.showSubscriptionColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList()));
 
-    for (TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
+    for (final TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
