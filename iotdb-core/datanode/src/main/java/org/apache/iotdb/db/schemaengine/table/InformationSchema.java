@@ -20,22 +20,33 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class InformationSchema {
-  public static final String INFORMATION_DATABASE = "information_schema";
+  private static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
 
   static {
@@ -116,6 +127,54 @@ public class InformationSchema {
 
   public static TsTable mayGetTable(final String database, final String tableName) {
     return INFORMATION_DATABASE.equals(database) ? schemaTables.get(tableName) : null;
+  }
+
+  public static boolean mayDescribeTable(
+      final String database,
+      final String tableName,
+      final boolean isDetails,
+      final SettableFuture<ConfigTaskResult> future) {
+    if (database.equals(INFORMATION_DATABASE)) {
+      return false;
+    }
+    if (!schemaTables.containsKey(tableName)) {
+      final TableNotExistsException exception =
+          new TableNotExistsException(INFORMATION_DATABASE, tableName);
+      future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
+      return true;
+    }
+    final TsTable table = schemaTables.get(tableName);
+
+    final List<TSDataType> outputDataTypes =
+        (isDetails
+                ? ColumnHeaderConstant.describeTableDetailsColumnHeaders
+                : ColumnHeaderConstant.describeTableColumnHeaders)
+            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final TsTableColumnSchema columnSchema : table.getColumnList()) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(columnSchema.getColumnName(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(columnSchema.getDataType().name(), TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(2).appendNull();
+      if (isDetails) {
+        builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
+      }
+      builder.declarePosition();
+    }
+
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            isDetails
+                ? DatasetHeaderFactory.getDescribeTableDetailsHeader()
+                : DatasetHeaderFactory.getDescribeTableHeader()));
+    return true;
   }
 
   private InformationSchema() {
