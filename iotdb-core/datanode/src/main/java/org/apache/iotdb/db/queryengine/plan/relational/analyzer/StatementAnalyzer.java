@@ -3003,9 +3003,7 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(
-                    originalSchema.getTableName(),
-                    originalSchema.getColumns())));
+                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
