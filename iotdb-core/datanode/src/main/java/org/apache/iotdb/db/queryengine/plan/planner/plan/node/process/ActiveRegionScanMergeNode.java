@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;

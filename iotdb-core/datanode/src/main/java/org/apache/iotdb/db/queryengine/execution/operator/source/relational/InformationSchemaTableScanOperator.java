@@ -68,7 +68,7 @@ public class InformationSchemaTableScanOperator implements SourceOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return hasNext();
+    return !hasNext();
   }
 
   @Override

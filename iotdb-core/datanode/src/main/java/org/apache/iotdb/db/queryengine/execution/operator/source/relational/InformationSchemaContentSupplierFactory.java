@@ -20,7 +20,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -32,15 +31,16 @@ import org.apache.tsfile.utils.BytesUtils;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.QUERIES;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class InformationSchemaContentSupplierFactory {
-  public static Iterator<TsBlock> getSupplier(
-      QualifiedObjectName tableName, List<TSDataType> dataTypes) {
-    if (tableName.getObjectName().equals(QUERIES.getSchemaTableName())) {
+  private InformationSchemaContentSupplierFactory() {}
+
+  public static Iterator<TsBlock> getSupplier(String tableName, List<TSDataType> dataTypes) {
+    if (tableName.equals(QUERIES.getSchemaTableName())) {
       return new Iterator<TsBlock>() {
-        private final TsBlockBuilder pageBuilder = new TsBlockBuilder(dataTypes);
-        private final ColumnBuilder[] columnBuilders = pageBuilder.getValueColumnBuilders();
+        private final TsBlockBuilder resultBuilder = new TsBlockBuilder(dataTypes);
+        private final ColumnBuilder[] columnBuilders = resultBuilder.getValueColumnBuilders();
 
         private final List<IQueryExecution> queryExecutions =
             Coordinator.getInstance().getAllQueryExecutions();
@@ -57,7 +57,7 @@ public class InformationSchemaContentSupplierFactory {
 
         @Override
         public TsBlock next() {
-          while (nextConsumedIndex < totalSize && !pageBuilder.isFull()) {
+          while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
 
             IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
             String[] splits = queryExecution.getQueryId().split("_");
@@ -71,21 +71,21 @@ public class InformationSchemaContentSupplierFactory {
             columnBuilders[4].writeBinary(
                 BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
             columnBuilders[5].writeBinary(BytesUtils.valueOf(queryExecution.getSQLDialect()));
-            pageBuilder.declarePosition();
+            resultBuilder.declarePosition();
 
             nextConsumedIndex++;
           }
           TsBlock result =
-              pageBuilder.build(
+              resultBuilder.build(
                   new RunLengthEncodedColumn(
-                      TableScanOperator.TIME_COLUMN_TEMPLATE, pageBuilder.getPositionCount()));
-          pageBuilder.reset();
+                      TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+          resultBuilder.reset();
           return result;
         }
       };
 
     } else {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
   }
 }

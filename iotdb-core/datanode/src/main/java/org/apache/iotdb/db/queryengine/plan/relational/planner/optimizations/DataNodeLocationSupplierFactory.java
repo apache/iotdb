@@ -32,17 +32,14 @@ import org.apache.thrift.TException;
 
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 
 public class DataNodeLocationSupplierFactory {
-  private final DataNodeLocationSupplier supplier;
+  private DataNodeLocationSupplierFactory() {}
 
-  public DataNodeLocationSupplierFactory() {
-    this.supplier = new InformationSchemaTableDataNodeLocationSupplier();
-  }
-
-  public DataNodeLocationSupplier getSupplier() {
-    return supplier;
+  public static DataNodeLocationSupplier getSupplier() {
+    return InformationSchemaTableDataNodeLocationSupplier.getInstance();
   }
 
   public interface DataNodeLocationSupplier {
@@ -51,6 +48,16 @@ public class DataNodeLocationSupplierFactory {
 
   private static class InformationSchemaTableDataNodeLocationSupplier
       implements DataNodeLocationSupplier {
+    private InformationSchemaTableDataNodeLocationSupplier() {}
+
+    private static class SingletonHolder {
+      private static final InformationSchemaTableDataNodeLocationSupplier INSTANCE =
+          new InformationSchemaTableDataNodeLocationSupplier();
+    }
+
+    private static InformationSchemaTableDataNodeLocationSupplier getInstance() {
+      return SingletonHolder.INSTANCE;
+    }
 
     private List<TDataNodeLocation> getRunningDataNodeLocations() {
       try (ConfigNodeClient client =
@@ -72,12 +79,11 @@ public class DataNodeLocationSupplierFactory {
     }
 
     @Override
-    public List<TDataNodeLocation> getDataNodeLocations(String table) {
-      switch (table) {
-        case "queries":
-          return getRunningDataNodeLocations();
-        default:
-          throw new UnsupportedOperationException();
+    public List<TDataNodeLocation> getDataNodeLocations(String tableName) {
+      if (tableName.equals(QUERIES.getSchemaTableName())) {
+        return getRunningDataNodeLocations();
+      } else {
+        throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
     }
   }

@@ -88,7 +88,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.INFORMATION_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;

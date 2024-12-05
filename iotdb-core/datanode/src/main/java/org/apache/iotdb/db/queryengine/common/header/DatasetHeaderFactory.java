@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
+import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+
 public class DatasetHeaderFactory {
 
   private DatasetHeaderFactory() {

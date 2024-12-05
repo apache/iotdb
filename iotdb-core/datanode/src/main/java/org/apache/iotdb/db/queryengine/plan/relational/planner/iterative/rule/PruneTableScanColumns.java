@@ -106,7 +106,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               node.getPushDownLimit(),
               node.getPushDownOffset()));
     } else {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException(
+          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
     }
   }
 }

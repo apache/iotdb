@@ -103,7 +103,7 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.QUERIES;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class Analysis implements IAnalysis {
 

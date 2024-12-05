@@ -169,7 +169,7 @@ public class Coordinator {
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
     this.accessControl = new AllowAllAccessControl();
-    this.dataNodeLocationSupplier = new DataNodeLocationSupplierFactory().getSupplier();
+    this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
   private ExecutionResult execution(

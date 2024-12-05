@@ -19,6 +19,8 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.InformationSchemaTable;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -29,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -49,6 +50,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,7 +58,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2;
@@ -69,7 +73,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTable
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_5_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
@@ -116,7 +119,21 @@ public class TestMatadata implements Metadata {
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
     if (name.getDatabaseName().equals(INFORMATION_SCHEMA)) {
-      return InformationSchemaTable.getTableSchemaFromStringValue(name.getObjectName());
+      TsTable table = InformationSchemaTable.getTableFromStringValue(name.getObjectName());
+      if (table == null) {
+        return Optional.empty();
+      }
+      List<ColumnSchema> columnSchemaList =
+          table.getColumnList().stream()
+              .map(
+                  o ->
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory()))
+              .collect(Collectors.toList());
+      return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
     }
 
     List<ColumnSchema> columnSchemas =

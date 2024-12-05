@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
@@ -490,7 +490,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName(), dataTypes));
+        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
   }
 
   @Override
