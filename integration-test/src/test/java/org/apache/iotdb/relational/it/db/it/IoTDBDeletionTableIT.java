@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -45,6 +46,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -862,20 +864,31 @@ public class IoTDBDeletionTableIT {
 
   @Ignore("long test")
   @Test
-  public void testConcurrentFlushAndDeletion() throws InterruptedException, ExecutionException {
-    //    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-    //        Statement statement = connection.createStatement()) {
-    //      statement.execute("SET CONFIGURATION enable_seq_space_compaction='false'");
-    //    } catch (SQLException e) {
-    //      throw new RuntimeException(e);
-    //    }
-
-    AtomicLong writtenPointCounter = new AtomicLong();
+  public void testConcurrentFlushAndSequentialDeletion()
+      throws InterruptedException, ExecutionException {
+    AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
         threadPool.submit(() -> concurrentWrite(writtenPointCounter, threadPool));
     Future<Void> deletionThread =
-        threadPool.submit(() -> concurrentDeletion(writtenPointCounter, threadPool));
+        threadPool.submit(() -> concurrentSequentialDeletion(writtenPointCounter, threadPool));
+    writeThread.get();
+    deletionThread.get();
+    threadPool.shutdown();
+    boolean success = threadPool.awaitTermination(1, TimeUnit.MINUTES);
+    assertTrue(success);
+  }
+
+  // @Ignore("long test")
+  @Test
+  public void testConcurrentFlushAndRandomDeletion()
+      throws InterruptedException, ExecutionException {
+    AtomicLong writtenPointCounter = new AtomicLong(-1);
+    ExecutorService threadPool = Executors.newCachedThreadPool();
+    Future<Void> writeThread =
+        threadPool.submit(() -> concurrentWrite(writtenPointCounter, threadPool));
+    Future<Void> deletionThread =
+        threadPool.submit(() -> concurrentRandomDeletion(writtenPointCounter, threadPool));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -901,7 +914,7 @@ public class IoTDBDeletionTableIT {
           statement.execute(
               String.format(
                   "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
-                  writtenPointCounter.get(), writtenPointCounter.get()));
+                  writtenPointCounter.get() + 1, writtenPointCounter.get() + 1));
           writtenPointCounter.incrementAndGet();
           if (Thread.interrupted()) {
             return null;
@@ -916,7 +929,8 @@ public class IoTDBDeletionTableIT {
     return null;
   }
 
-  private Void concurrentDeletion(AtomicLong writtenPointCounter, ExecutorService allThreads)
+  private Void concurrentSequentialDeletion(
+      AtomicLong writtenPointCounter, ExecutorService allThreads)
       throws SQLException, InterruptedException {
     // delete every 10 points in 100 points
     int deletionOffset = 0;
@@ -961,6 +975,147 @@ public class IoTDBDeletionTableIT {
       throw e;
     }
     return null;
+  }
+
+  private Void concurrentRandomDeletion(AtomicLong writtenPointCounter, ExecutorService allThreads)
+      throws SQLException, InterruptedException {
+    // delete random 10 points each time
+    int deletionRange = 10;
+    int minIntervalToRecord = 100;
+    List<TimeRange> undeletedRanges = new ArrayList<>();
+    // pointPerFile * fileNumMax
+    long deletionEnd = 100 * 10000;
+    long deletedCnt = 0;
+    long nextRangeStart = 0;
+    Random random = new Random();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("create database if not exists test");
+      statement.execute("use test");
+      while ((writtenPointCounter.get() < deletionEnd || !undeletedRanges.isEmpty())
+          && !Thread.interrupted()) {
+        // record the newly inserted interval if it is long enough
+        long currentWrittenTime = writtenPointCounter.get();
+        if (currentWrittenTime - nextRangeStart >= minIntervalToRecord) {
+          undeletedRanges.add(new TimeRange(nextRangeStart, currentWrittenTime));
+          nextRangeStart = currentWrittenTime + 1;
+        }
+        if (undeletedRanges.isEmpty()) {
+          Thread.sleep(10);
+          continue;
+        }
+        // pick up a random range
+        int rangeIndex = random.nextInt(undeletedRanges.size());
+        TimeRange timeRange = undeletedRanges.get(rangeIndex);
+        // delete a random part in the range
+        LOGGER.info("Pick up a range [{}, {}]", timeRange.getMin(), timeRange.getMax());
+        long rangeDeletionStart;
+        long timeRangeLength = timeRange.getMax() - timeRange.getMin() + 1;
+        if (timeRangeLength == 1) {
+          rangeDeletionStart = timeRange.getMin();
+        } else {
+          rangeDeletionStart = random.nextInt((int) (timeRangeLength - 1)) + timeRange.getMin();
+        }
+        long rangeDeletionEnd = Math.min(rangeDeletionStart + deletionRange, timeRange.getMax());
+        LOGGER.info("Deletion range [{}, {}]", rangeDeletionStart, rangeDeletionEnd);
+
+        statement.execute(
+            "delete from test.table1 where time >= "
+                + rangeDeletionStart
+                + " and time <= "
+                + rangeDeletionEnd);
+        deletedCnt += rangeDeletionEnd - rangeDeletionStart + 1;
+        LOGGER.info(
+            "Deleted range [{}, {}], written points: {}, deleted points: {}",
+            timeRange.getMin(),
+            timeRange.getMax(),
+            currentWrittenTime + 1,
+            deletedCnt);
+
+        // update the range
+        if (rangeDeletionStart == timeRange.getMin() && rangeDeletionEnd == timeRange.getMax()) {
+          // range fully deleted
+          undeletedRanges.remove(rangeIndex);
+        } else if (rangeDeletionStart == timeRange.getMin()) {
+          // prefix deleted
+          timeRange.setMin(rangeDeletionEnd + 1);
+        } else if (rangeDeletionEnd == timeRange.getMax()) {
+          // suffix deleted
+          timeRange.setMax(rangeDeletionStart - 1);
+        } else {
+          // split into two ranges
+          undeletedRanges.add(new TimeRange(rangeDeletionEnd + 1, timeRange.getMax()));
+          timeRange.setMax(rangeDeletionStart - 1);
+        }
+
+        // check the point count
+        try (ResultSet set =
+            statement.executeQuery(
+                "select count(*) from table1 where time <= " + currentWrittenTime)) {
+          assertTrue(set.next());
+          long expectedCnt = currentWrittenTime + 1 - deletedCnt;
+          if (expectedCnt != set.getLong(1)) {
+            undeletedRanges = mergeRanges(undeletedRanges);
+            List<TimeRange> remainingRanges = collectDataRanges(statement, currentWrittenTime);
+            LOGGER.info("Expected ranges: {}", undeletedRanges);
+            LOGGER.info("Remaining ranges: {}", remainingRanges);
+            fail(
+                String.format(
+                    "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));
+          }
+        }
+
+        Thread.sleep(10);
+      }
+    } catch (Throwable e) {
+      allThreads.shutdownNow();
+      throw e;
+    }
+    return null;
+  }
+
+  private List<TimeRange> mergeRanges(List<TimeRange> timeRanges) {
+    timeRanges.sort(null);
+    List<TimeRange> result = new ArrayList<>();
+    TimeRange current = null;
+    for (TimeRange timeRange : timeRanges) {
+      if (current == null) {
+        current = timeRange;
+      } else {
+        if (current.getMax() == timeRange.getMin() - 1) {
+          current.setMax(timeRange.getMax());
+        } else {
+          result.add(current);
+          current = timeRange;
+        }
+      }
+    }
+    result.add(current);
+    return result;
+  }
+
+  private List<TimeRange> collectDataRanges(Statement statement, long timeUpperBound)
+      throws SQLException {
+    List<TimeRange> ranges = new ArrayList<>();
+    try (ResultSet set =
+        statement.executeQuery("select time from table1 where time <= " + timeUpperBound)) {
+      while (set.next()) {
+        long time = set.getLong(1);
+        if (ranges.isEmpty()) {
+          ranges.add(new TimeRange(time, time));
+        } else {
+          TimeRange lastRange = ranges.get(ranges.size() - 1);
+          if (lastRange.getMax() == time - 1) {
+            lastRange.setMax(time);
+          } else {
+            ranges.add(new TimeRange(time, time));
+          }
+        }
+      }
+    }
+    return ranges;
   }
 
   @Ignore("performance")
