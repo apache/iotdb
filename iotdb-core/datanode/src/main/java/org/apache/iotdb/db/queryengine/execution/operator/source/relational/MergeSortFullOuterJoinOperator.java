@@ -98,21 +98,21 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // all the rightTsBlock is less than leftTsBlock, append right with empty left
+    // all the join keys in rightTsBlocks are less than leftTsBlock, append right with empty left
     if (allRightLessThanLeft()) {
       appendRightWithEmptyLeft();
       resetRightBlockList();
       return true;
     }
 
-    // all the leftTsBlock is less than rightTsBlock, append left with empty right
+    // all the join keys in leftTsBlock are less than rightTsBlock, append left with empty right
     if (allLeftLessThanRight()) {
       appendLeftWithEmptyRight();
       resetLeftBlock();
       return true;
     }
 
-    // continue right < left, unless right >= left
+    // continue right < left, until right >= left
     while (comparator.lessThan(
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPosition,
@@ -123,7 +123,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       if (lastMatchedRightBlock == null) {
         appendOneRightRowWithEmptyLeft();
       } else {
-        // CurrentRight can only be greater or equals than lastMatchedRight.
+        // CurrentRight can only be greater than or equal to lastMatchedRight.
         if (comparator.lessThan(
             lastMatchedRightBlock,
             0,
@@ -143,7 +143,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // continue left < right, unless left >= right
+    // continue left < right, until left >= right
     while (comparator.lessThan(
         leftBlock,
         leftJoinKeyPosition,
@@ -162,7 +162,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // has right values equals to current left, append to join result, inc leftIndex
+    // has right value equals to current left, append to join result, inc leftIndex
     if (hasMatchedRightValueToProbeLeft()) {
       leftIndex++;
 
