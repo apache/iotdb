@@ -454,7 +454,7 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
   protected void tryCachedNextRightTsBlock() throws Exception {
     if (!rightConsumedUp && rightChild.hasNextWithTimer()) {
       TsBlock block = rightChild.nextWithTimer();
-      if (block != null) {
+      if (block != null && !block.isEmpty()) {
         // if first value of block equals to last value of rightBlockList.get(0), append this block
         // to
         // rightBlockList
