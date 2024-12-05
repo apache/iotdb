@@ -252,7 +252,9 @@ public class MemPageReader implements IPageReader {
     if (pageStartOffsets != null) {
       mergeSortTvListIterator.setTVListOffsets(pageStartOffsets);
     }
-    ((MemChunkReader.TsBlockSupplier) tsBlockSupplier).setPageEndOffsets(pageEndOffsets);
+    if (tsBlockSupplier instanceof MemChunkReader.TsBlockSupplier) {
+      ((MemChunkReader.TsBlockSupplier) tsBlockSupplier).setPageEndOffsets(pageEndOffsets);
+    }
   }
 
   // memory page statistics should be initialized when constructing ReadOnlyMemChunk object.
