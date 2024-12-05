@@ -559,7 +559,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       try {
         Thread.sleep(50);
       } catch (final InterruptedException e) {
-        LOGGER.warn("Interrupted when connector {} waiting for handling pending requests.", this);
+        LOGGER.warn(
+            "Interrupted when connector {} waiting for handling pending requests, remaining {} pending requests",
+            this,
+            pendingRequests);
         Thread.currentThread().interrupt();
       }
     }
