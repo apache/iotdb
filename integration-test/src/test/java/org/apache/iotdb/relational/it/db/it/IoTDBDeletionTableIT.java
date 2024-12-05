@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -862,7 +863,7 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  @Ignore("long test")
+  @Category(ManualIT.class)
   @Test
   public void testConcurrentFlushAndSequentialDeletion()
       throws InterruptedException, ExecutionException {
@@ -879,7 +880,7 @@ public class IoTDBDeletionTableIT {
     assertTrue(success);
   }
 
-  // @Ignore("long test")
+  @Category(ManualIT.class)
   @Test
   public void testConcurrentFlushAndRandomDeletion()
       throws InterruptedException, ExecutionException {
@@ -980,8 +981,8 @@ public class IoTDBDeletionTableIT {
   private Void concurrentRandomDeletion(AtomicLong writtenPointCounter, ExecutorService allThreads)
       throws SQLException, InterruptedException {
     // delete random 10 points each time
-    int deletionRange = 10;
-    int minIntervalToRecord = 100;
+    int deletionRange = 100;
+    int minIntervalToRecord = 1000;
     List<TimeRange> undeletedRanges = new ArrayList<>();
     // pointPerFile * fileNumMax
     long deletionEnd = 100 * 10000;

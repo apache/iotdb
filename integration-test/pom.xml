@@ -632,5 +632,19 @@
                 <integrationTest.testEnv>TABLE_CLUSTER1</integrationTest.testEnv>
             </properties>
         </profile>
+        <profile>
+            <id>ManualIT</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
+            </properties>
+        </profile>
     </profiles>
 </project>
