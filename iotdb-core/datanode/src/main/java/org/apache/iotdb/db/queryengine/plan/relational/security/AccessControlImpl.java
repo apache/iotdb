@@ -86,6 +86,6 @@ public class AccessControlImpl implements AccessControl {
 
   @Override
   public void checkUserHasMaintainPrivilege(String userName) {
-    authChecker.checkMaintainPrivilege(userName);
+    authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MAINTAIN);
   }
 }
