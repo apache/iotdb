@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,11 +40,24 @@ import java.util.regex.Matcher;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
 
 public class SelectIntoUtils {
 
   private SelectIntoUtils() {
     // forbidding instantiation
+  }
+
+  public static PartialPath constructTargetPathWithoutPlaceHolder(
+      PartialPath devicePath, String measurement) {
+    String[] originalDeviceNodes = devicePath.getNodes();
+    String[] resNodes = new String[originalDeviceNodes.length + 1];
+
+    for (int i = 0; i < originalDeviceNodes.length; i++) {
+      resNodes[i] = parseNodeString(originalDeviceNodes[i]);
+    }
+    resNodes[resNodes.length - 1] = parseNodeString(measurement);
+    return new MeasurementPath(resNodes);
   }
 
   public static PartialPath constructTargetPath(
@@ -108,7 +120,7 @@ public class SelectIntoUtils {
       resNode = matcher.replaceFirst(sourceNodes[index]);
       matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
     }
-    return ASTVisitor.parseNodeString(resNode);
+    return parseNodeString(resNode);
   }
 
   public static boolean checkIsAllRawSeriesQuery(List<Expression> expressions) {

@@ -1379,7 +1379,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    final long rpcTimeoutInMS = COMMON_CONF.getConnectionTimeoutInMS();
+    final long rpcTimeoutInMS = COMMON_CONF.getCnConnectionTimeoutInMS();
     final long retryIntervalInMS = 1000;
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {

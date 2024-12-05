@@ -147,7 +147,7 @@ public class ProcedureManager {
       ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
+  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getDnConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
   private static final String PROCEDURE_TIMEOUT_MESSAGE =
       "Timed out to wait for procedure return. The procedure is still running.";
