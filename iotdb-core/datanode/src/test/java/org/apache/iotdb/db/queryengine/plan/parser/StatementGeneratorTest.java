@@ -723,7 +723,7 @@ public class StatementGeneratorTest {
       testGrant.checkParser(privilege.toString(), name, false, path, true);
       testGrant.checkParser(privilege.toString(), name, false, path, false);
       // 2. if grant stmt has system privilege, path should be root.**
-      if (!privilege.isPathRelevant()) {
+      if (!privilege.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
@@ -757,7 +757,7 @@ public class StatementGeneratorTest {
       testRevoke.checkParser(type.toString(), name, false, path, false);
 
       // 4. check system privilege revoke from user on wrong paths.
-      if (!type.isPathRelevant()) {
+      if (!type.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
