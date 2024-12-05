@@ -1285,8 +1285,8 @@ public class SubcolumnTest {
         // startBitPosition = SubcolumnBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnLBetaBPEncoder(data_delta, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnLBPEncoder(data_delta, startBitPosition, encoded_result);
-        // startBitPosition = SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
-        startBitPosition = BPEncoder(data_delta, startBitPosition, encoded_result);
+        startBitPosition = SubcolumnBetaEncoder(data_delta, startBitPosition, encoded_result);
+        // startBitPosition = BPEncoder(data_delta, startBitPosition, encoded_result);
 
         return startBitPosition;
     }
@@ -1303,8 +1303,8 @@ public class SubcolumnTest {
         // startBitPosition = SubcolumnBetaBPDecoder(encoded_result, startBitPosition, block_data);
         // startBitPosition = SubcolumnLBetaBPDecoder(encoded_result, startBitPosition, block_data);
         // startBitPosition = SubcolumnLBPDecoder(encoded_result, startBitPosition, block_data);
-        // startBitPosition = SubcolumnBetaDecoder(encoded_result, startBitPosition, block_data);
-        startBitPosition = BPDecoder(encoded_result, startBitPosition, block_data);
+        startBitPosition = SubcolumnBetaDecoder(encoded_result, startBitPosition, block_data);
+        // startBitPosition = BPDecoder(encoded_result, startBitPosition, block_data);
 
         for (int i = 0; i < remainder; i++) {
             data[block_index * block_size + i] = block_data[i] + min_delta[0];
@@ -1405,28 +1405,30 @@ public class SubcolumnTest {
     }
 
     public static String extractFileName(String path) {
-        // 找到最后一个斜杠的位置，从而提取文件名
-        int lastSlashIndex = path.lastIndexOf('/');
-
-        // 提取文件名（从最后一个斜杠之后开始）
-        String fileNameWithExtension = path.substring(lastSlashIndex + 1);
-
-        // 去掉文件扩展名（.csv）
-        int dotIndex = fileNameWithExtension.lastIndexOf('.');
-        if (dotIndex != -1) {
-            return fileNameWithExtension.substring(0, dotIndex);
+        if (path == null || path.isEmpty()) {
+            return "";
         }
 
-        // 如果没有扩展名，直接返回文件名
-        return fileNameWithExtension;
+        File file = new File(path);
+        String fileName = file.getName();
+
+        int dotIndex = fileName.lastIndexOf('.');
+        
+        if (dotIndex == -1 || dotIndex == 0) {
+            return fileName;
+        }
+
+        return fileName.substring(0, dotIndex);
     }
 
     @Test
     public void testBOS() throws IOException {
         String parent_dir =
-        "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        "D:/github/xjz17/subcolumn/elf_resources/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
-        String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        // String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        String output_parent_dir = "D:/compress-subcolumn/";
         // String output_parent_dir =
         // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources";
         // String input_parent_dir = parent_dir + "ElfData_Short/";
@@ -1453,9 +1455,8 @@ public class SubcolumnTest {
 
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
-        output_path_list.add(output_parent_dir + "bp.csv");
-        // output_path_list.add(output_parent_dir + "/subcolumn_l_beta_bp.csv");
-        // output_path_list.add(output_parent_dir + "/subcolumn_l_bp.csv");
+        // output_path_list.add(output_parent_dir + "bp.csv");
+        output_path_list.add(output_parent_dir + "subcolumn_beta2.csv");
 
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);

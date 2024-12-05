@@ -227,20 +227,20 @@ public class SubcolumnSPRINTZTest {
     }
 
     public static String extractFileName(String path) {
-        // 找到最后一个斜杠的位置，从而提取文件名
-        int lastSlashIndex = path.lastIndexOf('/');
-
-        // 提取文件名（从最后一个斜杠之后开始）
-        String fileNameWithExtension = path.substring(lastSlashIndex + 1);
-
-        // 去掉文件扩展名（.csv）
-        int dotIndex = fileNameWithExtension.lastIndexOf('.');
-        if (dotIndex != -1) {
-            return fileNameWithExtension.substring(0, dotIndex);
+        if (path == null || path.isEmpty()) {
+            return "";
         }
 
-        // 如果没有扩展名，直接返回文件名
-        return fileNameWithExtension;
+        File file = new File(path);
+        String fileName = file.getName();
+
+        int dotIndex = fileName.lastIndexOf('.');
+        
+        if (dotIndex == -1 || dotIndex == 0) {
+            return fileName;
+        }
+
+        return fileName.substring(0, dotIndex);
     }
 
     @Test
