@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -189,7 +189,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   }
 
   private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
-      final AuthorPlan pathRelatedAuthorPlan, final IoTDBPipePattern pattern) {
+      final AuthorPlan pathRelatedAuthorPlan, final IoTDBTreePattern pattern) {
     AuthorTreePlan plan = (AuthorTreePlan) pathRelatedAuthorPlan;
     final List<PartialPath> intersectedPaths =
         plan.getNodeNameList().stream()

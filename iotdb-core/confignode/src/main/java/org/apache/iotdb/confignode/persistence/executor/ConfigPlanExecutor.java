@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -298,13 +297,13 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUsers((AuthorReadPlan) req);
+        return authorInfo.executeListUsers((AuthorPlan) req);
       case ListRole:
-        return authorInfo.executeListRoles((AuthorReadPlan) req);
+        return authorInfo.executeListRoles((AuthorPlan) req);
       case ListUserPrivilege:
-        return authorInfo.executeListUserPrivileges((AuthorReadPlan) req);
+        return authorInfo.executeListUserPrivileges((AuthorPlan) req);
       case ListRolePrivilege:
-        return authorInfo.executeListRolePrivileges((AuthorReadPlan) req);
+        return authorInfo.executeListRolePrivileges((AuthorPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:

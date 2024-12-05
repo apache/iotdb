@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -172,7 +172,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     userList.remove("user1");
@@ -220,7 +220,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("role1");
@@ -342,7 +342,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListUserPrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
@@ -359,7 +359,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRolePrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -374,7 +374,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("role1");
@@ -391,7 +391,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     userList.remove("user1");
@@ -416,9 +416,6 @@ public class AuthorInfoTest {
   private void cleanUserAndRole() throws TException, AuthException {
     TSStatus status;
 
-    AuthorPlan authorPlan;
-    AuthorReadPlan authorReadPlan;
-
     // clean user
     AuthorPlan authorPlan =
         new AuthorTreePlan(
@@ -430,7 +427,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -463,7 +460,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -532,7 +529,6 @@ public class AuthorInfoTest {
     TSStatus status;
 
     AuthorPlan authorPlan;
-    AuthorReadPlan authorReadPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
@@ -638,7 +634,7 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     PermissionInfoResp permissionInfoResp;
-    permissionInfoResp = authorInfo.executeListUserPrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -653,7 +649,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRolePrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
