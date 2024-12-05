@@ -46,7 +46,4 @@ public enum CnToDnSyncRequestType {
 
   // Schema
   KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
 }
