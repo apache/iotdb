@@ -929,7 +929,7 @@ public class IoTDBDeletionTableIT {
   @Category(ManualIT.class)
   @Test
   public void testConcurrentFlushAndSequentialDeletion()
-      throws InterruptedException, ExecutionException {
+      throws InterruptedException, ExecutionException, SQLException {
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
@@ -941,12 +941,17 @@ public class IoTDBDeletionTableIT {
     threadPool.shutdown();
     boolean success = threadPool.awaitTermination(1, TimeUnit.MINUTES);
     assertTrue(success);
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
   }
 
   @Category(ManualIT.class)
   @Test
   public void testConcurrentFlushAndRandomDeletion()
-      throws InterruptedException, ExecutionException {
+      throws InterruptedException, ExecutionException, SQLException {
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
@@ -958,6 +963,11 @@ public class IoTDBDeletionTableIT {
     threadPool.shutdown();
     boolean success = threadPool.awaitTermination(1, TimeUnit.MINUTES);
     assertTrue(success);
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
   }
 
   private Void concurrentWrite(AtomicLong writtenPointCounter, ExecutorService allThreads)
@@ -972,7 +982,8 @@ public class IoTDBDeletionTableIT {
       statement.execute("create database if not exists test");
       statement.execute("use test");
 
-      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute(
+          "create table if not exists table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
