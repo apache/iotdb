@@ -250,26 +250,31 @@ public class AnalyzeUtils {
   }
 
   public static void validateSchema(
-      final IAnalysis analysis,
-      final InsertBaseStatement insertStatement,
-      final Runnable schemaValidation) {
+      IAnalysis analysis, InsertBaseStatement insertStatement, Runnable schemaValidation) {
     final long startTime = System.nanoTime();
     try {
       schemaValidation.run();
-    } catch (final SemanticException e) {
+    } catch (SemanticException e) {
       analysis.setFinishQueryAfterAnalyze(true);
       if (e.getCause() instanceof IoTDBException) {
-        final IoTDBException exception = (IoTDBException) e.getCause();
+        IoTDBException exception = (IoTDBException) e.getCause();
         analysis.setFailStatus(
             RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
       } else {
-        analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        if (e.getErrorCode() != TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+          // a specific code has been set, use it
+          analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } else {
+          // use METADATA_ERROR by default
+          analysis.setFailStatus(
+              RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getMessage()));
+        }
       }
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
     }
-    final boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
-    final String partialInsertMessage;
+    boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
+    String partialInsertMessage;
     if (hasFailedMeasurement) {
       partialInsertMessage =
           String.format(
