@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 
@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
@@ -66,14 +67,14 @@ public enum TableBuiltinAggregationFunction {
     return functionName;
   }
 
-  private static final Set<String> NATIVE_FUNCTION_NAMES =
+  private static final Set<String> BUILT_IN_AGGREGATE_FUNCTION_NAME =
       new HashSet<>(
           Arrays.stream(TableBuiltinAggregationFunction.values())
               .map(TableBuiltinAggregationFunction::getFunctionName)
               .collect(Collectors.toList()));
 
-  public static Set<String> getNativeFunctionNames() {
-    return NATIVE_FUNCTION_NAMES;
+  public static Set<String> getBuiltInAggregateFunctionName() {
+    return BUILT_IN_AGGREGATE_FUNCTION_NAME;
   }
 
   public static Type getIntermediateType(String name, List<Type> originalArgumentTypes) {
@@ -103,12 +104,13 @@ public enum TableBuiltinAggregationFunction {
       case "min":
         return originalArgumentTypes.get(0);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+        // default is UDAF
+        return BLOB;
     }
   }
 
   public static TAggregationType getAggregationTypeByFuncName(String funcName) {
-    if (NATIVE_FUNCTION_NAMES.contains(funcName)) {
+    if (BUILT_IN_AGGREGATE_FUNCTION_NAME.contains(funcName)) {
       return TAggregationType.valueOf(funcName.toUpperCase());
     } else {
       // fallback to UDAF if no enum found

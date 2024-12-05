@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -94,6 +98,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Like3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.udf.UserDefineScalarFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -145,13 +150,15 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.St
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Trim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
@@ -170,6 +177,7 @@ import org.apache.tsfile.utils.Binary;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -996,8 +1004,30 @@ public class ColumnTransformerBuilder
           source,
           ((LongLiteral) children.get(3)).getParsedValue(),
           context.sessionInfo.getZoneId());
+    } else {
+      // user defined function
+      if (TableUDFUtils.isScalarFunction(functionName)) {
+        ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
+        List<ColumnTransformer> childrenColumnTransformer =
+            children.stream().map(child -> process(child, context)).collect(Collectors.toList());
+        FunctionParameters parameters =
+            new FunctionParameters(
+                childrenColumnTransformer.stream()
+                    .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
+                    .collect(Collectors.toList()),
+                Collections.emptyMap());
+        ScalarFunctionConfig config = new ScalarFunctionConfig();
+        scalarFunction.beforeStart(parameters, config);
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+        return new UserDefineScalarFunctionTransformer(
+            returnType, scalarFunction, childrenColumnTransformer);
+      }
     }
-    throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
+    throw new IllegalArgumentException(
+        String.format(
+            "Unknown function %s on DataNode: %d.",
+            functionName, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
   }
 
   @Override

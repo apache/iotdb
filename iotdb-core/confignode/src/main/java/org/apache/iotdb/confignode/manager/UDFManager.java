@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -88,11 +90,17 @@ public class UDFManager {
       final String jarName = req.getJarName();
       final byte[] jarFile = req.getJarFile();
       final Model model = req.getModel();
+      final FunctionType functionType = req.getFunctionType();
       udfInfo.validate(model, udfName, jarName, jarMD5);
 
       UDFInformation udfInformation =
           new UDFInformation(
-              udfName, req.getClassName(), model, false, isUsingURI, jarName, jarMD5);
+              udfName,
+              req.getClassName(),
+              UDFType.of(model, functionType, false),
+              isUsingURI,
+              jarName,
+              jarMD5);
 
       final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
@@ -111,7 +119,13 @@ public class UDFManager {
         return preCreateStatus;
       }
       udfInformation =
-          new UDFInformation(udfName, req.getClassName(), model, true, isUsingURI, jarName, jarMD5);
+          new UDFInformation(
+              udfName,
+              req.getClassName(),
+              UDFType.of(model, functionType, true),
+              isUsingURI,
+              jarName,
+              jarMD5);
       LOGGER.info(
           "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
       final TSStatus dataNodesStatus =

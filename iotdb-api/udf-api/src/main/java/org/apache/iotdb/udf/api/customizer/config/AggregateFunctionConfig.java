@@ -17,6 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational;
+package org.apache.iotdb.udf.api.customizer.config;
 
-public interface AggregationFunction extends SQLFunction {}
+import org.apache.iotdb.udf.api.type.Type;
+
+public class AggregateFunctionConfig extends UDFConfigurations {
+
+  /**
+   * Set the output data type of the scalar function.
+   *
+   * @param outputDataType the output data type of the scalar function
+   * @return this
+   */
+  public AggregateFunctionConfig setOutputDataType(Type outputDataType) {
+    this.outputDataType = outputDataType;
+    return this;
+  }
+}

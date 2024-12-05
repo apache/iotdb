@@ -17,7 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
+package org.apache.iotdb.commons.udf.builtin.relational;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public enum TableBuiltinScalarFunction {
   DIFF("diff"),
@@ -69,5 +74,15 @@ public enum TableBuiltinScalarFunction {
 
   public String getFunctionName() {
     return functionName;
+  }
+
+  private static final Set<String> BUILT_IN_SCALAR_FUNCTION_NAME =
+      new HashSet<>(
+          Arrays.stream(TableBuiltinScalarFunction.values())
+              .map(TableBuiltinScalarFunction::getFunctionName)
+              .collect(Collectors.toList()));
+
+  public static Set<String> getBuiltInScalarFunctionName() {
+    return BUILT_IN_SCALAR_FUNCTION_NAME;
   }
 }

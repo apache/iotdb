@@ -444,6 +444,7 @@ struct TCreateFunctionReq {
   5: optional binary jarFile
   6: optional string jarMD5
   7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {

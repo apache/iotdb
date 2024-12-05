@@ -89,10 +89,10 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 
 public final class ExpressionFormatter {
 
