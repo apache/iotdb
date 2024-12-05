@@ -53,6 +53,9 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
         BuiltinPipePlugin.CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName(),
         ChangingPointSamplingProcessor::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.CHANGING_POINT_SAMPLING_PROCESSOR.getPipePluginName(),
+        ChangingPointSamplingProcessor::new);
+    pluginConstructors.put(
         BuiltinPipePlugin.THROWING_EXCEPTION_PROCESSOR.getPipePluginName(),
         ThrowingExceptionProcessor::new);
     pluginConstructors.put(

@@ -44,8 +44,9 @@ public class ChangingPointFilter extends DownSamplingFilter {
       final long arrivalTime,
       final long firstTimestamp,
       final Object firstValue,
-      final double compressionDeviation) {
-    super(arrivalTime, firstTimestamp);
+      final double compressionDeviation,
+      final boolean isFilterArrivalTime) {
+    super(arrivalTime, firstTimestamp, isFilterArrivalTime);
     lastStoredValue = firstValue;
     this.compressionDeviation = compressionDeviation;
   }

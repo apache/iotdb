@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
@@ -49,6 +50,8 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
    */
   private double compressionDeviation;
 
+  private boolean isFilterArrivalTime = true;
+
   private PartialPathLastObjectCache<ChangingPointFilter> pathLastObjectCache;
 
   @Override
@@ -62,9 +65,12 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
             PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION_DEFAULT_VALUE);
 
     final boolean isChangingPointProcessor =
-        parameters.getString("processor").equals("changing-point-sampling-processor");
+        BuiltinPipePlugin.CHANGING_POINT_SAMPLING_PROCESSOR
+            .getPipePluginName()
+            .equals(parameters.getString("processor"));
 
     if (isChangingPointProcessor) {
+      isFilterArrivalTime = true;
       compressionDeviation =
           parameters.getDoubleOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL,
@@ -88,6 +94,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
               PipeProcessorConstant
                   .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE);
     } else {
+      isFilterArrivalTime = false;
       compressionDeviation =
           parameters.getDoubleOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
@@ -96,10 +103,11 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_DEFAULT_VALUE);
-      eventTimeMinInterval =
+      eventTimeMaxInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE);
+      // will not be used
       arrivalTimeMinInterval = 0;
       arrivalTimeMaxInterval = Long.MAX_VALUE;
     }
@@ -194,15 +202,23 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
           continue;
         }
 
-        if (result == Boolean.FALSE) {
+        // It will not be null
+        if (!result) {
           remarkableRow.markNull(i);
           continue;
         }
+
+        // The arrival time or event time is greater than the maximum time interval
+        filter.reset(arrivalTime, currentRowTime, row.getObject(i));
       } else {
         pathLastObjectCache.setPartialPathLastObject(
             timeSeriesSuffix,
             new ChangingPointFilter(
-                arrivalTime, currentRowTime, row.getObject(i), compressionDeviation));
+                arrivalTime,
+                currentRowTime,
+                row.getObject(i),
+                compressionDeviation,
+                isFilterArrivalTime));
       }
 
       hasNonNullMeasurements = true;

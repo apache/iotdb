@@ -144,4 +144,168 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
           receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
     }
   }
+
+  @Test
+  public void testChangingValueProcessor() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Test empty tsFile parsing
+      // Assert that an empty tsFile will not be parsed by the processor then block
+      // the subsequent data processing
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.realtime.mode", "log");
+
+      processorAttributes.put("processor", "changing-value-sampling-processor");
+      processorAttributes.put("processor.changing-value.compression-deviation", "10");
+      processorAttributes.put("processor.changing-value.min-time-interval", "10000");
+      processorAttributes.put("processor.changing-value.max-time-interval", "20000");
+
+      connectorAttributes.put("sink", "iotdb-thrift-sink");
+      connectorAttributes.put("sink.batch.enable", "false");
+      connectorAttributes.put("sink.ip", receiverIp);
+      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 10)",
+              "insert into root.vehicle.d0(time, s1) values (9999, 20)",
+              "insert into root.vehicle.d0(time, s1) values (10000, 30)",
+              "insert into root.vehicle.d0(time, s1) values (19000, 40)",
+              "insert into root.vehicle.d0(time, s1) values (20000, 50)",
+              "insert into root.vehicle.d0(time, s1) values (29001, 60)",
+              "insert into root.vehicle.d0(time, s1) values (50000, 70)",
+              "insert into root.vehicle.d0(time, s1) values (60000, 71)",
+              "flush"))) {
+        return;
+      }
+
+      final Set<String> expectedResSet = new HashSet<>();
+
+      expectedResSet.add("0,10.0,");
+      expectedResSet.add("10000,30.0,");
+      expectedResSet.add("20000,50.0,");
+      expectedResSet.add("50000,70.0,");
+      expectedResSet.add("60000,80.0,");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
+    }
+  }
+
+  @Test
+  public void testChangingPointProcessor() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Test empty tsFile parsing
+      // Assert that an empty tsFile will not be parsed by the processor then block
+      // the subsequent data processing
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.realtime.mode", "log");
+
+      processorAttributes.put("processor", "changing-point-sampling-processor");
+      processorAttributes.put("processor.changing-point.compression-deviation", "10");
+      processorAttributes.put("processor.changing-point.arrival-time.min-interval", "10000");
+      processorAttributes.put("processor.changing-point.arrival-time.max-interval", "30000");
+      processorAttributes.put("processor.changing-point.event-time.min-interval", "10000");
+      processorAttributes.put("processor.changing-point.event-time.max-interval", "30000");
+
+      connectorAttributes.put("sink", "iotdb-thrift-sink");
+      connectorAttributes.put("sink.batch.enable", "false");
+      connectorAttributes.put("sink.ip", receiverIp);
+      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 10)",
+              "insert into root.vehicle.d0(time, s1) values (100000, 20)",
+              "insert into root.vehicle.d0(time, s1) values (110000, 30)"))) {
+        return;
+      }
+
+      Thread.sleep(10000);
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (100000, 40)",
+              "insert into root.vehicle.d0(time, s1) values (400000, 50)",
+              "insert into root.vehicle.d0(time, s1) values (500000, 60)"))) {
+        return;
+      }
+
+      Thread.sleep(10000);
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (100000, 41)", "flush"))) {
+        return;
+      }
+
+      final Set<String> expectedResSet = new HashSet<>();
+
+      expectedResSet.add("0,10.0,");
+      expectedResSet.add("100000,40.0,");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
+    }
+  }
 }

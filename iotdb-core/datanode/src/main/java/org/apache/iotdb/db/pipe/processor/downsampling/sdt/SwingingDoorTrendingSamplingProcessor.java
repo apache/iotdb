@@ -97,13 +97,13 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         dataBaseNameWithPathSeparator,
         PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
         compressionDeviation,
-        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL,
+        PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL,
         arrivalTimeMinInterval,
-        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL,
+        PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL,
         arrivalTimeMaxInterval,
-        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL,
+        PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL,
         eventTimeMinInterval,
-        PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL,
+        PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL,
         eventTimeMaxInterval);
 
     initPathLastObjectCache(memoryLimitInBytes);
@@ -152,10 +152,14 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
           continue;
         }
 
-        if (result == Boolean.FALSE) {
+        // It will not be null
+        if (result) {
           remarkableRow.markNull(i);
           continue;
         }
+
+        // The arrival time or event time is greater than the maximum time interval
+        filter.reset(arrivalTime, currentRowTime, row.getObject(i));
       } else {
         pathLastObjectCache.setPartialPathLastObject(
             timeSeriesSuffix,

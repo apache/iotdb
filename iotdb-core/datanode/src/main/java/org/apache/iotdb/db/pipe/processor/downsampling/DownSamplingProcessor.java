@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -99,21 +98,19 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
         .validate(
             eventTimeMinInterval -> (long) eventTimeMinInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY, eventTimeMinInterval),
+                "%s must be >= 0, but got %s", "event-time.min-interval", eventTimeMinInterval),
             eventTimeMinInterval)
         .validate(
             eventTimeMaxInterval -> (long) eventTimeMaxInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY, eventTimeMaxInterval),
+                "%s must be >= 0, but got %s", "event-time.max-interval", eventTimeMaxInterval),
             eventTimeMaxInterval)
         .validate(
             minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
             String.format(
                 "%s must be <= %s, but got %s and %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
+                "event-time.min-interval",
+                "event-time.max-interval",
                 eventTimeMinInterval,
                 eventTimeMaxInterval),
             eventTimeMinInterval,
@@ -121,21 +118,19 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
         .validate(
             arrivalTimeMinInterval -> (long) arrivalTimeMinInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY, arrivalTimeMinInterval),
+                "%s must be >= 0, but got %s", "arrival-time.min-interval", arrivalTimeMinInterval),
             arrivalTimeMinInterval)
         .validate(
             arrivalTimeMaxInterval -> (long) arrivalTimeMaxInterval >= 0,
             String.format(
-                "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY, arrivalTimeMaxInterval),
+                "%s must be >= 0, but got %s", "arrival-time.max-interval", arrivalTimeMaxInterval),
             arrivalTimeMaxInterval)
         .validate(
             minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
             String.format(
                 "%s must be <= %s, but got %s and %s",
-                PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
-                PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
+                "arrival-time.min-interval",
+                "arrival-time.max-interval",
                 arrivalTimeMinInterval,
                 arrivalTimeMaxInterval),
             arrivalTimeMinInterval,
@@ -218,11 +213,13 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       final DownSamplingFilter filter, final long arrivalTime, final long eventTime) {
     final long arrivalTimeInterval = Math.abs(arrivalTime - filter.getLastPointArrivalTime());
 
-    if (arrivalTimeInterval >= arrivalTimeMaxInterval) {
-      return Boolean.TRUE;
-    }
-    if (arrivalTimeInterval < arrivalTimeMinInterval) {
-      return Boolean.FALSE;
+    if (filter.isFilterArrivalTime()) {
+      if (arrivalTimeInterval >= arrivalTimeMaxInterval) {
+        return Boolean.TRUE;
+      }
+      if (arrivalTimeInterval < arrivalTimeMinInterval) {
+        return Boolean.FALSE;
+      }
     }
 
     final long eventTimeInterval = Math.abs(eventTime - filter.getLastPointEventTime());
