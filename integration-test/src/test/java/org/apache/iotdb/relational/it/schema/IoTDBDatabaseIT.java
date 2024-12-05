@@ -305,4 +305,9 @@ public class IoTDBDatabaseIT {
           Collections.singleton("1,4,"));
     }
   }
+
+  @Test
+  public void testInformationSchema() {
+    
+  }
 }
