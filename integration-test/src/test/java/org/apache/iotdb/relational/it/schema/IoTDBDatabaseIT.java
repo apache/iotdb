@@ -37,7 +37,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBDetailsColumnHeaders;
@@ -307,5 +310,47 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
-  public void testInformationSchema() {}
+  public void testInformationSchema() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Test unsupported write plans
+      final Set<String> writeSQLs =
+          new HashSet<>(
+              Arrays.asList(
+                  "create database information_schema",
+                  "drop database information_schema",
+                  "create table information_schema.tableA ()",
+                  "alter table information_schema.tableA add column a id",
+                  "alter table information_schema.tableA set properties ttl=default",
+                  "insert into information_schema.tables (database) values('db')"));
+
+      for (final String writeSQL : writeSQLs) {
+        try {
+          statement.execute(writeSQL);
+          fail("information_schema does not support write");
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: The database 'information_schema' can only be queried", e.getMessage());
+        }
+      }
+
+      final Set<String> deviceSQLs =
+          new HashSet<>(
+              Arrays.asList(
+                  "show devices from information_schema.tables",
+                  "count devices from information_schema.tables"));
+
+      for (final String deviceSQL : deviceSQLs) {
+        try {
+          statement.execute(deviceSQL);
+          fail("information_schema does not support device sql");
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: The database 'information_schema' does not support device operations",
+              e.getMessage());
+        }
+      }
+    }
+  }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -162,6 +163,18 @@ public class InformationSchema {
 
   public static TsTable mayGetTable(final String database, final String tableName) {
     return INFORMATION_DATABASE.equals(database) ? schemaTables.get(tableName) : null;
+  }
+
+  public static boolean mayUseDB(
+      final String database,
+      final IClientSession clientSession,
+      final SettableFuture<ConfigTaskResult> future) {
+    if (!database.equals(INFORMATION_DATABASE)) {
+      return false;
+    }
+    clientSession.setDatabaseName(INFORMATION_DATABASE);
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    return true;
   }
 
   public static boolean mayShowTable(

@@ -3055,6 +3055,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> useDatabase(
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    if (InformationSchema.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+      return future;
+    }
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
     try (final ConfigNodeClient client =
