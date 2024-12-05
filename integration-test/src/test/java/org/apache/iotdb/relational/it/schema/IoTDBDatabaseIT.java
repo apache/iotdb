@@ -99,6 +99,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -119,6 +122,9 @@ public class IoTDBDatabaseIT {
               showDBDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -144,6 +150,8 @@ public class IoTDBDatabaseIT {
       // drop
       statement.execute("drop database test");
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        // Information_schema
+        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
 
@@ -174,6 +182,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -273,6 +284,9 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("````x", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
