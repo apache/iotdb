@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
@@ -30,15 +30,15 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerIT
-    extends IoTDBRegionMigrateDataNodeCrashITFramework {
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2IT
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
   @Test
-  public void crashBeforeDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+  public void crashBeforeInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
   }
 
   @Test
-  public void crashAfterDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+  public void crashAfterInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 }

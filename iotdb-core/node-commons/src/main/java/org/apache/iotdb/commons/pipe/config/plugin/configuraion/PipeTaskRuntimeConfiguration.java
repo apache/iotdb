@@ -31,7 +31,7 @@ public class PipeTaskRuntimeConfiguration
 
   private final PipeRuntimeEnvironment environment;
 
-  public PipeTaskRuntimeConfiguration(PipeRuntimeEnvironment environment) {
+  public PipeTaskRuntimeConfiguration(final PipeRuntimeEnvironment environment) {
     this.environment = environment;
   }
 

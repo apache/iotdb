@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -30,12 +31,18 @@ public class DropTopicTask implements IConfigTask {
 
   private final DropTopicStatement dropTopicStatement;
 
-  public DropTopicTask(DropTopicStatement dropTopicStatement) {
+  public DropTopicTask(final DropTopicStatement dropTopicStatement) {
     this.dropTopicStatement = dropTopicStatement;
   }
 
+  public DropTopicTask(final DropTopic dropTopic) {
+    this.dropTopicStatement = new DropTopicStatement();
+    this.dropTopicStatement.setTopicName(dropTopic.getTopicName());
+    this.dropTopicStatement.setIfExists(dropTopic.hasIfExistsCondition());
+  }
+
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.dropTopic(dropTopicStatement);
   }

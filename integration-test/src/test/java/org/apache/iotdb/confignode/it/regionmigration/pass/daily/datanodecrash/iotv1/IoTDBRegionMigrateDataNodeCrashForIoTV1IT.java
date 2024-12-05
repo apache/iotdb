@@ -17,27 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv1;
 
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateDataNodeCrashForIoTV1IT
+    extends IoTDBRegionMigrateReliabilityITFramework {
   // region Coordinator DataNode crash tests
 
   private final int dataReplicateFactor = 2;
   private final int schemaReplicationFactor = 2;
   private final int configNodeNum = 1;
   private final int dataNodeNum = 3;
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+  }
 
   @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {

@@ -94,7 +94,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -516,14 +516,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     return new StopPipeTask(stopPipeStatement);
   }
 
-  @Override
-  public IConfigTask visitShowSubscriptions(
-      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
-    return new ShowSubscriptionTask(showSubscriptionsStatement);
-  }
-
   public IConfigTask visitCreateTopic(
       CreateTopicStatement createTopicStatement, MPPQueryContext context) {
+    // Inject tree model into the topic attributes
+    createTopicStatement
+        .getTopicAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
     return new CreateTopicTask(createTopicStatement);
   }
 
@@ -537,6 +536,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowTopics(
       ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
     return new ShowTopicsTask(showTopicsStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
+    return new ShowSubscriptionsTask(showSubscriptionsStatement);
   }
 
   @Override
