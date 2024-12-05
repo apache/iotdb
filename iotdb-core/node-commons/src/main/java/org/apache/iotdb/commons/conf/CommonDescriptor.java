@@ -737,7 +737,7 @@ public class CommonDescriptor {
                     "enable_retry_for_unknown_error"))));
   }
 
-  public void loadBinaryAllocatorProps(Properties properties) {
+  public void loadBinaryAllocatorProps(TrimProperties properties) {
     config.setEnableBinaryAllocator(
         Boolean.parseBoolean(
             properties.getProperty(
