@@ -19,6 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public interface ManualIT {
-
-}
+public interface ManualIT {}

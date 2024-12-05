@@ -820,6 +820,69 @@ public class IoTDBDeletionTableIT {
     cleanData(testNum);
   }
 
+  @Category(ManualIT.class)
+  @Test
+  public void testRepeatedlyWriteAndDeletion() throws SQLException {
+    // repeat 100 times
+    // each time write 10000 points and delete 1000 of them randomly
+    int repetition = 100;
+    Random random = new Random();
+
+    for (int rep = 0; rep < repetition; rep++) {
+      int fileNumMax = 100;
+      int pointPerFile = 100;
+      int deletionRange = 1000;
+      long time = -1;
+
+      try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+
+        statement.execute("create database if not exists test");
+        statement.execute("use test");
+
+        statement.execute(
+            "create table if not exists table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+
+        for (int i = 1; i <= fileNumMax; i++) {
+          for (int j = 0; j < pointPerFile; j++) {
+            statement.execute(
+                String.format(
+                    "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
+                    time + 1, time + 1));
+            time++;
+          }
+          statement.execute("FLUSH");
+        }
+
+        int totalPointNum = fileNumMax * pointPerFile;
+        long deletionStart = random.nextInt((int) time);
+        long deletionEnd = Math.min(deletionStart + deletionRange, time);
+        long pointDeleted = deletionEnd - deletionStart + 1;
+        LOGGER.info("{}: deletion range [{}, {}]", rep, deletionStart, deletionEnd);
+
+        statement.execute(
+            "delete from test.table1 where time >= "
+                + deletionStart
+                + " and time <= "
+                + deletionEnd);
+
+        // check the point count
+        try (ResultSet set =
+            statement.executeQuery("select count(*) from table1 where time < " + totalPointNum)) {
+          assertTrue(set.next());
+          long expectedCnt = totalPointNum - pointDeleted;
+          if (expectedCnt != set.getLong(1)) {
+            List<TimeRange> remainingRanges = collectDataRanges(statement, time);
+            LOGGER.info("{}: Remaining ranges: {}", rep, remainingRanges);
+            fail(
+                String.format(
+                    "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));
+          }
+        }
+      }
+    }
+  }
+
   @Test
   public void testMergeDeletion() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -899,8 +962,9 @@ public class IoTDBDeletionTableIT {
 
   private Void concurrentWrite(AtomicLong writtenPointCounter, ExecutorService allThreads)
       throws SQLException {
-    int fileNumMax = 10000;
-    int pointPerFile = 100;
+    int fileNumMax = 1000;
+    int pointPerFile = 1000;
+    int deviceNum = 4;
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -912,10 +976,14 @@ public class IoTDBDeletionTableIT {
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
+          long time = writtenPointCounter.get() + 1;
           statement.execute(
               String.format(
-                  "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
-                  writtenPointCounter.get() + 1, writtenPointCounter.get() + 1));
+                  "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d"
+                      + (time % deviceNum)
+                      + "',%d)",
+                  time,
+                  time));
           writtenPointCounter.incrementAndGet();
           if (Thread.interrupted()) {
             return null;
