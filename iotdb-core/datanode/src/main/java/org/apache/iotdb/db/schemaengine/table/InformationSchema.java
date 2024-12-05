@@ -195,9 +195,8 @@ public class InformationSchema {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(2).appendNull();
       if (isDetails) {
-        builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(2).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
