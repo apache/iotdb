@@ -754,6 +754,9 @@ public class CommonDescriptor {
     config.setArenaNum(
         Integer.parseInt(
             properties.getProperty("arena_num", String.valueOf(config.getArenaNum()))));
+    if (config.getArenaNum() <= 0) {
+      config.setArenaNum(4);
+    }
     config.setLog2SizeClassGroup(
         Integer.parseInt(
             properties.getProperty(
