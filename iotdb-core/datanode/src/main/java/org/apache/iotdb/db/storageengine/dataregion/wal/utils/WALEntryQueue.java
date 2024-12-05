@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
-import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.util.concurrent.BlockingQueue;
@@ -69,14 +66,6 @@ public class WALEntryQueue {
   }
 
   private long getElementSize(WALEntry walEntry) {
-    if (walEntry.isSignal()) {
-      return walEntry.getValue().serializedSize();
-    } else {
-      return ((WALInfoEntry) walEntry).getValue()
-    }
-    if (walEntry.getValue() instanceof InsertNode) {
-      return InsertNodeMemoryEstimator.sizeOf((InsertNode) walEntry.getValue());
-    }
-    return walEntry.getValue().serializedSize();
+    return walEntry.getMemorySize();
   }
 }
