@@ -72,6 +72,7 @@ public class InformationSchema {
         new IdColumnSchema("DataReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
     databaseTable.addColumnSchema(
         new IdColumnSchema("TimePartitionInterval".toLowerCase(Locale.ENGLISH), TSDataType.INT64));
+    databaseTable.removeColumnSchema("time");
     schemaTables.put("databases", databaseTable);
 
     // Show databases details
@@ -87,6 +88,7 @@ public class InformationSchema {
         new IdColumnSchema("TimePartitionInterval".toLowerCase(Locale.ENGLISH), TSDataType.INT64));
     databaseDetailsTable.addColumnSchema(
         new IdColumnSchema("model".toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    databaseDetailsTable.removeColumnSchema("time");
     schemaTables.put("databases_details", databaseDetailsTable);
 
     // Show tables
@@ -94,6 +96,7 @@ public class InformationSchema {
     tableTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
     tableTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
     tableTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
+    tableTable.removeColumnSchema("time");
     schemaTables.put("tables", tableTable);
 
     // Show tables details
@@ -102,6 +105,7 @@ public class InformationSchema {
     tableDetailsTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
     tableDetailsTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
     tableDetailsTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
+    tableDetailsTable.removeColumnSchema("time");
     schemaTables.put("tables_details", tableDetailsTable);
 
     // Desc table
@@ -111,6 +115,7 @@ public class InformationSchema {
     tableDescriptionTable.addColumnSchema(new IdColumnSchema("columnname", TSDataType.STRING));
     tableDescriptionTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
     tableDescriptionTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
+    tableDescriptionTable.removeColumnSchema("time");
     schemaTables.put("tables_description", tableDescriptionTable);
 
     // Desc table details
@@ -123,6 +128,7 @@ public class InformationSchema {
     tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
     tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
     tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
+    tableDescriptionDetailsTable.removeColumnSchema("time");
     schemaTables.put("tables_description_details", tableDescriptionDetailsTable);
   }
 

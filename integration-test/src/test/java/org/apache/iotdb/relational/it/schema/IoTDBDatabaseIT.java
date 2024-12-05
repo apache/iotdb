@@ -351,6 +351,8 @@ public class IoTDBDatabaseIT {
               e.getMessage());
         }
       }
+
+      statement.execute("use information_schema");
     }
   }
 }
