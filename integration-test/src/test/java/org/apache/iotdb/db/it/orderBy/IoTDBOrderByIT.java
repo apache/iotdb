@@ -100,11 +100,8 @@ public class IoTDBOrderByIT {
 
   private static final String[] sql3 =
       new String[] {
-        "CREATE TIMESERIES root.sg33.d.v_timestamp WITH DATATYPE=TIMESTAMP, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg33.d.v_string WITH DATATYPE=STRING, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg33.d.v_date WITH DATATYPE=DATE, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg33.d.v_blob WITH DATATYPE=BLOB, ENCODING=PLAIN",
-        "insert into root.sg33.d(timestamp,v_timestamp,v_string,v_date,v_blob) values(1,2024-09-20T06:15:35.000+00:00,'sss','2012-12-12',X'108DCD62')",
+        "create aligned timeseries root.test.dev (v_timestamp TIMESTAMP, v_string STRING, v_date DATE, v_blob BLOB encoding=PLAIN, v_int32 INT32);",
+        "insert into root.test.dev(timestamp, v_timestamp, v_string, v_date, v_blob, v_int32) aligned values(1, 2024-09-20T06:15:35.000+00:00, 'e1', '2012-12-12', X'108DCD62', 1);"
       };
 
   @BeforeClass
@@ -205,15 +202,19 @@ public class IoTDBOrderByIT {
 
   @Test
   public void newDataTypeTest() {
-    String[] expectedHeader = new String[] {"Time,,s3,s1,s2"};
+    String[] expectedHeader =
+        new String[] {"Time,Device,v_int32,v_blob,v_date,v_timestamp,v_string"};
     String[] retArray =
         new String[] {
-          "1,root.sg1.d2,11,11.1,false,",
+          "1,root.test.dev,1,0x108dcd62,2012-12-12,1726812935000,e1,",
         };
-    resultSetEqualTest(
-        "SELECT * FROM root.db.** LIMIT 2 ORDER BY timestamp ALIGN BY DEVICE",
-        expectedHeader,
-        retArray);
+
+    for (String key : new String[] {"time", "v_int32", "v_date", "v_timestamp", "v_string"}) {
+      resultSetEqualTest(
+          String.format("SELECT * FROM root.test.dev ORDER BY %s LIMIT 1 ALIGN BY DEVICE", key),
+          expectedHeader,
+          retArray);
+    }
   }
 
   // 1. One-level order by test
