@@ -1,4 +1,4 @@
-package org.apache.iotdb.confignode.consensus.request.auth;
+package org.apache.iotdb.confignode.consensus.request.write.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.MetadataException;
