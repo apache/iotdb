@@ -70,6 +70,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -86,11 +87,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Failed to borrow client from client pool when sending to receiver.";
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
+
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+
   private IoTDBDataNodeAsyncClientManager clientManager;
+
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final AtomicLong pendingRequests = new AtomicLong(0);
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -543,10 +549,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     isClosed.set(true);
 
     retryConnector.close();
-    clearRetryEventsReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
+    }
+
+    // ensure all on-the-fly requests have been handled
+    while (hasPendingRequests()) {
+      try {
+        Thread.sleep(50);
+      } catch (final InterruptedException e) {
+        LOGGER.warn("Interrupted when connector {} waiting for handling pending requests.", this);
+        Thread.currentThread().interrupt();
+      }
     }
 
     try {
@@ -557,10 +572,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       LOGGER.warn("Failed to close client manager.", e);
     }
 
+    // clear reference count of events in retry queue after closing async client
+    clearRetryEventsReferenceCount();
+
     super.close();
   }
 
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
+  //////////////////////// APIs provided for metric framework ////////////////////////
 
   public int getRetryEventQueueSize() {
     return retryEventQueue.size();
@@ -585,5 +603,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
       return count.get();
     }
+  }
+
+  //////////////////////// APIs provided for PipeTransferTrackableHandler ////////////////////////
+
+  public boolean isClosed() {
+    return isClosed.get();
+  }
+
+  public boolean hasPendingRequests() {
+    return pendingRequests.get() > 0;
+  }
+
+  public void increasePendingRequests() {
+    pendingRequests.incrementAndGet();
+  }
+
+  public void decreasePendingRequests() {
+    pendingRequests.decrementAndGet();
   }
 }

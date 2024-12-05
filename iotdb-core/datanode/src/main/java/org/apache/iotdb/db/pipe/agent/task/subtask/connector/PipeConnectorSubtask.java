@@ -199,7 +199,13 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
     isClosed.set(true);
     try {
+      final long startTime = System.currentTimeMillis();
       outputPipeConnector.close();
+      LOGGER.info(
+          "Pipe: connector subtask {} close {} within {} ms",
+          taskID,
+          outputPipeConnector.getClass().getName(),
+          System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
