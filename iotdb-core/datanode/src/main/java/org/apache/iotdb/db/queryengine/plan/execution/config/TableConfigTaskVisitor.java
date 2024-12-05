@@ -277,7 +277,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             accessControl.checkCanShowOrUseDatabase(
                 context.getSession().getUserName(), databaseName);
             return true;
-          } catch (AccessControlException e) {
+          } catch (final AccessControlException e) {
             return false;
           }
         });
