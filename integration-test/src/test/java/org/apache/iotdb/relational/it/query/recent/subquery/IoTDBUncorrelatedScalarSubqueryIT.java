@@ -341,6 +341,18 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
           retArray,
           DATABASE_NAME);
     }
+
+    // Test case: scalar subquery in aggregation function
+    sql = "SELECT count((select count(s1) from table1)) as %s from table1";
+    retArray = new String[] {"64,", "64,", "64,", "64,", "64,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
   }
 
   // endregion

@@ -367,7 +367,7 @@ public class QueryPlanner {
     inputBuilder.addAll(groupingSetAnalysis.getComplexExpressions());
 
     List<Expression> inputs = inputBuilder.build();
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
+    subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
     subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
