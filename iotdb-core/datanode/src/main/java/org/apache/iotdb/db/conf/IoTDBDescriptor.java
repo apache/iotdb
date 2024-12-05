@@ -2868,7 +2868,7 @@ public class IoTDBDescriptor {
       if (commonDescriptor.getConfig().isEnableBinaryAllocator()) {
         BinaryAllocator.getInstance().start();
       } else {
-        BinaryAllocator.getInstance().close(false);
+        BinaryAllocator.getInstance().close(true);
       }
     } catch (Exception e) {
       if (e instanceof InterruptedException) {

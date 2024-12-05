@@ -91,12 +91,12 @@ public class BinaryAllocator {
     sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
   }
 
-  public synchronized void close(boolean needReopen) {
-    if (needReopen) {
-      state.set(BinaryAllocatorState.PENDING);
-    } else {
+  public synchronized void close(boolean forceClose) {
+    if (forceClose) {
       state.set(BinaryAllocatorState.CLOSE);
       MetricService.getInstance().removeMetricSet(this.metrics);
+    } else {
+      state.set(BinaryAllocatorState.PENDING);
     }
 
     sampleEvictor.stopEvictor();
@@ -236,7 +236,7 @@ public class BinaryAllocator {
           "Binary allocator is shutting down because of high GC time percentage {}%.",
           curGcTimePercent);
       evict(1.0);
-      close(true);
+      close(false);
     } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
       evict(0.5);
     } else if (curGcTimePercent > WARNING_GC_TIME_PERCENTAGE) {

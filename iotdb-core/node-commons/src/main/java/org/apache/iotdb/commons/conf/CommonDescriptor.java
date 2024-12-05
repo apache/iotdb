@@ -750,11 +750,10 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "huge_blob_object", String.valueOf(config.getMaxAllocateSize()))));
-    config.setArenaNum(
-        Integer.parseInt(
-            properties.getProperty("arena_num", String.valueOf(config.getArenaNum()))));
-    if (config.getArenaNum() <= 0) {
-      config.setArenaNum(4);
+    int arenaNum =
+        Integer.parseInt(properties.getProperty("arena_num", String.valueOf(config.getArenaNum())));
+    if (arenaNum > 0) {
+      config.setArenaNum(arenaNum);
     }
     config.setLog2SizeClassGroup(
         Integer.parseInt(
