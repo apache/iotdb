@@ -57,8 +57,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.RelationalAuthorizerTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDataNodesTask;
@@ -123,12 +123,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
@@ -952,6 +952,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
+  }
+
+  @Override
   protected IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
     context.setQueryType(node.getQueryType());

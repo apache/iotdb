@@ -620,8 +620,6 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
     return visitStatement(node, context);
   }
-<<<<<<< HEAD
-
   protected R visitShowStatement(ShowStatement node, C context) {
     return visitStatement(node, context);
   }
@@ -633,7 +631,7 @@ public abstract class AstVisitor<R, C> {
   protected R visitKillQuery(KillQuery node, C context) {
     return visitStatement(node, context);
   }
-  
+
   protected R visitRelationalAuthorPlan(RelationalAuthorStatement node, C context) {
     return visitStatement(node, context);
   }
