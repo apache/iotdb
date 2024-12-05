@@ -136,12 +136,47 @@ public class InformationSchema {
     return INFORMATION_DATABASE.equals(database) ? schemaTables.get(tableName) : null;
   }
 
+  public static boolean mayShowTable(
+      final String database,
+      final boolean isDetails,
+      final SettableFuture<ConfigTaskResult> future) {
+    if (!database.equals(INFORMATION_DATABASE)) {
+      return false;
+    }
+    final List<TSDataType> outputDataTypes =
+        (isDetails
+                ? ColumnHeaderConstant.showTablesDetailsColumnHeaders
+                : ColumnHeaderConstant.showTablesColumnHeaders)
+            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final String schemaTable : schemaTables.keySet()) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(2).appendNull();
+      if (isDetails) {
+        builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
+      }
+      builder.declarePosition();
+    }
+
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            isDetails
+                ? DatasetHeaderFactory.getShowTablesDetailsHeader()
+                : DatasetHeaderFactory.getShowTablesHeader()));
+    return true;
+  }
+
   public static boolean mayDescribeTable(
       final String database,
       final String tableName,
       final boolean isDetails,
       final SettableFuture<ConfigTaskResult> future) {
-    if (database.equals(INFORMATION_DATABASE)) {
+    if (!database.equals(INFORMATION_DATABASE)) {
       return false;
     }
     if (!schemaTables.containsKey(tableName)) {

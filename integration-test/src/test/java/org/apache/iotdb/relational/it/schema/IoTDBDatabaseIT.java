@@ -307,7 +307,5 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
-  public void testInformationSchema() {
-    
-  }
+  public void testInformationSchema() {}
 }
