@@ -24,15 +24,24 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
+
+  private final BiFunction<Column, Integer, TsBlock> updateLastMatchedRowFunction;
+
+  // stores last row matched join criteria, only used in outer join
+  protected TsBlock lastMatchedRightBlock = null;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
@@ -44,7 +53,8 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       int[] rightOutputSymbolIdx,
       JoinKeyComparator joinKeyComparator,
       List<TSDataType> dataTypes,
-      Type joinKeyType) {
+      Type joinKeyType,
+      BiFunction<Column, Integer, TsBlock> updateLastMatchedRowFunction) {
     super(
         operatorContext,
         leftChild,
@@ -56,6 +66,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
         joinKeyComparator,
         dataTypes,
         joinKeyType);
+    this.updateLastMatchedRowFunction = updateLastMatchedRowFunction;
   }
 
   @Override
@@ -166,7 +177,8 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
 
   @Override
   protected void recordsWhenDataMatches() {
-    lastMatchedRightBlock = updateLastMatchedRightBlock(leftBlock, leftJoinKeyPosition, leftIndex);
+    lastMatchedRightBlock =
+        updateLastMatchedRowFunction.apply(leftBlock.getColumn(leftJoinKeyPosition), leftIndex);
   }
 
   private void buildUseRemainingBlocks() {
@@ -176,6 +188,41 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     } else {
       appendLeftWithEmptyRight();
       resetLeftBlock();
+    }
+  }
+
+  private void appendRightWithEmptyLeft() {
+    while (rightBlockListIdx < rightBlockList.size()) {
+
+      if (lastMatchedRightBlock == null
+          || comparator.lessThan(
+              lastMatchedRightBlock,
+              0,
+              0,
+              rightBlockList.get(rightBlockListIdx),
+              rightJoinKeyPosition,
+              rightIndex)) {
+        for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+          ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+          columnBuilder.appendNull();
+        }
+
+        appendRightBlockData(
+            rightBlockList,
+            rightBlockListIdx,
+            rightIndex,
+            leftOutputSymbolIdx,
+            rightOutputSymbolIdx,
+            resultBuilder);
+
+        resultBuilder.declarePosition();
+      }
+
+      rightIndex++;
+      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
+        rightIndex = 0;
+        rightBlockListIdx++;
+      }
     }
   }
 

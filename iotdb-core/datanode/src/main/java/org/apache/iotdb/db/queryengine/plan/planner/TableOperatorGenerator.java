@@ -147,14 +147,23 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.FloatColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -175,6 +184,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -184,6 +194,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
@@ -1285,10 +1296,59 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           rightOutputSymbolIdx,
           JoinKeyComparatorFactory.getComparator(leftJoinKeyType, true),
           dataTypes,
-          leftJoinKeyType);
+          leftJoinKeyType,
+          buildUpdateLastRowFunction(leftJoinKeyType.getTypeEnum()));
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+  }
+
+  BiFunction<Column, Integer, TsBlock> buildUpdateLastRowFunction(TypeEnum type) {
+    switch (type) {
+      case INT32:
+      case DATE:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new IntColumn(1, Optional.empty(), new int[] {column.getInt(rowIndex)}));
+      case INT64:
+      case TIMESTAMP:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new LongColumn(1, Optional.empty(), new long[] {column.getLong(rowIndex)}));
+      case FLOAT:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new FloatColumn(1, Optional.empty(), new float[] {column.getFloat(rowIndex)}));
+      case DOUBLE:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new DoubleColumn(1, Optional.empty(), new double[] {column.getDouble(rowIndex)}));
+      case BOOLEAN:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new BooleanColumn(
+                    1, Optional.empty(), new boolean[] {column.getBoolean(rowIndex)}));
+      case STRING:
+      case TEXT:
+      case BLOB:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new BinaryColumn(1, Optional.empty(), new Binary[] {column.getBinary(rowIndex)}));
+      default:
+        throw new UnsupportedOperationException("Unsupported data type: " + type);
+    }
   }
 
   @Override

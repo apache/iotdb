@@ -30,19 +30,11 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -66,9 +58,6 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   protected final int[] rightOutputSymbolIdx;
   protected TsBlock cachedNextRightBlock; // next candidate right block after rightBlockList
   protected boolean rightConsumedUp = false; // if all data of right child are consumed up
-
-  // stores last row matched join criteria, only used in full join
-  protected TsBlock lastMatchedRightBlock = null;
 
   protected final JoinKeyComparator comparator;
   protected final TsBlockBuilder resultBuilder;
@@ -468,41 +457,6 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     resultBuilder.declarePosition();
   }
 
-  protected void appendRightWithEmptyLeft() {
-    while (rightBlockListIdx < rightBlockList.size()) {
-
-      if (lastMatchedRightBlock == null
-          || comparator.lessThan(
-              lastMatchedRightBlock,
-              0,
-              0,
-              rightBlockList.get(rightBlockListIdx),
-              rightJoinKeyPosition,
-              rightIndex)) {
-        for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-          ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-          columnBuilder.appendNull();
-        }
-
-        appendRightBlockData(
-            rightBlockList,
-            rightBlockListIdx,
-            rightIndex,
-            leftOutputSymbolIdx,
-            rightOutputSymbolIdx,
-            resultBuilder);
-
-        resultBuilder.declarePosition();
-      }
-
-      rightIndex++;
-      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
-        rightIndex = 0;
-        rightBlockListIdx++;
-      }
-    }
-  }
-
   protected void buildResultTsBlock() {
     resultTsBlock =
         resultBuilder.build(
@@ -547,61 +501,5 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
         + rightChild.calculateMaxReturnSize()
         + rightChild.calculateRetainedSizeAfterCallingNext()
         + maxReturnSize;
-  }
-
-  protected TsBlock updateLastMatchedRightBlock(TsBlock block, int columnIndex, int rowIndex) {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new IntColumn(
-                1, Optional.empty(), new int[] {block.getColumn(columnIndex).getInt(rowIndex)}));
-
-      case INT64:
-      case TIMESTAMP:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new LongColumn(
-                1, Optional.empty(), new long[] {block.getColumn(columnIndex).getLong(rowIndex)}));
-      case FLOAT:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new FloatColumn(
-                1,
-                Optional.empty(),
-                new float[] {block.getColumn(columnIndex).getFloat(rowIndex)}));
-      case DOUBLE:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new DoubleColumn(
-                1,
-                Optional.empty(),
-                new double[] {block.getColumn(columnIndex).getDouble(rowIndex)}));
-      case BOOLEAN:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new BooleanColumn(
-                1,
-                Optional.empty(),
-                new boolean[] {block.getColumn(columnIndex).getBoolean(rowIndex)}));
-      case STRING:
-      case TEXT:
-      case BLOB:
-        return new TsBlock(
-            1,
-            TIME_COLUMN_TEMPLATE,
-            new BinaryColumn(
-                1,
-                Optional.empty(),
-                new Binary[] {block.getColumn(columnIndex).getBinary(rowIndex)}));
-      default:
-        throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
-    }
   }
 }
