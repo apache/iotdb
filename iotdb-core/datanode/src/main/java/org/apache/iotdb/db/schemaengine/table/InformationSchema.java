@@ -134,7 +134,10 @@ public class InformationSchema {
 
   public static void checkDBNameInWrite(final String dbName) {
     if (dbName.equals(INFORMATION_DATABASE)) {
-      throw new SemanticException("The database 'information_schema' can only be queried");
+      throw new SemanticException(
+          new IoTDBException(
+              "The database 'information_schema' can only be queried",
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }
 
