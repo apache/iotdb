@@ -226,7 +226,8 @@ public class DataRegionTest {
       tsfileProcessor.query(
           Collections.singletonList(IFullPath.convertToIFullPath(fullPath)),
           EnvironmentUtils.TEST_QUERY_CONTEXT,
-          tsfileResourcesForQuery);
+          tsfileResourcesForQuery,
+          null);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());

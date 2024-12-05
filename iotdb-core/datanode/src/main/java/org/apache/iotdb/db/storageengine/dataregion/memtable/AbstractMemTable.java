@@ -58,6 +58,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -459,10 +460,12 @@ public abstract class AbstractMemTable implements IMemTable {
       QueryContext context,
       IFullPath fullPath,
       long ttlLowerBound,
-      List<Pair<ModEntry, IMemTable>> modsToMemtable)
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
-        .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
+        .getReadOnlyMemChunkFromMemTable(
+            context, this, modsToMemtable, ttlLowerBound, globalTimeFilter);
   }
 
   @Override

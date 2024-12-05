@@ -85,6 +85,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -2112,7 +2113,8 @@ public class TsFileProcessor {
   public void query(
       List<IFullPath> seriesPaths,
       QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
       throws IOException {
     long startTime = System.nanoTime();
     try {
@@ -2129,14 +2131,15 @@ public class TsFileProcessor {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
+                flushingMemTable.query(
+                    context, seriesPath, timeLowerBound, modsToMemtable, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(context, seriesPath, timeLowerBound, null);
+                workMemTable.query(context, seriesPath, timeLowerBound, null, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }

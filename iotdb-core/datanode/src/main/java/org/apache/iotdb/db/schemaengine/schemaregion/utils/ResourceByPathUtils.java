@@ -49,6 +49,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
@@ -89,7 +90,8 @@ public abstract class ResourceByPathUtils {
       QueryContext context,
       IMemTable memTable,
       List<Pair<ModEntry, IMemTable>> modsToMemtable,
-      long timeLowerBound)
+      long timeLowerBound,
+      Filter globalTimeFilter)
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
@@ -186,7 +188,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       QueryContext context,
       IMemTable memTable,
       List<Pair<ModEntry, IMemTable>> modsToMemtable,
-      long timeLowerBound)
+      long timeLowerBound,
+      Filter globalTimeFilter)
       throws QueryProcessException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     IDeviceID deviceID = alignedFullPath.getDeviceId();
@@ -367,16 +370,22 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return timeSeriesMetadata;
   }
 
-  // TODO: global time filter pushdown
   private Map<TVList, Integer> prepareTvListMapForQuery(
-      WritableMemChunk memChunk, boolean isWorkMemTable, QueryContext context) {
+      WritableMemChunk memChunk,
+      boolean isWorkMemTable,
+      QueryContext context,
+      Filter globalTimeFilter) {
     Map<TVList, Integer> tvListQueryMap = new LinkedHashMap<>();
     // immutable sorted lists
     for (TVList tvList : memChunk.getSortedList()) {
+      if (globalTimeFilter != null
+          && !globalTimeFilter.satisfyStartEndTime(tvList.getMinTime(), tvList.getMaxTime())) {
+        continue;
+      }
       tvList.lockQueryList();
       try {
         LOGGER.debug(
-            "Flushing/Working MemTable - Add current query context to immutable TVList's query list");
+            "Flushing/Working MemTable - add current query context to immutable TVList's query list");
         tvList.getQueryContextList().add(context);
         tvListQueryMap.put(tvList, tvList.rowCount());
       } finally {
@@ -389,10 +398,13 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     list.lockQueryList();
     try {
       if (!isWorkMemTable) {
-        LOGGER.debug(
-            "Flushing MemTable - add current query context to mutable TVList's query list");
-        list.getQueryContextList().add(context);
-        tvListQueryMap.put(list, list.rowCount());
+        if (globalTimeFilter == null
+            || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+          LOGGER.debug(
+              "Flushing MemTable - add current query context to mutable TVList's query list");
+          list.getQueryContextList().add(context);
+          tvListQueryMap.put(list, list.rowCount());
+        }
       } else {
         if (list.isSorted() || list.getQueryContextList().isEmpty()) {
           LOGGER.debug(
@@ -429,7 +441,8 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       QueryContext context,
       IMemTable memTable,
       List<Pair<ModEntry, IMemTable>> modsToMemtable,
-      long timeLowerBound)
+      long timeLowerBound,
+      Filter globalTimeFilter)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     IDeviceID deviceID = fullPath.getDeviceId();
@@ -444,7 +457,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     // prepare TVList for query. It should clone and sort TVList if necessary.
     // Also, the map keeps TVlist length at this moment.
     Map<TVList, Integer> tvListQueryMap =
-        prepareTvListMapForQuery(memChunk, modsToMemtable == null, context);
+        prepareTvListMapForQuery(memChunk, modsToMemtable == null, context, globalTimeFilter);
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList =
