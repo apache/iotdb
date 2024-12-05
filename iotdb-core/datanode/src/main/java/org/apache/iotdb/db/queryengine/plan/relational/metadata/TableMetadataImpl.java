@@ -56,6 +56,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -84,27 +85,28 @@ public class TableMetadataImpl implements Metadata {
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override
-  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
-    if (table == null) {
-      return Optional.empty();
-    }
-    List<ColumnSchema> columnSchemaList =
-        table.getColumnList().stream()
-            .map(
-                o ->
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory()))
-            .collect(Collectors.toList());
-    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+  public Optional<TableSchema> getTableSchema(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    return Objects.isNull(table)
+        ? Optional.empty()
+        : Optional.of(
+            new TableSchema(
+                table.getTableName(),
+                table.getColumnList().stream()
+                    .map(
+                        o ->
+                            new ColumnSchema(
+                                o.getColumnName(),
+                                TypeFactory.getType(o.getDataType()),
+                                false,
+                                o.getColumnCategory()))
+                    .collect(Collectors.toList())));
   }
 
   @Override
