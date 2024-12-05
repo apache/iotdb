@@ -25,11 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.*;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
@@ -66,6 +62,7 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisito
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -883,5 +880,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     super.handleExit();
+  }
+
+  @Override
+  protected int getPort() {
+    IClientSession session = SESSION_MANAGER.getCurrSession();
+    if(session != null){
+      return session.getClientPort();
+    }
+    return 0;
+  }
+
+  @Override
+  protected String getIp() {
+    IClientSession session = SESSION_MANAGER.getCurrSession();
+    if(session != null){
+      return session.getClientAddress();
+    }
+    return null;
   }
 }

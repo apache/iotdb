@@ -68,6 +68,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -99,6 +101,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       new PipeConfigPhysicalPlanExceptionVisitor();
 
   private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   @Override
   public TPipeTransferResp receive(final TPipeTransferReq req) {
@@ -367,4 +370,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
+
+  @Override
+  protected int getPort() {
+    IClientSession session = SESSION_MANAGER.getCurrSession();
+    if(session != null){
+      return session.getClientPort();
+    }
+    return 0;
+  }
+
+  @Override
+  protected String getIp() {
+    IClientSession session = SESSION_MANAGER.getCurrSession();
+    if(session != null){
+      return session.getClientAddress();
+    }
+    return null;
+  }
+
 }
