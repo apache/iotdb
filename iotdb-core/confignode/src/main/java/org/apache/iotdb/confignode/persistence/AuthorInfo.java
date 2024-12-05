@@ -38,10 +38,9 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -356,7 +355,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListUsers(final AuthorReadPlan plan) throws AuthException {
+  public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
@@ -381,7 +380,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRoles(final AuthorReadPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
     final List<String> roleList = new ArrayList<>();
@@ -403,8 +402,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRolePrivileges(final AuthorReadPlan plan)
-      throws AuthException {
+  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
     final Role role = authorizer.getRole(plan.getRoleName());
@@ -439,8 +437,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListUserPrivileges(final AuthorReadPlan plan)
-      throws AuthException {
+  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
