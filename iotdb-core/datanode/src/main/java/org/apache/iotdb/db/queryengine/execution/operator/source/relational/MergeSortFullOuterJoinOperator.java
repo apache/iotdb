@@ -47,9 +47,8 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
 
-  private TsBlock lastMatchedRightBlock;
-
-  private boolean lastMatchedRightBlockIsNull = true;
+  // stores last row matched join criteria
+  private TsBlock lastMatchedRightBlock = null;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
@@ -86,69 +85,23 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
+
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
 
-    // prepare leftBlock and rightBlockList with cachedNextRightBlock
     if (!prepareInput()) {
       return null;
     }
 
     if (leftFinished || rightFinished) {
-      if (leftFinished) {
-        appendRightWithEmptyLeft();
-        resetRightBlockList();
-      } else {
-        appendLeftWithEmptyRight();
-        resetLeftBlock();
-      }
-
-      buildResultTsBlock();
-      return checkTsBlockSizeAndGetResult();
+      return getRemainingBlocks();
     }
 
-    // all the rightTsBlock is less than leftTsBlock, append right with empty left
-    if (allRightLessThanLeft()) {
-      appendRightWithEmptyLeft();
-      resetRightBlockList();
-      buildResultTsBlock();
-      return checkTsBlockSizeAndGetResult();
-    }
-
-    // all the leftTsBlock is less than rightTsBlock, append left with empty right
-    else if (allLeftLessThanRight()) {
-      appendLeftWithEmptyRight();
-      resetLeftBlock();
-      buildResultTsBlock();
-      return checkTsBlockSizeAndGetResult();
-    }
-
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-    long start = System.nanoTime();
     while (!resultBuilder.isFull()) {
-      // all right block time is not matched
-      TsBlock lastRightBlock = rightBlockList.get(rightBlockList.size() - 1);
-      if (!comparator.lessThanOrEqual(
-          leftBlock,
-          leftJoinKeyPosition,
-          leftIndex,
-          lastRightBlock,
-          rightJoinKeyPosition,
-          lastRightBlock.getPositionCount() - 1)) {
-        appendRightWithEmptyLeft();
-        resetRightBlockList();
-        break;
-      }
-
-      appendResult();
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        break;
-      }
-
-      if (System.nanoTime() - start > maxRuntime) {
+      if (processFinished() || System.nanoTime() - start > maxRuntime) {
         break;
       }
     }
@@ -161,6 +114,7 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
+  /** prepare leftBlock and rightBlockList with cachedNextRightBlock */
   @Override
   protected boolean prepareInput() throws Exception {
     gotCandidateBlocks();
@@ -174,8 +128,26 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
     return leftBlockNotEmpty() && rightBlockNotEmpty() && gotNextRightBlock();
   }
 
-  protected void appendResult() {
+  /**
+   * @return true if current round of next() invoking should be finished
+   */
+  @Override
+  protected boolean processFinished() {
+    // all the rightTsBlock is less than leftTsBlock, append right with empty left
+    if (allRightLessThanLeft()) {
+      appendRightWithEmptyLeft();
+      resetRightBlockList();
+      return true;
+    }
 
+    // all the leftTsBlock is less than rightTsBlock, append left with empty right
+    if (allLeftLessThanRight()) {
+      appendLeftWithEmptyRight();
+      resetLeftBlock();
+      return true;
+    }
+
+    // continue right < left, unless right >= left
     while (comparator.lessThan(
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPosition,
@@ -183,28 +155,31 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
         leftBlock,
         leftJoinKeyPosition,
         leftIndex)) {
-      // getCurrentRightTime() can only be greater than lastMatchedRightTime
-      // if greater than, then put right
-      // if equals, it has been put in last round
-      // notice: must examine `comparator.lessThan(getCurrentRightTime(), leftTime)` then examine
-      // `comparator.lessThan(leftTime, getCurrentRightTime())`
-      if (lastMatchedRightBlockIsNull
-          || comparator.lessThan(
-              lastMatchedRightBlock,
-              0,
-              0,
-              rightBlockList.get(rightBlockListIdx),
-              rightJoinKeyPosition,
-              rightIndex)) {
+      if (lastMatchedRightBlock == null) {
         appendOneRightRowWithEmptyLeft();
+      } else {
+        // CurrentRight can only be greater or equals than lastMatchedRight.
+        if (comparator.lessThan(
+            lastMatchedRightBlock,
+            0,
+            0,
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex)) {
+          appendOneRightRowWithEmptyLeft();
+        }
       }
 
       if (rightFinishedWithIncIndex()) {
-        return;
+        return true;
       }
     }
+    if (currentRoundNeedStop()) {
+      return true;
+    }
 
-    if (comparator.lessThan(
+    // continue left < right, unless left >= right
+    while (comparator.lessThan(
         leftBlock,
         leftJoinKeyPosition,
         leftIndex,
@@ -213,35 +188,39 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
         rightIndex)) {
       appendOneLeftRowWithEmptyRight();
       leftIndex++;
-      return;
-    }
-
-    int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
-    while (comparator.equalsTo(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex,
-        rightBlockList.get(tmpBlockIdx),
-        rightJoinKeyPosition,
-        tmpIdx)) {
-      // lastMatchedRightBlockListIdx = rightBlockListIdx;
-      // lastMatchedRightIdx = rightIndex;
-      initLastMatchedRightBlock(leftBlock, leftJoinKeyPosition, leftIndex);
-      appendValueToResult(tmpBlockIdx, tmpIdx);
-
-      resultBuilder.declarePosition();
-
-      tmpIdx++;
-      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
-        tmpIdx = 0;
-        tmpBlockIdx++;
-      }
-
-      if (tmpBlockIdx >= rightBlockList.size()) {
-        break;
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        resetLeftBlock();
+        return true;
       }
     }
-    leftIndex++;
+    if (currentRoundNeedStop()) {
+      return true;
+    }
+
+    // has right values equals to current left, append to join result, inc leftIndex
+    if (hasMatchedRightValueToProbeLeft()) {
+      leftIndex++;
+
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        resetLeftBlock();
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private TsBlock getRemainingBlocks() {
+    if (leftFinished) {
+      appendRightWithEmptyLeft();
+      resetRightBlockList();
+    } else {
+      appendLeftWithEmptyRight();
+      resetLeftBlock();
+    }
+
+    buildResultTsBlock();
+    return checkTsBlockSizeAndGetResult();
   }
 
   private void appendLeftWithEmptyRight() {
@@ -262,7 +241,7 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
   private void appendRightWithEmptyLeft() {
     while (rightBlockListIdx < rightBlockList.size()) {
 
-      if (lastMatchedRightBlockIsNull
+      if (lastMatchedRightBlock == null
           || comparator.lessThan(
               lastMatchedRightBlock,
               0,
@@ -322,8 +301,35 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
     resultBuilder.declarePosition();
   }
 
+  protected boolean hasMatchedRightValueToProbeLeft() {
+    int tmpBlockIdx = rightBlockListIdx;
+    int tmpIdx = rightIndex;
+    boolean hasMatched = false;
+    while (comparator.equalsTo(
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex,
+        rightBlockList.get(tmpBlockIdx),
+        rightJoinKeyPosition,
+        tmpIdx)) {
+      hasMatched = true;
+      initLastMatchedRightBlock(leftBlock, leftJoinKeyPosition, leftIndex);
+      appendValueToResult(tmpBlockIdx, tmpIdx);
+
+      tmpIdx++;
+      if (tmpIdx >= rightBlockList.get(tmpBlockIdx).getPositionCount()) {
+        tmpIdx = 0;
+        tmpBlockIdx++;
+      }
+
+      if (tmpBlockIdx >= rightBlockList.size()) {
+        break;
+      }
+    }
+    return hasMatched;
+  }
+
   private void initLastMatchedRightBlock(TsBlock block, int columnIndex, int rowIndex) {
-    lastMatchedRightBlockIsNull = false;
     switch (joinKeyType.getTypeEnum()) {
       case INT32:
       case DATE:
@@ -392,31 +398,6 @@ public class MergeSortFullOuterJoinOperator extends MergeSortInnerJoinOperator {
       default:
         throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
     }
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return Math.max(
-        Math.max(
-            leftChild.calculateMaxPeekMemoryWithCounter(),
-            rightChild.calculateMaxPeekMemoryWithCounter()),
-        calculateRetainedSizeAfterCallingNext() + calculateMaxReturnSize());
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return maxReturnSize * 2;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    // leftTsBlock + leftChild.RetainedSizeAfterCallingNext + rightTsBlock +
-    // rightChild.RetainedSizeAfterCallingNext
-    return leftChild.calculateMaxReturnSize()
-        + leftChild.calculateRetainedSizeAfterCallingNext()
-        + rightChild.calculateMaxReturnSize()
-        + rightChild.calculateRetainedSizeAfterCallingNext()
-        + maxReturnSize;
   }
 
   @Override

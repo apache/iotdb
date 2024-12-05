@@ -134,7 +134,6 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
 
   @Override
   public TsBlock next() throws Exception {
-
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
@@ -142,25 +141,12 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
       return getResultFromRetainedTsBlock();
     }
 
-    // prepare leftBlock and rightBlockList with cachedNextRightBlock
     if (!prepareInput()) {
       return null;
     }
 
-    // all the rightTsBlock is less than leftTsBlock, just skip right
-    if (allRightLessThanLeft()) {
-      resetRightBlockList();
-      return null;
-    }
-
-    // all the leftTsBlock is less than rightTsBlock, just skip left
-    else if (allLeftLessThanRight()) {
-      resetLeftBlock();
-      return null;
-    }
-
     while (!resultBuilder.isFull()) {
-      if (appendResultFinished() || System.nanoTime() - start > maxRuntime) {
+      if (processFinished() || System.nanoTime() - start > maxRuntime) {
         break;
       }
     }
@@ -173,9 +159,72 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
+  /** prepare leftBlock and rightBlockList with cachedNextRightBlock */
   protected boolean prepareInput() throws Exception {
     gotCandidateBlocks();
     return leftBlockNotEmpty() && rightBlockNotEmpty() && gotNextRightBlock();
+  }
+
+  /**
+   * @return true if current round of next() invoking should be finished
+   */
+  protected boolean processFinished() {
+    // all the rightTsBlock is less than leftTsBlock, just skip right
+    if (allRightLessThanLeft()) {
+      resetRightBlockList();
+      return true;
+    }
+
+    // all the leftTsBlock is less than rightTsBlock, just skip left
+    if (allLeftLessThanRight()) {
+      resetLeftBlock();
+      return true;
+    }
+
+    // continue right < left, unless right >= left
+    while (comparator.lessThan(
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPosition,
+        rightIndex,
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex)) {
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
+    if (currentRoundNeedStop()) {
+      return true;
+    }
+
+    // continue left < right, unless left >= right
+    while (comparator.lessThan(
+        leftBlock,
+        leftJoinKeyPosition,
+        leftIndex,
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPosition,
+        rightIndex)) {
+      leftIndex++;
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        resetLeftBlock();
+        return true;
+      }
+    }
+    if (currentRoundNeedStop()) {
+      return true;
+    }
+
+    // has right values equal to current left, append to join result, inc leftIndex
+    if (hasMatchedRightValueToProbeLeft()) {
+      leftIndex++;
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        resetLeftBlock();
+        return true;
+      }
+    }
+
+    return false;
   }
 
   protected boolean allRightLessThanLeft() {
@@ -197,39 +246,6 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPosition,
         rightIndex);
-  }
-
-  /**
-   * @return true if current round of next() invoking should be finished
-   */
-  private boolean appendResultFinished() {
-    // continue right < left, unless right >= left
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex,
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex)) {
-      if (rightFinishedWithIncIndex()) {
-        return true;
-      }
-    }
-
-    if (currentRoundNeedStop()) {
-      return true;
-    }
-
-    // append all matched right values equal to current left
-    appendMatchedValues();
-
-    leftIndex++;
-    if (leftIndex >= leftBlock.getPositionCount()) {
-      resetLeftBlock();
-      return true;
-    }
-
-    return false;
   }
 
   /**
@@ -283,9 +299,10 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
     return false;
   }
 
-  private void appendMatchedValues() {
+  protected boolean hasMatchedRightValueToProbeLeft() {
     int tmpBlockIdx = rightBlockListIdx;
     int tmpIdx = rightIndex;
+    boolean hasMatched = false;
     while (comparator.equalsTo(
         leftBlock,
         leftJoinKeyPosition,
@@ -293,6 +310,7 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
         rightBlockList.get(tmpBlockIdx),
         rightJoinKeyPosition,
         tmpIdx)) {
+      hasMatched = true;
       appendValueToResult(tmpBlockIdx, tmpIdx);
 
       tmpIdx++;
@@ -305,6 +323,7 @@ public class MergeSortInnerJoinOperator extends AbstractOperator {
         break;
       }
     }
+    return hasMatched;
   }
 
   protected boolean leftBlockNotEmpty() {
