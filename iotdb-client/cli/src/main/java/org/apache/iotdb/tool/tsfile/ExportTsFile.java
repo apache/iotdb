@@ -251,6 +251,12 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
+    final File file = new File(targetDirectory);
+    if (!file.isDirectory()) {
+      ioTPrinter.println(
+          String.format("Source file or directory %s does not exist", targetDirectory));
+      System.exit(CODE_ERROR);
+    }
   }
 
   /**
