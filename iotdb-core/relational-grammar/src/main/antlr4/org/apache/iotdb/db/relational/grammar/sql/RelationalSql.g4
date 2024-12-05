@@ -532,7 +532,6 @@ localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
 
-<<<<<<< HEAD
 showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
@@ -550,7 +549,6 @@ showCurrentTimestampStatement
     ;
 
 
-=======
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUser
@@ -580,7 +578,6 @@ grantUserRole
 revokeUserRole
     : REVOKE ROLE roleName=identifier FROM USER userName=identifier
     ;
->>>>>>> 60b3d48da8 (add auth relation sql.)
 
 
 grantStatement
@@ -614,7 +611,6 @@ objectScope
 SYSTEM_PRIVILEGE
     : MANAGE_USER
     | MANAGE_ROLE
-    | USE_TRIGGER
     | MAINTAIN
     ;
 
