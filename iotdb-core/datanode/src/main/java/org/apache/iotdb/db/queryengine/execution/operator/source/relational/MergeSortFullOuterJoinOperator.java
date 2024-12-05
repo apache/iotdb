@@ -41,7 +41,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
   private final BiFunction<Column, Integer, TsBlock> updateLastMatchedRowFunction;
 
   // stores last row matched join criteria, only used in outer join
-  protected TsBlock lastMatchedRightBlock = null;
+  private TsBlock lastMatchedRightBlock = null;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,

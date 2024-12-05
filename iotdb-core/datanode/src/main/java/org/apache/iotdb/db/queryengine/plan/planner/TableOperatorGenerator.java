@@ -1303,7 +1303,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
   }
 
-  BiFunction<Column, Integer, TsBlock> buildUpdateLastRowFunction(TypeEnum type) {
+  private BiFunction<Column, Integer, TsBlock> buildUpdateLastRowFunction(TypeEnum type) {
     switch (type) {
       case INT32:
       case DATE:
