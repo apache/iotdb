@@ -103,6 +103,13 @@ public class InformationSchema {
     }
   }
 
+  public static void checkDBNameInDeviceOperations(final String dbName) {
+    if (dbName.equals(INFORMATION_DATABASE)) {
+      throw new SemanticException(
+          "The database 'information_schema' does not support device operations");
+    }
+  }
+
   public static void buildDatabaseTsBlock(
       final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
     if (!canSeenDB.test(INFORMATION_DATABASE)) {

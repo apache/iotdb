@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter;
+import org.apache.iotdb.db.schemaengine.table.InformationSchema;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -92,6 +93,7 @@ public abstract class AbstractTraverseDevice extends Statement {
     final QualifiedObjectName objectName =
         MetadataUtil.createQualifiedObjectName(sessionInfo, table.getName());
     database = objectName.getDatabaseName();
+    InformationSchema.checkDBNameInDeviceOperations(database);
     tableName = objectName.getObjectName();
   }
 
