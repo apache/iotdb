@@ -353,6 +353,29 @@ public class IoTDBDatabaseIT {
       }
 
       statement.execute("use information_schema");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show databases"),
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables"),
+          "TableName,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList(
+                  "databases,INF,",
+                  "databases_details,INF,",
+                  "tables,INF,",
+                  "tables_details,INF,",
+                  "tables_description_details,INF,",
+                  "queries,INF,",
+                  "tables_description,INF,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,", "tablename,STRING,null,", "ttl(ms),STRING,null,")));
     }
   }
 }
