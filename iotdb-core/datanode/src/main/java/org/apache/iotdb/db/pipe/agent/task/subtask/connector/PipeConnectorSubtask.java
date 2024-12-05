@@ -177,7 +177,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
-              + outputPipeConnector.getClass().getName()
+              + outputPipeConnector
               + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
               + e.getMessage(),
           e);
@@ -204,7 +204,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       LOGGER.info(
           "Pipe: connector subtask {} close {} within {} ms",
           taskID,
-          outputPipeConnector.getClass().getName(),
+          outputPipeConnector,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
