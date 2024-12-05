@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueries;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import java.util.List;
@@ -34,7 +34,6 @@ import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.INFORMATION_SCHEMA;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.simpleQuery;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
@@ -73,7 +72,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitShowQueries(ShowQueries showQueries, Void context) {
+    protected Node visitShowStatement(ShowStatement showStatement, Void context) {
       // CatalogSchemaName schema = createCatalogSchemaName(session, showQueries,
       // showQueries.getSchema());
 
@@ -81,14 +80,14 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
 
       return simpleQuery(
           selectList(new AllColumns()),
-          from(INFORMATION_SCHEMA, QUERIES.getSchemaTableName()),
-          showQueries.getWhere(),
+          from(INFORMATION_SCHEMA, showStatement.getTableName()),
+          showStatement.getWhere(),
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
-          showQueries.getOrderBy(),
-          showQueries.getOffset(),
-          showQueries.getLimit());
+          showStatement.getOrderBy(),
+          showStatement.getOffset(),
+          showStatement.getLimit());
     }
 
     private static Relation from(String db, String table) {

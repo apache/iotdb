@@ -138,8 +138,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueries;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
@@ -218,6 +218,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -1081,8 +1082,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
     }
 
-    return new ShowQueries(
-        getLocation(ctx), visitIfPresent(ctx.where, Expression.class), orderBy, offset, limit);
+    return new ShowStatement(
+        getLocation(ctx),
+        QUERIES.getSchemaTableName(),
+        visitIfPresent(ctx.where, Expression.class),
+        orderBy,
+        offset,
+        limit);
   }
 
   @Override

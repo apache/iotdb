@@ -28,24 +28,31 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class ShowQueries extends Statement {
+public class ShowStatement extends Statement {
+  private final String tableName;
 
   private final Optional<Expression> where;
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
 
-  public ShowQueries(
+  public ShowStatement(
       NodeLocation location,
+      String tableName,
       Optional<Expression> where,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
     super(requireNonNull(location, "location is null"));
+    this.tableName = tableName;
     this.where = where;
     this.orderBy = orderBy;
     this.offset = offset;
     this.limit = limit;
+  }
+
+  public String getTableName() {
+    return tableName;
   }
 
   public Optional<Expression> getWhere() {
@@ -66,7 +73,7 @@ public class ShowQueries extends Statement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowQueries(this, context);
+    return visitor.visitShowStatement(this, context);
   }
 
   @Override
@@ -82,8 +89,9 @@ public class ShowQueries extends Statement {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ShowQueries that = (ShowQueries) o;
-    return Objects.equals(where, that.where)
+    ShowStatement that = (ShowStatement) o;
+    return Objects.equals(tableName, that.tableName)
+        && Objects.equals(where, that.where)
         && Objects.equals(orderBy, that.orderBy)
         && Objects.equals(offset, that.offset)
         && Objects.equals(limit, that.limit);
@@ -91,12 +99,13 @@ public class ShowQueries extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(where, orderBy, offset, limit);
+    return Objects.hash(tableName, where, orderBy, offset, limit);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
+        .add("tableName", tableName)
         .add("where", where.orElse(null))
         .add("orderBy", orderBy)
         .add("offset", offset.orElse(null))
