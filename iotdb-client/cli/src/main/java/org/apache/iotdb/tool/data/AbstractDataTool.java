@@ -189,6 +189,7 @@ public abstract class AbstractDataTool {
   protected static final String DATATYPE_BLOB = "blob";
   protected static final String DATATYPE_NAN = "NaN";
   protected static final String DATATYPE_TEXT = "text";
+  protected static final String DATATYPE_STRING = "string";
 
   protected static final String DATATYPE_NULL = "null";
   protected static int batchPointSize = 100_000;
@@ -205,6 +206,7 @@ public abstract class AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
     TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_STRING, TSDataType.STRING);
   }
 
   protected static final Map<String, TSDataType> TYPE_INFER_VALUE_DICT = new HashMap<>();
@@ -216,9 +218,10 @@ public abstract class AbstractDataTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.DATE);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_STRING, TSDataType.STRING);
   }
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
