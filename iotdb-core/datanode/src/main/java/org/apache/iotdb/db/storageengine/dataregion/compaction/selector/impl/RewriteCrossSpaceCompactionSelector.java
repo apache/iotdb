@@ -434,7 +434,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return result;
       }
       if (seqFiles.isEmpty()) {
-        if (!unseqFileSatisfy(unseqFiles.get(0))) {
+        if (!unseqFileLargeEnough(unseqFiles.get(0))) {
           return result;
         }
         result.toInsertUnSeqFile = unseqFiles.get(0).resource;
@@ -444,7 +444,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       } else {
         for (int i = 0; i < unseqFiles.size(); i++) {
           TsFileResourceCandidate unseqFile = unseqFiles.get(i);
-          if (!unseqFileSatisfy(unseqFile)) {
+          if (!unseqFileLargeEnough(unseqFile)) {
             continue;
           }
           // skip unseq file which is overlapped with files in seq space or overlapped with previous
@@ -465,7 +465,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return result;
     }
 
-    private boolean unseqFileSatisfy(TsFileResourceCandidate unseqFile) {
+    private boolean unseqFileLargeEnough(TsFileResourceCandidate unseqFile) {
       return unseqFile.resource.getTsFileID().getInnerCompactionCount()
               >= config.getMinCrossCompactionUnseqFileLevel()
           || unseqFile.resource.getTsFileSize()
