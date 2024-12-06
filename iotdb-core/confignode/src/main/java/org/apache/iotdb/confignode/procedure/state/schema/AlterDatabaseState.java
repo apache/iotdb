@@ -17,23 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-
-import com.google.common.util.concurrent.ListenableFuture;
-
-public class CreateDBTask extends AbstractDatabaseTask {
-
-  public CreateDBTask(final TDatabaseSchema schema, final boolean exists) {
-    super(schema, exists);
-  }
-
-  @Override
-  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.createDatabase(schema, exists);
-  }
+public enum AlterDatabaseState {
+  CHECK_ALTERED_TABLES,
+  PRE_RELEASE,
+  ALTER_DATABASE,
+  COMMIT_RELEASE
 }

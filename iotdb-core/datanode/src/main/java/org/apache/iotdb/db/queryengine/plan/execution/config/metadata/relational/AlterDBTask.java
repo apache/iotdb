@@ -25,15 +25,14 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateDBTask extends AbstractDatabaseTask {
-
-  public CreateDBTask(final TDatabaseSchema schema, final boolean exists) {
+public class AlterDBTask extends AbstractDatabaseTask {
+  public AlterDBTask(final TDatabaseSchema schema, final boolean exists) {
     super(schema, exists);
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createDatabase(schema, exists);
+    return configTaskExecutor.alterDatabase(schema, exists);
   }
 }

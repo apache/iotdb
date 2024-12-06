@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -369,6 +370,7 @@ public class Coordinator {
     if (statement instanceof DropDB
         || statement instanceof ShowDB
         || statement instanceof CreateDB
+        || statement instanceof AlterDB
         || statement instanceof Use
         || statement instanceof CreateTable
         || statement instanceof DescribeTable
