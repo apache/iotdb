@@ -237,6 +237,22 @@ public class IoTDBSessionRelationalIT {
                 row, "id:" + row, "attr:" + row, row * 1.0));
       }
 
+      // without specifying column name
+      for (long row = 30; row < 40; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 VALUES (%d, '%s', '%s', %f)",
+                row, "id:" + row, "attr:" + row, row * 1.0));
+      }
+
+      // auto data type conversion
+      for (long row = 40; row < 50; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 VALUES (%d, '%s', '%s', %d)",
+                row, "id:" + row, "attr:" + row, row));
+      }
+
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
@@ -247,7 +263,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
       }
-      assertEquals(30, cnt);
+      assertEquals(50, cnt);
 
       // sql cannot create column
       assertThrows(
@@ -257,6 +273,50 @@ public class IoTDBSessionRelationalIT {
                   String.format(
                       "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
                       "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+
+      // fewer columns than defined
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ( '%s', %f)", "attr:" + 100, 100 * 1.0)));
+
+      // more columns than defined
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%s', '%s', '%s', '%s', %f)",
+                      "id:" + 100, "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+
+      // invalid conversion - id column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
+                      100, 100, "attr:" + 100, 100 * 1.0)));
+
+      // invalid conversion - attr column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
+                      100, "id:" + 100, 100, 100 * 1.0)));
+
+      // invalid conversion - measurement column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %s)",
+                      100, "id:" + 100, "attr:" + 100, "measurement" + (100 * 1.0))));
     }
   }
 
