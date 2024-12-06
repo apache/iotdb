@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -211,7 +210,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
+  public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
+      throws MetadataException {
 
     storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
@@ -242,7 +242,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      final long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
       if (!SystemInfo.getInstance().addDirectBufferMemoryCost(memCost)) {
         throw new MetadataException(
             "Total allocated memory for direct buffer will be "
@@ -281,7 +281,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
       isRecovering = false;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error(
           "Cannot recover all schema info from {}, we try to recover as possible as we can",
           schemaRegionDirPath,
@@ -291,7 +291,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
+    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
         logger.info("create database schema folder {}", storageGroupDirPath);
@@ -303,7 +303,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
+    final File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
         logger.info("create schema region folder {}", schemaRegionDirPath);
@@ -344,11 +344,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     if (usingMLog) {
       try {
-        SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
+        final SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
         if (logWriter != null) {
           logWriter.force();
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
     }
@@ -371,14 +371,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   @SuppressWarnings("squid:S3776")
   private int initFromLog() throws IOException {
-    File logFile =
+    final File logFile =
         SystemFileFactory.INSTANCE.getFile(
             schemaRegionDirPath + File.separator + SchemaConstant.METADATA_LOG);
 
-    long time = System.currentTimeMillis();
+    final long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
-      int idx;
+      final int idx;
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
@@ -390,7 +390,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             System.currentTimeMillis() - time,
             storageGroupFullPath);
         return idx;
-      } catch (Exception e) {
+      } catch (final Exception e) {
         e.printStackTrace();
         throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
@@ -626,7 +626,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
-    } catch (final IOException | IllegalPathException e) {
+    } catch (final Exception e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
@@ -636,11 +636,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         initialized = false;
         isRecovering = true;
         init();
-      } catch (final MetadataException metadataException) {
+      } catch (final Exception exception) {
         logger.error(
-            "Error occurred during initializing schemaRegion {}",
-            schemaRegionId,
-            metadataException);
+            "Error occurred during initializing schemaRegion {}", schemaRegionId, exception);
       }
     }
   }
