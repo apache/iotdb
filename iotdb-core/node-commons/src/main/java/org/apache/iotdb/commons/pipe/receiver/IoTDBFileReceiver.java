@@ -174,16 +174,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     receiverFileDirWithIdSuffix.set(newReceiverDir);
 
     LOGGER.info(
-        "Receiver id = {}: Handshake successfully, receiver file dir = {}, ip = {}, port = {}.",
+        "Receiver id = {}: Handshake successfully! Sender host = {}, port = {}. Receiver file dir = {}.",
         receiverId.get(),
-        newReceiverDir.getPath(),
-        getIp(),
-        getPort());
+        getSenderHost(),
+        getSenderPort(),
+        newReceiverDir.getPath());
 
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
+
+  protected abstract String getSenderHost();
+
+  protected abstract String getSenderPort();
 
   protected TPipeTransferResp handleTransferHandshakeV2(final PipeTransferHandshakeV2Req req)
       throws IOException {
@@ -787,8 +791,4 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
   }
-
-  protected abstract int getPort();
-
-  protected abstract String getIp();
 }

@@ -93,6 +93,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiver.class);
 
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
   private static final PipeConfigPhysicalPlanTSStatusVisitor STATUS_VISITOR =
@@ -101,7 +103,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       new PipeConfigPhysicalPlanExceptionVisitor();
 
   private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   @Override
   public TPipeTransferResp receive(final TPipeTransferReq req) {
@@ -333,6 +334,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected String getSenderHost() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? session.getClientAddress() : "unknown";
+  }
+
+  @Override
+  protected String getSenderPort() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? String.valueOf(session.getClientPort()) : "unknown";
+  }
+
+  @Override
   protected TSStatus loadFileV1(
       final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
     throw new UnsupportedOperationException(
@@ -369,23 +382,5 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
-  }
-
-  @Override
-  protected int getPort() {
-    IClientSession session = SESSION_MANAGER.getCurrSession();
-    if (session != null) {
-      return session.getClientPort();
-    }
-    return 0;
-  }
-
-  @Override
-  protected String getIp() {
-    IClientSession session = SESSION_MANAGER.getCurrSession();
-    if (session != null) {
-      return session.getClientAddress();
-    }
-    return null;
   }
 }
