@@ -1301,6 +1301,11 @@ max_cross_compaction_candidate_file_size=5368709120
 # Datatype: int
 min_cross_compaction_unseq_file_level=1
 
+# The min size of candidate unseq file in one insertion compaction task
+# effectiveMode: hot_reload
+# Datatype: long
+min_insertion_compaction_unseq_file_size_in_byte=104857600
+
 # How many threads will be set up to perform compaction, 10 by default.
 # Set to 1 when less than or equal to 0.
 # effectiveMode: hot_reload

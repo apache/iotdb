@@ -61,6 +61,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,6 +98,15 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     super.tearDown();
+  }
+
+  @Test
+  public void test11() throws IOException {
+    TsFileResource resource =
+        new TsFileResource(
+            new File(
+                "~/Downloads/data_2/datanode/data/sequence/root.d1/1/0/1733195872759-1-0-0.tsfile"));
+    resource.deserialize();
   }
 
   @Test
