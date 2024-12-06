@@ -1887,6 +1887,24 @@ public class IoTDBDescriptor {
     configModified |=
         minCrossCompactionCandidateFileNum != conf.getMinCrossCompactionUnseqFileLevel();
 
+    // update min_insertion_compaction_unseq_file_size_in_byte
+    long minInsertionCompactionUnseqFileSizeInByte =
+        conf.getMinInsertionCompactionUnseqFileSizeInByte();
+    conf.setMinInsertionCompactionUnseqFileSizeInByte(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "min_insertion_compaction_unseq_file_size_in_byte",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "min_insertion_compaction_unseq_file_size_in_byte")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "min_insertion_compaction_unseq_file_size_in_byte"))));
+    configModified |=
+        minInsertionCompactionUnseqFileSizeInByte
+            != conf.getMinInsertionCompactionUnseqFileSizeInByte();
+
     // update inner_compaction_task_selection_disk_redundancy
     double innerCompactionTaskSelectionDiskRedundancy =
         conf.getInnerCompactionTaskSelectionDiskRedundancy();
