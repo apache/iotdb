@@ -59,7 +59,6 @@ public class TsTable {
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 
   public static final String TTL_PROPERTY = "ttl";
-  public static final String TTL_DEFAULT = "__ttl_default";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private final String tableName;
 

@@ -1559,28 +1559,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case PRE_UPDATE_TABLES:
-        DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
-        try {
-          Pair<String, List<TsTable>> pair =
-              TsTableInternalRPCUtil.deserializeTsTablesWithDatabase(req.getTableInfo());
-          database = pair.getLeft();
-          for (final TsTable table : pair.getRight()) {
-            DataNodeTableCache.getInstance().preUpdateTable(database, table);
-          }
-        } finally {
-          DataNodeSchemaLockManager.getInstance()
-              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
-        }
-        break;
-      case COMMIT_UPDATE_TABLES:
-        database = ReadWriteIOUtils.readString(req.tableInfo);
-        size = ReadWriteIOUtils.readInt(req.tableInfo);
-        for (int i = 0; i < size; ++i) {
-          DataNodeTableCache.getInstance()
-              .commitUpdateTable(database, ReadWriteIOUtils.readString(req.tableInfo));
-        }
-        break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);

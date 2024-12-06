@@ -145,11 +145,10 @@ public class CreateTableProcedure
       } else {
         final TDatabaseSchema schema =
             env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
-        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()) {
-          if (schema.isSetTTL() && schema.getTTL() != Long.MAX_VALUE) {
-            table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
-          }
-          table.addProp(TsTable.TTL_DEFAULT, Boolean.TRUE.toString());
+        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
+            && schema.isSetTTL()
+            && schema.getTTL() != Long.MAX_VALUE) {
+          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
         }
         setNextState(CreateTableState.PRE_CREATE);
       }

@@ -287,50 +287,6 @@ public class SchemaUtils {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> preReleaseTables(
-      final String database, final List<TsTable> tables, final ConfigManager configManager) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLES.getOperationType());
-    req.setTableInfo(TsTableInternalRPCUtil.serializeTsTablesWithDatabase(database, tables));
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-  }
-
-  public static Map<Integer, TSStatus> commitReleaseTables(
-      final String database, final List<String> tableNames, final ConfigManager configManager) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLES.getOperationType());
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, outputStream);
-      ReadWriteIOUtils.write(tableNames.size(), outputStream);
-      for (final String tableName : tableNames) {
-        ReadWriteIOUtils.write(tableName, outputStream);
-      }
-    } catch (final IOException ignored) {
-      // ByteArrayOutputStream will not throw IOException
-    }
-    req.setTableInfo(outputStream.toByteArray());
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-  }
-
   public static TSStatus executeInConsensusLayer(
       final ConfigPhysicalPlan plan, final ConfigNodeProcedureEnv env, final Logger logger) {
     TSStatus status;

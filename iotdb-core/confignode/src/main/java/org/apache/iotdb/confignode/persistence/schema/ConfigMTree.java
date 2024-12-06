@@ -826,17 +826,10 @@ public class ConfigMTree {
         (k, v) -> {
           if (Objects.nonNull(v)) {
             table.addProp(k, v);
-            if (k.equals(TsTable.TTL_PROPERTY)) {
-              table.addProp(TsTable.TTL_DEFAULT, Boolean.FALSE.toString());
-            }
-          } else if (k.equals(TsTable.TTL_PROPERTY)) {
-            table.addProp(TsTable.TTL_DEFAULT, Boolean.TRUE.toString());
-            if (databaseNode.getDatabaseSchema().isSetTTL()
-                && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
-              table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
-            } else {
-              table.removeProp(k);
-            }
+          } else if (k.equals(TsTable.TTL_PROPERTY)
+              && databaseNode.getDatabaseSchema().isSetTTL()
+              && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
+            table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
           } else {
             table.removeProp(k);
           }

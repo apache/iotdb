@@ -87,7 +87,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -1684,30 +1683,6 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus alterDatabase(final TDatabaseSchema schema, final boolean isGeneratedByPipe) {
-    long procedureId;
-    synchronized (this) {
-      final Pair<Long, Boolean> procedureIdDuplicatePair =
-          checkDuplicateTableTask(
-              schema.getName(), null, null, null, ProcedureType.ALTER_DATABASE_PROCEDURE);
-      procedureId = procedureIdDuplicatePair.getLeft();
-
-      if (procedureId == -1) {
-        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-          return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is operating table with same name.");
-        }
-        procedureId =
-            this.executor.submitProcedure(new AlterDatabaseProcedure(schema, isGeneratedByPipe));
-      }
-    }
-    final List<TSStatus> procedureStatus = new ArrayList<>();
-    return waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus)
-        ? StatusUtils.OK
-        : procedureStatus.get(0);
-  }
-
   private TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
@@ -1778,12 +1753,6 @@ public class ProcedureManager {
           if (database.equals(alterTableProcedure.getDatabase())
               && (Objects.isNull(tableName)
                   || Objects.equals(tableName, alterTableProcedure.getTableName()))) {
-            return new Pair<>(-1L, true);
-          }
-          break;
-        case ALTER_DATABASE_PROCEDURE:
-          final AlterDatabaseProcedure alterDatabaseProcedure = (AlterDatabaseProcedure) procedure;
-          if (database.equals(alterDatabaseProcedure.getSchema().getName())) {
             return new Pair<>(-1L, true);
           }
           break;
