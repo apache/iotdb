@@ -1015,6 +1015,9 @@ public class IoTDBDeletionTableIT {
           }
         }
         statement.execute("FLUSH");
+        if (i % 100 == 0) {
+          LOGGER.info("{} files written", i);
+        }
       }
     } catch (Throwable e) {
       allThreads.shutdownNow();
@@ -1041,7 +1044,7 @@ public class IoTDBDeletionTableIT {
 
       statement.execute("create database if not exists test");
       statement.execute("use test");
-      while (deletionOffset < deletionEnd && !Thread.interrupted()) {
+      while (deletionOffset < deletionEnd && nextPointNumToDelete < deletionEnd && !Thread.interrupted()) {
         if (writtenPointCounter.get() >= nextPointNumToDelete) {
           statement.execute(
               "delete from test.table1 where time >= "
