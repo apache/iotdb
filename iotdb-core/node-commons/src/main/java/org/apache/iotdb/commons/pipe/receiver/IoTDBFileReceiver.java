@@ -174,12 +174,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     receiverFileDirWithIdSuffix.set(newReceiverDir);
 
     LOGGER.info(
-        "Receiver id = {}: Handshake successfully! Sender host = {}, port = {}. Receiver file dir = {}.",
+        "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
         receiverId.get(),
         getSenderHost(),
         getSenderPort(),
         newReceiverDir.getPath());
-
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
