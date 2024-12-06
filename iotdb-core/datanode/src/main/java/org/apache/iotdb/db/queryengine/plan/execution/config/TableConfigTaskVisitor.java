@@ -138,7 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
-import org.apache.iotdb.db.schemaengine.table.InformationSchema;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -264,7 +264,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    InformationSchema.checkDBNameInWrite(node.getDbName().getValue());
+    InformationSchemaUtils.checkDBNameInWrite(node.getDbName().getValue());
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
     return new DropDBTask(node);
@@ -479,7 +479,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
-    InformationSchema.checkDBNameInWrite(dbName);
+    InformationSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
     // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
@@ -503,7 +503,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     if (isWrite) {
-      InformationSchema.checkDBNameInWrite(database);
+      InformationSchemaUtils.checkDBNameInWrite(database);
     }
     return new Pair<>(database, name.getSuffix());
   }

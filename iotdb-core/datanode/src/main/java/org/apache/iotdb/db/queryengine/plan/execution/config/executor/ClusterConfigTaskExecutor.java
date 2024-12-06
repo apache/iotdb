@@ -255,7 +255,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
-import org.apache.iotdb.db.schemaengine.table.InformationSchema;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3056,7 +3056,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchema.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+    if (InformationSchemaUtils.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
       return future;
     }
     // Construct request using statement
@@ -3207,7 +3207,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String database, final String tableName, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchema.mayDescribeTable(database, tableName, isDetails, future)) {
+    if (InformationSchemaUtils.mayDescribeTable(database, tableName, isDetails, future)) {
       return future;
     }
     try (final ConfigNodeClient configNodeClient =
@@ -3236,7 +3236,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String database, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchema.mayShowTable(database, isDetails, future)) {
+    if (InformationSchemaUtils.mayShowTable(database, isDetails, future)) {
       return future;
     }
     try (final ConfigNodeClient configNodeClient =

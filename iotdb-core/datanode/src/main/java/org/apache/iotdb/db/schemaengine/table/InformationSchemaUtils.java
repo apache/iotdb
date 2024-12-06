@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,102 +38,14 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class InformationSchema {
-  private static final String INFORMATION_DATABASE = "information_schema";
-  private static final Map<String, TsTable> schemaTables = new HashMap<>();
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.getSchemaTables;
 
-  static {
-    // Show queries
-    final TsTable queriesTable = new TsTable("queries");
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.TIME, TSDataType.TIMESTAMP));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.STATEMENT, TSDataType.STRING));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
-    schemaTables.put("queries", queriesTable);
-
-    // Show databases
-    final TsTable databaseTable = new TsTable("databases");
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT32));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT32));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.TIME_PARTITION_INTERVAL.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT64));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put("databases", databaseTable);
-
-    // Show tables
-    final TsTable tableTable = new TsTable("tables");
-    tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put("tables", tableTable);
-
-    // Desc table
-    final TsTable columnTable = new TsTable("columns");
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.COLUMN_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATATYPE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.COLUMN_CATEGORY.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put("columns", columnTable);
-  }
+public class InformationSchemaUtils {
 
   public static void checkDBNameInWrite(final String dbName) {
     if (dbName.equals(INFORMATION_DATABASE)) {
@@ -175,7 +86,7 @@ public class InformationSchema {
   }
 
   public static TsTable mayGetTable(final String database, final String tableName) {
-    return INFORMATION_DATABASE.equals(database) ? schemaTables.get(tableName) : null;
+    return INFORMATION_DATABASE.equals(database) ? getSchemaTables().get(tableName) : null;
   }
 
   public static boolean mayUseDB(
@@ -204,7 +115,7 @@ public class InformationSchema {
             .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final String schemaTable : schemaTables.keySet()) {
+    for (final String schemaTable : getSchemaTables().keySet()) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));
@@ -232,13 +143,13 @@ public class InformationSchema {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
     }
-    if (!schemaTables.containsKey(tableName)) {
+    if (!getSchemaTables().containsKey(tableName)) {
       final TableNotExistsException exception =
           new TableNotExistsException(INFORMATION_DATABASE, tableName);
       future.setException(new IoTDBException(exception.getMessage(), exception.getErrorCode()));
       return true;
     }
-    final TsTable table = schemaTables.get(tableName);
+    final TsTable table = getSchemaTables().get(tableName);
 
     final List<TSDataType> outputDataTypes =
         (isDetails
@@ -272,7 +183,7 @@ public class InformationSchema {
     return true;
   }
 
-  private InformationSchema() {
+  private InformationSchemaUtils() {
     // Util class
   }
 }
