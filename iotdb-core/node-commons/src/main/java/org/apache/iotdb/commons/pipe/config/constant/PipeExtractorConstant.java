@@ -135,8 +135,6 @@ public class PipeExtractorConstant {
       "extractor.consensus.sender-dn-id";
   public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
       "extractor.consensus.receiver-dn-id";
-  public static final String EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY =
-      "extractor.consensus.restore-progress-pipe-task-name";
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

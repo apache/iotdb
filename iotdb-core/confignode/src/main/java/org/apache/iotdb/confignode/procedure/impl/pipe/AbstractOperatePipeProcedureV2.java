@@ -391,10 +391,10 @@ public abstract class AbstractOperatePipeProcedureV2
    * @return The responseMap after pushing pipe meta
    * @throws IOException Exception when Serializing to byte buffer
    */
-  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
-      throws IOException {
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+      final ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
     }
     return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
@@ -409,7 +409,8 @@ public abstract class AbstractOperatePipeProcedureV2
    * @throws IOException Exception when Serializing to byte buffer
    */
   public static Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
-      ConfigNodeProcedureEnv env, AtomicReference<PipeTaskInfo> pipeTaskInfo) throws IOException {
+      final ConfigNodeProcedureEnv env, final AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
