@@ -235,7 +235,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       client =
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                  .setConnectionTimeoutMs(COMMON_CONFIG.getDnConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
                   .build(),
               ipAddress,

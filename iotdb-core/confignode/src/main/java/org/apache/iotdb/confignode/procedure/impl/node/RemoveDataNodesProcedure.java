@@ -133,7 +133,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
-          submitChildRegionMigrate(env);
+          // Avoid re-submit region-migration when leader change or ConfigNode reboot
+          if (!isStateDeserialized()) {
+            submitChildRegionMigrate(env);
+          }
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
@@ -183,10 +186,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             LOG.info(
                 "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={}, coordinatorForAddPeer={}, coordinatorForRemovePeer={}",
                 regionId,
-                removedDataNode,
-                destDataNode,
-                coordinatorForAddPeer,
-                coordinatorForRemovePeer);
+                simplifyTDataNodeLocation(removedDataNode),
+                simplifyTDataNodeLocation(destDataNode),
+                simplifyTDataNodeLocation(coordinatorForAddPeer),
+                simplifyTDataNodeLocation(coordinatorForRemovePeer));
           } else {
             LOG.error(
                 "{}, Cannot find target DataNode to migrate the region: {}",
@@ -195,6 +198,12 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             // TODO terminate all the uncompleted remove datanode process
           }
         });
+  }
+
+  private String simplifyTDataNodeLocation(TDataNodeLocation dataNodeLocation) {
+    return String.format(
+        "DataNode(id:%d, address:%s)",
+        dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint().getIp());
   }
 
   private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {

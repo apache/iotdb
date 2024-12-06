@@ -21,9 +21,9 @@
 
 title IoTDB Import
 
-echo ````````````````````````````````````````````````
-echo Starting IoTDB Client Import Script
-echo ````````````````````````````````````````````````
+@REM echo ````````````````````````````````````````````````
+@REM echo Starting IoTDB Client Import Script
+@REM echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 

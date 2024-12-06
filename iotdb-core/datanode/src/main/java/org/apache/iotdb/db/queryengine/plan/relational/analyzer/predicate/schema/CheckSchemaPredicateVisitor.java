@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -102,8 +103,15 @@ public class CheckSchemaPredicateVisitor
     final TsTableColumnSchema schema =
         context.table.getColumnSchema(
             node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
-    return Objects.isNull(schema)
-        || schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
+    if (Objects.isNull(schema)) {
+      return true;
+    }
+    if (schema.getColumnCategory() == TsTableColumnCategory.TIME
+        || schema.getColumnCategory() == TsTableColumnCategory.MEASUREMENT) {
+      throw new SemanticException(
+          "The TIME/MEASUREMENT columns are currently not allowed in devices related operations");
+    }
+    return schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   public static class Context {

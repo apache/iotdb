@@ -35,7 +35,9 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -90,16 +92,28 @@ public class RelationalDeleteDataNodeTest {
     WALByteBufferForTest walByteBufferForTest = new WALByteBufferForTest(buffer);
     relationalDeleteDataNode.serializeToWAL(walByteBufferForTest);
     buffer.flip();
-    PlanNode planNode = PlanNodeType.deserializeFromWAL(buffer);
+    PlanNode deserialized = PlanNodeType.deserializeFromWAL(buffer);
     // plan node id is not serialized to WAL, manually set it to pass comparison
-    planNode.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
-    assertEquals(relationalDeleteDataNode, planNode);
+    deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
+    assertEquals(relationalDeleteDataNode, deserialized);
+
+    buffer.flip();
+    DataInputStream dataInputStream =
+        new DataInputStream(
+            new ByteArrayInputStream(
+                buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining()));
+    deserialized = PlanNodeType.deserializeFromWAL(dataInputStream);
+    // plan node id is not serialized to WAL, manually set it to pass comparison
+    deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
+    assertEquals(relationalDeleteDataNode, deserialized);
 
     buffer = relationalDeleteDataNode.serializeToDAL();
-    AbstractDeleteDataNode deserialized = DeleteNodeType.deserializeFromDAL(buffer);
+    deserialized = DeleteNodeType.deserializeFromDAL(buffer);
     // plan node id is not serialized to DAL, manually set it to pass comparison
     deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
     assertEquals(relationalDeleteDataNode, deserialized);
-    assertEquals(relationalDeleteDataNode.getProgressIndex(), deserialized.getProgressIndex());
+    assertEquals(
+        relationalDeleteDataNode.getProgressIndex(),
+        ((AbstractDeleteDataNode) deserialized).getProgressIndex());
   }
 }

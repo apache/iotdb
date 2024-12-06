@@ -561,6 +561,22 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCreateTopic(CreateTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropTopic(DropTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowTopics(ShowTopics node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowSubscriptions(ShowSubscriptions node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowVersion(ShowVersion node, C context) {
     return visitStatement(node, context);
   }

@@ -336,27 +336,26 @@ public class RegionMaintainHandler {
               MAX_DISCONNECTION_TOLERATE_MS);
       long disconnectionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime);
       if (disconnectionTime > waitTime) {
-        break;
+        LOGGER.warn(
+            "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
+            REGION_MIGRATE_PROCESS,
+            taskId,
+            dataNodeLocation,
+            CommonDateTimeUtils.convertMillisecondToDurationStr(
+                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
+        TRegionMigrateResult report = new TRegionMigrateResult();
+        report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
+        report.setFailedNodeAndReason(new HashMap<>());
+        report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
+        return report;
       }
       try {
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
-        break;
+        return new TRegionMigrateResult(TRegionMaintainTaskStatus.PROCESSING);
       }
     }
-    LOGGER.warn(
-        "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
-        REGION_MIGRATE_PROCESS,
-        taskId,
-        dataNodeLocation,
-        CommonDateTimeUtils.convertMillisecondToDurationStr(
-            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
-    TRegionMigrateResult report = new TRegionMigrateResult();
-    report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
-    report.setFailedNodeAndReason(new HashMap<>());
-    report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
-    return report;
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {

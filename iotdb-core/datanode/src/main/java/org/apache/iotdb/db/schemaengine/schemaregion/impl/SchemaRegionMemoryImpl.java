@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -677,8 +679,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias(),
-              (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+              plan instanceof CreateTimeSeriesPlanImpl
+                      && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
+                  || plan instanceof CreateTimeSeriesNode
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -854,13 +858,26 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
+      throws SchemaQuotaExceededException {
+    final int notExistNum = mtree.getTableDeviceNotExistNum(tableName, deviceIdList);
+    schemaQuotaManager.check(
+        (long)
+                DataNodeTableCache.getInstance()
+                    .getTable(storageGroupFullPath.substring(5), tableName)
+                    .getMeasurementNum()
+            * notExistNum,
+        notExistNum);
   }
 
   @Override
@@ -1388,7 +1405,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<String> attributeNameList = node.getAttributeNameList();
       final Object[] attributeValueList = node.getAttributeValueList().get(i);
 
-      mtree.createTableDevice(
+      mtree.createOrUpdateTableDevice(
           tableName,
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),

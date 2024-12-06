@@ -127,18 +127,20 @@ public class PipeEventCommitManager {
       final int currentRestartTimes =
           eventCommitterRestartTimesMap.computeIfAbsent(
               generateCommitterRestartTimesKey(committerKey), k -> 0);
-      if (committerKey.getRestartTimes() < currentRestartTimes) {
-        LOGGER.warn(
-            "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
-            committerKey,
-            event.coreReportMessage(),
-            currentRestartTimes);
-      } else if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
-            committerKey,
-            event.coreReportMessage(),
-            Thread.currentThread().getStackTrace());
+      if (LOGGER.isDebugEnabled()) {
+        if (committerKey.getRestartTimes() < currentRestartTimes) {
+          LOGGER.debug(
+              "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
+              committerKey,
+              event.coreReportMessage(),
+              currentRestartTimes);
+        } else {
+          LOGGER.debug(
+              "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
+              committerKey,
+              event.coreReportMessage(),
+              Thread.currentThread().getStackTrace());
+        }
       }
       return;
     }

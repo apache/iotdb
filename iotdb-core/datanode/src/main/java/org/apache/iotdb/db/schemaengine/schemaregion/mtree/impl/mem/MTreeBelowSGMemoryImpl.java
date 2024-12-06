@@ -98,6 +98,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1576,7 +1577,29 @@ public class MTreeBelowSGMemoryImpl {
 
   // region table device management
 
-  public void createTableDevice(
+  public int getTableDeviceNotExistNum(final String tableName, final List<Object[]> deviceIdList) {
+    final IMemMNode tableNode = storageGroupMNode.getChild(tableName);
+    int notExistNum = deviceIdList.size();
+    if (tableNode == null) {
+      return notExistNum;
+    }
+    IMemMNode cur;
+    for (final Object[] deviceId : deviceIdList) {
+      cur = tableNode;
+      for (final Object device : deviceId) {
+        cur = cur.getChild(Objects.nonNull(device) ? device.toString() : null);
+        if (cur == null) {
+          break;
+        }
+      }
+      if (Objects.nonNull(cur)) {
+        notExistNum--;
+      }
+    }
+    return notExistNum;
+  }
+
+  public void createOrUpdateTableDevice(
       final String tableName,
       final String[] devicePath,
       final IntSupplier attributePointerGetter,
@@ -1700,8 +1723,6 @@ public class MTreeBelowSGMemoryImpl {
       updater.update();
     }
   }
-
-  public void renameTableAttribute() {}
 
   public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
       throws MetadataException {

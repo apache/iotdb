@@ -132,7 +132,10 @@ public class CommonConfig {
   private int ttlRuleCapacity = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int cnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
+
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int dnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -317,6 +320,16 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
+  private boolean enableBinaryAllocator = true;
+
+  private int arenaNum = 4;
+
+  private int minAllocateSize = 4096;
+
+  private int maxAllocateSize = 1024 * 1024;
+
+  private int log2SizeClassGroup = 3;
+
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
@@ -478,12 +491,20 @@ public class CommonConfig {
     this.ttlRuleCapacity = ttlRuleCapacity;
   }
 
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
+  public int getCnConnectionTimeoutInMS() {
+    return cnConnectionTimeoutInMS;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  public void setCnConnectionTimeoutInMS(int cnConnectionTimeoutInMS) {
+    this.cnConnectionTimeoutInMS = cnConnectionTimeoutInMS;
+  }
+
+  public int getDnConnectionTimeoutInMS() {
+    return dnConnectionTimeoutInMS;
+  }
+
+  public void setDnConnectionTimeoutInMS(int dnConnectionTimeoutInMS) {
+    this.dnConnectionTimeoutInMS = dnConnectionTimeoutInMS;
   }
 
   public int getSelectorNumOfClientManager() {
@@ -1467,5 +1488,45 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
+  }
+
+  public int getArenaNum() {
+    return arenaNum;
+  }
+
+  public void setArenaNum(int arenaNum) {
+    this.arenaNum = arenaNum;
+  }
+
+  public int getMinAllocateSize() {
+    return minAllocateSize;
+  }
+
+  public void setMinAllocateSize(int minAllocateSize) {
+    this.minAllocateSize = minAllocateSize;
+  }
+
+  public int getMaxAllocateSize() {
+    return maxAllocateSize;
+  }
+
+  public void setMaxAllocateSize(int maxAllocateSize) {
+    this.maxAllocateSize = maxAllocateSize;
+  }
+
+  public boolean isEnableBinaryAllocator() {
+    return enableBinaryAllocator;
+  }
+
+  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
+    this.enableBinaryAllocator = enableBinaryAllocator;
+  }
+
+  public int getLog2SizeClassGroup() {
+    return log2SizeClassGroup;
+  }
+
+  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
+    this.log2SizeClassGroup = log2SizeClassGroup;
   }
 }

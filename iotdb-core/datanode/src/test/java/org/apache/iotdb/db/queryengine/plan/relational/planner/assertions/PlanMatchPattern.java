@@ -22,8 +22,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -48,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -351,14 +354,14 @@ public final class PlanMatchPattern {
       PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
       handler.accept(builder);
       return builder.build();
-  }
-
-  public static PlanMatchPattern join(JoinType type, Consumer<JoinMatcher.Builder> handler)
-  {
-      JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
-      handler.accept(builder);
-      return builder.build();
   }*/
+
+  public static PlanMatchPattern join(
+      JoinNode.JoinType type, Consumer<JoinMatcher.Builder> handler) {
+    JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
+    handler.accept(builder);
+    return builder.build();
+  }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {
     return node(SortNode.class, source);
@@ -428,10 +431,10 @@ public final class PlanMatchPattern {
     return node(ExchangeNode.class, sources);
   }
 
-  /*public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(String left, String right)
-  {
-      return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
-  }*/
+  public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(
+      String left, String right) {
+    return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
+  }
 
   public static SymbolAlias symbol(String alias) {
     return new SymbolAlias(alias);
@@ -557,6 +560,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern exchange() {
     return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
+  }
+
+  public static PlanMatchPattern enforceSingleRow(PlanMatchPattern source) {
+    return node(EnforceSingleRowNode.class, source);
   }
 
   public PlanMatchPattern(List<PlanMatchPattern> sourcePatterns) {

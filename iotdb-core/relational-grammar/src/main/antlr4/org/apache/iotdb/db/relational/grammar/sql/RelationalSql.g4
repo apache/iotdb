@@ -86,6 +86,12 @@ statement
     | dropPipePluginStatement
     | showPipePluginsStatement
 
+    // Subscription Statement
+    | createTopicStatement
+    | dropTopicStatement
+    | showTopicsStatement
+    | showSubscriptionsStatement
+
     // Show Statement
     | showDevicesStatement
     | countDevicesStatement
@@ -370,6 +376,31 @@ showPipePluginsStatement
     : SHOW PIPEPLUGINS
     ;
 
+
+// -------------------------------------------- Subscription Statement ---------------------------------------------------------
+createTopicStatement
+    : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+topicAttributesClause
+    : WITH '(' topicAttributeClause (',' topicAttributeClause)* ')'
+    ;
+
+topicAttributeClause
+    : topicKey=string EQ topicValue=string
+    ;
+
+dropTopicStatement
+    : DROP TOPIC (IF EXISTS)? topicName=identifier
+    ;
+
+showTopicsStatement
+    : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showSubscriptionsStatement
+    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
 
 
 // -------------------------------------------- Show Statement ---------------------------------------------------------
@@ -919,8 +950,8 @@ nonReserved
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | REFRESH | REGION | REGIONID | REGIONS | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
+    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | TABLES | TABLESAMPLE | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
@@ -1229,6 +1260,7 @@ SOURCE: 'SOURCE';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';
 SYSTEM: 'SYSTEM';
@@ -1247,6 +1279,8 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOPIC: 'TOPIC';
+TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
 TRIM: 'TRIM';
