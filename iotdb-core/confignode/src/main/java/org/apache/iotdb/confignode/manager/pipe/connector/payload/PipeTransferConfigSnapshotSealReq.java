@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.connector.payload;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;

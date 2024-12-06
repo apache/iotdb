@@ -15,8 +15,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;

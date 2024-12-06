@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;

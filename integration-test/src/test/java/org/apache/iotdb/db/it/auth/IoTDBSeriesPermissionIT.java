@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -32,16 +32,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.TIME;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.countDevicesColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.countNodesColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.countTimeSeriesColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showChildNodesColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showChildPathsColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showDevicesColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showStorageGroupsColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showTTLColumnHeaders;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.showTimeSeriesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countDevicesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countNodesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.countTimeSeriesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showChildNodesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showChildPathsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDevicesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showStorageGroupsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTTLColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTimeSeriesColumnHeaders;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;

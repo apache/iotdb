@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -66,7 +66,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;

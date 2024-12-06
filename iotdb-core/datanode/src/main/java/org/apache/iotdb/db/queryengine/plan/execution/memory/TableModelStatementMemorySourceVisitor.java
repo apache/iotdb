@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;

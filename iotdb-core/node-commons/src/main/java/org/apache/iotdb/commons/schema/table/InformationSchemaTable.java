@@ -19,7 +19,7 @@ package org.apache.iotdb.commons.schema.table;
  * under the License.
  */
 
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 
 import com.google.common.collect.ImmutableList;

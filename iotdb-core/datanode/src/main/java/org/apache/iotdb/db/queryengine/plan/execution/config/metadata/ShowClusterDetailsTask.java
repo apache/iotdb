@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -41,9 +41,9 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.NODE_TYPE_AI_NODE;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_AI_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterDetailsTask implements IConfigTask {
 

@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -54,7 +54,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.table.column.ColumnHeaderConstant.LIST_USER_PRIVILEGES_Column_HEADERS;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_PRIVILEGES_Column_HEADERS;
 
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to confignode.
