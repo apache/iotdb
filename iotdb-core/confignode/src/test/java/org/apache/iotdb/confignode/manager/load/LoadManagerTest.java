@@ -89,7 +89,7 @@ public class LoadManagerTest {
     // Simulate update to Running status
     LOAD_CACHE.cacheConfigNodeHeartbeatSample(0, new NodeHeartbeatSample(NodeStatus.Running));
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.Running));
-    LOAD_CACHE.updateNodeStatistics();
+    LOAD_CACHE.updateNodeStatistics(false);
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     NODE_SEMAPHORE.acquire();
     Assert.assertEquals(NodeStatus.Running, LOAD_CACHE.getNodeStatus(0));
@@ -117,7 +117,7 @@ public class LoadManagerTest {
 
     // Removing status can't be updated to any other status automatically
     LOAD_CACHE.cacheDataNodeHeartbeatSample(1, new NodeHeartbeatSample(NodeStatus.ReadOnly));
-    LOAD_CACHE.updateNodeStatistics();
+    LOAD_CACHE.updateNodeStatistics(false);
     LOAD_MANAGER.getEventService().checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     Assert.assertEquals(NodeStatus.Removing, LOAD_CACHE.getNodeStatus(1));
 
@@ -188,7 +188,7 @@ public class LoadManagerTest {
     Assert.assertEquals(
         new Pair<>(
             new RegionGroupStatistics(RegionGroupStatus.Running, allRunningRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneRemovingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Add and mark Region 3 as Adding
     int addDataNodeId = 3;
@@ -203,8 +203,8 @@ public class LoadManagerTest {
     oneAddingRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Adding));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneAddingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneRemovingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneAddingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Both Region 0 and 3 can't be updated
     LOAD_CACHE.cacheRegionHeartbeatSample(
@@ -226,8 +226,8 @@ public class LoadManagerTest {
     oneRemovingRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Running));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneAddingRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneAddingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneRemovingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Removing process completed
     LOAD_MANAGER.removeRegionCache(regionGroupId, removeDataNodeId);
@@ -237,7 +237,7 @@ public class LoadManagerTest {
     allRunningRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Running));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Available, oneRemovingRegionStatisticsMap),
             new RegionGroupStatistics(RegionGroupStatus.Running, allRunningRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
   }

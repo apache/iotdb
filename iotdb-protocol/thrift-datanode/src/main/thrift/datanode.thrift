@@ -196,8 +196,8 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
-struct TDisableDataNodeReq {
-  1: required common.TDataNodeLocation dataNodeLocation
+struct TCleanDataNodeCacheReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
 }
 
 struct TCreateFunctionInstanceReq {
@@ -782,15 +782,15 @@ service IDataNodeRPCService {
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
   /**
-   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
+   * Config node will clean DataNode cache, the Data node will not accept read/write request when disabled
    * @param data node location
    */
-  common.TSStatus disableDataNode(TDisableDataNodeReq req)
+  common.TSStatus cleanDataNodeCache(TCleanDataNodeCacheReq req)
 
   /**
-   * Config node will stop the Data node.
+   * Config node will stop and clear the Data node.
    */
-  common.TSStatus stopDataNode()
+  common.TSStatus stopAndClearDataNode()
 
   /**
    * ConfigNode will ask DataNode for heartbeat in every few seconds.

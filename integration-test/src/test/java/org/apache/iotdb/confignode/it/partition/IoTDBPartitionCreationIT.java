@@ -388,27 +388,48 @@ public class IoTDBPartitionCreationIT {
           testTimePartitionInterval,
           dataPartitionTableResp.getDataPartitionTable());
 
-      // Check Region count and status
       int runningCnt = 0;
       int unknownCnt = 0;
       int readOnlyCnt = 0;
       int removingCnt = 0;
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
-          runningCnt += 1;
-        } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
-          unknownCnt += 1;
-        } else if (RegionStatus.Removing.getStatus().equals(regionInfo.getStatus())) {
-          removingCnt += 1;
-        } else if (RegionStatus.ReadOnly.getStatus().equals(regionInfo.getStatus())) {
-          readOnlyCnt += 1;
+      TShowRegionResp showRegionResp;
+
+      // Check Region count and status
+      for (int retry = 0; retry < 30; retry++) {
+        runningCnt = 0;
+        unknownCnt = 0;
+        readOnlyCnt = 0;
+        removingCnt = 0;
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+        for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+          if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
+            runningCnt += 1;
+          } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
+            unknownCnt += 1;
+          } else if (RegionStatus.Removing.getStatus().equals(regionInfo.getStatus())) {
+            removingCnt += 1;
+          } else if (RegionStatus.ReadOnly.getStatus().equals(regionInfo.getStatus())) {
+            readOnlyCnt += 1;
+          }
+        }
+
+        if (runningCnt == 9 && removingCnt == 0 && readOnlyCnt == 1 && unknownCnt == 2) {
+          break;
+        } else {
+          LOGGER.info(
+              "Running: {}, Removing: {}, ReadOnly:{}, Unknown:{}",
+              runningCnt,
+              removingCnt,
+              readOnlyCnt,
+              unknownCnt);
+          TimeUnit.SECONDS.sleep(1);
         }
       }
-      Assert.assertEquals(8, runningCnt);
-      Assert.assertEquals(1, removingCnt);
+
+      Assert.assertEquals(9, runningCnt);
+      Assert.assertEquals(0, removingCnt);
       Assert.assertEquals(1, readOnlyCnt);
       Assert.assertEquals(2, unknownCnt);
 
@@ -455,9 +476,15 @@ public class IoTDBPartitionCreationIT {
             readOnlyCnt += 1;
           }
         }
-        if (runningCnt == 10 && unknownCnt == 0 && readOnlyCnt == 1 && removingCnt == 1) {
+        if (runningCnt == 11 && unknownCnt == 0 && readOnlyCnt == 1 && removingCnt == 0) {
           return;
         }
+        LOGGER.info(
+            "Running: {}, Removing: {}, ReadOnly:{}, Unknown:{}",
+            runningCnt,
+            removingCnt,
+            readOnlyCnt,
+            unknownCnt);
         TimeUnit.SECONDS.sleep(1);
       }
       Assert.fail("Region status is not correct after 30s of recovery");

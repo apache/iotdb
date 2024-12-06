@@ -20,17 +20,37 @@
 @echo off
 
 IF "%~1"=="--help" (
-    echo The script will remove a DataNode.
-    echo Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes.
-    echo Usage:
-    echo Remove the DataNode with datanode_id
-    echo ./sbin/remove-datanode.bat [datanode_id]
+    echo The script will remove one or more DataNodes.
+    echo Before removing DataNodes, ensure that the cluster has at least the required number of data/schema replicas DataNodes.
+    echo Usage: ./sbin/remove-datanode.sh [DataNode_ID ...]
+    echo Remove one or more DataNodes by specifying their IDs.
+    echo Note that this datanode is removed by default if DataNode_ID is not specified.
+    echo Example:
+    echo   ./sbin/remove-datanode.sh 1         # Remove DataNode with ID 1
+    echo   ./sbin/remove-datanode.sh 1 2 3     # Remove DataNodes with IDs 1, 2, and 3
     EXIT /B 0
 )
 
-echo ````````````````````````
-echo Starting to remove a DataNode
-echo ````````````````````````
+REM Check for duplicate DataNode IDs
+set "ids=%*"
+set "unique_ids="
+for %%i in (%ids%) do (
+    if "!unique_ids!" == "" (
+        set "unique_ids=%%i"
+    ) else (
+        echo !unique_ids! | findstr /b /c:"%%i " >nul
+        if errorlevel 1 (
+            set "unique_ids=!unique_ids! %%i"
+        ) else (
+            echo Error: Duplicate DataNode ID %%i found.
+            EXIT /B 1
+        )
+    )
+)
+
+echo -------------------------
+echo Starting to remove DataNodes: %ids%
+echo -------------------------
 
 PATH %PATH%;%JAVA_HOME%\bin\
 set "FULL_VERSION="
@@ -72,7 +92,7 @@ set IOTDB_LOGS=%IOTDB_HOME%\logs
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-r
 set is_conf_path=false
-for %%i in (%*) do (
+for %%i in (%unique_ids%) do (
 	set CONF_PARAMS=!CONF_PARAMS! %%i
 )
 
@@ -105,7 +125,14 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+@REM In case the 2g memory is not enough in some scenarios, users can further reduce the memory usage manually.
+@REM on heap memory size
+set ON_HEAP_MEMORY=2G
+
+@REM off heap memory size
+set OFF_HEAP_MEMORY=512M
+
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -Xms%ON_HEAP_MEMORY% -Xmx%ON_HEAP_MEMORY% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -97,6 +98,12 @@ public class IoTDBOrderByIT {
         "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
+  private static final String[] sql3 =
+      new String[] {
+        "create aligned timeseries root.test.dev (v_timestamp TIMESTAMP, v_string STRING, v_date DATE, v_blob BLOB encoding=PLAIN, v_int32 INT32);",
+        "insert into root.test.dev(timestamp, v_timestamp, v_string, v_date, v_blob, v_int32) aligned values(1, 2024-09-20T06:15:35.000+00:00, 'e1', '2012-12-12', X'108DCD62', 1);"
+      };
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -112,12 +119,13 @@ public class IoTDBOrderByIT {
   protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String sql : sql) {
-        statement.execute(sql);
+
+      for (String[] sqlList : java.util.Arrays.asList(sql, sql2, sql3)) {
+        for (String sql : sqlList) {
+          statement.execute(sql);
+        }
       }
-      for (String sql : sql2) {
-        statement.execute(sql);
-      }
+
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -189,6 +197,23 @@ public class IoTDBOrderByIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void newDataTypeTest() {
+    String[] expectedHeader =
+        new String[] {"Time,Device,v_int32,v_blob,v_date,v_timestamp,v_string"};
+    String[] retArray =
+        new String[] {
+          "1,root.test.dev,1,0x108dcd62,2012-12-12,1726812935000,e1,",
+        };
+
+    for (String key : new String[] {"time", "v_int32", "v_date", "v_timestamp", "v_string"}) {
+      resultSetEqualTest(
+          String.format("SELECT * FROM root.test.dev ORDER BY %s LIMIT 1 ALIGN BY DEVICE", key),
+          expectedHeader,
+          retArray);
     }
   }
 

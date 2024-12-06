@@ -78,6 +78,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
@@ -144,19 +145,27 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   @Override
-  protected void remove(Long nodeId) throws IoTDBException {
+  protected void remove(Set<Integer> nodeIds) throws IoTDBException {
     // If the nodeId was null, this is a shorthand for removing the current dataNode.
     // In this case we need to find our nodeId.
-    if (nodeId == null) {
-      nodeId = (long) CONF.getConfigNodeId();
+
+    int removeConfigNodeId = -1;
+    if (nodeIds == null) {
+      removeConfigNodeId = CONF.getConfigNodeId();
+    } else {
+      if (nodeIds.size() != 1) {
+        throw new IoTDBException(
+            "It is not allowed to remove multiple ConfigNodes at the same time.", -1);
+      }
+      removeConfigNodeId = nodeIds.iterator().next();
     }
 
     try {
-      LOGGER.info("Starting to remove ConfigNode with node-id {}", nodeId);
+      LOGGER.info("Starting to remove ConfigNode with node-id {}", removeConfigNodeId);
 
       try {
         TConfigNodeLocation removeConfigNodeLocation =
-            ConfigNodeRemoveCheck.getInstance().removeCheck(Long.toString(nodeId));
+            ConfigNodeRemoveCheck.getInstance().removeCheck(Long.toString(removeConfigNodeId));
         if (removeConfigNodeLocation == null) {
           LOGGER.error(
               "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
@@ -171,7 +180,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
       LOGGER.info(
           "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-          nodeId);
+          removeConfigNodeId);
     } catch (IOException e) {
       LOGGER.error("Meet error when doing remove ConfigNode", e);
       throw new IoTDBException("Error removing", -1);

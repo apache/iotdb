@@ -28,10 +28,10 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -100,10 +100,11 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE,
         (req, client) -> client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.DISABLE_DATANODE,
-        (req, client) -> client.disableDataNode((TDisableDataNodeReq) req));
+        CnToDnSyncRequestType.CLEAN_DATA_NODE_CACHE,
+        (req, client) -> client.cleanDataNodeCache((TCleanDataNodeCacheReq) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.STOP_DATA_NODE, (req, client) -> client.stopDataNode());
+        CnToDnSyncRequestType.STOP_AND_CLEAR_DATA_NODE,
+        (req, client) -> client.stopAndClearDataNode());
     actionMapBuilder.put(
         CnToDnSyncRequestType.SET_SYSTEM_STATUS,
         (req, client) -> client.setSystemStatus((String) req));
