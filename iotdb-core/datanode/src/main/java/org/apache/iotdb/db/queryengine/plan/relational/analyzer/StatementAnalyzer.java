@@ -188,6 +188,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -496,7 +497,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
@@ -583,7 +585,7 @@ public class StatementAnalyzer {
           // If database is not specified, use the database from current session.
           // If still not specified, throw an exception.
           if (!queryContext.getDatabaseName().isPresent()) {
-            throw new SemanticException("Database is not specified");
+            throw new SemanticException(DATABASE_NOT_SPECIFIED);
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
