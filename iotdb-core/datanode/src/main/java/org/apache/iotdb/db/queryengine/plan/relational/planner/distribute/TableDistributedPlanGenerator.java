@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -155,11 +156,6 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
 
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
-    }
-
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
   }
@@ -175,11 +171,6 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
 
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
-    }
-
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
   }
@@ -191,11 +182,6 @@ public class TableDistributedPlanGenerator
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
     }
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
@@ -210,11 +196,6 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
 
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
-    }
-
     // push down LimitNode in distributed plan optimize rule
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
@@ -226,11 +207,6 @@ public class TableDistributedPlanGenerator
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
-    }
-
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
     }
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
@@ -442,18 +418,27 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitJoin(JoinNode node, PlanContext context) {
-    // child of JoinNode must be SortNode, so after rewritten, the child must be MergeSortNode or
-    // SortNode
+
     List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
-    checkArgument(
-        leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
-    node.setLeftChild(leftChildrenNodes.get(0));
-
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
-    checkArgument(
-        rightChildrenNodes.size() == 1, "The size of right children node of JoinNode should be 1");
-    node.setRightChild(rightChildrenNodes.get(0));
-
+    if (!node.isCrossJoin()) {
+      // child of JoinNode(excluding CrossJoin) must be SortNode, so after rewritten, the child must
+      // be MergeSortNode or
+      // SortNode
+      checkArgument(
+          leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
+      checkArgument(
+          rightChildrenNodes.size() == 1,
+          "The size of right children node of JoinNode should be 1");
+    }
+    // For CrossJoinNode, we need to merge children nodes(It's safe for other JoinNodes here since
+    // the size of their children is always 1.)
+    node.setLeftChild(
+        mergeChildrenViaCollectOrMergeSort(
+            nodeOrderingMap.get(node.getLeftChild().getPlanNodeId()), leftChildrenNodes));
+    node.setRightChild(
+        mergeChildrenViaCollectOrMergeSort(
+            nodeOrderingMap.get(node.getRightChild().getPlanNodeId()), rightChildrenNodes));
     return Collections.singletonList(node);
   }
 
@@ -656,6 +641,18 @@ public class TableDistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
+  @Override
+  public List<PlanNode> visitEnforceSingleRow(EnforceSingleRowNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    return Collections.singletonList(node);
+  }
+
   private void buildRegionNodeMap(
       AggregationTableScanNode originalAggTableScanNode,
       List<List<TRegionReplicaSet>> regionReplicaSetsList,
@@ -707,6 +704,12 @@ public class TableDistributedPlanGenerator
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       OrderingScheme childOrdering, List<PlanNode> childrenNodes) {
+    checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty");
+
+    if (childrenNodes.size() == 1) {
+      return childrenNodes.get(0);
+    }
+
     PlanNode firstChild = childrenNodes.get(0);
 
     // children has sort property, use MergeSort to merge children

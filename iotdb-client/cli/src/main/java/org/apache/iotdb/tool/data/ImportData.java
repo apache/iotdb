@@ -366,6 +366,12 @@ public class ImportData extends AbstractDataTool {
     }
     if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
       threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
+      if (threadNum <= 0) {
+        ioTPrinter.println(
+            String.format(
+                "error: Invalid thread number '%s'. Please set a positive integer.", threadNum));
+        System.exit(CODE_ERROR);
+      }
     }
     if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
       timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
@@ -512,16 +518,16 @@ public class ImportData extends AbstractDataTool {
           System.exit(CODE_ERROR);
         }
       } else {
-        printHelpOptions(
-            TSFILEDB_CLI_HEAD,
-            TSFILEDB_CLI_PREFIX,
-            hf,
-            tsFileOptions,
-            csvOptions,
-            sqlOptions,
-            true);
+        ioTPrinter.println(
+            String.format(
+                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
         System.exit(CODE_ERROR);
       }
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
+      System.exit(CODE_ERROR);
     }
 
     try {
