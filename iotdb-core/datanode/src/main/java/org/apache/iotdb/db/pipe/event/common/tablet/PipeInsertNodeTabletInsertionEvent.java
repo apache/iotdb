@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -58,7 +60,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
-    implements TabletInsertionEvent, Accountable {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -438,5 +440,44 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
         + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeInsertNodeTabletInsertionEventResource(
+        this.isReleased, this.referenceCount, this.walEntryHandler);
+  }
+
+  private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
+
+    private final WALEntryHandler walEntryHandler;
+
+    private PipeInsertNodeTabletInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final WALEntryHandler walEntryHandler) {
+      super(isReleased, referenceCount);
+      this.walEntryHandler = walEntryHandler;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
+        // no need to release the containers' memory because it has already been GCed
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format(
+                "Decrease reference count for memTable %d error.", walEntryHandler.getMemTableId()),
+            e);
+      }
+    }
   }
 }

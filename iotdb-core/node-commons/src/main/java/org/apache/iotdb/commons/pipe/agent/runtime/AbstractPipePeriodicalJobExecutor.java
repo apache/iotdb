@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.runtime;
+package org.apache.iotdb.commons.pipe.agent.runtime;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.service.DataNode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -38,25 +34,28 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Single thread to execute pipe periodical jobs on {@link DataNode}. This is for limiting the
- * thread num on the {@link DataNode} instance.
+ * Single thread to execute pipe periodical jobs on DataNode or ConfigNode. This is for limiting the
+ * thread num on the DataNode or ConfigNode instance.
  */
-public class PipePeriodicalJobExecutor {
+public abstract class AbstractPipePeriodicalJobExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePeriodicalJobExecutor.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractPipePeriodicalJobExecutor.class);
 
-  private static final ScheduledExecutorService PERIODICAL_JOB_EXECUTOR =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR.getName());
-
-  private static final long MIN_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private final ScheduledExecutorService executorService;
+  private final long minIntervalSeconds;
 
   private long rounds;
   private Future<?> executorFuture;
 
   // <Periodical job, Interval in rounds>
   private final List<Pair<WrappedRunnable, Long>> periodicalJobs = new CopyOnWriteArrayList<>();
+
+  public AbstractPipePeriodicalJobExecutor(
+      final ScheduledExecutorService executorService, final long minIntervalSeconds) {
+    this.executorService = executorService;
+    this.minIntervalSeconds = minIntervalSeconds;
+  }
 
   public void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(
@@ -71,11 +70,11 @@ public class PipePeriodicalJobExecutor {
                 }
               }
             },
-            Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1)));
+            Math.max(intervalInSeconds / minIntervalSeconds, 1)));
     LOGGER.info(
         "Pipe periodical job {} is registered successfully. Interval: {} seconds.",
         id,
-        Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1) * MIN_INTERVAL_SECONDS);
+        Math.max(intervalInSeconds / minIntervalSeconds, 1) * minIntervalSeconds);
   }
 
   public synchronized void start() {
@@ -84,16 +83,16 @@ public class PipePeriodicalJobExecutor {
 
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              PERIODICAL_JOB_EXECUTOR,
+              executorService,
               this::execute,
-              MIN_INTERVAL_SECONDS,
-              MIN_INTERVAL_SECONDS,
+              minIntervalSeconds,
+              minIntervalSeconds,
               TimeUnit.SECONDS);
       LOGGER.info("Pipe periodical job executor is started successfully.");
     }
   }
 
-  private void execute() {
+  protected void execute() {
     ++rounds;
 
     for (final Pair<WrappedRunnable, Long> periodicalJob : periodicalJobs) {
@@ -115,9 +114,5 @@ public class PipePeriodicalJobExecutor {
   public void clear() {
     periodicalJobs.clear();
     LOGGER.info("All pipe periodical jobs are cleared successfully.");
-  }
-
-  public static long getMinIntervalSeconds() {
-    return MIN_INTERVAL_SECONDS;
   }
 }

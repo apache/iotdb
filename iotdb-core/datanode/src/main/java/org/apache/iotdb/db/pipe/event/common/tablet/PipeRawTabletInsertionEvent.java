@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -38,10 +40,12 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
-
+public class PipeRawTabletInsertionEvent extends EnrichedEvent
+    implements TabletInsertionEvent, ReferenceTrackableEvent {
   // For better calculation
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PipeRawTabletInsertionEvent.class);
@@ -317,5 +321,36 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
             allocatedMemoryBlock)
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeRawTabletInsertionEventResource(
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
+  }
+
+  private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
+
+    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+
+    private PipeRawTabletInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+      super(isReleased, referenceCount);
+      this.allocatedMemoryBlock = allocatedMemoryBlock;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      allocatedMemoryBlock.close();
+    }
   }
 }
