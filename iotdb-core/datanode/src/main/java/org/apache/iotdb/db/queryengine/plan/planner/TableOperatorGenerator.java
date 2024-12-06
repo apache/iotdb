@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
@@ -111,11 +112,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -126,7 +129,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFill
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -194,6 +196,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
@@ -316,7 +319,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
-  public Operator visitTableScan(TableScanNode node, LocalExecutionPlanContext context) {
+  public Operator visitDeviceTableScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
 
     List<Symbol> outputColumnNames = node.getOutputSymbols();
     int outputColumnCount = outputColumnNames.size();
@@ -479,6 +483,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
 
     return scanOptionsBuilder;
+  }
+
+  @Override
+  public Operator visitInformationSchemaTableScan(
+      InformationSchemaTableScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                InformationSchemaTableScanOperator.class.getSimpleName());
+
+    List<TSDataType> dataTypes =
+        node.getOutputSymbols().stream()
+            .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
+            .collect(Collectors.toList());
+
+    return new InformationSchemaTableScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
   }
 
   @Override

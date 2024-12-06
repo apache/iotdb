@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecke
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -210,6 +211,7 @@ public class AuthTest {
     IClientSession clientSession = Mockito.mock(IClientSession.class);
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseNameInSessionInfo);
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
+
     SessionInfo session =
         new SessionInfo(
             0, userName, zoneId, databaseNameInSessionInfo, IClientSession.SqlDialect.TABLE);
@@ -223,6 +225,7 @@ public class AuthTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
+            StatementRewrite.NOOP,
             NOOP);
     analyzer.analyze(statement);
   }
@@ -231,6 +234,7 @@ public class AuthTest {
     IClientSession clientSession = Mockito.mock(IClientSession.class);
     Mockito.when(clientSession.getDatabaseName()).thenReturn(null);
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
+
     SessionInfo session =
         new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);

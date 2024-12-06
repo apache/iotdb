@@ -39,9 +39,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;

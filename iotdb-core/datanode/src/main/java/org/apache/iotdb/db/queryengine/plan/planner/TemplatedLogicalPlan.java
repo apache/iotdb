@@ -47,8 +47,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo.makeLayout;

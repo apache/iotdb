@@ -297,4 +297,9 @@ public class ConfigExecution implements IQueryExecution {
   public String getStatementType() {
     return statementType == null ? null : statementType.name();
   }
+
+  @Override
+  public String getSQLDialect() {
+    return context.getSession().getSqlDialect().toString();
+  }
 }
