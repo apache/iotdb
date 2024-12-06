@@ -14,7 +14,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property;
 
@@ -34,22 +36,21 @@ public final class Patterns {
     return typeOf(AggregationNode.class);
   }
 
-  /*public static Pattern<AssignUniqueId> assignUniqueId()
-  {
-      return typeOf(AssignUniqueId.class);
+  //  public static Pattern<AssignUniqueId> assignUniqueId()
+  //  {
+  //      return typeOf(AssignUniqueId.class);
+  //  }
+  //
+  //  public static Pattern<GroupIdNode> groupId()
+  //  {
+  //      return typeOf(GroupIdNode.class);
+  //  }
+
+  public static Pattern<ApplyNode> applyNode() {
+    return typeOf(ApplyNode.class);
   }
 
-  public static Pattern<GroupIdNode> groupId()
-  {
-      return typeOf(GroupIdNode.class);
-  }
-
-  public static Pattern<ApplyNode> applyNode()
-  {
-      return typeOf(ApplyNode.class);
-  }
-
-  public static Pattern<TableExecuteNode> tableExecute()
+  /* public static Pattern<TableExecuteNode> tableExecute()
   {
       return typeOf(TableExecuteNode.class);
   }
@@ -72,12 +73,11 @@ public final class Patterns {
   public static Pattern<ExplainAnalyzeNode> explainAnalyze()
   {
       return typeOf(ExplainAnalyzeNode.class);
-  }
-
-  public static Pattern<EnforceSingleRowNode> enforceSingleRow()
-  {
-      return typeOf(EnforceSingleRowNode.class);
   }*/
+
+  public static Pattern<EnforceSingleRowNode> enforceSingleRow() {
+    return typeOf(EnforceSingleRowNode.class);
+  }
 
   public static Pattern<FilterNode> filter() {
     return typeOf(FilterNode.class);
@@ -105,12 +105,11 @@ public final class Patterns {
   public static Pattern<SpatialJoinNode> spatialJoin()
   {
       return typeOf(SpatialJoinNode.class);
-  }
-
-  public static Pattern<CorrelatedJoinNode> correlatedJoin()
-  {
-      return typeOf(CorrelatedJoinNode.class);
   }*/
+
+  public static Pattern<CorrelatedJoinNode> correlatedJoin() {
+    return typeOf(CorrelatedJoinNode.class);
+  }
 
   public static Pattern<OffsetNode> offset() {
     return typeOf(OffsetNode.class);
@@ -136,12 +135,12 @@ public final class Patterns {
   /*public static Pattern<SampleNode> sample()
   {
       return typeOf(SampleNode.class);
-  }
-
-  public static Pattern<SemiJoinNode> semiJoin()
-  {
-      return typeOf(SemiJoinNode.class);
   }*/
+
+  //  public static Pattern<SemiJoinNode> semiJoin()
+  //  {
+  //      return typeOf(SemiJoinNode.class);
+  //  }
 
   public static Pattern<GapFillNode> gapFill() {
     return typeOf(GapFillNode.class);
@@ -279,72 +278,63 @@ public final class Patterns {
       {
           return property("step", AggregationNode::getStep);
       }
+  }*/
+
+  public static final class Apply {
+    public static Property<ApplyNode, Lookup, List<Symbol>> correlation() {
+      return property("correlation", ApplyNode::getCorrelation);
+    }
   }
 
-  public static final class Apply
-  {
-      public static Property<ApplyNode, Lookup, List<Symbol>> correlation()
-      {
-          return property("correlation", ApplyNode::getCorrelation);
-      }
-  }
-
-  public static final class DistinctLimit
+  /*public static final class DistinctLimit
   {
       public static Property<DistinctLimitNode, Lookup, Boolean> isPartial()
       {
           return property("isPartial", DistinctLimitNode::isPartial);
       }
-  }
+  }*/
 
-  public static final class Exchange
+  /*public static final class Exchange
   {
       public static Property<ExchangeNode, Lookup, ExchangeNode.Scope> scope()
       {
           return property("scope", ExchangeNode::getScope);
       }
-  }
-
-  public static final class Join
-  {
-      public static Property<JoinNode, Lookup, JoinType> type()
-      {
-          return property("type", JoinNode::getType);
-      }
-
-      public static Property<JoinNode, Lookup, PlanNode> left()
-      {
-          return property("left", (JoinNode joinNode, Lookup lookup) -> lookup.resolve(joinNode.getLeft()));
-      }
-
-      public static Property<JoinNode, Lookup, PlanNode> right()
-      {
-          return property("right", (JoinNode joinNode, Lookup lookup) -> lookup.resolve(joinNode.getRight()));
-      }
-  }
-
-  public static final class CorrelatedJoin
-  {
-      public static Property<CorrelatedJoinNode, Lookup, List<Symbol>> correlation()
-      {
-          return property("correlation", CorrelatedJoinNode::getCorrelation);
-      }
-
-      public static Property<CorrelatedJoinNode, Lookup, PlanNode> subquery()
-      {
-          return property("subquery", (node, context) -> context.resolve(node.getSubquery()));
-      }
-
-      public static Property<CorrelatedJoinNode, Lookup, Expression> filter()
-      {
-          return property("filter", CorrelatedJoinNode::getFilter);
-      }
-
-      public static Property<CorrelatedJoinNode, Lookup, JoinType> type()
-      {
-          return property("type", CorrelatedJoinNode::getType);
-      }
   }*/
+
+  public static final class Join {
+    public static Property<JoinNode, Lookup, JoinNode.JoinType> type() {
+      return property("type", JoinNode::getJoinType);
+    }
+
+    public static Property<JoinNode, Lookup, PlanNode> left() {
+      return property(
+          "left", (JoinNode joinNode, Lookup lookup) -> lookup.resolve(joinNode.getLeftChild()));
+    }
+
+    public static Property<JoinNode, Lookup, PlanNode> right() {
+      return property(
+          "right", (JoinNode joinNode, Lookup lookup) -> lookup.resolve(joinNode.getRightChild()));
+    }
+  }
+
+  public static final class CorrelatedJoin {
+    public static Property<CorrelatedJoinNode, Lookup, List<Symbol>> correlation() {
+      return property("correlation", CorrelatedJoinNode::getCorrelation);
+    }
+
+    public static Property<CorrelatedJoinNode, Lookup, PlanNode> subquery() {
+      return property("subquery", (node, context) -> context.resolve(node.getSubquery()));
+    }
+
+    public static Property<CorrelatedJoinNode, Lookup, Expression> filter() {
+      return property("filter", CorrelatedJoinNode::getFilter);
+    }
+
+    public static Property<CorrelatedJoinNode, Lookup, JoinNode.JoinType> type() {
+      return property("type", CorrelatedJoinNode::getJoinType);
+    }
+  }
 
   public static final class Limit {
     public static Property<LimitNode, Lookup, Long> count() {
@@ -393,9 +383,9 @@ public final class Patterns {
       {
           return property("rowCount", ValuesNode::getRowCount);
       }
-  }
+  }*/
 
-  public static final class SemiJoin
+  /*public static final class SemiJoin
   {
       public static Property<SemiJoinNode, Lookup, PlanNode> getSource()
       {
@@ -410,9 +400,9 @@ public final class Patterns {
                   "filteringSource",
                   (SemiJoinNode semiJoin, Lookup lookup) -> lookup.resolve(semiJoin.getFilteringSource()));
       }
-  }
+  }*/
 
-  public static final class Intersect
+  /*public static final class Intersect
   {
       public static Property<IntersectNode, Lookup, Boolean> distinct()
       {

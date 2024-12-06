@@ -157,14 +157,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   String[] retArray;
   static String sql;
 
-  //  public static void main(String[] args) {
-  //    for (String[] sqlList : Arrays.asList(sql1, sql2)) {
-  //      for (String sql : sqlList) {
-  //        System.out.println(sql+";");
-  //      }
-  //    }
-  //  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -1775,17 +1767,21 @@ public class IoTDBMultiIDsWithAttributesTableIT {
             + "order by s.student_id, t.teacher_id, c.course_id,g.grade_id";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
+    expectedHeader = new String[] {"region", "name", "teacher_id", "course_name", "score"};
+
+    retArray =
+        new String[] {
+          "haidian,Lucy,1005,数学,99,",
+        };
     sql =
         "select s.region, s.name,"
             + "           t.teacher_id,"
             + "           c.course_name,"
             + "           g.score "
             + "from students s, teachers t, courses c, grades g "
-            + "where s.time=c.time and c.time=g.time";
-    tableAssertTestFail(
-        sql,
-        "701: Cross join is not supported in current version, each table must have at least one equiJoinClause",
-        DATABASE_NAME);
+            + "where s.time=c.time and c.time=g.time and t.teacher_id = 1005 limit 1";
+
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1808,6 +1804,31 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void innerJoinOnTwoColumns() {
+    expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
+    sql =
+        "SELECT "
+            + "  t1.time, "
+            + "  t1.device as device1, "
+            + "  t1.value as value1, "
+            + "  t2.device as device2, "
+            + "  t2.value as value2 "
+            + "FROM "
+            + "  tableA t1, tableB t2 "
+            + "where t1.time = t2.time and t1.device = t2.device order by t1.time";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:03.000Z,d1,3,d1,30,", "2020-01-01T00:00:05.000Z,d2,5,d2,50,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "select table1.s1 from table1 t1 join table2 t2 on t1.time = t2.time and t1.device = t2.device";
+    tableAssertTestFail(
+        sql, "701: Only support time column equi-join in current version", DATABASE_NAME);
   }
 
   public static String[] buildHeaders(int length) {

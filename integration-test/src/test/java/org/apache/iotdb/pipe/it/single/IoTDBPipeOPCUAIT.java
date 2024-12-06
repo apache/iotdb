@@ -24,6 +24,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -58,6 +60,59 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
               .createPipe(
                   new TCreatePipeReq("testPipe", connectorAttributes)
                       .setExtractorAttributes(Collections.emptyMap())
+                      .setProcessorAttributes(Collections.emptyMap()))
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
+
+      // Test reconstruction
+      connectorAttributes.put("password", "test");
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("testPipe", connectorAttributes)
+                      .setExtractorAttributes(Collections.emptyMap())
+                      .setProcessorAttributes(Collections.emptyMap()))
+              .getCode());
+
+      // Test conflict
+      connectorAttributes.put("password", "conflict");
+      Assert.assertEquals(
+          TSStatusCode.PIPE_ERROR.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("testPipe", connectorAttributes)
+                      .setExtractorAttributes(Collections.emptyMap())
+                      .setProcessorAttributes(Collections.emptyMap()))
+              .getCode());
+    }
+  }
+
+  @Test
+  public void testOPCUASinkInTableModel() throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+
+      TableModelUtils.createDataBaseAndTable(env, "test", "test");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          "test",
+          BaseEnv.TABLE_SQL_DIALECT,
+          env,
+          "insert into test (s0, s1, s2) values (1, 1, 1)")) {
+        return;
+      }
+
+      final Map<String, String> connectorAttributes = new HashMap<>();
+      connectorAttributes.put("sink", "opc-ua-sink");
+      connectorAttributes.put("opcua.model", "client-server");
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("testPipe", connectorAttributes)
+                      .setExtractorAttributes(Collections.singletonMap("capture.table", "true"))
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
       Assert.assertEquals(

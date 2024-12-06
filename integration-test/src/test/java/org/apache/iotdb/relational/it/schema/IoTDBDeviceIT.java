@@ -167,7 +167,9 @@ public class IoTDBDeviceIT {
         statement.executeQuery("show devices from table0 where temperature = 37.6");
         fail("Show devices shall fail for measurement predicate");
       } catch (final Exception e) {
-        assertEquals("701: Column 'temperature' cannot be resolved", e.getMessage());
+        assertEquals(
+            "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+            e.getMessage());
       }
 
       try {
@@ -217,7 +219,7 @@ public class IoTDBDeviceIT {
 
       try {
         statement.execute("update table0 set model = cast(device_id as int32)");
-        fail("Update shall fail for non-exist column");
+        fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals(
             "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
@@ -261,6 +263,15 @@ public class IoTDBDeviceIT {
         // Test successfully delete data
         TestUtils.assertResultSetSize(
             statement.executeQuery("select * from table0 where region_id = '1'"), 1);
+
+        try {
+          statement.executeQuery("delete devices from table0 where time = 1");
+          fail("Delete devices shall fail when specifies non id column");
+        } catch (final Exception e) {
+          assertEquals(
+              "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+              e.getMessage());
+        }
       }
     }
   }

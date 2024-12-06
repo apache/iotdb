@@ -497,8 +497,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
-      LOGGER.warn(
-          "All {} pipe(s) will be restarted because of forced restart policy.", stuckPipes.size());
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because of forced restart policy.",
+            stuckPipes.size());
+      }
       return stuckPipes;
     }
 
@@ -507,9 +510,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
-      LOGGER.warn(
-          "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
-          stuckPipes.size());
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
+            stuckPipes.size());
+      }
       return stuckPipes;
     }
 
