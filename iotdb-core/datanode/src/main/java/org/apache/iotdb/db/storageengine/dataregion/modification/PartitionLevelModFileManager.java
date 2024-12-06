@@ -70,17 +70,18 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   }
 
   @Override
-  public ModificationFile allocateFor(TsFileResource tsFileResource) throws IOException {
+  public ModificationFile allocateFor(TsFileResource tsFileResource) {
     TsFileResource prev = tsFileResource.getPrev();
     TsFileResource next = tsFileResource.getNext();
     while (prev != null || next != null) {
+      // probe backward
       if (prev != null) {
         ModificationFile sharedModFile = prev.getSharedModFile();
         if (sharedModFile != null) {
           if (tryShare(sharedModFile, prev, tsFileResource)) {
             return sharedModFile;
           } else {
-            // do not prove further if a TsFile with mod is already found
+            // do not probe further if a TsFile with mod is already found
             prev = null;
           }
         } else {
@@ -88,13 +89,14 @@ public class PartitionLevelModFileManager implements ModFileManagement {
         }
       }
 
+      // probe forward
       if (next != null) {
         ModificationFile sharedModFile = next.getSharedModFile();
         if (sharedModFile != null) {
           if (tryShare(sharedModFile, next, tsFileResource)) {
             return sharedModFile;
           } else {
-            // do not prove further if a TsFile with mod is already found
+            // do not probe further if a TsFile with mod is already found
             next = null;
           }
         } else {
@@ -107,8 +109,7 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   }
 
   private synchronized boolean tryShare(
-      ModificationFile sharedModFile, TsFileResource modFileHolder, TsFileResource toAllocate)
-      throws IOException {
+      ModificationFile sharedModFile, TsFileResource modFileHolder, TsFileResource toAllocate) {
     Set<TsFileResource> references = modFileReferences.get(sharedModFile);
     if (references.isEmpty()) {
       // the mod file is to be deleted, cannot share
@@ -116,7 +117,8 @@ public class PartitionLevelModFileManager implements ModFileManagement {
     }
 
     long level = modFileHolder.getTsFileID().compactionVersion;
-    TreeMap<Long, ModificationFile> idModificationMap = levelModFileIdMap.get(level);
+    TreeMap<Long, ModificationFile> idModificationMap =
+        levelModFileIdMap.computeIfAbsent(level, l -> new TreeMap<>());
     if (idModificationMap.size() > levelModFileNumThreshold) {
       // too many mod files already, must share
       references.add(toAllocate);

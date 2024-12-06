@@ -521,9 +521,9 @@ public class PipeConsensusServerImpl {
         consensusPipeManager.updateConsensusPipe(
             new ConsensusPipeName(peer, targetPeer), PipeStatus.RUNNING);
       } catch (Exception e) {
+        // just warn but not throw exceptions. Because there may exist unknown nodes in consensus
+        // group
         LOGGER.warn("{} cannot start consensus pipe to {}", peer, targetPeer, e);
-        throw new ConsensusGroupModifyPeerException(
-            String.format("%s cannot start consensus pipe to %s", peer, targetPeer), e);
       }
     }
   }

@@ -299,7 +299,7 @@ public class ConfigurationFileUtils {
     }
     byte[] bytes = Files.readAllBytes(file.toPath());
     String content = new String(bytes);
-    return content.replace(license, "");
+    return lineSeparator + content.replace(license, "");
   }
 
   private static String readConfigLines(File file) throws IOException {

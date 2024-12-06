@@ -258,7 +258,7 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    FileUtils.deleteFileOrDirectory(file);
+    FileUtils.deleteFileOrDirectory(file, true);
     FileMetrics.getInstance().decreaseModFileNum(1);
     FileMetrics.getInstance().decreaseModFileSize(getFileLength());
     fileExists = false;
