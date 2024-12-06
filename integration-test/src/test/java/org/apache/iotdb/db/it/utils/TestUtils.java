@@ -495,12 +495,13 @@ public class TestUtils {
     }
   }
 
-  public static void assertResultSetSize(final ResultSet actualResultSet, int size) {
+  public static void assertResultSetSize(final ResultSet actualResultSet, final int size) {
     try {
+      int count = 0;
       while (actualResultSet.next()) {
-        --size;
+        ++count;
       }
-      Assert.assertEquals(0, size);
+      Assert.assertEquals(size, count);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
