@@ -643,9 +643,9 @@ public class ExportData extends AbstractDataTool {
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
           RowRecord rowRecord = sessionDataSet.next();
-          //          if (rowRecord.getTimestamp() != 0) {
-          csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
-          //          }
+          if ("Time".equals(headers.get(0))) {
+            csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
+          }
           rowRecord
               .getFields()
               .forEach(
