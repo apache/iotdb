@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -594,12 +594,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateOrAlterDB(final CreateOrAlterDB node, final Integer indent) {
+    protected Void visitCreateOrAlterDB(final CreateDB node, final Integer indent) {
       builder.append(
           node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
               ? "CREATE DATABASE "
               : "ALTER DATABASE ");
-      if (node.isSetExists()) {
+      if (node.ifNotExists()) {
         builder.append(
             node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
                 ? "IF NOT EXISTS "

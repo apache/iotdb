@@ -84,7 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -191,8 +191,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateOrAlterDB(
-      final CreateOrAlterDB node, final MPPQueryContext context) {
+  protected IConfigTask visitCreateOrAlterDB(final CreateDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
@@ -255,7 +254,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new SemanticException("Unsupported database property key: " + key);
       }
     }
-    return new CreateOrAlterDBTask(schema, node.isSetExists(), node.getType());
+    return new CreateOrAlterDBTask(schema, node.ifNotExists(), node.getType());
   }
 
   @Override

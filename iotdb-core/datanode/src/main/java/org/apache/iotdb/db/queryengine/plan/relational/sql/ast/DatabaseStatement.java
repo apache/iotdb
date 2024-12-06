@@ -19,55 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
-
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class CreateOrAlterDB extends Statement {
-  private final boolean exists;
-  private final String dbName;
-  private final List<Property> properties;
-  private final DatabaseSchemaStatement.DatabaseSchemaStatementType type;
+public abstract class DatabaseStatement extends Statement {
+  protected final boolean exists;
+  protected final String dbName;
+  protected final List<Property> properties;
 
-  public CreateOrAlterDB(
+  protected DatabaseStatement(
       final NodeLocation location,
       final boolean exists,
       final String dbName,
-      final List<Property> properties,
-      final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
+      final List<Property> properties) {
     super(requireNonNull(location, "location is null"));
     this.exists = exists;
     this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
-    this.type = type;
   }
 
   public String getDbName() {
     return dbName;
   }
 
-  public boolean isSetExists() {
-    return exists;
-  }
-
   public List<Property> getProperties() {
     return properties;
-  }
-
-  public DatabaseSchemaStatement.DatabaseSchemaStatementType getType() {
-    return type;
-  }
-
-  @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateOrAlterDB(this, context);
   }
 
   @Override
@@ -88,18 +69,9 @@ public class CreateOrAlterDB extends Statement {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    final CreateOrAlterDB o = (CreateOrAlterDB) obj;
+    final CreateDB o = (CreateDB) obj;
     return Objects.equals(dbName, o.dbName)
         && Objects.equals(exists, o.exists)
         && Objects.equals(properties, o.properties);
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this)
-        .add("dbName", dbName)
-        .add("ifNotExists", exists)
-        .add("properties", properties)
-        .toString();
   }
 }

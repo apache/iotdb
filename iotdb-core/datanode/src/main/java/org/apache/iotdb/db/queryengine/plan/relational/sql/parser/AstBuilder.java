@@ -48,8 +48,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -172,7 +172,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
@@ -294,12 +293,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
     }
 
-    return new CreateOrAlterDB(
+    return new CreateDB(
         getLocation(ctx),
         ctx.EXISTS() != null,
         ((Identifier) visit(ctx.database)).getValue(),
-        properties,
-        DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+        properties);
   }
 
   @Override
@@ -309,12 +307,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
 
-    return new CreateOrAlterDB(
+    return new CreateDB(
         getLocation(ctx),
         ctx.EXISTS() != null,
         ((Identifier) visit(ctx.database)).getValue(),
-        properties,
-        DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER);
+        properties);
   }
 
   @Override

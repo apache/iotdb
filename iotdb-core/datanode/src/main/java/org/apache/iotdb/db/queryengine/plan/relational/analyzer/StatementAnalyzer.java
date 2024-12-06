@@ -52,8 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrAlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
@@ -330,7 +330,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateOrAlterDB(CreateOrAlterDB node, Optional<Scope> context) {
+    protected Scope visitCreateOrAlterDB(CreateDB node, Optional<Scope> context) {
       throw new SemanticException("Create Database statement is not supported yet.");
     }
 
