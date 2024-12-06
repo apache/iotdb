@@ -74,7 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateOrAlterDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -85,7 +85,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -842,9 +841,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         new TDatabaseSchema(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database));
     schema.setIsTableModel(true);
 
-    final CreateOrAlterDBTask task =
-        new CreateOrAlterDBTask(
-            schema, true, DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+    final CreateDBTask task = new CreateDBTask(schema, true);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());

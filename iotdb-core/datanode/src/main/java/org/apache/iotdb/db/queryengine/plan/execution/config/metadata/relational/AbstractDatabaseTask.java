@@ -20,14 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-public class CreateOrAlterDBTask implements IConfigTask {
+public abstract class AbstractDatabaseTask implements IConfigTask {
 
   /////////////////////////////// Allowed properties ///////////////////////////////
   public static final String TTL_KEY = "ttl";
@@ -41,22 +36,11 @@ public class CreateOrAlterDBTask implements IConfigTask {
 
   /////////////////////////////// Fields ///////////////////////////////
 
-  private final TDatabaseSchema schema;
-  private final boolean exists;
-  private final DatabaseSchemaStatement.DatabaseSchemaStatementType type;
+  protected final TDatabaseSchema schema;
+  protected final boolean exists;
 
-  public CreateOrAlterDBTask(
-      final TDatabaseSchema schema,
-      final boolean exists,
-      final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
+  protected AbstractDatabaseTask(final TDatabaseSchema schema, final boolean exists) {
     this.schema = schema;
     this.exists = exists;
-    this.type = type;
-  }
-
-  @Override
-  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.createOrAlterDatabase(schema, exists, type);
   }
 }

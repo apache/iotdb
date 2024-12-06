@@ -3126,25 +3126,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createOrAlterDatabase(
-      final TDatabaseSchema databaseSchema,
-      final boolean exists,
-      final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
+  public SettableFuture<ConfigTaskResult> createDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Construct request using statement
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      final TSStatus tsStatus =
-          type == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
-              ? configNodeClient.setDatabase(databaseSchema)
-              : configNodeClient.alterDatabase(databaseSchema);
+      final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-        if (exists) {
+        if (ifExists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           future.setException(
@@ -3153,12 +3148,32 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                       "Database %s already exists", databaseSchema.getName().substring(5)),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
+      } else {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Construct request using statement
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
-        if (exists) {
+        if (ifNotExists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
-          LOGGER.info(
-              "Failed to ALTER DATABASE {}, because it doesn't exist", databaseSchema.getName());
           future.setException(
               new IoTDBException(
                   String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
