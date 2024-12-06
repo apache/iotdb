@@ -23,10 +23,14 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.RowParametricType.ROW;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -43,6 +47,8 @@ public class InternalTypeManager implements TypeManager {
 
   private final ConcurrentMap<TypeSignature, Type> types = new ConcurrentHashMap<>();
 
+  private final ConcurrentMap<String, ParametricType> parametricTypes = new ConcurrentHashMap<>();
+
   public InternalTypeManager() {
     types.put(new TypeSignature(TypeEnum.DOUBLE.name().toLowerCase(Locale.ENGLISH)), DOUBLE);
     types.put(new TypeSignature(TypeEnum.FLOAT.name().toLowerCase(Locale.ENGLISH)), FLOAT);
@@ -55,15 +61,51 @@ public class InternalTypeManager implements TypeManager {
     types.put(new TypeSignature(TypeEnum.DATE.name().toLowerCase(Locale.ENGLISH)), DATE);
     types.put(new TypeSignature(TypeEnum.TIMESTAMP.name().toLowerCase(Locale.ENGLISH)), TIMESTAMP);
     types.put(new TypeSignature(TypeEnum.UNKNOWN.name().toLowerCase(Locale.ENGLISH)), UNKNOWN);
+
+    addParametricType(ROW);
   }
 
   @Override
   public Type getType(TypeSignature signature) throws TypeNotFoundException {
     Type type = types.get(signature);
     if (type == null) {
-      throw new TypeNotFoundException(signature);
+      return instantiateParametricType(signature);
     }
     return type;
+  }
+
+  private void addParametricType(ParametricType parametricType) {
+    String name = parametricType.getName().toLowerCase(Locale.ENGLISH);
+    if ("ROW".equals(name)) {
+      name = "row";
+    }
+    checkArgument(
+        !parametricTypes.containsKey(name), "Parametric type already registered: %s", name);
+    parametricTypes.putIfAbsent(name, parametricType);
+  }
+
+  private Type instantiateParametricType(TypeSignature signature) {
+    List<TypeParameter> parameters = new ArrayList<>();
+
+    for (TypeSignatureParameter parameter : signature.getParameters()) {
+      TypeParameter typeParameter = TypeParameter.of(parameter, this);
+      parameters.add(typeParameter);
+    }
+
+    ParametricType parametricType =
+        parametricTypes.get(signature.getBase().toLowerCase(Locale.ENGLISH));
+    if (parametricType == null) {
+      throw new TypeNotFoundException(signature);
+    }
+
+    Type instantiatedType;
+    try {
+      instantiatedType = parametricType.createType(this, parameters);
+    } catch (IllegalArgumentException e) {
+      throw new TypeNotFoundException(signature, e);
+    }
+
+    return instantiatedType;
   }
 
   @Override

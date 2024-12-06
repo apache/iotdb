@@ -32,6 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyCorrelation;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplySourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneEnforceSingleRowColumns;
@@ -53,7 +56,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Re
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
 
 import com.google.common.collect.ImmutableList;
@@ -77,6 +82,9 @@ public class LogicalOptimizeFactory {
             // TODO After ValuesNode introduced
             // new RemoveEmptyGlobalAggregation(),
             new PruneAggregationSourceColumns(),
+            new PruneApplyColumns(),
+            new PruneApplyCorrelation(),
+            new PruneApplySourceColumns(),
             new PruneCorrelatedJoinColumns(),
             new PruneCorrelatedJoinCorrelation(),
             new PruneEnforceSingleRowColumns(),
@@ -203,8 +211,9 @@ public class LogicalOptimizeFactory {
             plannerContext,
             ruleStats,
             ImmutableSet.of(
-                new RemoveRedundantEnforceSingleRowNode(),
-                new TransformUncorrelatedSubqueryToJoin())),
+                new RemoveRedundantEnforceSingleRowNode(), new RemoveUnreferencedScalarSubqueries(),
+                new TransformUncorrelatedSubqueryToJoin(),
+                    new TransformUncorrelatedInPredicateSubqueryToSemiJoin())),
         new CheckSubqueryNodesAreRewritten(),
         simplifyOptimizer,
         new PushPredicateIntoTableScan(),

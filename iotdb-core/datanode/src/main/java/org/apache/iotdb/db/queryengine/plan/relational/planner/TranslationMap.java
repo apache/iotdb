@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
@@ -355,6 +356,13 @@ public class TranslationMap {
           public Expression rewriteGenericDataType(
               GenericDataType node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
             // do not rewrite identifiers within type parameters
+            return node;
+          }
+
+          @Override
+          public Expression rewriteRowDataType(
+              RowDataType node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            // do not rewrite identifiers in field names
             return node;
           }
         },

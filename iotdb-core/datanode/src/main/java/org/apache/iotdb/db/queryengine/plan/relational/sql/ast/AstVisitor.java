@@ -477,6 +477,14 @@ public abstract class AstVisitor<R, C> {
     return visitDataType(node, context);
   }
 
+  protected R visitRowDataType(RowDataType node, C context) {
+    return visitDataType(node, context);
+  }
+
+  protected R visitRowField(RowDataType.Field node, C context) {
+    return visitNode(node, context);
+  }
+
   protected R visitDataTypeParameter(DataTypeParameter node, C context) {
     return visitNode(node, context);
   }

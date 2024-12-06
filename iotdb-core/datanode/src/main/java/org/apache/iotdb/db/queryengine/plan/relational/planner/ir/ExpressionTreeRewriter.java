@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -637,6 +638,49 @@ public final class ExpressionTreeRewriter<C> {
 
       if (node.getExpression() != expression || node.getType() != type) {
         return new Cast(expression, type, node.isSafe());
+      }
+
+      return node;
+    }
+
+    @Override
+    protected Expression visitRowDataType(RowDataType node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteRowDataType(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      ImmutableList.Builder<RowDataType.Field> rewritten = ImmutableList.builder();
+      for (RowDataType.Field field : node.getFields()) {
+        DataType dataType = rewrite(field.getType(), context.get());
+
+        Optional<Identifier> name = field.getName();
+
+        if (field.getName().isPresent()) {
+          Identifier identifier = field.getName().get();
+          Identifier rewrittenIdentifier = rewrite(identifier, context.get());
+
+          if (identifier != rewrittenIdentifier) {
+            name = Optional.of(rewrittenIdentifier);
+          }
+        }
+
+        @SuppressWarnings("OptionalEquality")
+        boolean nameRewritten = name != field.getName();
+        if (dataType != field.getType() || nameRewritten) {
+          rewritten.add(new RowDataType.Field(field.getLocation(), name, dataType));
+        } else {
+          rewritten.add(field);
+        }
+      }
+
+      List<RowDataType.Field> fields = rewritten.build();
+
+      if (!sameElements(fields, node.getFields())) {
+        return new RowDataType(node.getLocation(), fields);
       }
 
       return node;

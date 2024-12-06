@@ -120,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingl
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -280,6 +281,7 @@ public enum PlanNodeType {
   TABLE_EXCHANGE_NODE((short) 1018),
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
+  TABLE_SEMI_JOIN_NODE((short) 1021),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -637,6 +639,8 @@ public enum PlanNodeType {
         throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
       case 1020:
         return EnforceSingleRowNode.deserialize(buffer);
+      case 1021:
+        return SemiJoinNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

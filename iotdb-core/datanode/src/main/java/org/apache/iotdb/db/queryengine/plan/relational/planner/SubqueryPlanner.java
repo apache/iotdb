@@ -571,12 +571,7 @@ class SubqueryPlanner {
             new ProjectNode(
                 idAllocator.genPlanNodeId(),
                 relationPlan.getRoot(),
-                Assignments.of(
-                    column,
-                    new Cast(
-                        new Row(fields.build()),
-                        new GenericDataType(
-                            new Identifier(type.toString()), ImmutableList.of())))));
+                Assignments.of(column, new Cast(new Row(fields.build()), toSqlType(type)))));
 
     return coerceIfNecessary(subqueryPlan, column, subquery, coercion);
   }
