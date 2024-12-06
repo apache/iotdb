@@ -21,14 +21,14 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,48 +53,84 @@ public class InformationSchema {
   static {
     // Show queries
     final TsTable queriesTable = new TsTable("queries");
-    queriesTable.addColumnSchema(new IdColumnSchema("time", TSDataType.TIMESTAMP));
-    queriesTable.addColumnSchema(new IdColumnSchema("query_id", TSDataType.STRING));
-    queriesTable.addColumnSchema(new IdColumnSchema("datanode_id", TSDataType.INT32));
-    queriesTable.addColumnSchema(new IdColumnSchema("elapsed_time", TSDataType.FLOAT));
-    queriesTable.addColumnSchema(new IdColumnSchema("statement", TSDataType.STRING));
-    queriesTable.addColumnSchema(new IdColumnSchema("sql_dialect", TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.TIME, TSDataType.TIMESTAMP));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.STATEMENT, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
     schemaTables.put("queries", queriesTable);
 
     // Show databases
     final TsTable databaseTable = new TsTable("databases");
-    databaseTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    databaseTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
     databaseTable.addColumnSchema(
         new IdColumnSchema(
-            "SchemaReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
-        new IdColumnSchema("DataReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+        new IdColumnSchema(
+            ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
-        new IdColumnSchema("TimePartitionInterval".toLowerCase(Locale.ENGLISH), TSDataType.INT64));
+        new IdColumnSchema(
+            ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
+            TSDataType.INT32));
     databaseTable.addColumnSchema(
-        new IdColumnSchema("model".toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    databaseTable.removeColumnSchema("time");
+        new IdColumnSchema(
+            ColumnHeaderConstant.DATA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
+            TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.TIME_PARTITION_INTERVAL.toLowerCase(Locale.ENGLISH),
+            TSDataType.INT64));
+    databaseTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put("databases", databaseTable);
 
     // Show tables
     final TsTable tableTable = new TsTable("tables");
-    tableTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    tableTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
-    tableTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
-    tableTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
-    tableTable.removeColumnSchema("time");
+    tableTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put("tables", tableTable);
 
     // Desc table
     final TsTable columnTable = new TsTable("columns");
-    columnTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    columnTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
-    columnTable.addColumnSchema(new IdColumnSchema("columnname", TSDataType.STRING));
-    columnTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
-    columnTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
-    columnTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
-    columnTable.removeColumnSchema("time");
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.COLUMN_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.DATATYPE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.COLUMN_CATEGORY.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new IdColumnSchema(
+            ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put("columns", columnTable);
   }
 
