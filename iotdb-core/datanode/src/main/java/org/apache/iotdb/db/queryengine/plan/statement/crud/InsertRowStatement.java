@@ -226,8 +226,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       dataTypes[i] = measurementSchemas[i].getType();
       try {
         // if the type is binary and the value is already binary, do not convert
-        if (values[i] instanceof String
-            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
+        if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {

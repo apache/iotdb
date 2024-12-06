@@ -77,6 +77,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class AnalyzeUtils {
 
@@ -350,7 +351,7 @@ public class AnalyzeUtils {
     } else if (queryContext.getDatabaseName().isPresent()) {
       databaseName = queryContext.getDatabaseName().get();
     } else {
-      throw new SemanticException("Database is not specified");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     InformationSchema.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);

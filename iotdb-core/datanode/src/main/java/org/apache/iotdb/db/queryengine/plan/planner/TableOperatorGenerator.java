@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
@@ -61,6 +62,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -68,9 +71,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
@@ -108,6 +111,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -143,14 +147,23 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.FloatColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -171,6 +184,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -180,11 +194,11 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
@@ -1185,10 +1199,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ImmutableMap<Symbol, Integer> leftColumnNamesMap =
         makeLayoutFromOutputSymbols(node.getLeftChild().getOutputSymbols());
-    Integer leftTimeColumnPosition = leftColumnNamesMap.get(node.getCriteria().get(0).getLeft());
-    if (leftTimeColumnPosition == null) {
-      throw new IllegalStateException("Left child of JoinNode doesn't contain time column");
-    }
     int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
       Integer index = leftColumnNamesMap.get(node.getLeftOutputSymbols().get(i));
@@ -1202,10 +1212,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ImmutableMap<Symbol, Integer> rightColumnNamesMap =
         makeLayoutFromOutputSymbols(node.getRightChild().getOutputSymbols());
-    Integer rightTimeColumnPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
-    if (rightTimeColumnPosition == null) {
-      throw new IllegalStateException("Right child of JoinNode doesn't contain time column");
-    }
     int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
     for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
       Integer index = rightColumnNamesMap.get(node.getRightOutputSymbols().get(i));
@@ -1217,6 +1223,42 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       rightOutputSymbolIdx[i] = index;
     }
 
+    // cross join does not need time column
+    if (node.isCrossJoin()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  SimpleNestedLoopCrossJoinOperator.class.getSimpleName());
+      return new SimpleNestedLoopCrossJoinOperator(
+          operatorContext,
+          leftChild,
+          rightChild,
+          leftOutputSymbolIdx,
+          rightOutputSymbolIdx,
+          dataTypes);
+    }
+
+    Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(0).getLeft());
+    if (leftJoinKeyPosition == null) {
+      throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
+    }
+
+    Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
+    if (rightJoinKeyPosition == null) {
+      throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
+    }
+
+    Type leftJoinKeyType =
+        context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getLeft());
+
+    checkArgument(
+        leftJoinKeyType
+            == context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getRight()),
+        "Join key type mismatch.");
+
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
       OperatorContext operatorContext =
           context
@@ -1224,17 +1266,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
-                  TableInnerJoinOperator.class.getSimpleName());
-      return new TableInnerJoinOperator(
+                  MergeSortInnerJoinOperator.class.getSimpleName());
+      return new MergeSortInnerJoinOperator(
           operatorContext,
           leftChild,
-          leftTimeColumnPosition,
+          leftJoinKeyPosition,
           leftOutputSymbolIdx,
           rightChild,
-          rightTimeColumnPosition,
+          rightJoinKeyPosition,
           rightOutputSymbolIdx,
-          ASC_TIME_COMPARATOR,
-          dataTypes);
+          JoinKeyComparatorFactory.getComparator(leftJoinKeyType, true),
+          dataTypes,
+          leftJoinKeyType);
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.FULL) {
       OperatorContext operatorContext =
           context
@@ -1242,20 +1285,85 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
-                  TableFullOuterJoinOperator.class.getSimpleName());
-      return new TableFullOuterJoinOperator(
+                  MergeSortFullOuterJoinOperator.class.getSimpleName());
+      return new MergeSortFullOuterJoinOperator(
           operatorContext,
           leftChild,
-          leftTimeColumnPosition,
+          leftJoinKeyPosition,
           leftOutputSymbolIdx,
           rightChild,
-          rightTimeColumnPosition,
+          rightJoinKeyPosition,
           rightOutputSymbolIdx,
-          ASC_TIME_COMPARATOR,
-          dataTypes);
+          JoinKeyComparatorFactory.getComparator(leftJoinKeyType, true),
+          dataTypes,
+          leftJoinKeyType,
+          buildUpdateLastRowFunction(leftJoinKeyType.getTypeEnum()));
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+  }
+
+  private BiFunction<Column, Integer, TsBlock> buildUpdateLastRowFunction(TypeEnum type) {
+    switch (type) {
+      case INT32:
+      case DATE:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new IntColumn(1, Optional.empty(), new int[] {column.getInt(rowIndex)}));
+      case INT64:
+      case TIMESTAMP:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new LongColumn(1, Optional.empty(), new long[] {column.getLong(rowIndex)}));
+      case FLOAT:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new FloatColumn(1, Optional.empty(), new float[] {column.getFloat(rowIndex)}));
+      case DOUBLE:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new DoubleColumn(1, Optional.empty(), new double[] {column.getDouble(rowIndex)}));
+      case BOOLEAN:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new BooleanColumn(
+                    1, Optional.empty(), new boolean[] {column.getBoolean(rowIndex)}));
+      case STRING:
+      case TEXT:
+      case BLOB:
+        return (column, rowIndex) ->
+            new TsBlock(
+                1,
+                TIME_COLUMN_TEMPLATE,
+                new BinaryColumn(1, Optional.empty(), new Binary[] {column.getBinary(rowIndex)}));
+      default:
+        throw new UnsupportedOperationException("Unsupported data type: " + type);
+    }
+  }
+
+  @Override
+  public Operator visitEnforceSingleRow(
+      EnforceSingleRowNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                EnforceSingleRowOperator.class.getSimpleName());
+
+    return new EnforceSingleRowOperator(operatorContext, child);
   }
 
   @Override
