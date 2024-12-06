@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
 import com.google.common.collect.ImmutableList;
+import org.mockito.Mockito;
 
 import java.time.ZoneId;
 import java.util.Collections;
@@ -146,13 +147,15 @@ public class PlanTester {
 
   public static Analysis analyze(String sql, Metadata metadata) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
     String databaseName;
     if (metadata instanceof TSBSMetadata) {
       databaseName = "tsbs";
     } else {
       databaseName = "testdb";
     }
+    IClientSession clientSession = Mockito.mock(IClientSession.class);
+    Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);

@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAg
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -823,6 +824,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitEnforceSingleRow(EnforceSingleRowNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("EnforceSingleRow-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 

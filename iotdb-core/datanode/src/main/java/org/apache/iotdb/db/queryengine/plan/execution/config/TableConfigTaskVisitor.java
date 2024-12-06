@@ -169,7 +169,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CH
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
-  private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+  public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
 
   private final IClientSession clientSession;
 

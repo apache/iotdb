@@ -116,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
@@ -279,7 +280,8 @@ public enum PlanNodeType {
   TABLE_GAP_FILL_NODE((short) 1017),
   TABLE_EXCHANGE_NODE((short) 1018),
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
-  INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1020),
+  TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
+  INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -636,7 +638,10 @@ public enum PlanNodeType {
       case 1019:
         throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
       case 1020:
+        return EnforceSingleRowNode.deserialize(buffer);
+      case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
+
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
