@@ -32,13 +32,13 @@ public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
 
-  public static final String QUERIES_TABLE_NAME = "queries";
-  public static final String DATABASES_TABLE_NAME = "databases";
-  public static final String TABLES_TABLE_NAME = "tables";
-  public static final String COLUMNS_TABLE_NAME = "columns";
+  public static final String QUERIES = "queries";
+  public static final String DATABASES = "databases";
+  public static final String TABLES = "tables";
+  public static final String COLUMNS = "columns";
 
   static {
-    final TsTable queriesTable = new TsTable(QUERIES_TABLE_NAME);
+    final TsTable queriesTable = new TsTable(QUERIES);
     queriesTable.addColumnSchema(
         new MeasurementColumnSchema(ColumnHeaderConstant.TIME, TSDataType.TIMESTAMP));
     queriesTable.addColumnSchema(
@@ -53,9 +53,9 @@ public class InformationSchema {
         new MeasurementColumnSchema(ColumnHeaderConstant.STATEMENT, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new MeasurementColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
-    schemaTables.put(QUERIES_TABLE_NAME, queriesTable);
+    schemaTables.put(QUERIES, queriesTable);
 
-    final TsTable databaseTable = new TsTable(DATABASES_TABLE_NAME);
+    final TsTable databaseTable = new TsTable(DATABASES);
     databaseTable.addColumnSchema(
         new MeasurementColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -78,9 +78,9 @@ public class InformationSchema {
         new MeasurementColumnSchema(
             ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put(DATABASES_TABLE_NAME, databaseTable);
+    schemaTables.put(DATABASES, databaseTable);
 
-    final TsTable tableTable = new TsTable(TABLES_TABLE_NAME);
+    final TsTable tableTable = new TsTable(TABLES);
     tableTable.addColumnSchema(
         new MeasurementColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -94,9 +94,9 @@ public class InformationSchema {
         new MeasurementColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put(TABLES_TABLE_NAME, tableTable);
+    schemaTables.put(TABLES, tableTable);
 
-    final TsTable columnTable = new TsTable(COLUMNS_TABLE_NAME);
+    final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
         new MeasurementColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -116,7 +116,7 @@ public class InformationSchema {
         new MeasurementColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put(COLUMNS_TABLE_NAME, columnTable);
+    schemaTables.put(COLUMNS, columnTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
