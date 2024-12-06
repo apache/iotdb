@@ -190,6 +190,7 @@ public enum ThreadName {
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
 
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");

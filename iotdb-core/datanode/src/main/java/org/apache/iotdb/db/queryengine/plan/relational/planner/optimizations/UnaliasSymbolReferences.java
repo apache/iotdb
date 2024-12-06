@@ -24,6 +24,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -461,6 +464,136 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
           new OutputNode(
               node.getPlanNodeId(), rewrittenSource.getRoot(), node.getColumnNames(), newOutputs),
           mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitEnforceSingleRow(
+        EnforceSingleRowNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getSource().accept(this, context);
+
+      return new PlanAndMappings(
+          node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
+          rewrittenSource.getMappings());
+    }
+
+    @Override
+    public PlanAndMappings visitApply(ApplyNode node, UnaliasContext context) {
+      // it is assumed that apart from correlation (and possibly outer correlation), symbols are
+      // distinct between Input and Subquery
+      // rewrite Input
+      PlanAndMappings rewrittenInput = node.getInput().accept(this, context);
+      Map<Symbol, Symbol> inputMapping = new HashMap<>(rewrittenInput.getMappings());
+      SymbolMapper mapper = symbolMapper(inputMapping);
+
+      // rewrite correlation with mapping from Input
+      List<Symbol> rewrittenCorrelation = mapper.mapAndDistinct(node.getCorrelation());
+
+      // extract new mappings for correlation symbols to apply in Subquery
+      Set<Symbol> correlationSymbols = ImmutableSet.copyOf(node.getCorrelation());
+      Map<Symbol, Symbol> correlationMapping = new HashMap<>();
+      for (Map.Entry<Symbol, Symbol> entry : inputMapping.entrySet()) {
+        if (correlationSymbols.contains(entry.getKey())) {
+          correlationMapping.put(entry.getKey(), mapper.map(entry.getKey()));
+        }
+      }
+
+      Map<Symbol, Symbol> mappingForSubquery = new HashMap<>();
+      mappingForSubquery.putAll(context.getCorrelationMapping());
+      mappingForSubquery.putAll(correlationMapping);
+
+      // rewrite Subquery
+      PlanAndMappings rewrittenSubquery =
+          node.getSubquery().accept(this, new UnaliasContext(mappingForSubquery));
+
+      // unify mappings from Input and Subquery to rewrite Subquery assignments
+      Map<Symbol, Symbol> resultMapping = new HashMap<>();
+      resultMapping.putAll(rewrittenInput.getMappings());
+      resultMapping.putAll(rewrittenSubquery.getMappings());
+      mapper = symbolMapper(resultMapping);
+
+      ImmutableList.Builder<Map.Entry<Symbol, ApplyNode.SetExpression>> rewrittenAssignments =
+          ImmutableList.builder();
+      for (Map.Entry<Symbol, ApplyNode.SetExpression> assignment :
+          node.getSubqueryAssignments().entrySet()) {
+        rewrittenAssignments.add(
+            new SimpleEntry<>(mapper.map(assignment.getKey()), mapper.map(assignment.getValue())));
+      }
+
+      // deduplicate assignments
+      Map<Symbol, ApplyNode.SetExpression> deduplicateAssignments =
+          rewrittenAssignments.build().stream()
+              .distinct()
+              .collect(toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      mapper = symbolMapper(resultMapping);
+
+      // build new Assignments with canonical outputs
+      // duplicate entries will be removed by the Builder
+      ImmutableMap.Builder<Symbol, ApplyNode.SetExpression> newAssignments = ImmutableMap.builder();
+      for (Map.Entry<Symbol, ApplyNode.SetExpression> assignment :
+          deduplicateAssignments.entrySet()) {
+        newAssignments.put(mapper.map(assignment.getKey()), assignment.getValue());
+      }
+
+      return new PlanAndMappings(
+          new ApplyNode(
+              node.getPlanNodeId(),
+              rewrittenInput.getRoot(),
+              rewrittenSubquery.getRoot(),
+              newAssignments.buildOrThrow(),
+              rewrittenCorrelation,
+              node.getOriginSubquery()),
+          resultMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitCorrelatedJoin(CorrelatedJoinNode node, UnaliasContext context) {
+      // it is assumed that apart from correlation (and possibly outer correlation), symbols are
+      // distinct between left and right CorrelatedJoin source
+      // rewrite Input
+      PlanAndMappings rewrittenInput = node.getInput().accept(this, context);
+      Map<Symbol, Symbol> inputMapping = new HashMap<>(rewrittenInput.getMappings());
+      SymbolMapper mapper = symbolMapper(inputMapping);
+
+      // rewrite correlation with mapping from Input
+      List<Symbol> rewrittenCorrelation = mapper.mapAndDistinct(node.getCorrelation());
+
+      // extract new mappings for correlation symbols to apply in Subquery
+      Set<Symbol> correlationSymbols = ImmutableSet.copyOf(node.getCorrelation());
+      Map<Symbol, Symbol> correlationMapping = new HashMap<>();
+      for (Map.Entry<Symbol, Symbol> entry : inputMapping.entrySet()) {
+        if (correlationSymbols.contains(entry.getKey())) {
+          correlationMapping.put(entry.getKey(), mapper.map(entry.getKey()));
+        }
+      }
+
+      Map<Symbol, Symbol> mappingForSubquery = new HashMap<>();
+      mappingForSubquery.putAll(context.getCorrelationMapping());
+      mappingForSubquery.putAll(correlationMapping);
+
+      // rewrite Subquery
+      PlanAndMappings rewrittenSubquery =
+          node.getSubquery().accept(this, new UnaliasContext(mappingForSubquery));
+
+      // unify mappings from Input and Subquery
+      Map<Symbol, Symbol> resultMapping = new HashMap<>();
+      resultMapping.putAll(rewrittenInput.getMappings());
+      resultMapping.putAll(rewrittenSubquery.getMappings());
+
+      // rewrite filter with unified mapping
+      mapper = symbolMapper(resultMapping);
+      Expression newFilter = mapper.map(node.getFilter());
+
+      return new PlanAndMappings(
+          new CorrelatedJoinNode(
+              node.getPlanNodeId(),
+              rewrittenInput.getRoot(),
+              rewrittenSubquery.getRoot(),
+              rewrittenCorrelation,
+              node.getJoinType(),
+              newFilter,
+              node.getOriginSubquery()),
+          resultMapping);
     }
 
     @Override

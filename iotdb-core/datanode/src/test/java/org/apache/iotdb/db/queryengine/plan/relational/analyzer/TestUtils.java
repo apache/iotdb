@@ -143,7 +143,7 @@ public class TestUtils {
   public static void assertAnalyzeSemanticException(String sql, String message) {
     try {
       SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
       SessionInfo session =
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
