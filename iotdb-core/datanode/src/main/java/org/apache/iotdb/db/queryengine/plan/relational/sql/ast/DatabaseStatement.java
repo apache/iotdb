@@ -30,6 +30,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public abstract class DatabaseStatement extends Statement {
+
+  // In CreateDB: If not exists
+  // In AlterDB: If exists
   protected final boolean exists;
   protected final String dbName;
   protected final List<Property> properties;

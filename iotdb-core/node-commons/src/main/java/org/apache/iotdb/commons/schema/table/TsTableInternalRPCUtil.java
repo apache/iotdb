@@ -99,37 +99,6 @@ public class TsTableInternalRPCUtil {
     throw new IllegalStateException();
   }
 
-  public static byte[] serializeTsTablesWithDatabase(
-      final String database, final List<TsTable> tables) {
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(database, outputStream);
-      ReadWriteIOUtils.write(tables.size(), outputStream);
-      for (final TsTable table : tables) {
-        table.serialize(outputStream);
-      }
-    } catch (final IOException ignored) {
-      // ByteArrayOutputStream won't throw IOException
-    }
-    return outputStream.toByteArray();
-  }
-
-  public static Pair<String, List<TsTable>> deserializeTsTablesWithDatabase(final byte[] bytes) {
-    final InputStream inputStream = new ByteArrayInputStream(bytes);
-    try {
-      final String database = ReadWriteIOUtils.readString(inputStream);
-      final int size = ReadWriteIOUtils.readInt(inputStream);
-      final List<TsTable> tables = new ArrayList<>(size);
-      for (int i = 0; i < size; ++i) {
-        tables.add(TsTable.deserialize(inputStream));
-      }
-      return new Pair<>(database, tables);
-    } catch (final IOException ignored) {
-      // ByteArrayInputStream won't throw IOException
-    }
-    throw new IllegalStateException();
-  }
-
   public static byte[] serializeSingleTsTable(final TsTable table) {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

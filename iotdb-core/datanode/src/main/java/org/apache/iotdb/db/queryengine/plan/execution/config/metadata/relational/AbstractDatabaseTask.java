@@ -37,6 +37,8 @@ public abstract class AbstractDatabaseTask implements IConfigTask {
   /////////////////////////////// Fields ///////////////////////////////
 
   protected final TDatabaseSchema schema;
+  // In CreateDB: If not exists
+  // In AlterDB: If exists
   protected final boolean exists;
 
   protected AbstractDatabaseTask(final TDatabaseSchema schema, final boolean exists) {
