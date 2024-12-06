@@ -170,7 +170,7 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
     newTablet.values = valueColumns;
-    newTablet.rowSize = rowCount;
+    newTablet.setRowSize(rowCount);
 
     tablet = newTablet;
 

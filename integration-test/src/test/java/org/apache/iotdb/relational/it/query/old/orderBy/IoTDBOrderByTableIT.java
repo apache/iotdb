@@ -1475,15 +1475,17 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
+      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       List<Object[]> values =
           Arrays.asList(
@@ -1502,12 +1504,12 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d1", "a1", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d1", "a1", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d1", "a1", 15, 3147483648L, 235.213, "watermelon", true});
-      Tablet tablet = new Tablet("table0", schemaList, columnTypes, TIMES.size());
+      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, TIMES.get(i));
         for (int j = 0; j < schemaList.size(); j++) {
-          tablet.addValue(schemaList.get(j).getMeasurementId(), rowIndex, values.get(i)[j]);
+          tablet.addValue(schemaList.get(j).getMeasurementName(), rowIndex, values.get(i)[j]);
         }
       }
       session.insert(tablet);
@@ -1528,15 +1530,17 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
+      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =
           Arrays.asList(
               new Object[] {"d2", "a2", 3, 2947483648L, 231.2121, "coconut", false},
@@ -1554,12 +1558,12 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d2", "a2", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d2", "a2", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d2", "a2", 15, 3147483648L, 235.213, "watermelon", true});
-      Tablet tablet = new Tablet("table0", schemaList, columnTypes, TIMES.size());
+      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, TIMES.get(i));
         for (int j = 0; j < schemaList.size(); j++) {
-          tablet.addValue(schemaList.get(j).getMeasurementId(), rowIndex, values.get(i)[j]);
+          tablet.addValue(schemaList.get(j).getMeasurementName(), rowIndex, values.get(i)[j]);
         }
       }
       session.insert(tablet);

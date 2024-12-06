@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -943,7 +944,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Create instances of udf and do registration
     try {
       for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-        UDFManagementService.getInstance().doRegister(udfInformation);
+        if (udfInformation.isAvailable()) {
+          Model model = UDFManagementService.getInstance().checkAndGetModel(udfInformation);
+          UDFManagementService.getInstance().doRegister(model, udfInformation);
+        }
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -952,8 +956,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
     if (logger.isDebugEnabled()) {
       for (UDFInformation udfInformation :
-          UDFManagementService.getInstance().getAllUDFInformation()) {
-        logger.debug("get udf: {}", udfInformation.getFunctionName());
+          UDFManagementService.getInstance().getUDFInformation(Model.TREE)) {
+        logger.debug("get tree udf: {}", udfInformation.getFunctionName());
+      }
+      for (UDFInformation udfInformation :
+          UDFManagementService.getInstance().getUDFInformation(Model.TABLE)) {
+        logger.debug("get table udf: {}", udfInformation.getFunctionName());
       }
     }
   }
@@ -990,7 +998,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           try {
             // Local jar has conflicts with jar on config node, add current triggerInformation to
             // list
-            if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
+            if (UDFExecutableManager.getInstance().isLocalJarConflicted(udfInformation)) {
               res.add(udfInformation);
             }
           } catch (UDFManagementException e) {

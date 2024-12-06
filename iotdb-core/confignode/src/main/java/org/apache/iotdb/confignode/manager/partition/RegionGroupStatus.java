@@ -24,24 +24,22 @@ public enum RegionGroupStatus {
   Running("Running", 1),
 
   /**
-   * All Regions in RegionGroup are in the Running or Unknown status, and the number of Regions in
-   * the Unknown status is less than half
+   * All Regions in RegionGroup are in the Running or Unknown or Removing status, and the number of
+   * Regions in the Unknown or Removing status is less than half
    */
   Available("Available", 2),
 
   /**
-   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly status, and at least 1 node
-   * is in ReadOnly status, the number of Regions in the Unknown or ReadOnly status is less than
-   * half
+   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly or Removing status, and at
+   * least 1 node is in ReadOnly status, the number of Regions in the Unknown or ReadOnly or
+   * Removing status is less than half
    */
   Discouraged("Discouraged", 3),
 
   /**
    * The following cases will lead to Disabled RegionGroup:
    *
-   * <p>1. There is a Region in Removing status
-   *
-   * <p>2. More than half of the Regions are in Unknown or ReadOnly status
+   * <p>1. More than half of the Regions are in Unknown or ReadOnly or Removing status
    */
   Disabled("Disabled", 4);
 

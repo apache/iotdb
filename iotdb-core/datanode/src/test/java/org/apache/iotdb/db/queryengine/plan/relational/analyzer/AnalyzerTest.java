@@ -39,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -112,7 +113,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
-  private static final NopAccessControl nopAccessControl = new NopAccessControl();
+  private static final AccessControl nopAccessControl = new AllowAllAccessControl();
 
   QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
@@ -1213,7 +1214,7 @@ public class AnalyzerTest {
 
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
@@ -1264,6 +1265,4 @@ public class AnalyzerTest {
             NOOP);
     return analyzer.analyze(statement);
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }

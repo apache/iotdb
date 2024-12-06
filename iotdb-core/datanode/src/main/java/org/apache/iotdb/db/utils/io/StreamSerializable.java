@@ -25,7 +25,7 @@ import java.io.OutputStream;
 
 public interface StreamSerializable {
 
-  void serialize(OutputStream stream) throws IOException;
+  long serialize(OutputStream stream) throws IOException;
 
   void deserialize(InputStream stream) throws IOException;
 }

@@ -90,22 +90,11 @@ public class Analyzer {
             analysis, context, session, warningCollector, CorrelationSupport.ALLOWED);
 
     analyzer.analyze(statement);
-    if (statement.isQuery()) {
+    if (analysis.isQuery()) {
       long analyzeCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, ANALYZER, analyzeCost);
       context.setAnalyzeCost(analyzeCost);
     }
-
-    // TODO access control
-    // check column access permissions for each table
-    //    analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
-    //        tableColumnReferences.forEach((tableName, columns) ->
-    //            accessControlInfo.getAccessControl().checkCanSelectFromColumns(
-    //                accessControlInfo.getSecurityContext(session.getRequiredTransactionId(),
-    // session.getQueryId(),
-    //                    session.getStart()),
-    //                tableName,
-    //                columns)));
 
     return analysis;
   }

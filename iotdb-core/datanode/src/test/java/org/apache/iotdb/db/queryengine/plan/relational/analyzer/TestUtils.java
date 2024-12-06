@@ -25,9 +25,9 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -143,7 +143,7 @@ public class TestUtils {
   public static void assertAnalyzeSemanticException(String sql, String message) {
     try {
       SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
       SessionInfo session =
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);

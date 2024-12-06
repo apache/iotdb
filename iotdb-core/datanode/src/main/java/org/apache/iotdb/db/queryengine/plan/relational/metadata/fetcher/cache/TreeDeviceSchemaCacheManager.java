@@ -288,14 +288,14 @@ public class TreeDeviceSchemaCacheManager {
           new IMeasurementSchemaInfo() {
             @Override
             public String getName() {
-              return schema.getMeasurementId();
+              return schema.getMeasurementName();
             }
 
             @Override
             public IMeasurementSchema getSchema() {
               if (isLogicalView()) {
                 return new LogicalViewSchema(
-                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+                    schema.getMeasurementName(), ((LogicalViewSchema) schema).getExpression());
               } else {
                 return this.getSchemaAsMeasurementSchema();
               }
@@ -304,7 +304,7 @@ public class TreeDeviceSchemaCacheManager {
             @Override
             public MeasurementSchema getSchemaAsMeasurementSchema() {
               return new MeasurementSchema(
-                  schema.getMeasurementId(),
+                  schema.getMeasurementName(),
                   schema.getType(),
                   schema.getEncodingType(),
                   schema.getCompressor());

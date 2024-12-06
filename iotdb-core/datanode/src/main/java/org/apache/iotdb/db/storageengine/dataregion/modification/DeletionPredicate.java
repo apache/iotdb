@@ -81,23 +81,25 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.writeVar(tableName, stream);
-    idPredicate.serialize(stream);
-    ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), stream);
+  public long serialize(OutputStream stream) throws IOException {
+    long size = ReadWriteIOUtils.writeVar(tableName, stream);
+    size += idPredicate.serialize(stream);
+    size += ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), stream);
     for (String measurementName : measurementNames) {
-      ReadWriteIOUtils.writeVar(measurementName, stream);
+      size += ReadWriteIOUtils.writeVar(measurementName, stream);
     }
+    return size;
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.writeVar(tableName, buffer);
-    idPredicate.serialize(buffer);
-    ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), buffer);
+  public long serialize(ByteBuffer buffer) {
+    long size = ReadWriteIOUtils.writeVar(tableName, buffer);
+    size += idPredicate.serialize(buffer);
+    size += ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), buffer);
     for (String measurementName : measurementNames) {
-      ReadWriteIOUtils.writeVar(measurementName, buffer);
+      size += ReadWriteIOUtils.writeVar(measurementName, buffer);
     }
+    return size;
   }
 
   @Override
