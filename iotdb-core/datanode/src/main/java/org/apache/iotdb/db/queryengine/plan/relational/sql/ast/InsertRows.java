@@ -97,7 +97,8 @@ public class InsertRows extends WrappedInsertStatement {
                   AnalyzeUtils.getDatabaseName(insertRowStatement, context),
                   incomingTableSchema,
                   context,
-                  allowCreateTable)
+                  allowCreateTable,
+                  false)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(

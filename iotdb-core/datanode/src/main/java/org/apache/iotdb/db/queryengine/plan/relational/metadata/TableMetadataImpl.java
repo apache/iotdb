@@ -61,9 +61,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN_OR_EQUAL;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -673,9 +670,14 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     return TableHeaderSchemaValidator.getInstance()
-        .validateTableHeaderSchema(database, tableSchema, context, allowCreateTable);
+        .validateTableHeaderSchema(
+            database, tableSchema, context, allowCreateTable, isStrictIdColumn);
   }
 
   @Override
