@@ -42,21 +42,21 @@ public class CreateOrAlterDBTask implements IConfigTask {
   /////////////////////////////// Fields ///////////////////////////////
 
   private final TDatabaseSchema schema;
-  private final boolean ifNotExists;
+  private final boolean exists;
   private final DatabaseSchemaStatement.DatabaseSchemaStatementType type;
 
   public CreateOrAlterDBTask(
       final TDatabaseSchema schema,
-      final boolean ifNotExists,
+      final boolean exists,
       final DatabaseSchemaStatement.DatabaseSchemaStatementType type) {
     this.schema = schema;
-    this.ifNotExists = ifNotExists;
+    this.exists = exists;
     this.type = type;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createOrAlterDatabase(schema, ifNotExists, type);
+    return configTaskExecutor.createOrAlterDatabase(schema, exists, type);
   }
 }
