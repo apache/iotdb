@@ -61,6 +61,7 @@ import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -492,8 +493,9 @@ public class IoTConsensus implements IConsensus {
       deleteLocalPeer(groupId);
       return;
     }
-    String previousPeerListStr = impl.getConfiguration().toString();
-    for (Peer peer : impl.getConfiguration()) {
+    ImmutableList<Peer> currentMembers = ImmutableList.copyOf(impl.getConfiguration());
+    String previousPeerListStr = currentMembers.toString();
+    for (Peer peer : currentMembers) {
       if (!correctPeers.contains(peer)) {
         if (!impl.removeSyncLogChannel(peer)) {
           logger.error(
