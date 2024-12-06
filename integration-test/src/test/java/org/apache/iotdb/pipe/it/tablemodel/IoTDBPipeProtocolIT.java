@@ -326,7 +326,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
       if (!insertResult) {
