@@ -52,7 +52,7 @@ public class AllocatorScatterWidthManualTest {
 
   private static final int TEST_DATA_NODE_NUM = 50;
   private static final int DATA_REGION_PER_DATA_NODE =
-      (int) ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode();
+      ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode();
   private static final int DATA_REPLICATION_FACTOR = 3;
 
   private static final Map<Integer, TDataNodeConfiguration> AVAILABLE_DATA_NODE_MAP =
