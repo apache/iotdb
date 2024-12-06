@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -36,11 +37,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -49,16 +52,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -100,12 +104,17 @@ public class TableDistributedPlanGenerator
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   public TableDistributedPlanGenerator(
-      MPPQueryContext queryContext, Analysis analysis, SymbolAllocator symbolAllocator) {
+      MPPQueryContext queryContext,
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   public List<PlanNode> genResult(PlanNode node, PlanContext context) {
@@ -443,8 +452,8 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTableScan(TableScanNode node, PlanContext context) {
-    Map<TRegionReplicaSet, TableScanNode> tableScanNodeMap = new HashMap<>();
+  public List<PlanNode> visitDeviceTableScan(DeviceTableScanNode node, PlanContext context) {
+    Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
@@ -454,12 +463,12 @@ public class TableDistributedPlanGenerator
               node.getTimeFilter());
 
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        TableScanNode tableScanNode =
+        DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
                 k -> {
-                  TableScanNode scanNode =
-                      new TableScanNode(
+                  DeviceTableScanNode scanNode =
+                      new DeviceTableScanNode(
                           queryId.genPlanNodeId(),
                           node.getQualifiedObjectName(),
                           node.getOutputSymbols(),
@@ -475,7 +484,7 @@ public class TableDistributedPlanGenerator
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
-        tableScanNode.appendDeviceEntry(deviceEntry);
+        deviceTableScanNode.appendDeviceEntry(deviceEntry);
       }
     }
 
@@ -487,17 +496,17 @@ public class TableDistributedPlanGenerator
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, TableScanNode> entry : tableScanNodeMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry : tableScanNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
-      TableScanNode subTableScanNode = entry.getValue();
-      subTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
-      subTableScanNode.setRegionReplicaSet(regionReplicaSet);
-      resultTableScanNodeList.add(subTableScanNode);
+      DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
+      subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
+      subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
+      resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
-          || subTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
+          || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
         mostUsedDataRegion = regionReplicaSet;
-        maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
+        maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
     }
     context.mostUsedRegion = mostUsedDataRegion;
@@ -507,6 +516,30 @@ public class TableDistributedPlanGenerator
     }
 
     processSortProperty(node, resultTableScanNodeList, context);
+    return resultTableScanNodeList;
+  }
+
+  @Override
+  public List<PlanNode> visitInformationSchemaTableScan(
+      InformationSchemaTableScanNode node, PlanContext context) {
+    List<TDataNodeLocation> dataNodeLocations =
+        dataNodeLocationSupplier.getDataNodeLocations(
+            node.getQualifiedObjectName().getObjectName());
+    checkArgument(!dataNodeLocations.isEmpty(), "DataNodeLocations shouldn't be empty");
+
+    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
+    dataNodeLocations.forEach(
+        dataNodeLocation ->
+            resultTableScanNodeList.add(
+                new InformationSchemaTableScanNode(
+                    queryId.genPlanNodeId(),
+                    node.getQualifiedObjectName(),
+                    node.getOutputSymbols(),
+                    node.getAssignments(),
+                    node.getPushDownPredicate(),
+                    node.getPushDownLimit(),
+                    node.getPushDownOffset(),
+                    new TRegionReplicaSet(null, ImmutableList.of(dataNodeLocation)))));
     return resultTableScanNodeList;
   }
 
@@ -607,15 +640,15 @@ public class TableDistributedPlanGenerator
     int maxDeviceEntrySizeOfTableScan = 0;
     for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry : regionNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
-      TableScanNode subTableScanNode = entry.getValue();
-      subTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
-      subTableScanNode.setRegionReplicaSet(regionReplicaSet);
-      resultTableScanNodeList.add(subTableScanNode);
+      DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
+      subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
+      subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
+      resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
-          || subTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
+          || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
         mostUsedDataRegion = regionReplicaSet;
-        maxDeviceEntrySizeOfTableScan = subTableScanNode.getDeviceEntries().size();
+        maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
     }
     context.mostUsedRegion = mostUsedDataRegion;
@@ -729,7 +762,7 @@ public class TableDistributedPlanGenerator
   }
 
   private void processSortProperty(
-      final TableScanNode tableScanNode,
+      final DeviceTableScanNode deviceTableScanNode,
       final List<PlanNode> resultTableScanNodeList,
       final PlanContext context) {
     final List<Symbol> newOrderingSymbols = new ArrayList<>();
@@ -738,17 +771,17 @@ public class TableDistributedPlanGenerator
 
     boolean lastIsTimeRelated = false;
     for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
-      if (timeRelatedSymbol(symbol, tableScanNode)) {
+      if (timeRelatedSymbol(symbol, deviceTableScanNode)) {
         if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
           // TODO(beyyes) move scan order judgement into logical plan optimizer
           resultTableScanNodeList.forEach(
-              node -> ((TableScanNode) node).setScanOrder(Ordering.DESC));
+              node -> ((DeviceTableScanNode) node).setScanOrder(Ordering.DESC));
         }
         newOrderingSymbols.add(symbol);
         newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
         lastIsTimeRelated = true;
         break;
-      } else if (!tableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
+      } else if (!deviceTableScanNode.getIdAndAttributeIndexMap().containsKey(symbol)) {
         break;
       }
 
@@ -756,19 +789,19 @@ public class TableDistributedPlanGenerator
       newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
     }
 
-    // no sort property can be pushed down into TableScanNode
+    // no sort property can be pushed down into DeviceTableScanNode
     if (newOrderingSymbols.isEmpty()) {
       return;
     }
 
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
-      final Integer idx = tableScanNode.getIdAndAttributeIndexMap().get(symbol);
+      final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
       if (idx == null) {
         // time column or date_bin column
         break;
       }
-      if (tableScanNode.getAssignments().get(symbol).getColumnCategory()
+      if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
           == TsTableColumnCategory.ID) {
         // segments[0] is always tableName
         orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
@@ -828,13 +861,13 @@ public class TableDistributedPlanGenerator
 
     final Optional<OrderingScheme> newOrderingScheme =
         tableScanOrderingSchema(
-            analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName()),
+            analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName()),
             newOrderingSymbols,
             newSortOrders,
             lastIsTimeRelated,
-            tableScanNode.getDeviceEntries().size() == 1);
+            deviceTableScanNode.getDeviceEntries().size() == 1);
     for (final PlanNode planNode : resultTableScanNodeList) {
-      final TableScanNode scanNode = (TableScanNode) planNode;
+      final DeviceTableScanNode scanNode = (DeviceTableScanNode) planNode;
       newOrderingScheme.ifPresent(
           orderingScheme -> nodeOrderingMap.put(scanNode.getPlanNodeId(), orderingScheme));
       if (comparator != null) {
@@ -883,8 +916,8 @@ public class TableDistributedPlanGenerator
   }
 
   // time column or push down date_bin function call in agg which should only have one such column
-  private boolean timeRelatedSymbol(Symbol symbol, TableScanNode tableScanNode) {
-    return tableScanNode.isTimeColumn(symbol)
+  private boolean timeRelatedSymbol(Symbol symbol, DeviceTableScanNode deviceTableScanNode) {
+    return deviceTableScanNode.isTimeColumn(symbol)
         || PUSH_DOWN_DATE_BIN_SYMBOL_NAME.equals(symbol.getName());
   }
 

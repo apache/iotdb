@@ -117,7 +117,7 @@ public class TableModelQueryFragmentPlanner {
     if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
       TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
       if (dataNodeLocation != null) {
-        // now only the case ShowQueries will enter here
+        // now only the case ShowStatement will enter here
         fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
       } else {
         // no data region && no dataNodeLocation, we need to execute this FI on local
