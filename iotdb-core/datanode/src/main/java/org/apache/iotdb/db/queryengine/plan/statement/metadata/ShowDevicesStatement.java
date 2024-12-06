@@ -91,10 +91,8 @@ public class ShowDevicesStatement extends ShowStatement {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
           this.authorityScope =
               PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                  AuthorityChecker.getAuthorizedPathTree(
-                      userName, PrivilegeType.READ_SCHEMA.ordinal()),
-                  AuthorityChecker.getAuthorizedPathTree(
-                      userName, PrivilegeType.READ_DATA.ordinal()));
+                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA),
+                  AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA));
         }
       } catch (AuthException e) {
         return new TSStatus(e.getCode().getStatusCode());
