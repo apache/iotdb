@@ -44,11 +44,14 @@ public class WALEntryQueue {
 
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
-    while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
-      wait();
+    synchronized (this) {
+      while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
+        wait();
+      }
+      queue.put(e);
+      SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
+      notifyAll();
     }
-    queue.put(e);
-    SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
   }
 
   public WALEntry take() throws InterruptedException {
