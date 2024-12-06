@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -626,7 +626,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
-    } catch (final Throwable e) {
+    } catch (final Exception e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
@@ -636,11 +636,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         initialized = false;
         isRecovering = true;
         init();
-      } catch (final MetadataException metadataException) {
+      } catch (final Exception exception) {
         logger.error(
-            "Error occurred during initializing schemaRegion {}",
-            schemaRegionId,
-            metadataException);
+            "Error occurred during initializing schemaRegion {}", schemaRegionId, exception);
       }
     }
   }

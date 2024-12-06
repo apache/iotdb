@@ -58,6 +58,7 @@ import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -411,8 +412,9 @@ public class PipeConsensus implements IConsensus {
       deleteLocalPeer(groupId);
       return;
     }
+    ImmutableList<Peer> currentPeers = ImmutableList.copyOf(impl.getPeers());
     String previousPeerListStr = impl.getPeers().toString();
-    for (Peer peer : impl.getPeers()) {
+    for (Peer peer : currentPeers) {
       if (!correctPeers.contains(peer)) {
         try {
           impl.dropConsensusPipeToTargetPeer(peer);
