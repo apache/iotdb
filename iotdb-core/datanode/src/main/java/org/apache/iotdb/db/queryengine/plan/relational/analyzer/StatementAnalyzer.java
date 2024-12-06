@@ -337,7 +337,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
-      throw new SemanticException("Create Database statement is not supported yet.");
+      throw new SemanticException("Alter Database statement is not supported yet.");
     }
 
     @Override
