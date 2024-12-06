@@ -165,7 +165,8 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitPlan(
         final PlanNode node, final WritePlanNodeExecutionContext context) {
 
-      if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (CommonDescriptor.getInstance().getConfig().isReadOnly()
+          && context.getRegionId() instanceof DataRegionId) {
         return RegionExecutionResult.create(
             false,
             "Fail to do non-query operations because system is read-only.",
