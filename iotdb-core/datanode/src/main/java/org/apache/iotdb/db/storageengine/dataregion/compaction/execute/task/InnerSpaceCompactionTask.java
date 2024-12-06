@@ -617,6 +617,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         / filesView.sourceFilesInCompactionPerformer.size();
   }
 
+  public double getAvgFileSize() {
+    return (double) filesView.selectedFileSize / filesView.sourceFilesInCompactionPerformer.size();
+  }
+
   @TestOnly
   public void setTargetTsFileResource(TsFileResource targetTsFileResource) {
     this.filesView.setTargetFileForRecover(targetTsFileResource);

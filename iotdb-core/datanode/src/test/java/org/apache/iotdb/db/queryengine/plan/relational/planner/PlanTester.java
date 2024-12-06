@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -36,16 +37,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+
+import com.google.common.collect.ImmutableList;
+import org.mockito.Mockito;
 
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.genDataNodeLocation;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
 import static org.junit.Assert.fail;
 
@@ -68,6 +75,20 @@ public class PlanTester {
   private SymbolAllocator symbolAllocator;
 
   private LogicalQueryPlan plan;
+
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier =
+      new DataNodeLocationSupplierFactory.DataNodeLocationSupplier() {
+        @Override
+        public List<TDataNodeLocation> getDataNodeLocations(String table) {
+          switch (table) {
+            case "queries":
+              return ImmutableList.of(
+                  genDataNodeLocation(1, "192.0.1.1"), genDataNodeLocation(2, "192.0.1.2"));
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
+      };
 
   public PlanTester() {
     this(new TestMatadata());
@@ -126,13 +147,15 @@ public class PlanTester {
 
   public static Analysis analyze(String sql, Metadata metadata) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
     String databaseName;
     if (metadata instanceof TSBSMetadata) {
       databaseName = "tsbs";
     } else {
       databaseName = "testdb";
     }
+    IClientSession clientSession = Mockito.mock(IClientSession.class);
+    Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
@@ -149,7 +172,7 @@ public class PlanTester {
       SessionInfo session) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, new NopAccessControl());
+          new StatementAnalyzerFactory(metadata, sqlParser, new AllowAllAccessControl());
 
       Analyzer analyzer =
           new Analyzer(
@@ -158,6 +181,7 @@ public class PlanTester {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
+              new StatementRewriteFactory(metadata).getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (Exception e) {
@@ -171,10 +195,10 @@ public class PlanTester {
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
       distributedQueryPlan =
-          new TableDistributedPlanner(analysis, symbolAllocator, plan, metadata).plan();
+          new TableDistributedPlanner(
+                  analysis, symbolAllocator, plan, metadata, dataNodeLocationSupplier)
+              .plan();
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }

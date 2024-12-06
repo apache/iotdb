@@ -47,7 +47,12 @@ import javax.validation.constraints.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -56,6 +61,38 @@ public class ConfigExecution implements IQueryExecution {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
 
   private static final TsBlockSerde serde = new TsBlockSerde();
+  private static final Set<Integer> userExceptionCodes =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(),
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode(),
+                  TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(),
+                  TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.TABLE_NOT_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(),
+                  TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode(),
+                  TSStatusCode.DATABASE_MODEL.getStatusCode(),
+                  TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
+                  TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
+                  TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
+                  TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                  TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.NO_PERMISSION.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode(),
+                  TSStatusCode.ROLE_ALREADY_EXIST.getStatusCode(),
+                  TSStatusCode.ROLE_NOT_EXIST.getStatusCode(),
+                  TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
+                  TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())));
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -118,8 +155,20 @@ public class ConfigExecution implements IQueryExecution {
     }
   }
 
-  private void fail(Throwable cause) {
-    LOGGER.warn("Failures happened during running ConfigExecution.", cause);
+  private void fail(final Throwable cause) {
+    if (!(cause instanceof IoTDBException)
+        || !userExceptionCodes.contains(((IoTDBException) cause).getErrorCode())) {
+      LOGGER.warn(
+          "Failures happened during running ConfigExecution when executing {}.",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause);
+    } else {
+      LOGGER.info(
+          "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause.getMessage(),
+          ((IoTDBException) cause).getErrorCode());
+    }
     stateMachine.transitionToFailed(cause);
     ConfigTaskResult result;
     if (cause instanceof IoTDBException) {
@@ -247,5 +296,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return statementType == null ? null : statementType.name();
+  }
+
+  @Override
+  public String getSQLDialect() {
+    return context.getSession().getSqlDialect().toString();
   }
 }

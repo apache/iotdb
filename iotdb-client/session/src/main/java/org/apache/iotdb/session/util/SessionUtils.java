@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -342,6 +343,20 @@ public class SessionUtils {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
+  }
+
+  /* Used for table model insert only. */
+  public static boolean isTabletContainsSingleDevice(Tablet tablet) {
+    if (tablet.getRowSize() == 1) {
+      return true;
+    }
+    IDeviceID firstDeviceId = tablet.getDeviceID(0);
+    for (int i = 1; i < tablet.getRowSize(); ++i) {
+      if (!firstDeviceId.equals(tablet.getDeviceID(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {

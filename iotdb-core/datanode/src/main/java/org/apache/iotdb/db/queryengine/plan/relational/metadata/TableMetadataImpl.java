@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchemaTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -61,9 +62,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -90,7 +89,14 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    String databaseName = name.getDatabaseName();
+    String tableName = name.getObjectName();
+
+    // TODO Recover this line after put InformationSchema Table into cache
+    TsTable table =
+        databaseName.equals(INFORMATION_SCHEMA)
+            ? InformationSchemaTable.getTableFromStringValue(tableName)
+            : tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
@@ -67,13 +69,15 @@ public class PipeDataRegionAssigner implements Closeable {
   private final AtomicReference<ProgressIndex> maxProgressIndexForTsFileInsertionEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
+  private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
+
   public String getDataRegionId() {
     return dataRegionId;
   }
 
   public PipeDataRegionAssigner(final String dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor = new DisruptorQueue(this::assignToExtractor);
+    this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
   }
@@ -85,19 +89,44 @@ public class PipeDataRegionAssigner implements Closeable {
       return;
     }
 
-    disruptor.publish(event);
+    final EnrichedEvent innerEvent = event.getEvent();
+    eventCounter.increaseEventCount(innerEvent);
+    if (innerEvent instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) innerEvent).onPublished();
+    }
 
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) event.getEvent()).onPublished();
+    if (!disruptor.isClosed()) {
+      disruptor.publish(event);
+    } else {
+      onAssignedHook(event);
     }
   }
 
-  public void assignToExtractor(
+  private void onAssignedHook(final PipeRealtimeEvent realtimeEvent) {
+    realtimeEvent.gcSchemaInfo();
+    realtimeEvent.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
+
+    final EnrichedEvent innerEvent = realtimeEvent.getEvent();
+    eventCounter.decreaseEventCount(innerEvent);
+    if (innerEvent instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) innerEvent).onAssigned();
+    }
+  }
+
+  private void assignToExtractor(
       final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
+    if (disruptor.isClosed()) {
+      return;
+    }
+
     matcher
         .match(event)
         .forEach(
             extractor -> {
+              if (disruptor.isClosed()) {
+                return;
+              }
+
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
                 // The frequency of progress reports is limited by the counter, while progress
                 // reports to TsFileInsertionEvent are not limited.
@@ -170,13 +199,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 return;
               }
               extractor.extract(copiedEvent);
-
-              if (innerEvent instanceof PipeHeartbeatEvent) {
-                ((PipeHeartbeatEvent) innerEvent).onAssigned();
-              }
             });
-    event.gcSchemaInfo();
-    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
   }
 
   private void bindOrUpdateProgressIndexForTsFileInsertionEvent(
@@ -218,18 +241,24 @@ public class PipeDataRegionAssigner implements Closeable {
   public void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
     matcher.clear();
-    disruptor.clear();
+
+    final long startTime = System.currentTimeMillis();
+    disruptor.shutdown();
+    LOGGER.info(
+        "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
+        dataRegionId,
+        System.currentTimeMillis() - startTime);
   }
 
   public int getTabletInsertionEventCount() {
-    return disruptor.getTabletInsertionEventCount();
+    return eventCounter.getTabletInsertionEventCount();
   }
 
   public int getTsFileInsertionEventCount() {
-    return disruptor.getTsFileInsertionEventCount();
+    return eventCounter.getTsFileInsertionEventCount();
   }
 
   public int getPipeHeartbeatEventCount() {
-    return disruptor.getPipeHeartbeatEventCount();
+    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +33,10 @@ public class KillQueryTask implements IConfigTask {
 
   public KillQueryTask(KillQueryStatement killQueryStatement) {
     this.killQueryStatement = killQueryStatement;
+  }
+
+  public KillQueryTask(KillQuery killQuery) {
+    this.killQueryStatement = new KillQueryStatement(killQuery.getQueryId());
   }
 
   @Override

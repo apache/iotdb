@@ -561,6 +561,22 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCreateTopic(CreateTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropTopic(DropTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowTopics(ShowTopics node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowSubscriptions(ShowSubscriptions node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowVersion(ShowVersion node, C context) {
     return visitStatement(node, context);
   }
@@ -586,6 +602,14 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowStatement(ShowStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitKillQuery(KillQuery node, C context) {
     return visitStatement(node, context);
   }
 }
