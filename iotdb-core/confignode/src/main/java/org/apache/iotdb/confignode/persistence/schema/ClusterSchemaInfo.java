@@ -734,9 +734,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+  public TSStatus createSchemaTemplate(final CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
-      Template template = createSchemaTemplatePlan.getTemplate();
+      final Template template = createSchemaTemplatePlan.getTemplate();
       templateTable.createTemplate(template);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {

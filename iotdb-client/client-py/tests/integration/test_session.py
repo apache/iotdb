@@ -85,11 +85,15 @@ def session_test(use_session_pool=False):
         session.set_storage_group("root.sg_test_03")
         session.set_storage_group("root.sg_test_04")
 
-        if session.delete_storage_group("root.sg_test_02") < 0:
+        try:
+            session.delete_storage_group("root.sg_test_02")
+        except Exception:
             test_fail()
             print_message("delete database failed")
 
-        if session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"]) < 0:
+        try:
+            session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"])
+        except Exception:
             test_fail()
             print_message("delete databases failed")
 
@@ -177,7 +181,7 @@ def session_test(use_session_pool=False):
         )
 
         # delete time series
-        if (
+        try:
             session.delete_time_series(
                 [
                     "root.sg_test_01.d_01.s_07",
@@ -185,8 +189,7 @@ def session_test(use_session_pool=False):
                     "root.sg_test_01.d_01.s_09",
                 ]
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message("delete time series failed")
 
@@ -220,12 +223,30 @@ def session_test(use_session_pool=False):
             TSDataType.DOUBLE,
             TSDataType.TEXT,
         ]
-        if (
+        try:
             session.insert_record(
                 "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
             )
-            < 0
-        ):
+        except Exception:
+            test_fail()
+            print_message("insert record failed")
+
+        # insert one record with none into the database.
+        measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
+        values_ = [False, 10, 11, None, None, None]
+        data_types_ = [
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+        ]
+        try:
+            session.insert_record(
+                "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
+            )
+        except Exception:
             test_fail()
             print_message("insert record failed")
 
@@ -240,12 +261,44 @@ def session_test(use_session_pool=False):
         ]
         data_type_list_ = [data_types_, data_types_]
         device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
-        if (
+        try:
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
             )
-            < 0
-        ):
+        except Exception:
+            test_fail()
+            print_message("insert records failed")
+
+        # insert multiple records with none into database
+        measurements_list_ = [
+            ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"],
+            ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"],
+        ]
+        values_list_ = [
+            [False, 22, 33, 4.4, 55.1, "test_records01"],
+            [None, None, None, None, 8.125, bytes("test_records02", "utf-8")],
+        ]
+        data_type_list_ = [data_types_, data_types_]
+        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        try:
+            session.insert_records(
+                device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
+            )
+        except Exception:
+            test_fail()
+            print_message("insert records failed")
+
+        values_list_ = [
+            [False, 22, 33, 4.4, 55.1, "test_records01"],
+            [None, None, None, None, None, None],
+        ]
+        data_type_list_ = [data_types_, data_types_]
+        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        try:
+            session.insert_records(
+                device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
+            )
+        except Exception:
             test_fail()
             print_message("insert records failed")
 
@@ -261,7 +314,9 @@ def session_test(use_session_pool=False):
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
 
-        if session.insert_tablet(tablet_) < 0:
+        try:
+            session.insert_tablet(tablet_)
+        except Exception:
             test_fail()
             print_message("insert tablet failed")
 
@@ -282,7 +337,9 @@ def session_test(use_session_pool=False):
             np_values_,
             np_timestamps_,
         )
-        if session.insert_tablet(np_tablet_) < 0:
+        try:
+            session.insert_tablet(np_tablet_)
+        except Exception:
             test_fail()
             print_message("insert numpy tablet failed")
 
@@ -297,7 +354,9 @@ def session_test(use_session_pool=False):
             values_,
             [12, 13, 14, 15],
         )
-        if session.insert_tablets([tablet_01, tablet_02]) < 0:
+        try:
+            session.insert_tablets([tablet_01, tablet_02])
+        except Exception:
             test_fail()
             print_message("insert tablets failed")
 
@@ -312,7 +371,9 @@ def session_test(use_session_pool=False):
         tablet_ = Tablet(
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
-        if session.insert_tablet(tablet_) < 0:
+        try:
+            session.insert_tablet(tablet_)
+        except Exception:
             test_fail()
             print_message("insert tablet with empty cells failed")
 
@@ -342,7 +403,9 @@ def session_test(use_session_pool=False):
             np_timestamps_,
             np_bitmaps_,
         )
-        if session.insert_tablet(np_tablet_) < 0:
+        try:
+            session.insert_tablet(np_tablet_)
+        except Exception:
             test_fail()
             print_message("insert numpy tablet with empty cells failed")
 
@@ -360,7 +423,7 @@ def session_test(use_session_pool=False):
         ]
         values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
 
-        if (
+        try:
             session.insert_records_of_one_device(
                 "root.sg_test_01.d_01",
                 time_list,
@@ -368,8 +431,7 @@ def session_test(use_session_pool=False):
                 data_types_list,
                 values_list,
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message("insert records of one device failed")
 

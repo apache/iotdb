@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -257,7 +258,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1672,7 +1672,7 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
       File file = new File(url.getFile());
-      Properties properties = new Properties();
+      TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
       try {
         ConfigurationFileUtils.updateConfigurationFile(file, properties);
