@@ -147,6 +147,7 @@ public class MergeSortTvListIterator implements IPointReader {
     for (int i = 0; i < tvListIterators.size(); i++) {
       tvListIterators.get(i).setIndex(tvListOffsets[i]);
       this.tvListOffsets[i] = tvListOffsets[i];
+      selectedTVListIndex = -1;
     }
   }
 }

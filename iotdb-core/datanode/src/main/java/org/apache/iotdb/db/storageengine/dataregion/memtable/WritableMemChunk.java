@@ -74,7 +74,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       }
 
       if (list.getQueryContextList().isEmpty()) {
-        list.sort();
+        list.safelySort();
         sortedList.add(list);
       } else {
         QueryContext firstQuery = list.getQueryContextList().get(0);
@@ -304,14 +304,14 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
 
     if (!list.isSorted()) {
-      list.sort();
+      list.safelySort();
     }
   }
 
   @Override
   public synchronized void sortTvListForFlush() {
     if (!list.isSorted()) {
-      list.sort();
+      list.safelySort();
     }
   }
 
