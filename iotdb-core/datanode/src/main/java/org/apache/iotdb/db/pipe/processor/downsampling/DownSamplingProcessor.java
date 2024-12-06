@@ -213,7 +213,7 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       final DownSamplingFilter filter, final long arrivalTime, final long eventTime) {
     final long arrivalTimeInterval = Math.abs(arrivalTime - filter.getLastPointArrivalTime());
 
-    if (filter.isFilterArrivalTime()) {
+    if (filter.isFilteredByArrivalTime()) {
       if (arrivalTimeInterval >= arrivalTimeMaxInterval) {
         return Boolean.TRUE;
       }

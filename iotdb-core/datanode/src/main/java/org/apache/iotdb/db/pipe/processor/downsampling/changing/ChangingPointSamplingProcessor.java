@@ -50,7 +50,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
    */
   private double compressionDeviation;
 
-  private boolean isFilterArrivalTime = true;
+  private boolean isFilteredByArrivalTime = true;
 
   private PartialPathLastObjectCache<ChangingPointFilter> pathLastObjectCache;
 
@@ -70,7 +70,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
             .equals(parameters.getString("processor"));
 
     if (isChangingPointProcessor) {
-      isFilterArrivalTime = true;
+      isFilteredByArrivalTime = true;
       compressionDeviation =
           parameters.getDoubleOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL,
@@ -94,7 +94,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
               PipeProcessorConstant
                   .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE);
     } else {
-      isFilterArrivalTime = false;
+      isFilteredByArrivalTime = false;
       compressionDeviation =
           parameters.getDoubleOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
@@ -128,7 +128,9 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
     super.customize(parameters, configuration);
 
     final boolean isChangingPointProcessor =
-        parameters.getString("processor").equals("changing-point-sampling-processor");
+        BuiltinPipePlugin.CHANGING_POINT_SAMPLING_PROCESSOR
+            .getPipePluginName()
+            .equals(parameters.getString("processor"));
 
     if (isChangingPointProcessor) {
       LOGGER.info(
@@ -218,7 +220,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
                 currentRowTime,
                 row.getObject(i),
                 compressionDeviation,
-                isFilterArrivalTime));
+                isFilteredByArrivalTime));
       }
 
       hasNonNullMeasurements = true;

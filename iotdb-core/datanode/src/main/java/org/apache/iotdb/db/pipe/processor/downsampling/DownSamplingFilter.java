@@ -21,17 +21,17 @@ package org.apache.iotdb.db.pipe.processor.downsampling;
 
 public abstract class DownSamplingFilter {
 
-  protected boolean isFilterArrivalTime = true;
+  protected boolean isFilteredByArrivalTime = true;
 
   protected long lastPointArrivalTime;
 
   protected long lastPointEventTime;
 
   public DownSamplingFilter(
-      final long arrivalTime, final long eventTime, final boolean isFilterArrivalTime) {
+      final long arrivalTime, final long eventTime, final boolean isFilteredByArrivalTime) {
     this.lastPointArrivalTime = arrivalTime;
     this.lastPointEventTime = eventTime;
-    this.isFilterArrivalTime = isFilterArrivalTime;
+    this.isFilteredByArrivalTime = isFilteredByArrivalTime;
   }
 
   public DownSamplingFilter(final long arrivalTime, final long eventTime) {
@@ -52,7 +52,7 @@ public abstract class DownSamplingFilter {
     return lastPointEventTime;
   }
 
-  public boolean isFilterArrivalTime() {
-    return isFilterArrivalTime;
+  public boolean isFilteredByArrivalTime() {
+    return isFilteredByArrivalTime;
   }
 }
