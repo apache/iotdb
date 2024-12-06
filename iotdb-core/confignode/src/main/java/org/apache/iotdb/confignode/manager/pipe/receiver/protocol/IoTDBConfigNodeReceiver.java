@@ -374,7 +374,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected int getPort() {
     IClientSession session = SESSION_MANAGER.getCurrSession();
-    if(session != null){
+    if (session != null) {
       return session.getClientPort();
     }
     return 0;
@@ -383,10 +383,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getIp() {
     IClientSession session = SESSION_MANAGER.getCurrSession();
-    if(session != null){
+    if (session != null) {
       return session.getClientAddress();
     }
     return null;
   }
-
 }
