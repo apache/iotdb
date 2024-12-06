@@ -42,8 +42,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

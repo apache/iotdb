@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
@@ -40,8 +41,12 @@ public class EliminateLimitWithTableScan implements Rule<LimitNode> {
   public Rule.Result apply(LimitNode parent, Captures captures, Rule.Context context) {
     TableScanNode tableScanNode = captures.get(CHILD);
 
-    if (parent.getCount() == tableScanNode.getPushDownLimit()
-        && !tableScanNode.isPushLimitToEachDevice()) {
+    if (tableScanNode instanceof DeviceTableScanNode
+        && ((DeviceTableScanNode) tableScanNode).isPushLimitToEachDevice()) {
+      return Rule.Result.empty();
+    }
+
+    if (parent.getCount() == tableScanNode.getPushDownLimit()) {
       return Rule.Result.ofPlanNode(tableScanNode);
     } else {
       return Rule.Result.empty();

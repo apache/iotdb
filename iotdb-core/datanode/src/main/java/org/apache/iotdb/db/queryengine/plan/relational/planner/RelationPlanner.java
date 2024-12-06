@@ -35,7 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -86,6 +88,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
@@ -192,12 +195,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
     TableScanNode tableScanNode =
-        new TableScanNode(
-            idAllocator.genPlanNodeId(),
-            qualifiedObjectName,
-            outputSymbols,
-            tableColumnSchema,
-            idAndAttributeIndexMap);
+        qualifiedObjectName.getDatabaseName().equals(INFORMATION_SCHEMA)
+            ? new InformationSchemaTableScanNode(
+                idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema)
+            : new DeviceTableScanNode(
+                idAllocator.genPlanNodeId(),
+                qualifiedObjectName,
+                outputSymbols,
+                tableColumnSchema,
+                idAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);

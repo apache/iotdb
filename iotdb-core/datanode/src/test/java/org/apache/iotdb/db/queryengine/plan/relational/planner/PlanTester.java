@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -36,11 +37,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
+import com.google.common.collect.ImmutableList;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;
@@ -48,6 +52,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.genDataNodeLocation;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
 import static org.junit.Assert.fail;
 
@@ -70,6 +75,20 @@ public class PlanTester {
   private SymbolAllocator symbolAllocator;
 
   private LogicalQueryPlan plan;
+
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier =
+      new DataNodeLocationSupplierFactory.DataNodeLocationSupplier() {
+        @Override
+        public List<TDataNodeLocation> getDataNodeLocations(String table) {
+          switch (table) {
+            case "queries":
+              return ImmutableList.of(
+                  genDataNodeLocation(1, "192.0.1.1"), genDataNodeLocation(2, "192.0.1.2"));
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
+      };
 
   public PlanTester() {
     this(new TestMatadata());
@@ -162,6 +181,7 @@ public class PlanTester {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
+              new StatementRewriteFactory(metadata).getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (Exception e) {
@@ -175,7 +195,9 @@ public class PlanTester {
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
       distributedQueryPlan =
-          new TableDistributedPlanner(analysis, symbolAllocator, plan, metadata).plan();
+          new TableDistributedPlanner(
+                  analysis, symbolAllocator, plan, metadata, dataNodeLocationSupplier)
+              .plan();
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }
