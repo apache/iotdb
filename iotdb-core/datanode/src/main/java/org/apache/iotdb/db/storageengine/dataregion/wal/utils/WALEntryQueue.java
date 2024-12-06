@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class WALEntryQueue {
 
   private final BlockingQueue<WALEntry> queue;
+  private final Object lock = new Object();
 
   public WALEntryQueue() {
     queue = new LinkedBlockingQueue<>();
@@ -38,25 +39,34 @@ public class WALEntryQueue {
     WALEntry e = queue.poll(timeout, unit);
     if (e != null) {
       SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
+      synchronized (lock) {
+        lock.notifyAll();
+      }
     }
     return e;
   }
 
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
-    synchronized (this) {
+    synchronized (lock) {
       while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
-        wait();
+        lock.wait();
       }
-      queue.put(e);
-      SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
-      notifyAll();
+    }
+    queue.put(e);
+    SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
+    synchronized (lock) {
+      lock.notifyAll();
     }
   }
 
   public WALEntry take() throws InterruptedException {
     WALEntry e = queue.take();
     SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
+    synchronized (lock) {
+      lock.notifyAll();
+    }
+
     return e;
   }
 

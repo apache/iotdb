@@ -76,7 +76,6 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
-  private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   // whether close method is called
