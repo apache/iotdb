@@ -23,8 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -44,7 +44,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 /**
  * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>The Aggregation may be pushed down to the TableScanNode, so that we can make use of
+ * <p>The Aggregation may be pushed down to the DeviceTableScanNode, so that we can make use of
  * statistics.
  *
  * <p>Attention: This optimizer depends on {@link UnaliasSymbolReferences}.
@@ -82,19 +82,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, context);
       node = (AggregationNode) node.clone();
       node.setChild(child);
-      TableScanNode tableScanNode = null;
+      DeviceTableScanNode tableScanNode = null;
       ProjectNode projectNode = null;
-      if (child instanceof TableScanNode) {
-        tableScanNode = (TableScanNode) child;
+      if (child instanceof DeviceTableScanNode) {
+        tableScanNode = (DeviceTableScanNode) child;
       }
       if (child instanceof ProjectNode) {
         projectNode = (ProjectNode) child;
-        if (projectNode.getChild() instanceof TableScanNode) {
-          tableScanNode = (TableScanNode) projectNode.getChild();
+        if (projectNode.getChild() instanceof DeviceTableScanNode) {
+          tableScanNode = (DeviceTableScanNode) projectNode.getChild();
         }
       }
 
-      // only optimize AggregationNode with raw TableScanNode
+      // only optimize AggregationNode with raw DeviceTableScanNode
       if (tableScanNode == null
           || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
@@ -129,7 +129,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         Collection<AggregationNode.Aggregation> values,
         List<Symbol> groupingKeys,
         ProjectNode projectNode,
-        TableScanNode tableScanNode,
+        DeviceTableScanNode tableScanNode,
         SessionInfo session,
         Metadata metadata) {
       boolean hasProject = projectNode != null;
@@ -193,7 +193,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     private boolean isDateBinFunctionOfTime(
         Expression expression,
         List<FunctionCall> dateBinFunctionsOfTime,
-        TableScanNode tableScanNode) {
+        DeviceTableScanNode tableScanNode) {
       if (expression instanceof FunctionCall) {
         FunctionCall function = (FunctionCall) expression;
         if (TableBuiltinScalarFunction.DATE_BIN

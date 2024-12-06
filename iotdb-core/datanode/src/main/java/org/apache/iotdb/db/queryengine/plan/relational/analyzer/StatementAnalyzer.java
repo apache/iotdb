@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -188,6 +189,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -331,6 +333,11 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
       throw new SemanticException("Create Database statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
+      throw new SemanticException("Alter Database statement is not supported yet.");
     }
 
     @Override
@@ -496,7 +503,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
@@ -583,7 +591,7 @@ public class StatementAnalyzer {
           // If database is not specified, use the database from current session.
           // If still not specified, throw an exception.
           if (!queryContext.getDatabaseName().isPresent()) {
-            throw new SemanticException("Database is not specified");
+            throw new SemanticException(DATABASE_NOT_SPECIFIED);
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
@@ -3003,15 +3011,7 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(
-                    originalSchema.getTableName(),
-                    originalSchema.getColumns().stream()
-                        .filter(
-                            columnSchema ->
-                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                    || columnSchema.getColumnCategory()
-                                        == TsTableColumnCategory.ATTRIBUTE)
-                        .collect(Collectors.toList()))));
+                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =

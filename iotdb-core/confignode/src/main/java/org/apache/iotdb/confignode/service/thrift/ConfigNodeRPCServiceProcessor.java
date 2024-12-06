@@ -481,7 +481,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus errorResp = null;
 
     // TODO: Support alter the following fields
-    if (databaseSchema.isSetTTL()) {
+    if (databaseSchema.isSetTTL() && !databaseSchema.isIsTableModel()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");

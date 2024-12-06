@@ -19,6 +19,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
@@ -68,27 +70,44 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
           .forEach(symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol)));
     }
 
-    // add time entry if TimePredicate exists
-    node.getTimePredicate()
-        .ifPresent(
-            timePredicate ->
-                SymbolsExtractor.extractUnique(timePredicate)
-                    .forEach(
-                        symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
+    if (node instanceof DeviceTableScanNode) {
+      DeviceTableScanNode deviceTableScanNode = (DeviceTableScanNode) node;
+      // add time entry if TimePredicate exists
+      deviceTableScanNode
+          .getTimePredicate()
+          .ifPresent(
+              timePredicate ->
+                  SymbolsExtractor.extractUnique(timePredicate)
+                      .forEach(
+                          symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
 
-    return Optional.of(
-        new TableScanNode(
-            node.getPlanNodeId(),
-            node.getQualifiedObjectName(),
-            newOutputs,
-            newAssignments,
-            node.getDeviceEntries(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            node.isPushLimitToEachDevice()));
+      return Optional.of(
+          new DeviceTableScanNode(
+              deviceTableScanNode.getPlanNodeId(),
+              deviceTableScanNode.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              deviceTableScanNode.getDeviceEntries(),
+              deviceTableScanNode.getIdAndAttributeIndexMap(),
+              deviceTableScanNode.getScanOrder(),
+              deviceTableScanNode.getTimePredicate().orElse(null),
+              deviceTableScanNode.getPushDownPredicate(),
+              deviceTableScanNode.getPushDownLimit(),
+              deviceTableScanNode.getPushDownOffset(),
+              deviceTableScanNode.isPushLimitToEachDevice()));
+    } else if (node instanceof InformationSchemaTableScanNode) {
+      return Optional.of(
+          new InformationSchemaTableScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset()));
+    } else {
+      throw new UnsupportedOperationException(
+          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
+    }
   }
 }
