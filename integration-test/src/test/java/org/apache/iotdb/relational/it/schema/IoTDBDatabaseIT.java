@@ -376,27 +376,10 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
           new HashSet<>(
-              Arrays.asList(
-                  "databases,INF,",
-                  "databases_details,INF,",
-                  "tables,INF,",
-                  "tables_details,INF,",
-                  "tables_description_details,INF,",
-                  "queries,INF,",
-                  "tables_description,INF,")));
+              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "database,STRING,null,",
-                  "ttl(ms),STRING,null,",
-                  "schemareplicationfactor,INT32,null,",
-                  "datareplicationfactor,INT32,null,",
-                  "timepartitioninterval,INT64,null,")));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc databases_details"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
@@ -411,18 +394,12 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,null,", "tablename,STRING,null,", "ttl(ms),STRING,null,")));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc tables_details"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
                   "database,STRING,null,",
                   "tablename,STRING,null,",
                   "ttl(ms),STRING,null,",
                   "status,STRING,null,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc tables_description_details"),
+          statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
@@ -443,16 +420,6 @@ public class IoTDBDatabaseIT {
                   "elapsed_time,FLOAT,null,",
                   "statement,STRING,null,",
                   "sql_dialect,STRING,null,")));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc tables_description"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "database,STRING,null,",
-                  "tablename,STRING,null,",
-                  "columnname,STRING,null,",
-                  "datatype,STRING,null,",
-                  "category,STRING,null,")));
     }
   }
 }

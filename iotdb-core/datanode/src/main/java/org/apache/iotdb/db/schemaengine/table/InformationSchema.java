@@ -72,64 +72,30 @@ public class InformationSchema {
         new IdColumnSchema("DataReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
     databaseTable.addColumnSchema(
         new IdColumnSchema("TimePartitionInterval".toLowerCase(Locale.ENGLISH), TSDataType.INT64));
+    databaseTable.addColumnSchema(
+        new IdColumnSchema("model".toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.removeColumnSchema("time");
     schemaTables.put("databases", databaseTable);
-
-    // Show databases details
-    final TsTable databaseDetailsTable = new TsTable("databases_details");
-    databaseDetailsTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    databaseDetailsTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
-    databaseDetailsTable.addColumnSchema(
-        new IdColumnSchema(
-            "SchemaReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
-    databaseDetailsTable.addColumnSchema(
-        new IdColumnSchema("DataReplicationFactor".toLowerCase(Locale.ENGLISH), TSDataType.INT32));
-    databaseDetailsTable.addColumnSchema(
-        new IdColumnSchema("TimePartitionInterval".toLowerCase(Locale.ENGLISH), TSDataType.INT64));
-    databaseDetailsTable.addColumnSchema(
-        new IdColumnSchema("model".toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    databaseDetailsTable.removeColumnSchema("time");
-    schemaTables.put("databases_details", databaseDetailsTable);
 
     // Show tables
     final TsTable tableTable = new TsTable("tables");
     tableTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
     tableTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
     tableTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
+    tableTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
     tableTable.removeColumnSchema("time");
     schemaTables.put("tables", tableTable);
 
-    // Show tables details
-    final TsTable tableDetailsTable = new TsTable("tables_details");
-    tableDetailsTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    tableDetailsTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
-    tableDetailsTable.addColumnSchema(new IdColumnSchema("ttl(ms)", TSDataType.STRING));
-    tableDetailsTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
-    tableDetailsTable.removeColumnSchema("time");
-    schemaTables.put("tables_details", tableDetailsTable);
-
     // Desc table
-    final TsTable tableDescriptionTable = new TsTable("tables_description");
-    tableDescriptionTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    tableDescriptionTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
-    tableDescriptionTable.addColumnSchema(new IdColumnSchema("columnname", TSDataType.STRING));
-    tableDescriptionTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
-    tableDescriptionTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
-    tableDescriptionTable.removeColumnSchema("time");
-    schemaTables.put("tables_description", tableDescriptionTable);
-
-    // Desc table details
-    final TsTable tableDescriptionDetailsTable = new TsTable("tables_description_details");
-    tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
-    tableDescriptionDetailsTable.addColumnSchema(
-        new IdColumnSchema("tablename", TSDataType.STRING));
-    tableDescriptionDetailsTable.addColumnSchema(
-        new IdColumnSchema("columnname", TSDataType.STRING));
-    tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
-    tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
-    tableDescriptionDetailsTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
-    tableDescriptionDetailsTable.removeColumnSchema("time");
-    schemaTables.put("tables_description_details", tableDescriptionDetailsTable);
+    final TsTable columnTable = new TsTable("columns");
+    columnTable.addColumnSchema(new IdColumnSchema("database", TSDataType.STRING));
+    columnTable.addColumnSchema(new IdColumnSchema("tablename", TSDataType.STRING));
+    columnTable.addColumnSchema(new IdColumnSchema("columnname", TSDataType.STRING));
+    columnTable.addColumnSchema(new IdColumnSchema("datatype", TSDataType.STRING));
+    columnTable.addColumnSchema(new IdColumnSchema("category", TSDataType.STRING));
+    columnTable.addColumnSchema(new IdColumnSchema("status", TSDataType.STRING));
+    columnTable.removeColumnSchema("time");
+    schemaTables.put("columns", columnTable);
   }
 
   public static void checkDBNameInWrite(final String dbName) {
