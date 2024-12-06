@@ -178,7 +178,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+          Collections.singleton("2,"),
+          handleFailure);
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -199,7 +200,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("8,"));
+          Collections.singleton("8,"),
+          handleFailure);
 
       TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
     }
