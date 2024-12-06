@@ -405,7 +405,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     boolean insertResult = true;
 
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");

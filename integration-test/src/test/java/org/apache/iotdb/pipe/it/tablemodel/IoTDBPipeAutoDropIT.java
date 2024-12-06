@@ -57,7 +57,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     boolean insertResult = true;
 
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -135,7 +138,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
     boolean insertResult = true;
 
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
