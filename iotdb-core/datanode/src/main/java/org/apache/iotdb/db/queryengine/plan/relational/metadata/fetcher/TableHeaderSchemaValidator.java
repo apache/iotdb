@@ -84,7 +84,8 @@ public class TableHeaderSchemaValidator {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable) {
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
@@ -118,6 +119,22 @@ public class TableHeaderSchemaValidator {
         }
       } else {
         throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
+      }
+    } else {
+      // If table with this name already exists and isStrictIdColumn is true, make sure the existing
+      // id columns are the prefix of the incoming id columns
+      if (isStrictIdColumn) {
+        final List<TsTableColumnSchema> idColumns = table.getIdColumnSchemaList();
+        for (int indexInIncoming = 0; indexInIncoming < idColumns.size(); indexInIncoming++) {
+          final String idName = idColumns.get(indexInIncoming).getColumnName();
+          final int indexInExisting = tableSchema.getIndexAmongIdColumns(idName);
+          if (indexInExisting != indexInIncoming) {
+            throw new SemanticException(
+                String.format(
+                    "Incoming id column %s ordinal mismatch with existing table in IoTDB, expected %d, actual %d",
+                    idName, indexInIncoming, indexInExisting));
+          }
+        }
       }
     }
 
