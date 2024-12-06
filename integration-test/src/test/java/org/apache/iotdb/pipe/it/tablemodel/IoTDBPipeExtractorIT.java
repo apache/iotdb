@@ -92,7 +92,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -202,7 +205,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
 
@@ -342,7 +348,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
 
@@ -441,7 +450,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
 
@@ -557,7 +569,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     boolean insertResult = true;
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {

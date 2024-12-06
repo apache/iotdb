@@ -189,7 +189,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
@@ -281,7 +284,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
 
@@ -388,7 +394,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {

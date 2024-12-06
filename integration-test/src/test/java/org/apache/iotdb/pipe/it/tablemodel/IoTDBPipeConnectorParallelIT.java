@@ -47,7 +47,10 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelTestIT {
   public void testIoTConnectorParallel() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();

@@ -127,7 +127,10 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
             : receiverDataNode.getPort();
 
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
@@ -210,7 +213,10 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
     final int receiverPort = receiverDataNode.getPort();
 
     final Consumer<String> handleFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
