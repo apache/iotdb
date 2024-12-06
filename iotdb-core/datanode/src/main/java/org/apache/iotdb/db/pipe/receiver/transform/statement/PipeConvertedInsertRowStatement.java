@@ -48,6 +48,11 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     measurementSchemas = insertRowStatement.getMeasurementSchemas();
     measurements = insertRowStatement.getMeasurements();
     dataTypes = insertRowStatement.getDataTypes();
+    columnCategories = insertRowStatement.getColumnCategories();
+    idColumnIndices = insertRowStatement.getIdColumnIndices();
+    attrColumnIndices = insertRowStatement.getAttrColumnIndices();
+    writeToTable = insertRowStatement.isWriteToTable();
+    databaseName = insertRowStatement.getDatabaseName().orElse(null);
     // InsertRowStatement
     time = insertRowStatement.getTime();
     values = insertRowStatement.getValues();
