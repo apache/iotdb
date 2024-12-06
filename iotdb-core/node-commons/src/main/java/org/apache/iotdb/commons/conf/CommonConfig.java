@@ -576,14 +576,6 @@ public class CommonConfig {
     this.statusReason = statusReason;
   }
 
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
-  }
-
   public TEndPoint getTargetAINodeEndPoint() {
     return targetAINodeEndPoint;
   }

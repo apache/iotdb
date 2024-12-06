@@ -17,33 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.confignode.it.removedatanode;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
+@Category({ClusterIT.class})
+@RunWith(IoTDBTestRunner.class)
+public class IoTDBRemoveDataNodeNormalIT extends IoTDBRemoveDataNodeITFramework {
+  @Test
+  public void success1C4DTest() throws Exception {
+    successTest(2, 3, 1, 4, 1, 2, true);
+  }
 
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
+  @Test
+  public void fail1C3DTest() throws Exception {
+    failTest(2, 3, 1, 3, 1, 2, false);
+  }
 }

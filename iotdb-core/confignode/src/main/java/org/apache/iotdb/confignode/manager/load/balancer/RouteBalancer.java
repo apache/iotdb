@@ -82,8 +82,6 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
-              && ConsensusFactory.FAST_IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
-          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS_V2.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
@@ -186,7 +184,6 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 regionGroupId,
                 newLeaderId);
             switch (consensusProtocolClass) {
-              case ConsensusFactory.FAST_IOT_CONSENSUS:
               case ConsensusFactory.IOT_CONSENSUS_V2:
               case ConsensusFactory.IOT_CONSENSUS:
               case ConsensusFactory.SIMPLE_CONSENSUS:
@@ -253,10 +250,11 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   private void invalidateSchemaCacheOfOldLeaders(
-      Map<TConsensusGroupId, Integer> oldLeaderMap, Set<TConsensusGroupId> successTransferSet) {
-    DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
+      final Map<TConsensusGroupId, Integer> oldLeaderMap,
+      final Set<TConsensusGroupId> successTransferSet) {
+    final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
-    AtomicInteger requestIndex = new AtomicInteger(0);
+    final AtomicInteger requestIndex = new AtomicInteger(0);
     oldLeaderMap.entrySet().stream()
         .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
         .filter(entry -> successTransferSet.contains(entry.getKey()))

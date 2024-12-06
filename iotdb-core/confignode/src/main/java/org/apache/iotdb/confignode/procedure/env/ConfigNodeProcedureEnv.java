@@ -53,7 +53,6 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -111,11 +110,15 @@ public class ConfigNodeProcedureEnv {
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
+  private final ReentrantLock submitRegionMigrateLock = new ReentrantLock(true);
+
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
 
   private final RegionMaintainHandler regionMaintainHandler;
+
+  private final RemoveDataNodeHandler removeDataNodeHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -123,6 +126,7 @@ public class ConfigNodeProcedureEnv {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
+    this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -216,21 +220,6 @@ public class ConfigNodeProcedureEnv {
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
-    final int existedDataNodeNum =
-        getNodeManager()
-            .filterDataNodeThroughStatus(
-                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
-            .size();
-    int dataNodeNumAfterRemoving;
-    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
-      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
-    } else {
-      dataNodeNumAfterRemoving = existedDataNodeNum;
-    }
-    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -892,8 +881,16 @@ public class ConfigNodeProcedureEnv {
     return schedulerLock;
   }
 
+  public ReentrantLock getSubmitRegionMigrateLock() {
+    return submitRegionMigrateLock;
+  }
+
   public RegionMaintainHandler getRegionMaintainHandler() {
     return regionMaintainHandler;
+  }
+
+  public RemoveDataNodeHandler getRemoveDataNodeHandler() {
+    return removeDataNodeHandler;
   }
 
   private ConsensusManager getConsensusManager() {
