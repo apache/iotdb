@@ -76,7 +76,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     minUnseqFileSizeForInsertionCompactionTask =
         config.getMinInsertionCompactionUnseqFileSizeInByte();
     config.setEnableCrossSpaceCompaction(true);
-    config.setMinInsertionCompactionUnseqFileSizeInByte(1);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(0);
     TsFileResourceManager.getInstance().clear();
   }
 
