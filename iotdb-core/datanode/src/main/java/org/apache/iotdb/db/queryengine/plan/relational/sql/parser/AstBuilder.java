@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -307,7 +308,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
 
-    return new CreateDB(
+    return new AlterDB(
         getLocation(ctx),
         ctx.EXISTS() != null,
         ((Identifier) visit(ctx.database)).getValue(),

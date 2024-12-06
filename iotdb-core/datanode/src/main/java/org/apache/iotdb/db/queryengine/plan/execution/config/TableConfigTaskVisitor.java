@@ -80,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
@@ -90,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -191,7 +193,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateOrAlterDB(final CreateDB node, final MPPQueryContext context) {
+  protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  private IConfigTask visitDatabaseStatement(
+      final DatabaseStatement node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
@@ -254,7 +266,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new SemanticException("Unsupported database property key: " + key);
       }
     }
-    return new CreateOrAlterDBTask(schema, node.ifNotExists(), node.getType());
+    return new CreateOrAlterDBTask(schema, node.exists(), node.getType());
   }
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -93,7 +94,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -594,16 +594,23 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateOrAlterDB(final CreateDB node, final Integer indent) {
-      builder.append(
-          node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
-              ? "CREATE DATABASE "
-              : "ALTER DATABASE ");
-      if (node.ifNotExists()) {
-        builder.append(
-            node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
-                ? "IF NOT EXISTS "
-                : "IF EXISTS ");
+    protected Void visitCreateDB(final CreateDB node, final Integer indent) {
+      builder.append("CREATE DATABASE ");
+      if (node.exists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+      builder.append(node.getDbName()).append(" ");
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitAlterDB(final AlterDB node, final Integer indent) {
+      builder.append("ALTER DATABASE ");
+      if (node.exists()) {
+        builder.append("IF EXISTS ");
       }
       builder.append(node.getDbName()).append(" ");
 

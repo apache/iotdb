@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -330,7 +331,12 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateOrAlterDB(CreateDB node, Optional<Scope> context) {
+    protected Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
+      throw new SemanticException("Create Database statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
       throw new SemanticException("Create Database statement is not supported yet.");
     }
 

@@ -26,9 +26,8 @@ import java.util.List;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class CreateDB extends DatabaseStatement {
-
-  public CreateDB(
+public class AlterDB extends DatabaseStatement {
+  public AlterDB(
       final NodeLocation location,
       final boolean exists,
       final String dbName,
@@ -38,19 +37,19 @@ public class CreateDB extends DatabaseStatement {
 
   @Override
   public DatabaseSchemaStatement.DatabaseSchemaStatementType getType() {
-    return DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE;
+    return DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER;
   }
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateDB(this, context);
+    return visitor.visitAlterDB(this, context);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
         .add("dbName", dbName)
-        .add("ifNotExists", exists)
+        .add("ifExists", exists)
         .add("properties", properties)
         .toString();
   }

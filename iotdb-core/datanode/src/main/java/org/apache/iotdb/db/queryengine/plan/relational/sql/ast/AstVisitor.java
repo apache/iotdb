@@ -309,7 +309,11 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitCreateOrAlterDB(final CreateDB node, final C context) {
+  protected R visitCreateDB(final CreateDB node, final C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterDB(final AlterDB node, final C context) {
     return visitStatement(node, context);
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -47,9 +49,15 @@ public abstract class DatabaseStatement extends Statement {
     return dbName;
   }
 
+  public boolean exists() {
+    return exists;
+  }
+
   public List<Property> getProperties() {
     return properties;
   }
+
+  public abstract DatabaseSchemaStatement.DatabaseSchemaStatementType getType();
 
   @Override
   public List<Node> getChildren() {
