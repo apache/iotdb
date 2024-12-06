@@ -155,7 +155,7 @@ public final class SymbolAliases {
    * Example in the context of a Plan:
    * PlanMatchPattern.tableScan("nation", ImmutableMap.of("NK", "nationkey", "RK", "regionkey")
    * applied to
-   * TableScanNode { col1 := ColumnHandle(nation, nationkey), col2 := ColumnHandle(nation, regionkey) }
+   * DeviceTableScanNode { col1 := ColumnHandle(nation, nationkey), col2 := ColumnHandle(nation, regionkey) }
    * gives SymbolAliases.map
    * { "NK": SymbolReference("col1"), "RK": SymbolReference("col2") }
    *

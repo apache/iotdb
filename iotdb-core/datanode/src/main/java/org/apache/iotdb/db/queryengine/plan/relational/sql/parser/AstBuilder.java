@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -95,6 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -141,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
@@ -217,6 +220,7 @@ import java.util.function.Function;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
@@ -287,7 +291,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateDbStatement(RelationalSqlParser.CreateDbStatementContext ctx) {
+  public Node visitCreateDbStatement(final RelationalSqlParser.CreateDbStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
@@ -301,7 +305,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitDropDbStatement(RelationalSqlParser.DropDbStatementContext ctx) {
+  public Node visitAlterDbStatement(final RelationalSqlParser.AlterDbStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+
+    return new AlterDB(
+        getLocation(ctx),
+        ctx.EXISTS() != null,
+        ((Identifier) visit(ctx.database)).getValue(),
+        properties);
+  }
+
+  @Override
+  public Node visitDropDbStatement(final RelationalSqlParser.DropDbStatementContext ctx) {
     return new DropDB(
         getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)), ctx.EXISTS() != null);
   }
@@ -1181,12 +1199,40 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowQueriesStatement(RelationalSqlParser.ShowQueriesStatementContext ctx) {
-    return super.visitShowQueriesStatement(ctx);
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (ctx.ORDER() != null) {
+      orderBy =
+          Optional.of(new OrderBy(getLocation(ctx.ORDER()), visit(ctx.sortItem(), SortItem.class)));
+    }
+
+    Optional<Offset> offset = Optional.empty();
+    if (ctx.limitOffsetClause().OFFSET() != null) {
+      offset = visitIfPresent(ctx.limitOffsetClause().offset, Offset.class);
+    }
+
+    Optional<Node> limit = Optional.empty();
+    if (ctx.limitOffsetClause().LIMIT() != null) {
+      if (ctx.limitOffsetClause().limit == null) {
+        throw new IllegalStateException("Missing LIMIT value");
+      }
+      limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
+    }
+
+    return new ShowStatement(
+        getLocation(ctx),
+        QUERIES.getSchemaTableName(),
+        visitIfPresent(ctx.where, Expression.class),
+        orderBy,
+        offset,
+        limit);
   }
 
   @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
-    return super.visitKillQueryStatement(ctx);
+    if (ctx.queryId == null) {
+      return new KillQuery(null, getLocation(ctx));
+    }
+    return new KillQuery(((StringLiteral) visit(ctx.queryId)).getValue(), getLocation(ctx));
   }
 
   @Override
