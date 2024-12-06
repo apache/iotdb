@@ -208,7 +208,10 @@ public class AuthTest {
       String userName,
       ITableAuthChecker authChecker,
       String databaseNameInSessionInfo) {
-    Statement statement = sqlParser.createStatement(sql, zoneId, null);
+    IClientSession clientSession = Mockito.mock(IClientSession.class);
+    Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseNameInSessionInfo);
+    Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
+
     SessionInfo session =
         new SessionInfo(
             0, userName, zoneId, databaseNameInSessionInfo, IClientSession.SqlDialect.TABLE);
@@ -228,7 +231,10 @@ public class AuthTest {
   }
 
   private void analyzeConfigTask(String sql, String userName, ITableAuthChecker authChecker) {
-    Statement statement = sqlParser.createStatement(sql, zoneId, null);
+    IClientSession clientSession = Mockito.mock(IClientSession.class);
+    Mockito.when(clientSession.getDatabaseName()).thenReturn(null);
+    Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
+
     SessionInfo session =
         new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
@@ -241,7 +247,7 @@ public class AuthTest {
 
   private void analyzeConfigTask(
       String sql, String userName, ITableAuthChecker authChecker, IClientSession clientSession) {
-    Statement statement = sqlParser.createStatement(sql, zoneId, null);
+    Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
     SessionInfo session =
         new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
