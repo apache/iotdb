@@ -129,7 +129,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       return true;
     }
 
-    if (list.rowCount() >= SORT_THRESHOLD) {
+    if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
     }
     return false;
@@ -180,7 +180,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       return true;
     }
 
-    if (list.rowCount() >= SORT_THRESHOLD) {
+    if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
     }
     return false;

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -31,8 +32,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
-  // TODO: read from configuration file
-  int SORT_THRESHOLD = 5000;
+  int TVLIST_SORT_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
 
   boolean putLongWithFlushCheck(long t, long v);
 

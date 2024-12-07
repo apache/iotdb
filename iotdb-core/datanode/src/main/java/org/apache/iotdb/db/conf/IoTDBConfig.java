@@ -430,6 +430,9 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
+  /** the threshold when working TVList is sorted and handover in writable memtable */
+  private int tvListSortThreshold = 0;
+
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
@@ -2307,6 +2310,14 @@ public class IoTDBConfig {
 
   public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
+  }
+
+  public int getTvListSortThreshold() {
+    return tvListSortThreshold;
+  }
+
+  public void setTVListSortThreshold(int tvListSortThreshold) {
+    this.tvListSortThreshold = tvListSortThreshold;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

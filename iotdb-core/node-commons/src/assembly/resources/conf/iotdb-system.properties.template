@@ -1124,6 +1124,10 @@ unseq_memtable_flush_check_interval_in_ms=30000
 # effectiveMode: restart
 tvlist_sort_algorithm=TIM
 
+# When point number in the working TVList exceeds this, it is sorted and handover in writable memtable
+# default 0 means it does not handover working tvlist
+tvlist_sort_threshold=0
+
 # When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 100000.
 # effectiveMode: restart
 # Datatype: int
