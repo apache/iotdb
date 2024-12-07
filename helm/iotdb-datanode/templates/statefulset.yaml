@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "iotdb-chart.fullname" . }}
+  labels:
+    {{- include "iotdb-chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "iotdb-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "iotdb-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+      containers:
+      - name: iotdb-confignode
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        {{- range .Values.service.ports }}
+          - name: {{ .name }}
+            containerPort: {{ .targetPort }}
+            protocol: TCP
+        {{- end }}
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_NS_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: dn_rpc_address
+            value: $(MY_POD_NAME).{{ include "iotdb-chart.fullname" . }}.$(MY_NS_NAME).svc.cluster.local
+          - name: dn_internal_address
+            value: $(MY_POD_NAME).{{ include "iotdb-chart.fullname" . }}.$(MY_NS_NAME).svc.cluster.local      
+        {{- range .Values.env }}
+          - name: {{ .name }}
+            {{- if .value }}
+            value: {{ .value | quote }}
+            {{- else if .valueFrom }}
+            valueFrom:
+              {{- if .valueFrom.fieldRef }}
+              fieldRef:
+                apiVersion: {{ .valueFrom.fieldRef.apiVersion }}
+                fieldPath: {{ .valueFrom.fieldRef.fieldPath }}
+              {{- end }}
+            {{- end }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+          - name: host-time
+            mountPath: /etc/localtime
+          - name: {{ .Values.storage.name }}
+            mountPath: /iotdb/data/
+  serviceName: {{ include "iotdb-chart.fullname" . }}                             
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Values.storage.name }}
+    spec:
+      storageClassName: {{ .Values.storage.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}
