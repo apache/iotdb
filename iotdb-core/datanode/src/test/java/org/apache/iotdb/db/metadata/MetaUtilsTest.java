@@ -191,6 +191,19 @@ public class MetaUtilsTest {
     props.putAll(sdtProps);
     Pair<String, String> res = MetaUtils.parseDeadbandInfo(props);
     Assert.assertEquals("SDT", res.left);
-    Assert.assertEquals(sdtProps.toString(), res.right);
+    Assert.assertEquals(sdtProps, parseHashMap(res.right));
+  }
+
+  private static Map<String, String> parseHashMap(String mapString) {
+    Map<String, String> map = new HashMap<>();
+    String content = mapString.substring(1, mapString.length() - 1);
+    String[] entries = content.split(", ");
+    for (String entry : entries) {
+      String[] keyValue = entry.split("=");
+      if (keyValue.length == 2) {
+        map.put(keyValue[0], keyValue[1]);
+      }
+    }
+    return map;
   }
 }
