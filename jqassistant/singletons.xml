@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<jqassistant-rules xmlns="http://schema.jqassistant.org/rule/v2.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.jqassistant.org/rule/v2.2 https://jqassistant.github.io/jqassistant/current/schema/jqassistant-rule-v2.2.xsd">
+    <group id="singleton">
+        <includeConstraint refId="singleton:*"/>
+    </group>
+    <constraint id="singleton:">
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingletonClient"/>
+        <description>No singletons should be used.</description>
+        <cypher><![CDATA[
+            MATCH
+              (type:Type) -[:DECLARES]-> (method:Method) -[invocation:INVOKES]-> (:Method) <-[:DECLARES]- (singleton:Type:Singleton)
+            WHERE
+              singleton:SingletonClient
+            RETURN
+              type as Type, invocation as Invocation, singleton as SingletonDefinition
+            ORDER BY
+              invocation.lineNumber
+        ]]></cypher>
+        <report primaryColumn="Invocation"/>
+    </constraint>
+    <!-- Addresses all types that provide singleton functionality, no matter which type of access path they use -->
+    <concept id="singleton:Singleton">
+        <description>Identifies singletons as a general concept.</description>
+        <cypher><![CDATA[
+            MATCH
+              (singleton:Type:Singleton)
+            RETURN
+              singleton
+            ORDER BY
+              singleton.fqn
+        ]]></cypher>
+    </concept>
+    <!-- Detects singleton patterns where a type has a "public static getInstance()" method which returns the same type as the class itself -->
+    <concept id="singleton:PublicStaticMethodSingleton">
+        <providesConcept refId="singleton:Singleton"/>
+        <description>Identifies singletons that are accessed by a public static getInstance() method that returns the type of the main class.</description>
+        <cypher><![CDATA[
+            MATCH
+              (singleton:Class:Type) -[:DECLARES]-> (method:Method) -[:RETURNS]-> (singleton) WHERE NOT (method) -[:HAS]-> (:Parameter) AND method.static = true AND method.visibility = "public"
+            SET
+              method:Singleton:PublicStaticMethod
+            RETURN
+              singleton
+            ORDER BY
+              singleton.fqn
+        ]]></cypher>
+    </concept>
+    <!-- Detects singleton patterns where a type has a "public static" instance variable of the same type as the class itself -->
+    <concept id="singleton:PublicStaticPropertySingleton">
+        <providesConcept refId="singleton:Singleton"/>
+        <description>Identifies singletons that are accessed by a public static property of the type of the main class.</description>
+        <cypher><![CDATA[
+            MATCH
+              (singleton:Class:Type) -[:DECLARES*]-> (field:Field) -[:OF_TYPE]-> (singleton) WHERE field.static = true AND field.visibility = "public"
+            SET
+              field:Singleton:PublicStaticField
+            RETURN
+              singleton
+            ORDER BY
+              singleton.fqn
+        ]]></cypher>
+    </concept>
+    <!-- Addresses all types that use a singleton, no matter which type of access path they use -->
+    <concept id="singleton:SingletonClient">
+        <description>Identifies singleton client as a general concept.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:SingletonClient)
+            RETURN
+              DISTINCT client
+            ORDER BY
+              client.fqn
+        ]]></cypher>
+    </concept>
+    <!--
+        Marks types as SingletonClients, that call "getInstance()" methods of types marked as "Singleton"
+        and adds a USES_SINGLETON relation between client and singleton.
+    -->
+    <concept id="singleton:PublicStaticMethodSingletonClient">
+        <providesConcept refId="singleton:SingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
+        <description>Identifies classes that accesses a singleton via public static getInstance() method.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:INVOKES]-> (singleton:Singleton)
+            SET
+              client:SingletonClient:PublicStaticMethod
+            MERGE
+              (client) -[:USES_SINGLETON]-> (singleton)
+            RETURN
+              DISTINCT client, singleton
+            ORDER BY
+              client.fqn
+        ]]></cypher>
+    </concept>
+    <!--
+        Marks types as SingletonClients, that read the public static singleton variable of types marked as "Singleton"
+        and adds a USES_SINGLETON relation between client and singleton.
+    -->
+    <concept id="singleton:PublicStaticPropertySingletonClient">
+        <providesConcept refId="singleton:SingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
+        <description>Identifies classes that accesses a singleton via public static property.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:READS]-> (singleton:Singleton)
+            SET
+              client:SingletonClient:PublicStaticField
+            MERGE
+              (client) -[:USES_SINGLETON]-> (singleton)
+            RETURN
+              DISTINCT client, singleton
+            ORDER BY
+              client.fqn
+        ]]></cypher>
+    </concept>
+</jqassistant-rules>
