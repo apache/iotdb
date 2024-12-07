@@ -41,7 +41,9 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -139,16 +141,24 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
 
-      final List<PartialPath> list = new ArrayList<>();
+      List<PartialPath> list1 = Collections.singletonList(new PartialPath("root.laptop.d1"));
+      assertEquals(
+          new HashSet<>(list1),
+          new HashSet<>(root.getBelongedDatabases(new PartialPath("root.laptop.d1.s1"))));
+      assertEquals(
+          new HashSet<>(list1),
+          new HashSet<>(root.getBelongedDatabases(new PartialPath("root.laptop.d1"))));
 
-      list.add(new PartialPath("root.laptop.d1"));
-      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.d1")));
+      List<PartialPath> list2 =
+          Arrays.asList(new PartialPath("root.laptop.d1"), new PartialPath("root.laptop.d2"));
+      assertEquals(
+          new HashSet<>(list2),
+          new HashSet<>(root.getBelongedDatabases(new PartialPath("root.laptop.**"))));
+      assertEquals(
+          new HashSet<>(list2),
+          new HashSet<>(root.getBelongedDatabases(new PartialPath("root.**"))));
 
-      list.add(new PartialPath("root.laptop.d2"));
-      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.**")));
-      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.**")));
-    } catch (final MetadataException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
