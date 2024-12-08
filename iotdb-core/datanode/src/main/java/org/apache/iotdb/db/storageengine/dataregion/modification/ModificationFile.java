@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -257,7 +258,7 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    FileUtils.deleteFileOrDirectory(file);
+    FileUtils.deleteFileOrDirectory(file, true);
     FileMetrics.getInstance().decreaseModFileNum(1);
     FileMetrics.getInstance().decreaseModFileSize(getFileLength());
     fileExists = false;
@@ -327,5 +328,22 @@ public class ModificationFile implements AutoCloseable {
       }
       hasCompacted = true;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ModificationFile that = (ModificationFile) o;
+    return Objects.equals(file, that.file);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(file);
   }
 }

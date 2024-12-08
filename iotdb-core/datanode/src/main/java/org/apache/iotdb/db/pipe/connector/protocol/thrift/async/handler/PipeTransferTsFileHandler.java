@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -71,16 +72,21 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   private final AtomicBoolean eventsHadBeenAddedToRetryQueue;
 
   private final File tsFile;
-  private final File modFile;
+  private final File exclusiveModFile;
+  private File sharedModFile;
+  private long sharedModFileOffset;
   private File currentFile;
+  private File targetFile;
 
-  private final boolean transferMod;
+  private final boolean transferExclusiveMod;
+  private boolean transferSharedMod;
 
   private final String dataBaseName;
 
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
+  private long targetOffset = 0;
 
   private RandomAccessFile reader;
 
@@ -96,7 +102,68 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final AtomicInteger eventsReferenceCount,
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
-      final File modFile,
+      final File exclusiveModFile,
+      final boolean transferExclusiveMod,
+      final File sharedModFile,
+      final boolean transferSharedMod,
+      final long sharedModFileOffset,
+      final String dataBaseName)
+      throws IOException {
+    this.connector = connector;
+
+    this.pipeName2WeightMap = pipeName2WeightMap;
+
+    this.events = events;
+    this.eventsReferenceCount = eventsReferenceCount;
+    this.eventsHadBeenAddedToRetryQueue = eventsHadBeenAddedToRetryQueue;
+
+    this.tsFile = tsFile;
+    this.exclusiveModFile = exclusiveModFile;
+    this.transferExclusiveMod = transferExclusiveMod;
+    this.sharedModFile = sharedModFile;
+    this.transferSharedMod = transferSharedMod;
+    this.sharedModFileOffset = sharedModFileOffset;
+    this.dataBaseName = dataBaseName;
+
+    if (transferExclusiveMod) {
+      currentFile = exclusiveModFile;
+      targetFile = ModificationFile.getExclusiveMods(tsFile);
+    } else {
+      if (transferSharedMod) {
+        currentFile = sharedModFile;
+        targetFile = ModificationFile.getExclusiveMods(tsFile);
+      } else {
+        currentFile = tsFile;
+        targetFile = tsFile;
+      }
+    }
+
+    readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    readBuffer = new byte[readFileBufferSize];
+    position = 0;
+
+    if (Objects.nonNull(exclusiveModFile)) {
+      reader = new RandomAccessFile(exclusiveModFile, "r");
+    } else {
+      if (Objects.nonNull(sharedModFile)) {
+        reader = new RandomAccessFile(sharedModFile, "r");
+        reader.seek(sharedModFileOffset);
+      } else {
+        reader = new RandomAccessFile(tsFile, "r");
+      }
+    }
+
+    isSealSignalSent = new AtomicBoolean(false);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncConnector connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File exclusiveModFile,
       final boolean transferMod,
       final String dataBaseName)
       throws FileNotFoundException {
@@ -109,21 +176,96 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     this.eventsHadBeenAddedToRetryQueue = eventsHadBeenAddedToRetryQueue;
 
     this.tsFile = tsFile;
-    this.modFile = modFile;
-    this.transferMod = transferMod;
+    this.exclusiveModFile = exclusiveModFile;
+    this.transferExclusiveMod = transferMod;
     this.dataBaseName = dataBaseName;
-    currentFile = transferMod ? modFile : tsFile;
+    currentFile = transferMod ? exclusiveModFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
     reader =
-        Objects.nonNull(modFile)
-            ? new RandomAccessFile(modFile, "r")
+        Objects.nonNull(exclusiveModFile)
+            ? new RandomAccessFile(exclusiveModFile, "r")
             : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
+  }
+
+  private void switchToSharedModFile() throws IOException {
+    // append the shared mod file to the target's exclusive mod file
+    // target file is still the exclusive mod file
+    currentFile = sharedModFile;
+    targetOffset = position;
+    position = 0;
+    try {
+      reader.close();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to close file reader when successfully transferred exclusive mod file.", e);
+    }
+    reader = new RandomAccessFile(sharedModFile, "r");
+    reader.seek(sharedModFileOffset);
+  }
+
+  private void switchToTsFile() throws IOException {
+    currentFile = tsFile;
+    targetFile = tsFile;
+    targetOffset = 0;
+    position = 0;
+    try {
+      reader.close();
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+    }
+    reader = new RandomAccessFile(tsFile, "r");
+  }
+
+  private void switchToNextFile(
+      IoTDBDataNodeAsyncClientManager clientManager, AsyncPipeDataTransferServiceClient client)
+      throws TException, IOException {
+    if (currentFile == exclusiveModFile) {
+      if (transferSharedMod) {
+        switchToSharedModFile();
+      } else {
+        switchToTsFile();
+      }
+      transfer(clientManager, client);
+    } else if (currentFile == sharedModFile) {
+      switchToTsFile();
+      transfer(clientManager, client);
+    } else if (currentFile == tsFile) {
+      isSealSignalSent.set(true);
+      long modFileTotalSize = transferExclusiveMod ? exclusiveModFile.length() : 0;
+      modFileTotalSize += transferSharedMod ? sharedModFile.length() - sharedModFileOffset : 0;
+
+      final TPipeTransferReq uncompressedReq =
+          transferExclusiveMod || transferSharedMod
+              ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                  ModificationFile.getExclusiveMods(tsFile).getName(),
+                  modFileTotalSize,
+                  tsFile.getName(),
+                  tsFile.length(),
+                  dataBaseName)
+              : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                  tsFile.getName(), tsFile.length(), dataBaseName);
+      final TPipeTransferReq req =
+          connector.isRpcCompressionEnabled()
+              ? PipeTransferCompressedReq.toTPipeTransferReq(
+                  uncompressedReq, connector.getCompressors())
+              : uncompressedReq;
+
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              connector.rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  this.client.getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+
+      this.client.pipeTransfer(req, this);
+    }
   }
 
   public void transfer(
@@ -139,45 +281,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
-      if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
-        try {
-          reader.close();
-        } catch (final IOException e) {
-          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
-        }
-        reader = new RandomAccessFile(tsFile, "r");
-        transfer(clientManager, client);
-      } else if (currentFile == tsFile) {
-        isSealSignalSent.set(true);
-
-        final TPipeTransferReq uncompressedReq =
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName)
-                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
-        final TPipeTransferReq req =
-            connector.isRpcCompressionEnabled()
-                ? PipeTransferCompressedReq.toTPipeTransferReq(
-                    uncompressedReq, connector.getCompressors())
-                : uncompressedReq;
-
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                connector.rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    client.getEndPoint(),
-                    (long) (req.getBody().length * weight)));
-
-        client.pipeTransfer(req, this);
-      }
+      switchToNextFile(clientManager, client);
       return;
     }
 
@@ -186,11 +290,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     final TPipeTransferReq uncompressedReq =
-        transferMod
+        transferExclusiveMod
             ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload)
+                targetFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload);
+                targetFile.getName(), position, payload);
     final TPipeTransferReq req =
         connector.isRpcCompressionEnabled()
             ? PipeTransferCompressedReq.toTPipeTransferReq(
@@ -283,7 +387,13 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final long code = resp.getStatus().getCode();
 
       if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-        position = resp.getEndWritingOffset();
+        if (currentFile == sharedModFile) {
+          // the exclusive mod file has been written to remote
+          // the local position should subtract the length of exclusive mod file
+          position = resp.getEndWritingOffset() - targetOffset;
+        } else {
+          position = resp.getEndWritingOffset();
+        }
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
       } else {

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -137,6 +138,12 @@ public class CompactionUtils {
       List<TsFileResource> targetResources)
       throws IOException {
     if (TsFileResource.useSharedModFile) {
+      for (TsFileResource seqResource : seqResources) {
+        seqResource.setCompactionModFile(null);
+      }
+      for (TsFileResource unseqResource : unseqResources) {
+        unseqResource.setCompactionModFile(null);
+      }
       // when using the shared mod file, modifications generated during compaction will be
       // directly written into shared mod file, so there is no need to concern the sources
       return;
@@ -159,6 +166,31 @@ public class CompactionUtils {
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
       modifications.removeAll(seqModifications);
+    }
+  }
+
+  @SafeVarargs
+  public static void prepareCompactionModFiles(
+      List<TsFileResource> targets, List<TsFileResource>... sourceLists) throws IOException {
+    if (!TsFileResource.useSharedModFile) {
+      return;
+    }
+    TsFileResource firstSource = sourceLists[0].get(0);
+    TsFileResource firstTarget = targets.get(0);
+    ModFileManagement modFileManagement = firstSource.getModFileManagement();
+    ModificationFile modificationFile = modFileManagement.allocateFor(firstTarget);
+    for (TsFileResource tsFileResource : targets) {
+      tsFileResource.setModFileManagement(modFileManagement);
+      modFileManagement.addReference(tsFileResource, modificationFile);
+      tsFileResource.setSharedModFile(modificationFile, false);
+    }
+    for (List<TsFileResource> sources : sourceLists) {
+      for (TsFileResource tsFileResource : sources) {
+        // lock so that the compaction mod file will not be omitted by deletion
+        tsFileResource.writeLock();
+        tsFileResource.setCompactionModFile(modificationFile);
+        tsFileResource.writeUnlock();
+      }
     }
   }
 

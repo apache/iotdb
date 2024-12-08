@@ -334,59 +334,6 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   }
 
   @Test
-  public void testSkipSomeFilesAndRenamePreviousFilesWithCompactionMods()
-      throws IOException, IllegalPathException {
-    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(100);
-    for (int i = 0; i < 10; i++) {
-      TsFileResource resource;
-      if (i == 9) {
-        resource =
-            generateSingleNonAlignedSeriesFile(
-                String.format("%d-%d-0-0.tsfile", i, i),
-                new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true,
-                "d" + 0);
-      } else {
-        resource =
-            generateSingleNonAlignedSeriesFile(
-                String.format("%d-%d-0-0.tsfile", i, i),
-                new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true,
-                "d" + i);
-      }
-      resource
-          .getCompactionModFile()
-          .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
-      resource.getCompactionModFile().close();
-      seqResources.add(resource);
-    }
-    NewSizeTieredCompactionSelector selector =
-        new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
-    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        selector.selectInnerSpaceTask(seqResources);
-    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
-    InnerSpaceCompactionTask task = innerSpaceCompactionTasks.get(0);
-    Assert.assertTrue(task.start());
-    Assert.assertEquals(2, task.getSelectedTsFileResourceList().size());
-    Assert.assertEquals(10, task.getAllSourceTsFiles().size());
-    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(9, filesAfterCompaction.size());
-    Assert.assertEquals(0, filesAfterCompaction.get(0).getTsFileID().fileVersion);
-    Assert.assertEquals(101L, filesAfterCompaction.get(0).getFileStartTime());
-    Assert.assertEquals(200L, filesAfterCompaction.get(0).getFileEndTime());
-    for (int i = 0; i < filesAfterCompaction.size(); i++) {
-      TsFileResource resource = filesAfterCompaction.get(i);
-      if (i == 8) {
-        Assert.assertTrue(resource.anyModFileExists());
-      } else {
-        Assert.assertFalse(resource.anyModFileExists());
-      }
-      Assert.assertFalse(resource.compactionModFileExists());
-    }
-  }
-
-  @Test
   public void testAllTargetFilesEmpty() throws IOException, IllegalPathException {
     TsFileResource resource1 =
         generateSingleNonAlignedSeriesFile(
