@@ -196,4 +196,6 @@ public abstract class WALEntry implements SerializedSize {
   }
 
   public abstract boolean isSignal();
+
+  public abstract long getMemorySize();
 }

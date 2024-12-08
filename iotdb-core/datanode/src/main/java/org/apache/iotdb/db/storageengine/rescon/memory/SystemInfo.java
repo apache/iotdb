@@ -54,8 +54,9 @@ public class SystemInfo {
 
   private long memorySizeForMemtable;
   private long memorySizeForCompaction;
+  private long memorySizeForWalQueue;
   private long totalDirectBufferMemorySizeLimit;
-  private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
+  private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
   private final AtomicLong directBufferMemoryCost = new AtomicLong(0);
@@ -75,6 +76,8 @@ public class SystemInfo {
   private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
+
+  private final AtomicLong walEntryQueueMemoryCost = new AtomicLong(0);
 
   private SystemInfo() {
     allocateWriteMemory();
@@ -113,7 +116,7 @@ public class SystemInfo {
       return true;
     } else {
       logger.info(
-          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THERSHOLD ({})",
+          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
@@ -403,6 +406,11 @@ public class SystemInfo {
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+    memorySizeForWalQueue =
+        (long)
+            (config.getAllocateMemoryForStorageEngine()
+                * config.getWriteProportionForMemtable()
+                * config.getWalQueueProportion());
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
@@ -537,11 +545,23 @@ public class SystemInfo {
     return totalStorageGroupMemCost;
   }
 
-  public double getFlushThershold() {
+  public double getFlushThreshold() {
     return FLUSH_THRESHOLD;
   }
 
-  public double getRejectThershold() {
+  public double getRejectThreshold() {
     return REJECT_THRESHOLD;
+  }
+
+  public long getCurrentWalQueueMemoryCost() {
+    return walEntryQueueMemoryCost.get();
+  }
+
+  public void updateWalQueueMemoryCost(long delta) {
+    walEntryQueueMemoryCost.addAndGet(delta);
+  }
+
+  public boolean cannotReserveMemoryForWalEntry(long walEntrySize) {
+    return walEntryQueueMemoryCost.get() + walEntrySize > memorySizeForWalQueue;
   }
 }

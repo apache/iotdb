@@ -903,7 +903,6 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    // TODO:[WAL]
     WALWriteUtils.write(isSignalMemTable(), buffer);
     if (isSignalMemTable()) {
       return;
