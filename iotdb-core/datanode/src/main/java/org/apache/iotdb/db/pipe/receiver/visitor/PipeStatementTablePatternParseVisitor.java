@@ -17,18 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.pipe.receiver.visitor;
 
-import javax.annotation.Nullable;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
-public abstract class Statement extends Node {
+import java.util.Optional;
 
-  protected Statement(final @Nullable NodeLocation location) {
-    super(location);
-  }
+public class PipeStatementTablePatternParseVisitor
+    extends AstVisitor<Optional<Statement>, TablePattern> {
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitStatement(this, context);
+  public Optional<Statement> visitCreateOrUpdateDevice(
+      final CreateOrUpdateDevice statement, final TablePattern pattern) {
+    return pattern.matchesDatabase(statement.getDatabase())
+            && pattern.matchesTable(statement.getTable())
+        ? Optional.of(statement)
+        : Optional.empty();
   }
 }

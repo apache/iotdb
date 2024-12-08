@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 
-import javax.annotation.Nullable;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 
-public abstract class Statement extends Node {
-
-  protected Statement(final @Nullable NodeLocation location) {
-    super(location);
+public class PipeCreateTablePlan extends PreCreateTablePlan {
+  public PipeCreateTablePlan() {
+    super(ConfigPhysicalPlanType.PipeCreateTable);
   }
 
-  @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitStatement(this, context);
+  public PipeCreateTablePlan(final String database, final TsTable table) {
+    super(ConfigPhysicalPlanType.PipeCreateTable, database, table);
   }
 }

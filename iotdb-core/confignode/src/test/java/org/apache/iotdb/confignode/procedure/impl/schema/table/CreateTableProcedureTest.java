@@ -47,7 +47,7 @@ public class CreateTableProcedureTest {
         new MeasurementColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final CreateTableProcedure createTableProcedure =
-        new CreateTableProcedure("root.database1", table);
+        new CreateTableProcedure("root.database1", table, false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -57,7 +57,7 @@ public class CreateTableProcedureTest {
 
     Assert.assertEquals(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure();
+    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(createTableProcedure.getDatabase(), deserializedProcedure.getDatabase());

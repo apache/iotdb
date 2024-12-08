@@ -55,6 +55,7 @@ public enum ConfigPhysicalPlanType {
   CountDatabase((short) 209),
   AlterDatabase((short) 210),
   ShowTTL((short) 211),
+  DeleteDatabaseV2((short) 212),
 
   /** Region. */
   CreateRegionGroups((short) 300),
@@ -246,6 +247,8 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
   PipeSetTTL((short) 1705),
+  PipeCreateTable((short) 1706),
+  PipeDeleteDevices((short) 1707),
 
   /** Subscription */
   CreateTopic((short) 1800),
