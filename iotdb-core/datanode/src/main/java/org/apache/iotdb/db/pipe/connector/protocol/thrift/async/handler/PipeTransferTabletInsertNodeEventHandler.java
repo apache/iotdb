@@ -32,20 +32,21 @@ public class PipeTransferTabletInsertNodeEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
   public PipeTransferTabletInsertNodeEventHandler(
-      PipeInsertNodeTabletInsertionEvent event,
-      TPipeTransferReq req,
-      IoTDBDataRegionAsyncConnector connector) {
+      final PipeInsertNodeTabletInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncConnector connector) {
     super(event, req, connector);
   }
 
   @Override
-  protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
+  protected void doTransfer(
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
     client.pipeTransfer(req, this);
   }
 
   @Override
-  protected void updateLeaderCache(TSStatus status) {
+  protected void updateLeaderCache(final TSStatus status) {
     connector.updateLeaderCache(
         ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
   }
