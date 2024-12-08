@@ -61,10 +61,20 @@ public class PipeProcessorConstant {
   public static final double PROCESSOR_SDT_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
   public static final String PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY =
       "processor.sdt.min-time-interval";
-  public static final long PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE = 0;
   public static final String PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY =
       "processor.sdt.max-time-interval";
-  public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
+  public static final String PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL =
+      "processor.sdt.arrival-time.min-interval";
+  public static final String PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL =
+      "processor.sdt.arrival-time.max-interval";
+  public static final String PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL =
+      "processor.sdt.event-time.min-interval";
+  public static final String PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL =
+      "processor.sdt.event-time.max-interval";
+  public static final long PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
+  public static final long PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
+  public static final long PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
+  public static final long PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
 
   public static final String PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION =
       "processor.changing-value.compression-deviation";
@@ -76,6 +86,22 @@ public class PipeProcessorConstant {
       "processor.changing-value.max-time-interval";
   public static final long PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE =
       Long.MAX_VALUE;
+
+  public static final String PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL =
+      "processor.changing-point.arrival-time.min-interval";
+  public static final String PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL =
+      "processor.changing-point.arrival-time.max-interval";
+  public static final String PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL =
+      "processor.changing-point.event-time.min-interval";
+  public static final String PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL =
+      "processor.changing-point.event-time.max-interval";
+  public static final String PROCESSOR_CHANGING_POINT_VALUE_INTERVAL =
+      "processor.changing-point.value-interval";
+  public static final long PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
+  public static final long PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
+  public static final long PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
+  public static final long PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
+  public static final double PROCESSOR_CHANGING_POINT_VALUE_INTERVAL_DEFAULT_VALUE = 0;
 
   public static final String _PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
   public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output.series";
