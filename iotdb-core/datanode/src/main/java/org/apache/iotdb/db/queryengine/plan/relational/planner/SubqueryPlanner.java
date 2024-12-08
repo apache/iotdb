@@ -531,7 +531,8 @@ class SubqueryPlanner {
       Assignments assignments =
           Assignments.builder()
               .putIdentities(subPlan.getRoot().getOutputSymbols())
-              .put(wrapped, new Row(ImmutableList.of(column.toSymbolReference())))
+              .put(wrapped, column.toSymbolReference())
+              //              .put(wrapped, new Row(ImmutableList.of(column.toSymbolReference())))
               .build();
 
       subPlan =
@@ -566,12 +567,22 @@ class SubqueryPlanner {
       }
     }
 
-    subqueryPlan =
-        subqueryPlan.withNewRoot(
-            new ProjectNode(
-                idAllocator.genPlanNodeId(),
-                relationPlan.getRoot(),
-                Assignments.of(column, new Cast(new Row(fields.build()), toSqlType(type)))));
+    List<Expression> fieldsList = fields.build();
+    if (fieldsList.size() > 1) {
+      subqueryPlan =
+          subqueryPlan.withNewRoot(
+              new ProjectNode(
+                  idAllocator.genPlanNodeId(),
+                  relationPlan.getRoot(),
+                  Assignments.of(column, new Cast(new Row(fields.build()), toSqlType(type)))));
+    } else {
+      subqueryPlan =
+          subqueryPlan.withNewRoot(
+              new ProjectNode(
+                  idAllocator.genPlanNodeId(),
+                  relationPlan.getRoot(),
+                  Assignments.of(column, fieldsList.get(0))));
+    }
 
     return coerceIfNecessary(subqueryPlan, column, subquery, coercion);
   }

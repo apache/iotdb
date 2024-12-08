@@ -54,12 +54,17 @@ public class SemiJoinNode extends TwoChildProcessNode {
         requireNonNull(filteringSourceJoinSymbol, "filteringSourceJoinSymbol is null");
     this.semiJoinOutput = requireNonNull(semiJoinOutput, "semiJoinOutput is null");
 
-    checkArgument(
-        source.getOutputSymbols().contains(sourceJoinSymbol),
-        "Source does not contain join symbol");
-    checkArgument(
-        filteringSource.getOutputSymbols().contains(filteringSourceJoinSymbol),
-        "Filtering source does not contain filtering join symbol");
+    if (source != null) {
+      checkArgument(
+          source.getOutputSymbols().contains(sourceJoinSymbol),
+          "Source does not contain join symbol");
+    }
+
+    if (filteringSource != null) {
+      checkArgument(
+          filteringSource.getOutputSymbols().contains(filteringSourceJoinSymbol),
+          "Filtering source does not contain filtering join symbol");
+    }
   }
 
   public PlanNode getSource() {

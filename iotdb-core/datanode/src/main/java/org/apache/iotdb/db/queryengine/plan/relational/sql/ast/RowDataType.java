@@ -70,7 +70,7 @@ public class RowDataType extends DataType {
     return Objects.hash(fields);
   }
 
-  public static class Field extends Node {
+  public static class Field extends Expression {
     private final Optional<Identifier> name;
     private final DataType type;
 
@@ -103,20 +103,8 @@ public class RowDataType extends DataType {
     }
 
     @Override
-    protected <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
       return visitor.visitRowField(this, context);
-    }
-
-    @Override
-    public String toString() {
-      StringBuilder builder = new StringBuilder();
-      if (name.isPresent()) {
-        builder.append(name.get());
-        builder.append(" ");
-      }
-      builder.append(type);
-
-      return builder.toString();
     }
 
     @Override
