@@ -37,7 +37,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
@@ -96,6 +99,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -116,6 +122,9 @@ public class IoTDBDatabaseIT {
               showDBDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -141,6 +150,8 @@ public class IoTDBDatabaseIT {
       // drop
       statement.execute("drop database test");
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        // Information_schema
+        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
 
@@ -171,6 +182,9 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
           assertEquals(TTLs[cnt], resultSet.getString(2));
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
@@ -270,6 +284,9 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("````x", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
@@ -303,6 +320,106 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show devices from table0"),
           "a,b,",
           Collections.singleton("1,4,"));
+    }
+  }
+
+  @Test
+  public void testInformationSchema() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Test unsupported write plans
+      final Set<String> writeSQLs =
+          new HashSet<>(
+              Arrays.asList(
+                  "create database information_schema",
+                  "drop database information_schema",
+                  "create table information_schema.tableA ()",
+                  "alter table information_schema.tableA add column a id",
+                  "alter table information_schema.tableA set properties ttl=default",
+                  "insert into information_schema.tables (database) values('db')"));
+
+      for (final String writeSQL : writeSQLs) {
+        try {
+          statement.execute(writeSQL);
+          fail("information_schema does not support write");
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: The database 'information_schema' can only be queried", e.getMessage());
+        }
+      }
+
+      final Set<String> deviceSQLs =
+          new HashSet<>(
+              Arrays.asList(
+                  "show devices from information_schema.tables",
+                  "count devices from information_schema.tables"));
+
+      for (final String deviceSQL : deviceSQLs) {
+        try {
+          statement.execute(deviceSQL);
+          fail("information_schema does not support device sql");
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: The database 'information_schema' does not support device operations",
+              e.getMessage());
+        }
+      }
+
+      statement.execute("use information_schema");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show databases"),
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables"),
+          "TableName,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc databases"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "ttl(ms),STRING,null,",
+                  "schemareplicationfactor,INT32,null,",
+                  "datareplicationfactor,INT32,null,",
+                  "timepartitioninterval,INT64,null,",
+                  "model,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "tablename,STRING,null,",
+                  "ttl(ms),STRING,null,",
+                  "status,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc columns"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,null,",
+                  "tablename,STRING,null,",
+                  "columnname,STRING,null,",
+                  "datatype,STRING,null,",
+                  "category,STRING,null,",
+                  "status,STRING,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc queries"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,null,",
+                  "query_id,STRING,null,",
+                  "datanode_id,INT32,null,",
+                  "elapsed_time,FLOAT,null,",
+                  "statement,STRING,null,",
+                  "sql_dialect,STRING,null,")));
     }
   }
 }

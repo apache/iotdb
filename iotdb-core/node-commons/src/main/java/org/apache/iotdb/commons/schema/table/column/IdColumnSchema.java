@@ -28,11 +28,12 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class IdColumnSchema extends TsTableColumnSchema {
-  public IdColumnSchema(String columnName, TSDataType dataType) {
+  public IdColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
   }
 
-  public IdColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  public IdColumnSchema(
+      final String columnName, final TSDataType dataType, final Map<String, String> props) {
     super(columnName, dataType, props);
   }
 
@@ -41,14 +42,14 @@ public class IdColumnSchema extends TsTableColumnSchema {
     return TsTableColumnCategory.ID;
   }
 
-  static IdColumnSchema deserialize(InputStream stream) throws IOException {
+  static IdColumnSchema deserialize(final InputStream stream) throws IOException {
     String columnName = ReadWriteIOUtils.readString(stream);
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     Map<String, String> props = ReadWriteIOUtils.readMap(stream);
     return new IdColumnSchema(columnName, dataType, props);
   }
 
-  static IdColumnSchema deserialize(ByteBuffer buffer) {
+  static IdColumnSchema deserialize(final ByteBuffer buffer) {
     String columnName = ReadWriteIOUtils.readString(buffer);
     TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     Map<String, String> props = ReadWriteIOUtils.readMap(buffer);

@@ -54,7 +54,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   private final PartialPath pathPattern;
   private boolean isDetailed;
 
-  public ShowDatabaseStatement(PartialPath pathPattern) {
+  public ShowDatabaseStatement(final PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;
@@ -68,7 +68,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     return isDetailed;
   }
 
-  public void setDetailed(boolean detailed) {
+  public void setDetailed(final boolean detailed) {
     isDetailed = detailed;
   }
 
@@ -120,7 +120,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowStorageGroup(this, context);
   }
 
