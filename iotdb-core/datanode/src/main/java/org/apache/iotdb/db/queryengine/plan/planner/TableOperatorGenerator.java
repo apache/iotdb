@@ -164,7 +164,6 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -1407,15 +1406,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   private Type getJoinKeyType(LocalExecutionPlanContext context, Symbol symbol) {
-    Type type = context.getTypeProvider().getTableModelType(symbol);
-    if (type instanceof RowType) {
-      RowType rowType = (RowType) type;
-      // For now, we only RowType with single column.
-      checkArgument(
-          rowType.getFields().size() == 1, "RowType with multiple columns is not supported.");
-      return rowType.getFields().get(0).getType();
-    }
-    return type;
+    return context.getTypeProvider().getTableModelType(symbol);
   }
 
   @Override

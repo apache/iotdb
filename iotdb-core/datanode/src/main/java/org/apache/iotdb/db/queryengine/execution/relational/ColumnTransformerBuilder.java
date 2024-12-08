@@ -59,8 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -179,7 +177,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -353,12 +350,6 @@ public class ColumnTransformerBuilder
         Type type;
         try {
           type = context.metadata.getType(toTypeSignature(node.getType()));
-          // For now, we only support casting to scalar types and Row can only have one item.
-          if (type instanceof RowDataType) {
-            type =
-                context.metadata.getType(
-                    toTypeSignature(((RowDataType) type).getFields().get(0).getType()));
-          }
         } catch (TypeNotFoundException e) {
           throw new SemanticException(String.format("Unknown type: %s", node.getType()));
         }
@@ -1429,12 +1420,6 @@ public class ColumnTransformerBuilder
     ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
-  }
-
-  @Override
-  protected ColumnTransformer visitRow(Row node, Context context) {
-    checkArgument(node.getItems().size() == 1, "Row should only have one item for now.");
-    return process(node.getItems().get(0), context);
   }
 
   @Override

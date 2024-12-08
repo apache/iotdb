@@ -29,13 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -51,25 +49,8 @@ public class TypeSignatureTranslator {
   private TypeSignatureTranslator() {}
 
   public static DataType toSqlType(Type type) {
-    if (type instanceof RowType) {
-      RowType rowType = (RowType) type;
-      return new RowDataType(
-          Optional.empty(),
-          rowType.getFields().stream()
-              .map(
-                  field ->
-                      new RowDataType.Field(
-                          Optional.empty(),
-                          field
-                              .getName()
-                              .map(RowFieldName::new)
-                              .map(fieldName -> new Identifier(fieldName.getName(), false)),
-                          toSqlType(field.getType())))
-              .collect(toImmutableList()));
-    } else {
-      return new GenericDataType(
-          new Identifier(type.getTypeEnum().name(), false), Collections.emptyList());
-    }
+    return new GenericDataType(
+        new Identifier(type.getTypeEnum().name(), false), Collections.emptyList());
   }
 
   public static TypeSignature toTypeSignature(DataType type) {
