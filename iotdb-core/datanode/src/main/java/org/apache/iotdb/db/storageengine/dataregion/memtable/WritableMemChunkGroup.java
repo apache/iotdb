@@ -151,7 +151,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     if (!memChunkMap.containsKey(measurement)) {
       return 0;
     }
-    return memChunkMap.get(measurement).getTVList().rowCount();
+    return memChunkMap.get(measurement).rowCount();
   }
 
   @Override

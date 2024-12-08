@@ -28,12 +28,14 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
@@ -46,7 +48,7 @@ public abstract class LongTVList extends TVList {
 
   LongTVList() {
     super();
-    values = new ArrayList<>();
+    values = new CopyOnWriteArrayList<>();
   }
 
   public static LongTVList newList() {
@@ -64,6 +66,7 @@ public abstract class LongTVList extends TVList {
   public LongTVList clone() {
     LongTVList cloneList = LongTVList.newList();
     cloneAs(cloneList);
+    cloneSlicesAndBitMap(cloneList);
     for (long[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -82,11 +85,17 @@ public abstract class LongTVList extends TVList {
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
     maxTime = Math.max(maxTime, timestamp);
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
+    indices.get(arrayIndex)[elementIndex] = rowCount;
     rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
-      sorted = false;
+    if (sorted) {
+      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+      } else {
+        seqRowCount++;
+      }
     }
   }
 
@@ -95,19 +104,10 @@ public abstract class LongTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = getValueIndex(index);
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
     return values.get(arrayIndex)[elementIndex];
-  }
-
-  protected void set(int index, long timestamp, long value) {
-    if (index >= rowCount) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
   }
 
   @Override
@@ -118,11 +118,13 @@ public abstract class LongTVList extends TVList {
       }
       values.clear();
     }
+    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
     values.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
+    expandSlicesAndBitMap();
   }
 
   @Override
@@ -145,7 +147,8 @@ public abstract class LongTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isNullValue(i)
+          && !isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
         builder.getColumnBuilder(0).writeLong(getLong(i));
@@ -174,10 +177,10 @@ public abstract class LongTVList extends TVList {
       timeIdxOffset = start;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMinMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMaxTimeAndSorted(time, start, end);
+      updateMinMaxTimeAndSorted(time, start, end);
     }
 
     while (idx < end) {
@@ -190,6 +193,8 @@ public abstract class LongTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
         rowCount += inputRemaining;
         break;
       } else {
@@ -198,6 +203,8 @@ public abstract class LongTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+        int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -206,12 +213,13 @@ public abstract class LongTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMaxTimeAndSorted(
+  int dropNullValThenUpdateMinMaxTimeAndSorted(
       long[] time, long[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
 
     int nullCnt = 0;
+    int inputSeqRowCount = 0;
     for (int vIdx = start; vIdx < end; vIdx++) {
       if (bitMap.isMarked(vIdx)) {
         nullCnt++;
@@ -227,11 +235,21 @@ public abstract class LongTVList extends TVList {
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
       maxTime = Math.max(maxTime, time[tIdx]);
-      if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
-        inputSorted = false;
+      minTime = Math.min(minTime, time[tIdx]);
+      if (inputSorted) {
+        if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
+          inputSorted = false;
+        } else {
+          inputSeqRowCount++;
+        }
       }
     }
 
+    if (sorted
+        && (rowCount == 0
+            || (end - start > nullCnt) && time[start - tIdxOffset] > getTime(rowCount - 1))) {
+      seqRowCount += inputSeqRowCount;
+    }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }
@@ -243,7 +261,7 @@ public abstract class LongTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    return Byte.BYTES + Integer.BYTES + rowCount * 2 * Long.BYTES;
+    return Byte.BYTES + Integer.BYTES + rowCount * (2 * Long.BYTES + Byte.BYTES);
   }
 
   @Override
@@ -253,6 +271,7 @@ public abstract class LongTVList extends TVList {
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       buffer.putLong(getLong(rowIdx));
+      WALWriteUtils.write(isNullValue(rowIdx), buffer);
     }
   }
 
@@ -261,11 +280,15 @@ public abstract class LongTVList extends TVList {
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     long[] values = new long[rowCount];
+    BitMap bitMap = new BitMap(rowCount);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       times[rowIdx] = stream.readLong();
       values[rowIdx] = stream.readLong();
+      if (ReadWriteIOUtils.readBool(stream)) {
+        bitMap.mark(rowIdx);
+      }
     }
-    tvList.putLongs(times, values, null, 0, rowCount);
+    tvList.putLongs(times, values, bitMap, 0, rowCount);
     return tvList;
   }
 }

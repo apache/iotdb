@@ -58,6 +58,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -459,10 +460,12 @@ public abstract class AbstractMemTable implements IMemTable {
       QueryContext context,
       IFullPath fullPath,
       long ttlLowerBound,
-      List<Pair<ModEntry, IMemTable>> modsToMemtable)
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
-        .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
+        .getReadOnlyMemChunkFromMemTable(
+            context, this, modsToMemtable, ttlLowerBound, globalTimeFilter);
   }
 
   @Override
@@ -570,7 +573,7 @@ public abstract class AbstractMemTable implements IMemTable {
             buildChunkMetaDataForMemoryChunk(
                 measurementId,
                 timestamps[0],
-                timestamps[tvListCopy.rowCount() - 1],
+                timestamps[tvListCopy.count() - 1],
                 Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
@@ -669,7 +672,7 @@ public abstract class AbstractMemTable implements IMemTable {
               buildChunkMetaDataForMemoryChunk(
                   measurementId,
                   timestamps[0],
-                  timestamps[tvListCopy.rowCount() - 1],
+                  timestamps[tvListCopy.count() - 1],
                   Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
@@ -759,7 +762,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private long[] filterDeletedTimestamp(TVList tvList, List<TimeRange> deletionList) {
-    if (deletionList.isEmpty()) {
+    if (tvList.getBitMap() == null && deletionList.isEmpty()) {
       long[] timestamps = tvList.getTimestamps().stream().flatMapToLong(LongStream::of).toArray();
       return Arrays.copyOfRange(timestamps, 0, tvList.rowCount());
     }
@@ -771,7 +774,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     for (int i = 0; i < rowCount; i++) {
       long curTime = tvList.getTime(i);
-      if (!ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)
+      if (!tvList.isNullValue(i)
+          && !ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)
           && (i == rowCount - 1 || curTime != lastTime)) {
         result.add(curTime);
       }
