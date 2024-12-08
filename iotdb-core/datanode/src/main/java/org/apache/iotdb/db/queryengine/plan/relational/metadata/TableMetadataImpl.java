@@ -22,7 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchemaTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -43,9 +48,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -61,9 +68,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType.LESS_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -90,7 +95,14 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    String databaseName = name.getDatabaseName();
+    String tableName = name.getObjectName();
+
+    // TODO Recover this line after put InformationSchema Table into cache
+    TsTable table =
+        databaseName.equals(INFORMATION_SCHEMA)
+            ? InformationSchemaTable.getTableFromStringValue(tableName)
+            : tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }
@@ -627,7 +639,27 @@ public class TableMetadataImpl implements Metadata {
         // ignore
     }
 
-    // TODO scalar UDF function
+    // User-defined scalar function
+
+    if (TableUDFUtils.isScalarFunction(functionName)) {
+      ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
+      FunctionParameters functionParameters =
+          new FunctionParameters(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        scalarFunction.validate(functionParameters);
+        ScalarFunctionConfig config = new ScalarFunctionConfig();
+        scalarFunction.beforeStart(functionParameters, config);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        scalarFunction.beforeDestroy();
+      }
+    }
 
     // TODO UDAF
 
@@ -637,7 +669,7 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 

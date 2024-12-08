@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -102,6 +103,7 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class Analysis implements IAnalysis {
 
@@ -773,7 +775,8 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    return false;
+    return root instanceof ShowStatement
+        && ((ShowStatement) root).getTableName().equals(QUERIES.getSchemaTableName());
   }
 
   @Override

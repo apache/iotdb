@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -622,21 +623,38 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   // =============== Methods below are used for table model ================
   @Override
   public List<String> visitTableScan(TableScanNode node, GraphContext context) {
+    DeviceTableScanNode deviceTableScanNode = null;
+    if (node instanceof DeviceTableScanNode) {
+      deviceTableScanNode = (DeviceTableScanNode) node;
+    }
+
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TableScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    boxValue.add(String.format("DeviceNumber: %s", node.getDeviceEntries().size()));
-    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
-    if (node.getTimePredicate().isPresent()) {
-      boxValue.add(String.format("TimePredicate: %s", node.getTimePredicate().get()));
+
+    if (deviceTableScanNode != null) {
+      boxValue.add(
+          String.format("DeviceNumber: %s", deviceTableScanNode.getDeviceEntries().size()));
+      boxValue.add(String.format("ScanOrder: %s", deviceTableScanNode.getScanOrder()));
+      if (deviceTableScanNode.getTimePredicate().isPresent()) {
+        boxValue.add(
+            String.format("TimePredicate: %s", deviceTableScanNode.getTimePredicate().get()));
+      }
     }
+
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
     }
     boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
     boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
-    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
+
+    if (deviceTableScanNode != null) {
+      boxValue.add(
+          String.format(
+              "PushDownLimitToEachDevice: %s", deviceTableScanNode.isPushLimitToEachDevice()));
+    }
+
     boxValue.add(
         String.format(
             "RegionId: %s",

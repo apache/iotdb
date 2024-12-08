@@ -26,8 +26,11 @@ import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 import org.apache.iotdb.udf.api.relational.SQLFunction;
 
@@ -58,7 +61,7 @@ public class UDFManagementService {
           new UDFInformation(
               functionName.toUpperCase(),
               builtinTimeSeriesGeneratingFunction.getClassName(),
-              UDFType.TREE_BUILT_IN));
+              UDFType.TREE_AVAILABLE));
       udfTable.addFunctionAndClass(
           Model.TREE, functionName, builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }
@@ -114,8 +117,10 @@ public class UDFManagementService {
               .contains(functionName.toUpperCase())
           || BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     } else {
-      // TODO: Table model UDF
-      return false;
+      return TableBuiltinScalarFunction.getBuiltInScalarFunctionName()
+              .contains(functionName.toLowerCase())
+          || TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
+              .contains(functionName.toLowerCase());
     }
   }
 
@@ -233,15 +238,12 @@ public class UDFManagementService {
               "Failed to reflect UDF instance, because UDF %s has not been registered.",
               functionName.toUpperCase());
       LOGGER.warn(errorMessage);
-      throw new RuntimeException(errorMessage);
+      throw new UDFException(errorMessage);
     }
 
     try {
       return clazz.cast(
-          udfTable
-              .getFunctionClass(Model.TREE, functionName)
-              .getDeclaredConstructor()
-              .newInstance());
+          udfTable.getFunctionClass(model, functionName).getDeclaredConstructor().newInstance());
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -251,12 +253,16 @@ public class UDFManagementService {
               "Failed to reflect UDF %s(%s) instance, because %s",
               functionName, information.getClassName(), e);
       LOGGER.warn(errorMessage, e);
-      throw new RuntimeException(errorMessage);
+      throw new UDFException(errorMessage);
     }
   }
 
   public UDFInformation[] getUDFInformation(Model model) {
     return udfTable.getUDFInformationList(model).toArray(new UDFInformation[0]);
+  }
+
+  public UDFInformation getUDFInformation(Model model, String functionName) {
+    return udfTable.getUDFInformation(model, functionName);
   }
 
   @TestOnly

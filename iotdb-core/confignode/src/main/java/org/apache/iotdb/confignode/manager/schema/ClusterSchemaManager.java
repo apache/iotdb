@@ -207,7 +207,7 @@ public class ClusterSchemaManager {
   public TSStatus alterDatabase(
       final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
-    TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
+    final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
     if (!isDatabaseExist(databaseSchema.getName())) {
       // Reject if Database doesn't exist
@@ -219,7 +219,7 @@ public class ClusterSchemaManager {
 
     if (databaseSchema.isSetMinSchemaRegionGroupNum()) {
       // Validate alter SchemaRegionGroupNum
-      int minSchemaRegionGroupNum =
+      final int minSchemaRegionGroupNum =
           getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
       if (databaseSchema.getMinSchemaRegionGroupNum() <= minSchemaRegionGroupNum) {
         result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());

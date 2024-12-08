@@ -118,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
@@ -260,7 +261,7 @@ public enum PlanNodeType {
   DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
   TABLE_ATTRIBUTE_COLUMN_DROP((short) 913),
 
-  TABLE_SCAN_NODE((short) 1000),
+  DEVICE_TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
   TABLE_PROJECT_NODE((short) 1002),
   TABLE_OUTPUT_NODE((short) 1003),
@@ -281,7 +282,8 @@ public enum PlanNodeType {
   TABLE_EXCHANGE_NODE((short) 1018),
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
-  TABLE_SEMI_JOIN_NODE((short) 1021),
+  INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
+  TABLE_SEMI_JOIN_NODE((short) 1022),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -583,7 +585,7 @@ public enum PlanNodeType {
       case 913:
         return TableAttributeColumnDropNode.deserialize(buffer);
       case 1000:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode
             .deserialize(buffer);
       case 1001:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode.deserialize(
@@ -640,7 +642,10 @@ public enum PlanNodeType {
       case 1020:
         return EnforceSingleRowNode.deserialize(buffer);
       case 1021:
+        return InformationSchemaTableScanNode.deserialize(buffer);
+      case 1022:
         return SemiJoinNode.deserialize(buffer);
+
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
