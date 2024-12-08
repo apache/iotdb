@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -93,7 +93,7 @@ public final class ExpressionTreeUtils {
 
   static boolean isAggregationFunction(String functionName) {
     // TODO consider UDAF
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
         .contains(functionName.toLowerCase());
   }
 }
