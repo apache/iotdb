@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -51,26 +52,35 @@ import java.util.stream.Collectors;
  * This visitor transforms the data type of the statement when the statement is executed and an
  * exception occurs. The transformed statement (if any) is returned and will be executed again.
  */
-public class PipeStatementDataTypeConvertExecutionVisitor
-    extends StatementVisitor<Optional<TSStatus>, TSStatus> {
+public class PipeTableStatementDataTypeConvertExecutionVisitor
+    extends StatementVisitor<Optional<TSStatus>, Pair<TSStatus, String>> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeStatementDataTypeConvertExecutionVisitor.class);
+      LoggerFactory.getLogger(PipeTableStatementDataTypeConvertExecutionVisitor.class);
 
   @FunctionalInterface
   public interface StatementExecutor {
-    TSStatus execute(final Statement statement);
+    // databaseName can NOT be null
+    TSStatus execute(final Statement statement, final String databaseName);
   }
 
   private final StatementExecutor statementExecutor;
 
-  public PipeStatementDataTypeConvertExecutionVisitor(final StatementExecutor statementExecutor) {
+  public PipeTableStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor) {
     this.statementExecutor = statementExecutor;
   }
 
-  private Optional<TSStatus> tryExecute(final Statement statement) {
+  private Optional<TSStatus> tryExecute(final Statement statement, final String databaseName) {
     try {
-      return Optional.of(statementExecutor.execute(statement));
+      if (Objects.isNull(databaseName)) {
+        LOGGER.warn(
+            "Database name is unexpectedly null for statement: {}. Skip data type conversion.",
+            statement);
+        return Optional.empty();
+      }
+
+      return Optional.of(statementExecutor.execute(statement, databaseName));
     } catch (final Exception e) {
       LOGGER.warn("Failed to execute statement after data type conversion.", e);
       return Optional.empty();
@@ -78,13 +88,25 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   }
 
   @Override
-  public Optional<TSStatus> visitNode(final StatementNode statementNode, final TSStatus status) {
+  public Optional<TSStatus> visitNode(
+      final StatementNode statementNode, final Pair<TSStatus, String> statusAndDatabaseName) {
     return Optional.empty();
   }
 
   @Override
   public Optional<TSStatus> visitLoadFile(
-      final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
+      final LoadTsFileStatement loadTsFileStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
+    final TSStatus status = statusAndDatabaseName.getLeft();
+    final String databaseName = statusAndDatabaseName.getRight();
+
+    if (Objects.isNull(databaseName)) {
+      LOGGER.warn(
+          "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
+          loadTsFileStatement);
+      return Optional.empty();
+    }
+
     if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
         // Ignore the error if it is caused by insufficient memory
         || (status.getMessage() != null && status.getMessage().contains("memory"))) {
@@ -111,7 +133,7 @@ public class PipeStatementDataTypeConvertExecutionVisitor
           try {
             result =
                 IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                    statement, statementExecutor.execute(statement));
+                    statement, statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -123,7 +145,7 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               Thread.sleep(100L * (i + 1));
               result =
                   IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                      statement, statementExecutor.execute(statement));
+                      statement, statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
@@ -158,13 +180,16 @@ public class PipeStatementDataTypeConvertExecutionVisitor
 
   @Override
   public Optional<TSStatus> visitInsertRow(
-      final InsertRowStatement insertRowStatement, final TSStatus status) {
-    return tryExecute(new PipeConvertedInsertRowStatement(insertRowStatement));
+      final InsertRowStatement insertRowStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
+    return tryExecute(
+        new PipeConvertedInsertRowStatement(insertRowStatement), statusAndDatabaseName.getRight());
   }
 
   @Override
   public Optional<TSStatus> visitInsertRows(
-      final InsertRowsStatement insertRowsStatement, final TSStatus status) {
+      final InsertRowsStatement insertRowsStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
     if (insertRowsStatement.getInsertRowStatementList() == null
         || insertRowsStatement.getInsertRowStatementList().isEmpty()) {
       return Optional.empty();
@@ -175,12 +200,13 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         insertRowsStatement.getInsertRowStatementList().stream()
             .map(PipeConvertedInsertRowStatement::new)
             .collect(Collectors.toList()));
-    return tryExecute(convertedInsertRowsStatement);
+    return tryExecute(convertedInsertRowsStatement, statusAndDatabaseName.getRight());
   }
 
   @Override
   public Optional<TSStatus> visitInsertRowsOfOneDevice(
-      final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, final TSStatus status) {
+      final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
     if (insertRowsOfOneDeviceStatement.getInsertRowStatementList() == null
         || insertRowsOfOneDeviceStatement.getInsertRowStatementList().isEmpty()) {
       return Optional.empty();
@@ -192,18 +218,22 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         insertRowsOfOneDeviceStatement.getInsertRowStatementList().stream()
             .map(PipeConvertedInsertRowStatement::new)
             .collect(Collectors.toList()));
-    return tryExecute(convertedInsertRowsOfOneDeviceStatement);
+    return tryExecute(convertedInsertRowsOfOneDeviceStatement, statusAndDatabaseName.getRight());
   }
 
   @Override
   public Optional<TSStatus> visitInsertTablet(
-      final InsertTabletStatement insertTabletStatement, final TSStatus status) {
-    return tryExecute(new PipeConvertedInsertTabletStatement(insertTabletStatement));
+      final InsertTabletStatement insertTabletStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
+    return tryExecute(
+        new PipeConvertedInsertTabletStatement(insertTabletStatement),
+        statusAndDatabaseName.getRight());
   }
 
   @Override
   public Optional<TSStatus> visitInsertMultiTablets(
-      final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus status) {
+      final InsertMultiTabletsStatement insertMultiTabletsStatement,
+      final Pair<TSStatus, String> statusAndDatabaseName) {
     if (insertMultiTabletsStatement.getInsertTabletStatementList() == null
         || insertMultiTabletsStatement.getInsertTabletStatementList().isEmpty()) {
       return Optional.empty();
@@ -215,6 +245,6 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         insertMultiTabletsStatement.getInsertTabletStatementList().stream()
             .map(PipeConvertedInsertTabletStatement::new)
             .collect(Collectors.toList()));
-    return tryExecute(convertedInsertMultiTabletsStatement);
+    return tryExecute(convertedInsertMultiTabletsStatement, statusAndDatabaseName.getRight());
   }
 }

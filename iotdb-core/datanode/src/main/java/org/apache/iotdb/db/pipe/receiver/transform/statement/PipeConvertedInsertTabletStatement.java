@@ -42,10 +42,17 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     measurementSchemas = insertTabletStatement.getMeasurementSchemas();
     measurements = insertTabletStatement.getMeasurements();
     dataTypes = insertTabletStatement.getDataTypes();
+    columnCategories = insertTabletStatement.getColumnCategories();
+    idColumnIndices = insertTabletStatement.getIdColumnIndices();
+    attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
+    writeToTable = insertTabletStatement.isWriteToTable();
+    databaseName = insertTabletStatement.getDatabaseName().orElse(null);
     // InsertTabletStatement
     times = insertTabletStatement.getTimes();
     nullBitMaps = insertTabletStatement.getBitMaps();
     columns = insertTabletStatement.getColumns();
+    deviceIDs = insertTabletStatement.getRawTableDeviceIDs();
+    singleDevice = insertTabletStatement.isSingleDevice();
     rowCount = insertTabletStatement.getRowCount();
   }
 

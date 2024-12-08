@@ -80,7 +80,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   protected boolean[] measurementIsAligned;
 
-  private IDeviceID deviceID;
+  protected IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -484,6 +484,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
 
+    return deviceID;
+  }
+
+  @TableModel
+  public IDeviceID getRawTableDeviceID() {
     return deviceID;
   }
 

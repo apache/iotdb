@@ -49,8 +49,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,17 +59,15 @@ import java.util.Map;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
-
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
   protected BitMap[] nullBitMaps;
   protected Object[] columns;
 
-  private IDeviceID[] deviceIDs;
+  protected IDeviceID[] deviceIDs;
 
-  private boolean singleDevice;
+  protected boolean singleDevice;
 
   protected int rowCount = 0;
 
@@ -471,6 +467,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     return deviceIDs[rowIdx];
+  }
+
+  public IDeviceID[] getRawTableDeviceIDs() {
+    return deviceIDs;
   }
 
   public void setSingleDevice() {
