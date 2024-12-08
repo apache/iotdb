@@ -87,9 +87,6 @@ public class TransformFilteringSemiJoinToInnerJoin implements Rule<FilterNode> {
 
   @Override
   public Result apply(FilterNode filterNode, Captures captures, Context context) {
-    if (true) {
-      return Result.empty();
-    }
     SemiJoinNode semiJoin = captures.get(SEMI_JOIN);
 
     Symbol semiJoinSymbol = semiJoin.getSemiJoinOutput();

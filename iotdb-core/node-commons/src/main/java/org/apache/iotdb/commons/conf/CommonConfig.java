@@ -544,7 +544,7 @@ public class CommonConfig {
   }
 
   public double getDiskSpaceWarningThreshold() {
-    return 0.00005;
+    return diskSpaceWarningThreshold;
   }
 
   public void setDiskSpaceWarningThreshold(double diskSpaceWarningThreshold) {

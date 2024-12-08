@@ -76,9 +76,6 @@ public class InternalTypeManager implements TypeManager {
 
   private void addParametricType(ParametricType parametricType) {
     String name = parametricType.getName().toLowerCase(Locale.ENGLISH);
-    if ("ROW".equals(name)) {
-      name = "row";
-    }
     checkArgument(
         !parametricTypes.containsKey(name), "Parametric type already registered: %s", name);
     parametricTypes.putIfAbsent(name, parametricType);
