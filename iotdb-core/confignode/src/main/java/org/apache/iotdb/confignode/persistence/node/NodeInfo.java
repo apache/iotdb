@@ -290,15 +290,6 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  public int getDataNodeCpuCoreCount(int dataNodeId) {
-    try {
-      return registeredDataNodes.get(dataNodeId).getResource().getCpuCoreNum();
-    } catch (Exception e) {
-      LOGGER.warn("Get DataNode {} cpu core fail, will be treated as zero.", dataNodeId, e);
-      return 0;
-    }
-  }
-
   /** Return the number of total cpu cores in online DataNodes. */
   public int getDataNodeTotalCpuCoreCount() {
     int result = 0;
