@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.tablemodel;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
@@ -34,6 +35,7 @@ import org.junit.runner.RunWith;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -52,6 +54,11 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -95,10 +102,10 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
     }
 
     if (withParsing) {
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
       return;
     }
-    TableModelUtils.assertCountData("test", "test", 400, receiverEnv);
+    TableModelUtils.assertCountData("test", "test", 400, receiverEnv, handleFailure);
   }
 
   // ---------------------- //

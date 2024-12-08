@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -48,6 +49,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -113,8 +119,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
-      TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv, handleFailure);
       if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
         Assert.fail();
       }
@@ -130,6 +136,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -183,9 +194,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertData("test", "test", 0, 50, receiverEnv);
-      TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv);
-      HashSet<String> expectedResults = new HashSet();
+      TableModelUtils.assertData("test", "test", 0, 50, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv, handleFailure);
       if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
         Assert.fail();
       }
@@ -201,6 +211,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -254,8 +269,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertData("test", "test", 100, 150, receiverEnv);
-      TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv);
+      TableModelUtils.assertData("test", "test", 100, 150, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv, handleFailure);
       if (!TableModelUtils.hasDataBase("test", receiverEnv)) {
         Assert.fail();
       }
@@ -271,6 +286,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -337,8 +357,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("pattern", "pattern", 0, 200, receiverEnv);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv, handleFailure);
 
       HashSet<String> expectedResults = new HashSet();
       if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
@@ -356,6 +376,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -406,8 +431,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
 
       if (!TableModelUtils.hasDataBase("pattern1", receiverEnv)) {
         Assert.fail();
@@ -424,6 +449,11 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -475,8 +505,8 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv);
+      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
 
       if (!TableModelUtils.hasDataBase("pattern", receiverEnv)) {
         Assert.fail();
@@ -566,7 +596,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet(),
-          null);
+          (String) null);
     }
   }
 }

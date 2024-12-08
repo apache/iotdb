@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -49,6 +50,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -99,9 +105,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
-          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,"))));
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,"))),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
     }
   }
 
@@ -127,6 +134,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -179,7 +191,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
-          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
+          handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
@@ -211,9 +224,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(
-              new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))));
+              new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 150, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 150, receiverEnv, handleFailure);
     }
   }
 
@@ -223,6 +237,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -272,7 +291,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertCountData("test1", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test", 100, receiverEnv, handleFailure);
     }
   }
 }

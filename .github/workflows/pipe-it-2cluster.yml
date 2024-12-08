@@ -264,7 +264,7 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:

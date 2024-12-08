@@ -21,6 +21,8 @@ package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -33,9 +35,17 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
+import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -45,6 +55,12 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     boolean insertResult = true;
+
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -85,13 +101,34 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("100,"),
-          "test");
+          "test",
+          handleFailure);
+    }
 
-      TestUtils.assertDataEventuallyOnEnv(
-          senderEnv,
-          "show pipes",
-          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,",
-          Collections.emptySet());
+    try (final Connection connection = closeQuietly(senderEnv.getConnection());
+        final Statement statement = closeQuietly(connection.createStatement()); ) {
+      ResultSet result = statement.executeQuery("show pipes");
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  int pipeNum = 0;
+                  while (result.next()) {
+                    if (!result
+                        .getString(ColumnHeaderConstant.ID)
+                        .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                      pipeNum++;
+                    }
+                  }
+                  Assert.assertEquals(0, pipeNum);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     }
   }
 
@@ -99,6 +136,12 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     boolean insertResult = true;
+
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -140,13 +183,34 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.getQueryCountSql("test"),
           "_col0,",
           Collections.singleton("50,"),
-          "test");
+          "test",
+          handleFailure);
+    }
 
-      TestUtils.assertDataEventuallyOnEnv(
-          senderEnv,
-          "show pipes",
-          "ID,CreationTime,State,PipeSource,PipeProcessor,PipeSink,ExceptionMessage,RemainingEventCount,EstimatedRemainingSeconds,",
-          Collections.emptySet());
+    try (final Connection connection = closeQuietly(senderEnv.getConnection());
+        final Statement statement = closeQuietly(connection.createStatement()); ) {
+      ResultSet result = statement.executeQuery("show pipes");
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  int pipeNum = 0;
+                  while (result.next()) {
+                    if (!result
+                        .getString(ColumnHeaderConstant.ID)
+                        .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+                      pipeNum++;
+                    }
+                  }
+                  Assert.assertEquals(0, pipeNum);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     }
   }
 }
