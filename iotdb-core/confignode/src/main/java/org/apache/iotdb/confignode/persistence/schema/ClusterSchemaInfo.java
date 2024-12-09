@@ -246,10 +246,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getMaxDataRegionGroupNum());
       }
 
+      if (alterSchema.isSetTTL()) {
+        currentSchema.setTTL(alterSchema.getTTL());
+        LOGGER.info(
+            "[SetTTL] The ttl of Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getTTL());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
+
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -734,9 +743,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+  public TSStatus createSchemaTemplate(final CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
-      Template template = createSchemaTemplatePlan.getTemplate();
+      final Template template = createSchemaTemplatePlan.getTemplate();
       templateTable.createTemplate(template);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {

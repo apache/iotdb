@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -405,6 +406,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     boolean insertResult = true;
 
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
     // Create pipe
@@ -426,7 +433,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
     }
 
     // Check data on receiver
-    TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
+    TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
 
     // Alter pipe (modify 'source.path', 'source.inclusion' and
     // 'processor.tumbling-time.interval-seconds')
@@ -448,12 +455,14 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
         TableModelUtils.getQuerySql("test"),
         TableModelUtils.generateHeaderResults(),
         TableModelUtils.generateExpectedResults(0, 100),
-        "test");
+        "test",
+        handleFailure);
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         TableModelUtils.getQuerySql("test1"),
         TableModelUtils.generateHeaderResults(),
         TableModelUtils.generateExpectedResults(0, 200),
-        "test1");
+        "test1",
+        handleFailure);
   }
 }

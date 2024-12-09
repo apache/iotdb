@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -584,7 +585,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDelete(Delete node, Integer indent) {
+    protected Void visitDelete(final Delete node, final Integer indent) {
       builder.append("DELETE FROM ").append(formatName(node.getTable().getName()));
 
       node.getWhere().ifPresent(where -> builder.append(" WHERE ").append(formatExpression(where)));
@@ -593,9 +594,9 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateDB(CreateDB node, Integer indent) {
+    protected Void visitCreateDB(final CreateDB node, final Integer indent) {
       builder.append("CREATE DATABASE ");
-      if (node.isSetIfNotExists()) {
+      if (node.exists()) {
         builder.append("IF NOT EXISTS ");
       }
       builder.append(node.getDbName()).append(" ");
@@ -606,7 +607,20 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropDB(DropDB node, Integer indent) {
+    protected Void visitAlterDB(final AlterDB node, final Integer indent) {
+      builder.append("ALTER DATABASE ");
+      if (node.exists()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getDbName()).append(" ");
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropDB(final DropDB node, final Integer indent) {
       builder.append("DROP DATABASE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");

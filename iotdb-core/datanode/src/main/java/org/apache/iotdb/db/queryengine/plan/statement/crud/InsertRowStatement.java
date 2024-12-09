@@ -80,7 +80,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   protected boolean[] measurementIsAligned;
 
-  private IDeviceID deviceID;
+  protected IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -226,8 +226,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       dataTypes[i] = measurementSchemas[i].getType();
       try {
         // if the type is binary and the value is already binary, do not convert
-        if (values[i] instanceof String
-            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
+        if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {
@@ -485,6 +484,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
 
+    return deviceID;
+  }
+
+  @TableModel
+  public IDeviceID getRawTableDeviceID() {
     return deviceID;
   }
 

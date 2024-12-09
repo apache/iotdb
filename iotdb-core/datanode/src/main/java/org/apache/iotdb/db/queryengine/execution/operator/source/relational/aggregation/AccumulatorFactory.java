@@ -121,7 +121,9 @@ public class AccumulatorFactory {
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
     AggregateFunctionConfig config = new AggregateFunctionConfig();
     aggregateFunction.beforeStart(functionParameters, config);
-    return new UserDefinedAggregateFunctionAccumulator(aggregateFunction, inputDataTypes.stream()
+    return new UserDefinedAggregateFunctionAccumulator(
+        aggregateFunction,
+        inputDataTypes.stream()
             .map(UDFDataTypeTransformer::transformTSDataTypeToReadType)
             .collect(Collectors.toList()));
   }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelTypeProviderExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -38,6 +40,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
@@ -130,6 +134,17 @@ public class PlanFragment {
   private TDataNodeLocation getNodeLocation(PlanNode root) {
     if (root instanceof VirtualSourceNode) {
       return ((VirtualSourceNode) root).getDataNodeLocation();
+    } else if (root instanceof InformationSchemaTableScanNode) {
+      TRegionReplicaSet regionReplicaSet =
+          ((InformationSchemaTableScanNode) root).getRegionReplicaSet();
+
+      checkArgument(
+          regionReplicaSet != null, "InformationSchemaTableScanNode must have regionReplicaSet");
+      checkArgument(
+          regionReplicaSet.getDataNodeLocations().size() == 1,
+          "each InformationSchemaTableScanNode have only one DataNodeLocation");
+
+      return regionReplicaSet.getDataNodeLocations().get(0);
     }
     for (PlanNode child : root.getChildren()) {
       TDataNodeLocation result = getNodeLocation(child);

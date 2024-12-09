@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 
 import org.junit.Test;
@@ -62,7 +62,7 @@ public class SubQueryTest {
   ProjectNode projectNode;
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
-  TableScanNode tableScanNode;
+  DeviceTableScanNode deviceTableScanNode;
 
   @Test
   public void subQueryTest1() {
@@ -88,11 +88,11 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
     assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 5);
-    assertEquals(9, tableScanNode.getPushDownLimit());
-    assertTrue(tableScanNode.isPushLimitToEachDevice());
-    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
+    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 5);
+    assertEquals(9, deviceTableScanNode.getPushDownLimit());
+    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
     /*
      * IdentitySinkNode-163
@@ -102,11 +102,12 @@ public class SubQueryTest {
      *               ├──ExchangeNode-159: [SourceAddress:192.0.12.1/test_query.2.0/161]
      *               ├──LimitNode-137
      *               │       └──ProjectNode-118
-     *               │           └──TableScanNode-115
+     *               │           └──DeviceTableScanNode-115
      *               └──ExchangeNode-160: [SourceAddress:192.0.10.1/test_query.3.0/162]
      */
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -119,10 +120,10 @@ public class SubQueryTest {
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
     projectNode = (ProjectNode) getChildrenNode(topKNode.getChildren().get(1), 1);
-    assertTrue(getChildrenNode(projectNode, 1) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(projectNode, 1);
+    assertTrue(getChildrenNode(projectNode, 1) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(projectNode, 1);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList(
             "table1.shanghai.A3.YY",
             "table1.shenzhen.B1.XX",
@@ -137,16 +138,16 @@ public class SubQueryTest {
      * IdentitySinkNode-161
      *   └──LimitNode-136
      *           └──ProjectNode-117
-     *               └──TableScanNode-114
+     *               └──DeviceTableScanNode-114
      */
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ"),
         ASC,
         9,
@@ -181,11 +182,11 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
     assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof StreamSortNode);
     assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 7);
-    assertEquals(3, tableScanNode.getPushDownLimit());
-    assertTrue(tableScanNode.isPushLimitToEachDevice());
-    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
+    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 7);
+    assertEquals(3, deviceTableScanNode.getPushDownLimit());
+    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
     /*
      * IdentitySinkNode-199
@@ -197,11 +198,12 @@ public class SubQueryTest {
      *                           ├──ExchangeNode-195: [SourceAddress:192.0.12.1/test_query.2.0/197]
      *                           ├──LimitNode-172 (Notice: child StreamSort has been eliminated)
      *                           │   └──ProjectNode-150
-     *                           │       └──TableScanNode-147
+     *                           │       └──DeviceTableScanNode-147
      *                           └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.3.0/198]
      */
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -217,10 +219,10 @@ public class SubQueryTest {
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
     LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(limitNode, 2) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(limitNode, 2);
+    assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList(
             "table1.shenzhen.B1.XX",
             "table1.shenzhen.B2.ZZ",
@@ -235,16 +237,16 @@ public class SubQueryTest {
      * IdentitySinkNode-161
      *   └──LimitNode-136
      *           └──ProjectNode-117
-     *               └──TableScanNode-114
+     *               └──DeviceTableScanNode-114
      */
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ"),
         ASC,
         3,
@@ -281,11 +283,11 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof ProjectNode);
     assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof StreamSortNode);
     assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 8);
-    assertEquals(3, tableScanNode.getPushDownLimit());
-    assertTrue(tableScanNode.isPushLimitToEachDevice());
-    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
+    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 8);
+    assertEquals(3, deviceTableScanNode.getPushDownLimit());
+    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
     /*
      * IdentitySinkNode-199
@@ -297,7 +299,7 @@ public class SubQueryTest {
      *                           ├──ExchangeNode-195: [SourceAddress:192.0.12.1/test_query.2.0/197]
      *                           ├──LimitNode-172 (Notice: child StreamSort has been eliminated)
      *                           │   └──ProjectNode-150
-     *                           │       └──TableScanNode-147
+     *                           │       └──DeviceTableScanNode-147
      *                           └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.3.0/198]
      */
     /*
@@ -311,11 +313,12 @@ public class SubQueryTest {
      *                               ├──ExchangeNode-201: [SourceAddress:192.0.12.1/test_query.2.0/203]
      *                               ├──LimitNode-177
      *                               │   └──ProjectNode-154
-     *                               │       └──TableScanNode-151
+     *                               │       └──DeviceTableScanNode-151
      *                               └──ExchangeNode-202: [SourceAddress:192.0.10.1/test_query.3.0/204]
      */
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -332,10 +335,10 @@ public class SubQueryTest {
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
     LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(limitNode, 2) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(limitNode, 2);
+    assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList(
             "table1.shenzhen.B1.XX",
             "table1.shenzhen.B2.ZZ",
@@ -350,16 +353,16 @@ public class SubQueryTest {
      * IdentitySinkNode-161
      *   └──LimitNode-136
      *           └──ProjectNode-117
-     *               └──TableScanNode-114
+     *               └──DeviceTableScanNode-114
      */
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ"),
         ASC,
         3,
@@ -401,15 +404,15 @@ public class SubQueryTest {
         ProjectNode.class,
         StreamSortNode.class,
         ProjectNode.class,
-        TableScanNode.class);
+        DeviceTableScanNode.class);
     assertEquals(
         "(\"s1\" > 1)",
         ((FilterNode) getChildrenNode(logicalPlanNode, 4)).getPredicate().toString());
     assertEquals(3, ((LimitNode) getChildrenNode(logicalPlanNode, 5)).getCount());
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 9);
-    assertEquals(3, tableScanNode.getPushDownLimit());
-    assertTrue(tableScanNode.isPushLimitToEachDevice());
-    assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 9);
+    assertEquals(3, deviceTableScanNode.getPushDownLimit());
+    assertTrue(deviceTableScanNode.isPushLimitToEachDevice());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
 
     /*
      * IdentitySinkNode-219
@@ -423,11 +426,12 @@ public class SubQueryTest {
      *                                   ├──ExchangeNode-215: [SourceAddress:192.0.12.1/test_query.2.0/217]
      *                                   ├──LimitNode-190
      *                                   │   └──ProjectNode-166
-     *                                   │       └──TableScanNode-163
+     *                                   │       └──DeviceTableScanNode-163
      *                                   └──ExchangeNode-216: [SourceAddress:192.0.10.1/test_query.3.0/218]
      */
     distributionPlanner =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA);
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -448,10 +452,10 @@ public class SubQueryTest {
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
     LimitNode limitNode = (LimitNode) topKNode.getChildren().get(1);
     assertTrue(getChildrenNode(limitNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(limitNode, 2) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(limitNode, 2);
+    assertTrue(getChildrenNode(limitNode, 2) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(limitNode, 2);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList(
             "table1.shenzhen.B1.XX",
             "table1.shenzhen.B2.ZZ",
@@ -466,16 +470,16 @@ public class SubQueryTest {
      * IdentitySinkNode-161
      *   └──LimitNode-136
      *           └──ProjectNode-117
-     *               └──TableScanNode-114
+     *               └──DeviceTableScanNode-114
      */
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 1) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof DeviceTableScanNode);
+    deviceTableScanNode = (DeviceTableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(
-        tableScanNode,
+        deviceTableScanNode,
         Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ"),
         ASC,
         3,
@@ -495,10 +499,17 @@ public class SubQueryTest {
                 QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
-    assertNodeMatches(logicalPlanNode, OutputNode.class, TableScanNode.class);
-    TableScanNode tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 1);
+    assertNodeMatches(logicalPlanNode, OutputNode.class, DeviceTableScanNode.class);
+    DeviceTableScanNode deviceTableScanNode =
+        (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 1);
     assertTableScan(
-        tableScanNode, ALL_DEVICE_ENTRIES, ASC, 0, 0, true, "((\"s1\" > 1) AND (\"s2\" > 2))");
+        deviceTableScanNode,
+        ALL_DEVICE_ENTRIES,
+        ASC,
+        0,
+        0,
+        true,
+        "((\"s1\" > 1) AND (\"s2\" > 2))");
   }
 
   // test MergeLimits
@@ -512,10 +523,12 @@ public class SubQueryTest {
                 QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
-    assertNodeMatches(logicalPlanNode, OutputNode.class, LimitNode.class, TableScanNode.class);
+    assertNodeMatches(
+        logicalPlanNode, OutputNode.class, LimitNode.class, DeviceTableScanNode.class);
     LimitNode limitNode = (LimitNode) getChildrenNode(logicalPlanNode, 1);
     assertEquals(5, limitNode.getCount());
-    TableScanNode tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 2);
-    assertTableScan(tableScanNode, ALL_DEVICE_ENTRIES, ASC, 5, 0, false);
+    DeviceTableScanNode deviceTableScanNode =
+        (DeviceTableScanNode) getChildrenNode(logicalPlanNode, 2);
+    assertTableScan(deviceTableScanNode, ALL_DEVICE_ENTRIES, ASC, 5, 0, false);
   }
 }

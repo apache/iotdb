@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
@@ -59,7 +60,6 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -343,7 +343,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 req.getTimeout());
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            relationSqlParser.createStatement(statement, clientSession.getZoneId());
+            relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -1672,7 +1672,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           } else {
 
             org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-                relationSqlParser.createStatement(statement, clientSession.getZoneId());
+                relationSqlParser.createStatement(
+                    statement, clientSession.getZoneId(), clientSession);
 
             if (s instanceof Use) {
               useDatabase = true;
