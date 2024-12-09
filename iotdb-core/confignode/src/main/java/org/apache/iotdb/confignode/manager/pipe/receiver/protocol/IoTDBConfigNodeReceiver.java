@@ -69,6 +69,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -90,6 +92,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiver.class);
+
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
@@ -327,6 +331,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
+  }
+
+  @Override
+  protected String getSenderHost() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? session.getClientAddress() : "unknown";
+  }
+
+  @Override
+  protected String getSenderPort() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? String.valueOf(session.getClientPort()) : "unknown";
   }
 
   @Override

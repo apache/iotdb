@@ -179,12 +179,23 @@ public class IoTDBConstant {
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
+  // for tree model
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+  // for table model
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR_FUNC = "built-in scalar function";
+  public static final String FUNCTION_TYPE_BUILTIN_AGG_FUNC = "built-in aggregate function";
+  public static final String FUNCTION_TYPE_BUILTIN_TABLE_FUNC = "built-in table function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC =
+      "user-defined scalar function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_AGG_FUNC =
+      "user-defined aggregate function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC = "user-defined table function";
+  // common
   public static final String FUNCTION_TYPE_UNKNOWN = "UNKNOWN";
   public static final String FUNCTION_STATE_AVAILABLE = "AVAILABLE";
   public static final String FUNCTION_STATE_UNAVAILABLE = "UNAVAILABLE";
