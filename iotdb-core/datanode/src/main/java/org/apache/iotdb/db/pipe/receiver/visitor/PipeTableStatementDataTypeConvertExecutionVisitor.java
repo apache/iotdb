@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
@@ -35,11 +36,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,14 +120,26 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
         loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionEventScanParser container =
-          new TsFileInsertionEventScanParser(
-              file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-        for (final Pair<Tablet, Boolean> tabletWithIsAligned : container.toTabletWithIsAligneds()) {
+      try (final TsFileInsertionEventTableParser parser =
+          new TsFileInsertionEventTableParser(
+              file,
+              new TablePattern(true, null, null),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null)) {
+        for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
+          if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+            continue;
+          }
+          final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
+              (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                          tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
+                          rawTabletInsertionEvent.convertToTablet(),
+                          rawTabletInsertionEvent.isAligned())
                       .constructStatement());
 
           TSStatus result;
