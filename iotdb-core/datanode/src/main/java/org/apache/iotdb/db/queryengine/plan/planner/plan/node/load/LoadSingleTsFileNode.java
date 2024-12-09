@@ -183,7 +183,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     // Do nothing
   }
 
@@ -203,17 +203,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     // Do nothing
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     // Do nothing
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     throw new NotImplementedException("split load single TsFile is not implemented");
   }
 
@@ -243,20 +243,21 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
+    final LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
     return Objects.equals(tsFile, loadSingleTsFileNode.tsFile)
         && Objects.equals(resource, loadSingleTsFileNode.resource)
         && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
         && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
+        && Objects.equals(loadWithMods, loadSingleTsFileNode.loadWithMods)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
   }
 
@@ -269,6 +270,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         database,
         needDecodeTsFile,
         deleteAfterLoad,
+        loadWithMods,
         localRegionReplicaSet);
   }
 }
