@@ -145,6 +145,7 @@ public class LoadTsFile extends Statement {
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);
+    this.loadWithMods = LoadTsFileConfigurator.parseOrGetDefaultLoadWithMod(loadAttributes);
   }
 
   @Override

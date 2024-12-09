@@ -45,6 +45,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.LOAD_WITH_MODS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 
@@ -222,6 +223,7 @@ public class LoadTsFileStatement extends Statement {
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
+    this.loadWithMods = LoadTsFileConfigurator.parseOrGetDefaultLoadWithMod(loadAttributes);
   }
 
   @Override
@@ -248,6 +250,7 @@ public class LoadTsFileStatement extends Statement {
     if (model != null) {
       loadAttributes.put(MODEL_KEY, model);
     }
+    loadAttributes.put(LOAD_WITH_MODS_KEY, String.valueOf(loadWithMods));
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 
