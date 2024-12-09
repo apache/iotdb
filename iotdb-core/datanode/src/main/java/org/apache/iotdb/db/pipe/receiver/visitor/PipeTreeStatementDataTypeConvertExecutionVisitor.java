@@ -98,10 +98,10 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
         loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionEventScanParser container =
+      try (final TsFileInsertionEventScanParser parser =
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-        for (final Pair<Tablet, Boolean> tabletWithIsAligned : container.toTabletWithIsAligneds()) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
