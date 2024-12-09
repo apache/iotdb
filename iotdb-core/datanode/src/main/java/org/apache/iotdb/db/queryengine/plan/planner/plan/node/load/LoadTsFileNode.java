@@ -48,7 +48,10 @@ public class LoadTsFileNode extends WritePlanNode {
   private final String database;
 
   public LoadTsFileNode(
-      PlanNodeId id, List<TsFileResource> resources, List<Boolean> isTableModel, String database) {
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
@@ -66,7 +69,7 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     // Do nothing
   }
 
@@ -86,17 +89,17 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     // Do nothing
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     // Do nothing
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     if (analysis instanceof Analysis) {
       return splitByPartitionForTreeModel((Analysis) analysis);
     } else {
@@ -105,9 +108,9 @@ public class LoadTsFileNode extends WritePlanNode {
     }
   }
 
-  private List<WritePlanNode> splitByPartitionForTreeModel(Analysis analysis) {
-    List<WritePlanNode> res = new ArrayList<>();
-    LoadTsFileStatement statement =
+  private List<WritePlanNode> splitByPartitionForTreeModel(final Analysis analysis) {
+    final List<WritePlanNode> res = new ArrayList<>();
+    final LoadTsFileStatement statement =
         analysis.getTreeStatement() instanceof PipeEnrichedStatement
             ? (LoadTsFileStatement)
                 ((PipeEnrichedStatement) analysis.getTreeStatement()).getInnerStatement()
@@ -127,9 +130,9 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   private List<WritePlanNode> splitByPartitionForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis analysis) {
-    List<WritePlanNode> res = new ArrayList<>();
-    LoadTsFile statement =
+      final org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis analysis) {
+    final List<WritePlanNode> res = new ArrayList<>();
+    final LoadTsFile statement =
         (analysis.getStatement() instanceof PipeEnriched)
             ? (LoadTsFile) ((PipeEnriched) analysis.getStatement()).getInnerStatement()
             : (LoadTsFile) analysis.getStatement();
@@ -150,14 +153,14 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    LoadTsFileNode loadTsFileNode = (LoadTsFileNode) o;
+    final LoadTsFileNode loadTsFileNode = (LoadTsFileNode) o;
     return Objects.equals(resources, loadTsFileNode.resources)
         && Objects.equals(database, loadTsFileNode.database)
         && Objects.equals(isTableModel, loadTsFileNode.isTableModel);
