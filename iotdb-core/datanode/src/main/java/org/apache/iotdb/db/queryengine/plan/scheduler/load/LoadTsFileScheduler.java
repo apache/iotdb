@@ -134,12 +134,13 @@ public class LoadTsFileScheduler implements IScheduler {
   private final LoadTsFileDataCacheMemoryBlock block;
 
   public LoadTsFileScheduler(
-      DistributedQueryPlan distributedQueryPlan,
-      MPPQueryContext queryContext,
-      QueryStateMachine stateMachine,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IPartitionFetcher partitionFetcher,
-      boolean isGeneratedByPipe) {
+      final DistributedQueryPlan distributedQueryPlan,
+      final MPPQueryContext queryContext,
+      final QueryStateMachine stateMachine,
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+          internalServiceClientManager,
+      final IPartitionFetcher partitionFetcher,
+      final boolean isGeneratedByPipe) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
@@ -150,7 +151,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
-    for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
+    for (final FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
     }
   }
@@ -199,7 +200,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
           } else { // need decode, load locally or remotely, use two phases method
-            String uuid = UUID.randomUUID().toString();
+            final String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
 
@@ -242,7 +243,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 i + 1,
                 tsFileNodeListSize);
           }
-        } catch (Exception e) {
+        } catch (final Exception e) {
           isLoadSuccess = false;
           stateMachine.transitionToFailed(e);
           LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
@@ -262,7 +263,7 @@ public class LoadTsFileScheduler implements IScheduler {
     }
   }
 
-  private boolean firstPhase(LoadSingleTsFileNode node) {
+  private boolean firstPhase(final LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
@@ -280,7 +281,7 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFile()),
           e);
       return false;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       stateMachine.transitionToFailed(e);
       LOGGER.warn(
           String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);

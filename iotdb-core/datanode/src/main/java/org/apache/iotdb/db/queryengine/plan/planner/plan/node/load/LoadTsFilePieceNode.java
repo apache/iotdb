@@ -58,7 +58,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     super(id);
   }
 
-  public LoadTsFilePieceNode(PlanNodeId id, File tsFile) {
+  public LoadTsFilePieceNode(final PlanNodeId id, final File tsFile) {
     super(id);
     this.tsFile = tsFile;
     this.dataSize = 0;
@@ -69,7 +69,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     return dataSize;
   }
 
-  public void addTsFileData(TsFileData tsFileData) {
+  public void addTsFileData(final TsFileData tsFileData) {
     tsFileDataList.add(tsFileData);
     dataSize += tsFileData.getDataSize();
   }
@@ -93,7 +93,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     // Do nothing
   }
 
@@ -118,26 +118,26 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     try {
-      ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-      DataOutputStream stream = new DataOutputStream(byteOutputStream);
+      final ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+      final DataOutputStream stream = new DataOutputStream(byteOutputStream);
       serializeAttributes(stream);
       byteBuffer.put(byteOutputStream.toByteArray());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error("Serialize to ByteBuffer error.", e);
     }
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
-    for (TsFileData tsFileData : tsFileDataList) {
+    for (final TsFileData tsFileData : tsFileDataList) {
       try {
         tsFileData.serialize(stream);
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.error(
             String.format(
                 "Serialize data of TsFile %s error, skip TsFileData %s",
@@ -147,38 +147,38 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     throw new NotImplementedException("split load piece TsFile is not implemented");
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
-    InputStream stream = new ByteArrayInputStream(buffer.array());
+  public static PlanNode deserialize(final ByteBuffer buffer) {
+    final InputStream stream = new ByteArrayInputStream(buffer.array());
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
-      File tsFile = new File(ReadWriteIOUtils.readString(stream));
-      LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
-      int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
+      final File tsFile = new File(ReadWriteIOUtils.readString(stream));
+      final LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
+      final int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
       for (int i = 0; i < tsFileDataSize; i++) {
-        TsFileData tsFileData = TsFileData.deserialize(stream);
+        final TsFileData tsFileData = TsFileData.deserialize(stream);
         pieceNode.addTsFileData(tsFileData);
       }
       pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
       return pieceNode;
-    } catch (IOException | PageException | IllegalPathException e) {
+    } catch (final IOException | PageException | IllegalPathException e) {
       LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getName(), e);
       return null;
     }
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
+    final LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
     return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
         && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
         && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);

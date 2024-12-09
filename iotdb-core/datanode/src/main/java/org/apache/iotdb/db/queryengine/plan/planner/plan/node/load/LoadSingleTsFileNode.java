@@ -66,12 +66,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id,
-      TsFileResource resource,
-      boolean isTableModel,
-      String database,
-      boolean deleteAfterLoad,
-      long writePointCount) {
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -86,9 +86,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public boolean needDecodeTsFile(
-      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher)
-      throws IOException {
-    List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
+      final Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+          partitionFetcher) {
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()
         .forEach(
@@ -112,13 +112,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return needDecodeTsFile;
   }
 
-  private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
+  private boolean isDispatchedToLocal(final Set<TRegionReplicaSet> replicaSets) {
     if (replicaSets.size() > 1) {
       return false;
     }
 
-    for (TRegionReplicaSet replicaSet : replicaSets) {
-      List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
+    for (final TRegionReplicaSet replicaSet : replicaSets) {
+      final List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
       if (dataNodeLocationList.size() > 1) {
         return false;
       }
@@ -131,7 +131,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return true;
   }
 
-  private boolean isDispatchedToLocal(TEndPoint endPoint) {
+  private boolean isDispatchedToLocal(final TEndPoint endPoint) {
     return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
   }
