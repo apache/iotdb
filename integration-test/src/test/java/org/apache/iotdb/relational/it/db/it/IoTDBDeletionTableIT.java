@@ -1191,7 +1191,7 @@ public class IoTDBDeletionTableIT {
       int fileNumMax,
       int pointPerFile)
       throws SQLException, InterruptedException {
-    // delete random 10 points each time
+    // delete random 100 points each time
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     List<TimeRange> undeletedRanges = new ArrayList<>();
