@@ -226,7 +226,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public void clean() {
-    if (loadWithMods) {
+    if (deleteAfterLoad) {
       LoadTsFileManager.cleanTsFile(tsFile);
     }
   }
