@@ -19,6 +19,43 @@
 
 -->
 
+# Apache IoTDB 1.3.3
+
+## Features & Improvements
+
+- Storage Engine: Added new data types String, Blob, Date, and Timestamp.
+- Storage Engine: Multi-level storage has added a rate-limiting mechanism.
+- Storage Engine: New merge target file splitting feature, with additional configuration file parameters, and improved memory control performance of the merge module.
+- Data Query: Filter performance optimization, enhancing the speed of aggregate queries and where condition queries.
+- Data Query: New client query requests load balancing optimization.
+- Data Query: New active metadata statistics query added.
+- Data Query: Optimized memory control strategy during the query planning phase.
+- Data Synchronization: The sender supports transferring files to a specified directory, and the receiver automatically loads them into IoTDB.
+- Data Synchronization: The receiver has a new automatic conversion mechanism for data type requests.
+- Data Synchronization: Enhanced observability on the receiver side, supporting ops/latency statistics for multiple internal interfaces, consolidated into a single pipeTransfer display.
+- Data Loading: DataNode actively listens and loads TsFiles, with additional observability metrics.
+- Stream Processing Module: New data subscription capability, supporting subscription to database data in the form of data points or tsfile files.
+- Stream Processing Module: Alter Pipe supports the ability to alter the source.
+- System Management: Optimized configuration files, with the original three configuration files merged into one, reducing user operational costs.
+- System Management: Optimized restart recovery performance, reducing startup time.
+- System Management: Internal addition of monitoring items such as device count, estimated remaining time for data synchronization, size of data to be synchronized, and synchronization speed.
+- Scripts and Tools: The import-tsfile script is expanded to support running the script on a different server from the IoTDB server.
+- Scripts and Tools: New metadata import and export scripts added.
+- Scripts and Tools: New support for Kubernetes Helm added.
+- AINode: AINode module added.
+  ...
+
+## Bugs
+
+- Fixed the issue of NullPointerException (NPE) when merging chunks with modifications and empty pages in the sequential space.
+- Fixed the issue where the wrong parent file was used when reassigning the file position for skipped files during merge, leading to failure in creating hard links.
+- Fixed the issue where the newly added four data types had null values written, and the TsFile handling of the STRING type was incorrect, causing a BufferUnderflowException: null.
+- Fixed the issue in the high availability scenario where stopping the DataNode resulted in a PipeException: Failed to start consensus pipe.
+- Fixed the issue in Stream mode where the first batch of written data points might require a flush to be synchronized.
+- Fixed the compatibility issue with pipe plugin upgrades.
+- Fixed the issue where the `ORDER BY` clause became ineffective when used in combination with `LIMIT` in the last query.
+  ...
+
 # Apache IoTDB 1.3.2
 
 ## Features & Improvements
