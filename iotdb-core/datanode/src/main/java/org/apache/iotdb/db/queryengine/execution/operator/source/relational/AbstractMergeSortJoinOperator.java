@@ -411,7 +411,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   }
 
   protected boolean lessThan(TsBlock leftBlock, int lIndex, TsBlock rightBlock, int rIndex) {
-    for (int i = 0; i < lIndex; i++) {
+    for (int i = 0; i < comparators.size(); i++) {
       if (!comparators
           .get(i)
           .lessThan(
@@ -429,7 +429,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   }
 
   protected boolean equalsTo(TsBlock leftBlock, int lIndex, TsBlock rightBlock, int rIndex) {
-    for (int i = 0; i < lIndex; i++) {
+    for (int i = 0; i < comparators.size(); i++) {
       if (!comparators
           .get(i)
           .equalsTo(

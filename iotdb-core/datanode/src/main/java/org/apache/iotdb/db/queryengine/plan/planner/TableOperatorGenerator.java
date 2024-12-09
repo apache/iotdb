@@ -1279,17 +1279,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<Type> joinKeyTypes = new ArrayList<>(size);
     int[] rightJoinKeyPositions = new int[size];
     for (int i = 0; i < size; i++) {
-      Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
+      Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(i).getRight());
       if (rightJoinKeyPosition == null) {
         throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
       }
       rightJoinKeyPositions[i] = rightJoinKeyPosition;
 
       Type leftJoinKeyType =
-          context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getLeft());
+          context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getLeft());
       checkArgument(
           leftJoinKeyType
-              == context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getRight()),
+              == context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()),
           "Join key type mismatch.");
       joinKeyTypes.add(leftJoinKeyType);
     }
@@ -1373,7 +1373,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           case BLOB:
             valueColumns[i] =
                 new BinaryColumn(
-                    1, Optional.empty(), new Binary[] {valueColumns[i].getBinary(rowIndex)});
+                    1, Optional.empty(), new Binary[] {inputColumns[i].getBinary(rowIndex)});
             break;
           default:
             throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
