@@ -300,26 +300,72 @@ public class Util {
    * @param s input string
    * @return timestamp
    */
-  public static long parseTime(String s) {
+  public static long parseTime(String s, String timestampPrecision) {
     long unit = 0;
     s = s.toLowerCase();
     s = s.replace(" ", "");
-    if (s.endsWith("ms")) {
-      unit = 1;
-      s = s.substring(0, s.length() - 2);
-    } else if (s.endsWith("s")) {
-      unit = 1000;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("m")) {
-      unit = 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("h")) {
-      unit = 60 * 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("d")) {
-      unit = 24 * 60 * 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
+    if (timestampPrecision.equals("ms")) {
+      if (s.endsWith("ms")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
+    } else if (timestampPrecision.equals("us")) {
+      if (s.endsWith("us")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("ms")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000 * 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
+    } else if (timestampPrecision.equals("ns")) {
+      if (s.endsWith("ns")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("us")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("ms")) {
+        unit = 1000 * 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000 * 1000 * 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
     }
+
     double v = Double.parseDouble(s);
     return (long) (unit * v);
   }
