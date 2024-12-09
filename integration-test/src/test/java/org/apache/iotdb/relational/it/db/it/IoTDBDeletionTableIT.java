@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.AfterClass;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -86,7 +89,7 @@ public class IoTDBDeletionTableIT {
         .getCommonConfig()
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000);
-    // Adjust memstable threshold size to make it flush automatically
+    // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().initClusterEnvironment();
     prepareSeries();
   }
@@ -941,8 +944,12 @@ public class IoTDBDeletionTableIT {
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
+    int fileNumMax = 1000;
+    int pointPerFile = 1000;
+    int deviceNum = 4;
     Future<Void> writeThread =
-        threadPool.submit(() -> concurrentWrite(writtenPointCounter, threadPool));
+        threadPool.submit(
+            () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
     Future<Void> deletionThread =
         threadPool.submit(() -> concurrentSequentialDeletion(writtenPointCounter, threadPool));
     writeThread.get();
@@ -967,11 +974,23 @@ public class IoTDBDeletionTableIT {
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
+    AtomicLong deletedPointCounter = new AtomicLong(0);
+    int fileNumMax = 1000;
+    int pointPerFile = 1000;
+    int deviceNum = 4;
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
-        threadPool.submit(() -> concurrentWrite(writtenPointCounter, threadPool));
+        threadPool.submit(
+            () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
     Future<Void> deletionThread =
-        threadPool.submit(() -> concurrentRandomDeletion(writtenPointCounter, threadPool));
+        threadPool.submit(
+            () ->
+                randomDeletion(
+                    writtenPointCounter,
+                    deletedPointCounter,
+                    threadPool,
+                    fileNumMax,
+                    pointPerFile));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -984,11 +1003,84 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  private Void concurrentWrite(AtomicLong writtenPointCounter, ExecutorService allThreads)
-      throws SQLException {
+  @Category(ManualIT.class)
+  @Test
+  public void testConcurrentFlushAndRandomDeletionWithRestart()
+      throws InterruptedException, ExecutionException, SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
+
+    AtomicLong writtenPointCounter = new AtomicLong(-1);
+    AtomicLong deletedPointCounter = new AtomicLong(0);
+    ExecutorService writeDeletionThreadPool = Executors.newCachedThreadPool();
+    ExecutorService restartThreadPool = Executors.newCachedThreadPool();
     int fileNumMax = 1000;
     int pointPerFile = 1000;
     int deviceNum = 4;
+    Future<Void> writeThread =
+        writeDeletionThreadPool.submit(
+            () ->
+                write(
+                    writtenPointCounter,
+                    writeDeletionThreadPool,
+                    fileNumMax,
+                    pointPerFile,
+                    deviceNum));
+    Future<Void> deletionThread =
+        writeDeletionThreadPool.submit(
+            () ->
+                randomDeletion(
+                    writtenPointCounter,
+                    deletedPointCounter,
+                    writeDeletionThreadPool,
+                    fileNumMax,
+                    pointPerFile));
+    int restartTargetPointWritten = 100000;
+    Future<Void> restartThread =
+        restartThreadPool.submit(
+            () -> restart(writtenPointCounter, restartTargetPointWritten, writeDeletionThreadPool));
+    try {
+      writeThread.get();
+    } catch (CancellationException ignored) {
+
+    }
+    try {
+      deletionThread.get();
+    } catch (CancellationException ignored) {
+
+    }
+    restartThread.get();
+    writeDeletionThreadPool.shutdown();
+    boolean success = writeDeletionThreadPool.awaitTermination(1, TimeUnit.MINUTES);
+    assertTrue(success);
+
+    // test that should be written are written, deleted are deleted
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE test");
+      try (ResultSet set =
+          statement.executeQuery(
+              "select count(*) from table1 where time < " + writtenPointCounter.get())) {
+        assertTrue(set.next());
+        assertEquals(writtenPointCounter.get() - deletedPointCounter.get(), set.getLong(1));
+      }
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists test");
+    }
+  }
+
+  private Void write(
+      AtomicLong writtenPointCounter,
+      ExecutorService allThreads,
+      int fileNumMax,
+      int pointPerFile,
+      int deviceNum)
+      throws SQLException {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -1015,6 +1107,17 @@ public class IoTDBDeletionTableIT {
           }
         }
         statement.execute("FLUSH");
+        if (i % 100 == 0) {
+          LOGGER.info("{} files written", i);
+        }
+      }
+    } catch (SQLException e) {
+      if (e.getMessage().contains("Fail to reconnect")) {
+        // restart triggered, ignore
+        return null;
+      } else {
+        allThreads.shutdownNow();
+        throw e;
       }
     } catch (Throwable e) {
       allThreads.shutdownNow();
@@ -1041,7 +1144,9 @@ public class IoTDBDeletionTableIT {
 
       statement.execute("create database if not exists test");
       statement.execute("use test");
-      while (deletionOffset < deletionEnd && !Thread.interrupted()) {
+      while (deletionOffset < deletionEnd
+          && nextPointNumToDelete < deletionEnd
+          && !Thread.interrupted()) {
         if (writtenPointCounter.get() >= nextPointNumToDelete) {
           statement.execute(
               "delete from test.table1 where time >= "
@@ -1064,6 +1169,14 @@ public class IoTDBDeletionTableIT {
           Thread.sleep(10);
         }
       }
+    } catch (SQLException e) {
+      if (e.getMessage().contains("Fail to reconnect")) {
+        // restart triggered, ignore
+        return null;
+      } else {
+        allThreads.shutdownNow();
+        throw e;
+      }
     } catch (Throwable e) {
       allThreads.shutdownNow();
       throw e;
@@ -1071,15 +1184,19 @@ public class IoTDBDeletionTableIT {
     return null;
   }
 
-  private Void concurrentRandomDeletion(AtomicLong writtenPointCounter, ExecutorService allThreads)
+  private Void randomDeletion(
+      AtomicLong writtenPointCounter,
+      AtomicLong deletedPointCounter,
+      ExecutorService allThreads,
+      int fileNumMax,
+      int pointPerFile)
       throws SQLException, InterruptedException {
-    // delete random 10 points each time
+    // delete random 100 points each time
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     List<TimeRange> undeletedRanges = new ArrayList<>();
     // pointPerFile * fileNumMax
-    long deletionEnd = 100 * 10000;
-    long deletedCnt = 0;
+    long deletionEnd = (long) fileNumMax * pointPerFile - 1;
     long nextRangeStart = 0;
     Random random = new Random();
 
@@ -1120,13 +1237,13 @@ public class IoTDBDeletionTableIT {
                 + rangeDeletionStart
                 + " and time <= "
                 + rangeDeletionEnd);
-        deletedCnt += rangeDeletionEnd - rangeDeletionStart + 1;
+        deletedPointCounter.addAndGet(rangeDeletionEnd - rangeDeletionStart + 1);
         LOGGER.info(
             "Deleted range [{}, {}], written points: {}, deleted points: {}",
             timeRange.getMin(),
             timeRange.getMax(),
             currentWrittenTime + 1,
-            deletedCnt);
+            deletedPointCounter.get());
 
         // update the range
         if (rangeDeletionStart == timeRange.getMin() && rangeDeletionEnd == timeRange.getMax()) {
@@ -1149,7 +1266,7 @@ public class IoTDBDeletionTableIT {
             statement.executeQuery(
                 "select count(*) from table1 where time <= " + currentWrittenTime)) {
           assertTrue(set.next());
-          long expectedCnt = currentWrittenTime + 1 - deletedCnt;
+          long expectedCnt = currentWrittenTime + 1 - deletedPointCounter.get();
           if (expectedCnt != set.getLong(1)) {
             undeletedRanges = mergeRanges(undeletedRanges);
             List<TimeRange> remainingRanges = collectDataRanges(statement, currentWrittenTime);
@@ -1163,10 +1280,39 @@ public class IoTDBDeletionTableIT {
 
         Thread.sleep(10);
       }
+    } catch (SQLException e) {
+      if (e.getMessage().contains("Fail to reconnect")) {
+        // restart triggered, ignore
+        return null;
+      } else {
+        allThreads.shutdownNow();
+        throw e;
+      }
+    } catch (ParallelRequestTimeoutException ignored) {
+      // restart triggered, ignore
+      return null;
     } catch (Throwable e) {
       allThreads.shutdownNow();
       throw e;
     }
+    return null;
+  }
+
+  private Void restart(
+      AtomicLong writtenPointCounter, long targetPointNum, ExecutorService threadPool)
+      throws InterruptedException, SQLException {
+    while (writtenPointCounter.get() < targetPointNum) {
+      Thread.sleep(10);
+    }
+    threadPool.shutdownNow();
+    threadPool.awaitTermination(1, TimeUnit.MINUTES);
+
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("flush");
+    }
+
+    TestUtils.restartDataNodes();
     return null;
   }
 
