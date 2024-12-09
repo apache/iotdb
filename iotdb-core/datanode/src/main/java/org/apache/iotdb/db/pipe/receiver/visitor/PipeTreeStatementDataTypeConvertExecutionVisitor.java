@@ -51,11 +51,11 @@ import java.util.stream.Collectors;
  * This visitor transforms the data type of the statement when the statement is executed and an
  * exception occurs. The transformed statement (if any) is returned and will be executed again.
  */
-public class PipeStatementDataTypeConvertExecutionVisitor
+public class PipeTreeStatementDataTypeConvertExecutionVisitor
     extends StatementVisitor<Optional<TSStatus>, TSStatus> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeStatementDataTypeConvertExecutionVisitor.class);
+      LoggerFactory.getLogger(PipeTreeStatementDataTypeConvertExecutionVisitor.class);
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -64,7 +64,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
 
   private final StatementExecutor statementExecutor;
 
-  public PipeStatementDataTypeConvertExecutionVisitor(final StatementExecutor statementExecutor) {
+  public PipeTreeStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor) {
     this.statementExecutor = statementExecutor;
   }
 
@@ -97,10 +98,10 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionEventScanParser container =
+      try (final TsFileInsertionEventScanParser parser =
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-        for (final Pair<Tablet, Boolean> tabletWithIsAligned : container.toTabletWithIsAligneds()) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(

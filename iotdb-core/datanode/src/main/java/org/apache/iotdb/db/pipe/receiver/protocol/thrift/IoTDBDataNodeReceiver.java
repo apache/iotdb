@@ -62,9 +62,11 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTableStatementDataTypeConvertExecutionVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTablePatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
@@ -145,15 +147,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementTSStatusVisitor();
   public static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
-  private static final PipeStatementTreePatternParseVisitor STATEMENT_TREE_PATTERN_PARSE_VISITOR =
-      new PipeStatementTreePatternParseVisitor();
-  private static final PipeStatementTablePatternParseVisitor STATEMENT_TABLE_PATTERN_PARSE_VISITOR =
-      new PipeStatementTablePatternParseVisitor();
-  private final PipeStatementDataTypeConvertExecutionVisitor
-      statementDataTypeConvertExecutionVisitor =
-          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
-  private final PipeTreeStatementToBatchVisitor batchVisitor =
-      new PipeTreeStatementToBatchVisitor();
+    private static final PipeStatementTreePatternParseVisitor STATEMENT_TREE_PATTERN_PARSE_VISITOR =
+            new PipeStatementTreePatternParseVisitor();
+    private static final PipeStatementTablePatternParseVisitor STATEMENT_TABLE_PATTERN_PARSE_VISITOR =
+            new PipeStatementTablePatternParseVisitor();
+  private final PipeTableStatementDataTypeConvertExecutionVisitor
+      tableStatementDataTypeConvertExecutionVisitor =
+          new PipeTableStatementDataTypeConvertExecutionVisitor(
+              this::executeStatementForTableModel);
+  private final PipeTreeStatementDataTypeConvertExecutionVisitor
+      treeStatementDataTypeConvertExecutionVisitor =
+          new PipeTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
+  private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
@@ -535,6 +540,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
+    if (Objects.isNull(loadActiveListeningPipeDir)) {
+      throw new PipeException("Load active listening pipe dir is not set.");
+    }
 
     for (final String absolutePath : absolutePaths) {
       if (absolutePath == null) {
@@ -860,18 +868,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ? executeStatementForTableModel(statement, databaseName)
             : executeStatementForTreeModel(statement);
 
-    // The following code is used to handle the data type mismatch exception
-    // Data type conversion is not supported for table model statements
-    if (isTableModelStatement) {
-      return status;
-    }
     // Try to convert data type if the statement is a tree model statement
     // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
+        ? (isTableModelStatement
+            ? statement
+                .accept(
+                    tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, dataBaseName))
+                .orElse(status)
+            : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status))
         : status;
   }
 
