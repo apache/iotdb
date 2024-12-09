@@ -29,9 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -43,7 +42,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -228,17 +226,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public void clean() {
-    try {
-      if (deleteAfterLoad) {
-        Files.deleteIfExists(tsFile.toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-        Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+    if (loadWithMods) {
+      LoadTsFileManager.cleanTsFile(tsFile);
     }
   }
 

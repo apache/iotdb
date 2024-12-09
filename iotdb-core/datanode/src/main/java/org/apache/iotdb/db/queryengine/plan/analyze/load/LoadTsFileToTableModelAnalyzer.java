@@ -36,12 +36,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -184,7 +184,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        LoadTsFileManager.cleanTsFile(tsFile);
       }
     }
   }
