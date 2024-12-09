@@ -18,7 +18,6 @@
 
 import operator
 
-from iotdb.IoTDBContainer import IoTDBContainer
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.dialects import registry
 from sqlalchemy.orm import Session
