@@ -176,7 +176,7 @@ public class MockTableModelDataPartition {
             genDataNodeLocation(dataNodeId2, String.format("192.0.%s.2", regionGroupId))));
   }
 
-  private static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
+  public static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
         .setClientRpcEndPoint(new TEndPoint(ip, 9000))

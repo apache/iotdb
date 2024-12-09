@@ -57,7 +57,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 
-public class AggregationTableScanNode extends TableScanNode {
+public class AggregationTableScanNode extends DeviceTableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input
   private final Assignments projection;
 
@@ -254,7 +254,7 @@ public class AggregationTableScanNode extends TableScanNode {
       PlanNodeId id,
       AggregationNode aggregationNode,
       ProjectNode projectNode,
-      TableScanNode tableScanNode) {
+      DeviceTableScanNode tableScanNode) {
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -280,7 +280,7 @@ public class AggregationTableScanNode extends TableScanNode {
       PlanNodeId id,
       AggregationNode aggregationNode,
       ProjectNode projectNode,
-      TableScanNode tableScanNode,
+      DeviceTableScanNode tableScanNode,
       AggregationNode.Step step) {
     return new AggregationTableScanNode(
         id,

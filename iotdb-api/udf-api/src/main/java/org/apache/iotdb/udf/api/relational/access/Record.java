@@ -22,7 +22,7 @@ package org.apache.iotdb.udf.api.relational.access;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.io.IOException;
+import java.time.LocalDate;
 
 public interface Record {
   /**
@@ -32,20 +32,19 @@ public interface Record {
    *
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  int getInt(int columnIndex) throws IOException;
+  int getInt(int columnIndex);
 
   /**
    * Returns the long value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}.
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}
+   * or {@code TSDataType.TIMESTAMP}.
    *
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  long getLong(int columnIndex) throws IOException;
+  long getLong(int columnIndex);
 
   /**
    * Returns the float value at the specified column in this row.
@@ -54,9 +53,8 @@ public interface Record {
    *
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  float getFloat(int columnIndex) throws IOException;
+  float getFloat(int columnIndex);
 
   /**
    * Returns the double value at the specified column in this row.
@@ -66,9 +64,8 @@ public interface Record {
    *
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  double getDouble(int columnIndex) throws IOException;
+  double getDouble(int columnIndex);
 
   /**
    * Returns the boolean value at the specified column in this row.
@@ -78,31 +75,40 @@ public interface Record {
    *
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  boolean getBoolean(int columnIndex) throws IOException;
+  boolean getBoolean(int columnIndex);
 
   /**
    * Returns the Binary value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT},
+   * {@code TSDataType.STRING} or {@code TSDataType.BLOB}.
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  Binary getBinary(int columnIndex) throws IOException;
+  Binary getBinary(int columnIndex);
 
   /**
    * Returns the String value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}
+   * or {@code TSDataType.STRING}.
    *
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
-   * @throws IOException if an I/O error occurs
    */
-  String getString(int columnIndex) throws IOException;
+  String getString(int columnIndex);
+
+  /**
+   * Returns the String value at the specified column in this row.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.DATE}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the String value at the specified column in this row
+   */
+  LocalDate getLocalDate(int columnIndex);
 
   /**
    * Returns the actual data type of the value at the specified column in this row.
@@ -118,7 +124,7 @@ public interface Record {
    * @param columnIndex index of the specified column
    * @return {@code true} if the value of the specified column is null
    */
-  boolean isNull(int columnIndex) throws IOException;
+  boolean isNull(int columnIndex);
 
   /**
    * Returns the number of columns.

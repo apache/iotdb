@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -30,13 +31,17 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
@@ -63,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
@@ -80,26 +86,31 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -119,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
@@ -130,7 +142,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
@@ -166,7 +180,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CH
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
-  private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+  public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
 
   private final IClientSession clientSession;
 
@@ -191,6 +205,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  private IConfigTask visitDatabaseStatement(
+      final DatabaseStatement node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
@@ -207,10 +231,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
-          case TTL_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
+            break;
+          case TTL_KEY:
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
+            }
             break;
           default:
             throw new SemanticException("Unsupported database property key: " + key);
@@ -227,6 +255,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
                   "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
             }
             break;
           }
@@ -246,7 +277,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new SemanticException("Unsupported database property key: " + key);
       }
     }
-    return new CreateDBTask(schema, node.isSetIfNotExists());
+    return node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
+        ? new CreateDBTask(schema, node.exists())
+        : new AlterDBTask(schema, node.exists());
   }
 
   @Override
@@ -555,6 +588,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             new StatementAnalyzerFactory(metadata, null, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
+            StatementRewrite.NOOP,
             WarningCollector.NOOP)
         .analyze(node);
     return new DeleteDeviceTask(node, context.getQueryId().getId(), context.getSession());
@@ -806,5 +840,29 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
+  }
+
+  @Override
+  protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new KillQueryTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new CreateFunctionTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowFunctions(ShowFunctions node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowFunctionsTask(Model.TABLE);
+  }
+
+  @Override
+  protected IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 }

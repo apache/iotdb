@@ -827,7 +827,8 @@ public class ConfigMTree {
           if (Objects.nonNull(v)) {
             table.addProp(k, v);
           } else if (k.equals(TsTable.TTL_PROPERTY)
-              && databaseNode.getDatabaseSchema().isSetTTL()) {
+              && databaseNode.getDatabaseSchema().isSetTTL()
+              && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
             table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
           } else {
             table.removeProp(k);

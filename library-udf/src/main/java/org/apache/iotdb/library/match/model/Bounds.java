@@ -17,6 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational;
+package org.apache.iotdb.library.match.model;
 
-public interface AggregationFunction extends SQLFunction {}
+public class Bounds {
+  private Double minX = (double) Long.MAX_VALUE;
+  private Double maxX = (double) Long.MIN_VALUE;
+  private Double minY = (double) Long.MAX_VALUE;
+  private Double maxY = (double) Long.MIN_VALUE;
+
+  public Double getMinX() {
+    return minX;
+  }
+
+  public void setMinX(Double minX) {
+    this.minX = minX;
+  }
+
+  public Double getMaxX() {
+    return maxX;
+  }
+
+  public void setMaxX(Double maxX) {
+    this.maxX = maxX;
+  }
+
+  public Double getMinY() {
+    return minY;
+  }
+
+  public void setMinY(Double minY) {
+    this.minY = minY;
+  }
+
+  public Double getMaxY() {
+    return maxY;
+  }
+
+  public void setMaxY(Double maxY) {
+    this.maxY = maxY;
+  }
+}

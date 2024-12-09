@@ -242,6 +242,11 @@ public class ExportData extends AbstractDataTool {
             true);
         System.exit(CODE_ERROR);
       }
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
+      System.exit(CODE_ERROR);
     }
     int exitCode = CODE_OK;
     try {
@@ -530,6 +535,12 @@ public class ExportData extends AbstractDataTool {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
+    }
+    final File file = new File(targetDirectory);
+    if (!file.isDirectory()) {
+      ioTPrinter.println(
+          String.format("Source file or directory %s does not exist", targetDirectory));
+      System.exit(CODE_ERROR);
     }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
       linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
