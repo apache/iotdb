@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 
 import org.apache.tsfile.read.common.TimeRange;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -97,6 +98,16 @@ public class IoTDBDeletionTableIT {
   @Before
   public void setUp() {
     prepareDatabase();
+  }
+
+  @After
+  public void tearDown() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS test");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
   @AfterClass
@@ -945,6 +956,7 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
+      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -955,8 +967,17 @@ public class IoTDBDeletionTableIT {
     Future<Void> writeThread =
         threadPool.submit(
             () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
+    int deletionRange = 150;
+    int deletionInterval = 1500;
     Future<Void> deletionThread =
-        threadPool.submit(() -> concurrentSequentialDeletion(writtenPointCounter, threadPool));
+        threadPool.submit(
+            () ->
+                concurrentSequentialDeletion(
+                    writtenPointCounter,
+                    threadPool,
+                    deletionRange,
+                    deletionInterval,
+                    fileNumMax * pointPerFile - 1));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -976,6 +997,7 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
+      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -987,6 +1009,8 @@ public class IoTDBDeletionTableIT {
     Future<Void> writeThread =
         threadPool.submit(
             () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
+    int deletionRange = 100;
+    int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
         threadPool.submit(
             () ->
@@ -995,7 +1019,9 @@ public class IoTDBDeletionTableIT {
                     deletedPointCounter,
                     threadPool,
                     fileNumMax,
-                    pointPerFile));
+                    pointPerFile,
+                    deletionRange,
+                    minIntervalToRecord));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -1033,6 +1059,8 @@ public class IoTDBDeletionTableIT {
                     fileNumMax,
                     pointPerFile,
                     deviceNum));
+    int deletionRange = 100;
+    int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
         writeDeletionThreadPool.submit(
             () ->
@@ -1041,7 +1069,9 @@ public class IoTDBDeletionTableIT {
                     deletedPointCounter,
                     writeDeletionThreadPool,
                     fileNumMax,
-                    pointPerFile));
+                    pointPerFile,
+                    deletionRange,
+                    minIntervalToRecord));
     int restartTargetPointWritten = 100000;
     Future<Void> restartThread =
         restartThreadPool.submit(
@@ -1132,15 +1162,16 @@ public class IoTDBDeletionTableIT {
   }
 
   private Void concurrentSequentialDeletion(
-      AtomicLong writtenPointCounter, ExecutorService allThreads)
+      AtomicLong writtenPointCounter,
+      ExecutorService allThreads,
+      int deletionRange,
+      int deletionInterval,
+      long deletionEnd)
       throws SQLException, InterruptedException {
     // delete every 10 points in 100 points
     int deletionOffset = 0;
-    int deletionInterval = 100;
-    int deletionRange = 10;
     long nextPointNumToDelete = deletionInterval;
     // pointPerFile * fileNumMax
-    long deletionEnd = 100 * 10000;
 
     long deletedCnt = 0;
 
@@ -1194,11 +1225,11 @@ public class IoTDBDeletionTableIT {
       AtomicLong deletedPointCounter,
       ExecutorService allThreads,
       int fileNumMax,
-      int pointPerFile)
+      int pointPerFile,
+      int deletionRange,
+      int minIntervalToRecord)
       throws SQLException, InterruptedException {
     // delete random 100 points each time
-    int deletionRange = 100;
-    int minIntervalToRecord = 1000;
     List<TimeRange> undeletedRanges = new ArrayList<>();
     // pointPerFile * fileNumMax
     long deletionEnd = (long) fileNumMax * pointPerFile - 1;
