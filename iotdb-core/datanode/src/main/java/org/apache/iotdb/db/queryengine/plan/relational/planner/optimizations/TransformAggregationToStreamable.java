@@ -20,9 +20,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -117,7 +117,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     }
 
     @Override
-    public List<Symbol> visitTableScan(TableScanNode node, GroupContext context) {
+    public List<Symbol> visitDeviceTableScan(DeviceTableScanNode node, GroupContext context) {
       Set<Symbol> expectedGroupingKeys = context.groupingKeys;
       Map<Symbol, ColumnSchema> assignments = node.getAssignments();
       return expectedGroupingKeys.stream()

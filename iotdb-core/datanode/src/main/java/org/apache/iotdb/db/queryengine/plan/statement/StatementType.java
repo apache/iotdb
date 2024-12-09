@@ -182,7 +182,7 @@ public enum StatementType {
   CREATE_TOPIC,
   DROP_TOPIC,
   SHOW_TOPICS,
-
   SHOW_SUBSCRIPTIONS,
+
   SET_CONFIGURATION
 }

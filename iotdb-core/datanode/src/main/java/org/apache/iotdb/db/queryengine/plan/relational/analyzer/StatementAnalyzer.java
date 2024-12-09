@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -69,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -117,7 +120,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -183,7 +188,9 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -198,7 +205,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
@@ -206,7 +212,7 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
@@ -327,6 +333,11 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
       throw new SemanticException("Create Database statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
+      throw new SemanticException("Alter Database statement is not supported yet.");
     }
 
     @Override
@@ -492,7 +503,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
@@ -579,7 +591,7 @@ public class StatementAnalyzer {
           // If database is not specified, use the database from current session.
           // If still not specified, throw an exception.
           if (!queryContext.getDatabaseName().isPresent()) {
-            throw new SemanticException("Database is not specified");
+            throw new SemanticException(DATABASE_NOT_SPECIFIED);
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
@@ -1739,6 +1751,10 @@ public class StatementAnalyzer {
       }
 
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
+
+      // access control
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -1752,37 +1768,12 @@ public class StatementAnalyzer {
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
 
-      //      boolean addRowIdColumn = updateKind.isPresent();
-      //
-      //      if (addRowIdColumn) {
-      //        // Add the row id field
-      //        ColumnHandle rowIdColumnHandle = metadata.getMergeRowIdColumnHandle(session,
-      // tableHandle.get());
-      //        Type type = metadata.getColumnMetadata(session, tableHandle.get(),
-      // rowIdColumnHandle).getType();
-      //        Field field = Field.newUnqualified(Optional.empty(), type);
-      //        fields.add(field);
-      //        analysis.setColumn(field, rowIdColumnHandle);
-      //      }
-
       List<Field> outputFields = fields.build();
 
       RelationType relationType = new RelationType(outputFields);
-      Scope accessControlScope =
-          Scope.builder().withRelationType(RelationId.anonymous(), relationType).build();
-      //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
-      // accessControlScope);
       analysis.registerTable(table, tableSchema, name);
 
-      Scope tableScope = createAndAssignScope(table, scope, relationType);
-
-      //      if (addRowIdColumn) {
-      //        FieldReference reference = new FieldReference(outputFields.size() - 1);
-      //        analyzeExpression(reference, tableScope);
-      //        analysis.setRowIdField(table, reference);
-      //      }
-
-      return tableScope;
+      return createAndAssignScope(table, scope, relationType);
     }
 
     private Scope createScopeForCommonTableExpression(
@@ -3020,15 +3011,7 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(
-                    originalSchema.getTableName(),
-                    originalSchema.getColumns().stream()
-                        .filter(
-                            columnSchema ->
-                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                    || columnSchema.getColumnCategory()
-                                        == TsTableColumnCategory.ATTRIBUTE)
-                        .collect(Collectors.toList()))));
+                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
@@ -3099,6 +3082,26 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
   }

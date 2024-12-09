@@ -355,4 +355,23 @@ public class PipeTsFileResourceManager {
       return 0;
     }
   }
+
+  public long getTotalLinkedButDeletedTsfileResourceRamSize() {
+    long totalLinkedButDeletedTsfileResourceRamSize = 0;
+    try {
+      for (final Map.Entry<String, PipeTsFileResource> resourceEntry :
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet()) {
+        final PipeTsFileResource pipeTsFileResource = resourceEntry.getValue();
+        // If the original TsFile is not deleted, the memory of the resource is not counted
+        // because the memory of the resource is controlled by TsFileResourceManager.
+        if (pipeTsFileResource.isOriginalTsFileDeleted()) {
+          totalLinkedButDeletedTsfileResourceRamSize += pipeTsFileResource.getTsFileResourceSize();
+        }
+      }
+      return totalLinkedButDeletedTsfileResourceRamSize;
+    } catch (final Exception e) {
+      LOGGER.warn("failed to get total size of linked but deleted TsFiles resource ram size: ", e);
+      return totalLinkedButDeletedTsfileResourceRamSize;
+    }
+  }
 }

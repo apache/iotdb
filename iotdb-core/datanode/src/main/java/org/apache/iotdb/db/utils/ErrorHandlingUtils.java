@@ -107,7 +107,7 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
             || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
             || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()) {
-          LOGGER.warn(message);
+          LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
         }

@@ -161,7 +161,7 @@ public class QueryPlanner {
   public RelationPlan plan(QuerySpecification node) {
     PlanBuilder builder = planFrom(node);
 
-    builder = filter(builder, analysis.getWhere(node));
+    builder = filter(builder, analysis.getWhere(node), node);
     Expression wherePredicate = null;
     if (builder.getRoot() instanceof FilterNode) {
       wherePredicate = ((FilterNode) builder.getRoot()).getPredicate();
@@ -173,7 +173,7 @@ public class QueryPlanner {
       timeColumnForGapFill = builder.translate((Expression) gapFillColumn.getChildren().get(2));
     }
     builder = aggregate(builder, node);
-    builder = filter(builder, analysis.getHaving(node));
+    builder = filter(builder, analysis.getHaving(node), node);
 
     if (gapFillColumn != null) {
       if (wherePredicate == null) {
@@ -189,13 +189,13 @@ public class QueryPlanner {
     }
 
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
+    List<Expression> expressions =
+        selectExpressions.stream()
+            .map(Analysis.SelectExpression::getExpression)
+            .collect(toImmutableList());
+    builder = subqueryPlanner.handleSubqueries(builder, expressions, analysis.getSubqueries(node));
 
     if (hasExpressionsToUnfold(selectExpressions)) {
-      List<Expression> expressions =
-          selectExpressions.stream()
-              .map(Analysis.SelectExpression::getExpression)
-              .collect(toImmutableList());
-
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
       // that might be referenced
       builder = builder.appendProjections(expressions, symbolAllocator, queryContext);
@@ -325,13 +325,12 @@ public class QueryPlanner {
     }
   }
 
-  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate) {
+  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate, Node node) {
     if (predicate == null) {
       return subPlan;
     }
 
-    // planBuilder = subqueryPlanner.handleSubqueries(subPlan, predicate,
-    // analysis.getSubqueries(node));
+    subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
     return subPlan.withNewRoot(
         new FilterNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
@@ -368,7 +367,7 @@ public class QueryPlanner {
     inputBuilder.addAll(groupingSetAnalysis.getComplexExpressions());
 
     List<Expression> inputs = inputBuilder.build();
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
+    subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
     subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;

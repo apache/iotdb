@@ -105,10 +105,14 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
       throws IOException {
     long searchIndex = stream.readLong();
 
-    TableDeletionEntry entry = ((TableDeletionEntry) ModEntry.createFrom(stream));
+    int entryNum = ReadWriteForEncodingUtils.readVarInt(stream);
+    List<TableDeletionEntry> modEntries = new ArrayList<>(entryNum);
+    for (int i = 0; i < entryNum; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(stream));
+    }
 
     RelationalDeleteDataNode deleteDataNode =
-        new RelationalDeleteDataNode(new PlanNodeId(""), entry);
+        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries);
     deleteDataNode.setSearchIndex(searchIndex);
     return deleteDataNode;
   }
