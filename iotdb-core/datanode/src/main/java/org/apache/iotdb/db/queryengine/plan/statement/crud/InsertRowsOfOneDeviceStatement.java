@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 
@@ -171,12 +172,14 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     return this;
   }
 
+  @TableModel
   @Override
   public void toLowerCase() {
     insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
   }
 
   @Override
+  @TableModel
   public Optional<String> getDatabaseName() {
     Optional<String> database = Optional.empty();
     for (InsertRowStatement rowStatement : insertRowStatementList) {
