@@ -87,14 +87,25 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in right, because NULL value can not appear in the inner join result
+    while (rightBlockList
+        .get(rightBlockListIdx)
+        .getColumn(rightJoinKeyPosition)
+        .isNull(rightIndex)) {
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue right < left, until right >= left
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex,
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex)) {
+    while (comparator
+        .lessThan(
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex,
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex)
+        .orElse(false)) {
       if (rightFinishedWithIncIndex()) {
         return true;
       }
@@ -103,17 +114,23 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in left, because NULL value can not appear in the inner join result
+    while (leftBlock.getColumn(leftJoinKeyPosition).isNull(leftIndex)) {
+      if (leftFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue left < right, until left >= right
-    while (comparator.lessThan(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex,
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex)) {
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
+    while (comparator
+        .lessThan(
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex,
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex)
+        .orElse(false)) {
+      if (leftFinishedWithIncIndex()) {
         return true;
       }
     }
@@ -122,15 +139,7 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
     }
 
     // has right values equal to current left, append to join result, inc leftIndex
-    if (hasMatchedRightValueToProbeLeft()) {
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        return true;
-      }
-    }
-
-    return false;
+    return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
   }
 
   @Override

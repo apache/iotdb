@@ -194,44 +194,57 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
 
   protected boolean allRightLessThanLeft() {
     // check if the last value of the right is less than left
-    return comparator.lessThan(
-        rightBlockList.get(rightBlockList.size() - 1),
-        rightJoinKeyPosition,
-        rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex);
+    // TODO introduce joinKey list, if join key size equals to 1, can return true in inner join
+    // situation
+    return comparator
+        .lessThan(
+            rightBlockList.get(rightBlockList.size() - 1),
+            rightJoinKeyPosition,
+            rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex)
+        .orElse(false);
   }
 
   protected boolean allLeftLessThanRight() {
-    return comparator.lessThan(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftBlock.getPositionCount() - 1,
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex);
-  }
-
-  /**
-   * @return true if last value of rightBlockList.get(0) is less than current left or current right
-   *     value. Need stop the round and rebuild rightBlockLists.
-   */
-  protected boolean currentRoundNeedStop() {
-    if (comparator.lessThan(
-            rightBlockList.get(0),
-            rightJoinKeyPosition,
-            rightBlockList.get(0).getPositionCount() - 1,
+    // check if the last value of the left is less than right
+    return comparator
+        .lessThan(
+            leftBlock,
+            leftJoinKeyPosition,
+            leftBlock.getPositionCount() - 1,
             rightBlockList.get(rightBlockListIdx),
             rightJoinKeyPosition,
             rightIndex)
-        || comparator.lessThan(
-            rightBlockList.get(0),
-            rightJoinKeyPosition,
-            rightBlockList.get(0).getPositionCount() - 1,
-            leftBlock,
-            leftJoinKeyPosition,
-            leftIndex)) {
+        .orElse(false);
+  }
+
+  /**
+   * Examine if stop this round and rebuild rightBlockLists.
+   *
+   * @return true if last value of rightBlockList.get(0) is less than current left or current right
+   *     value.
+   */
+  protected boolean currentRoundNeedStop() {
+    if (comparator
+            .lessThan(
+                rightBlockList.get(0),
+                rightJoinKeyPosition,
+                rightBlockList.get(0).getPositionCount() - 1,
+                rightBlockList.get(rightBlockListIdx),
+                rightJoinKeyPosition,
+                rightIndex)
+            .orElse(false)
+        || comparator
+            .lessThan(
+                rightBlockList.get(0),
+                rightJoinKeyPosition,
+                rightBlockList.get(0).getPositionCount() - 1,
+                leftBlock,
+                leftJoinKeyPosition,
+                leftIndex)
+            .orElse(false)) {
       for (int i = 0; i < rightBlockListIdx; i++) {
         long size = rightBlockList.get(i).getRetainedSizeInBytes();
         usedMemory -= size;
@@ -246,7 +259,19 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   }
 
   /**
-   * @return true if right block is consumed up
+   * @return true if current left block is consumed up
+   */
+  protected boolean leftFinishedWithIncIndex() {
+    leftIndex++;
+    if (leftIndex >= leftBlock.getPositionCount()) {
+      resetLeftBlock();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * @return true if current right block is consumed up
    */
   protected boolean rightFinishedWithIncIndex() {
     rightIndex++;
@@ -303,13 +328,15 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
         // if first value of block equals to last value of rightBlockList.get(0), append this block
         // to
         // rightBlockList
-        if (comparator.equalsTo(
-            block,
-            rightJoinKeyPosition,
-            0,
-            rightBlockList.get(0),
-            rightJoinKeyPosition,
-            rightBlockList.get(0).getPositionCount() - 1)) {
+        if (comparator
+            .equalsTo(
+                block,
+                rightJoinKeyPosition,
+                0,
+                rightBlockList.get(0),
+                rightJoinKeyPosition,
+                rightBlockList.get(0).getPositionCount() - 1)
+            .orElse(false)) {
           addRightBlockWithMemoryReservation(block);
         } else {
           cachedNextRightBlock = block;
@@ -353,13 +380,15 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     int tmpBlockIdx = rightBlockListIdx;
     int tmpIdx = rightIndex;
     boolean hasMatched = false;
-    while (comparator.equalsTo(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex,
-        rightBlockList.get(tmpBlockIdx),
-        rightJoinKeyPosition,
-        tmpIdx)) {
+    while (comparator
+        .equalsTo(
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex,
+            rightBlockList.get(tmpBlockIdx),
+            rightJoinKeyPosition,
+            tmpIdx)
+        .orElse(false)) {
       hasMatched = true;
       recordsWhenDataMatches();
       appendValueToResultWhenMatches(tmpBlockIdx, tmpIdx);

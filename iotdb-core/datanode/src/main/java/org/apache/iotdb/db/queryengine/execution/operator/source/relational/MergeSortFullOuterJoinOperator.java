@@ -112,25 +112,39 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
+    // append all NULL join key values in right with empty left
+    while (rightBlockList
+        .get(rightBlockListIdx)
+        .getColumn(rightJoinKeyPosition)
+        .isNull(rightIndex)) {
+      appendOneRightRowWithEmptyLeft();
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue right < left, until right >= left
-    while (comparator.lessThan(
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex,
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex)) {
+    while (comparator
+        .lessThan(
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex,
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex)
+        .orElse(false)) {
       if (lastMatchedRightBlock == null) {
         appendOneRightRowWithEmptyLeft();
       } else {
         // CurrentRight can only be greater than or equal to lastMatchedRight.
-        if (comparator.lessThan(
-            lastMatchedRightBlock,
-            0,
-            0,
-            rightBlockList.get(rightBlockListIdx),
-            rightJoinKeyPosition,
-            rightIndex)) {
+        if (comparator
+            .lessThan(
+                lastMatchedRightBlock,
+                0,
+                0,
+                rightBlockList.get(rightBlockListIdx),
+                rightJoinKeyPosition,
+                rightIndex)
+            .orElse(false)) {
           appendOneRightRowWithEmptyLeft();
         }
       }
@@ -143,18 +157,25 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // continue left < right, until left >= right
-    while (comparator.lessThan(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex,
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex)) {
+    // skip all NULL values in left, because NULL value can not appear in the inner join result
+    while (leftBlock.getColumn(leftJoinKeyPosition).isNull(leftIndex)) {
       appendOneLeftRowWithEmptyRight();
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
+      if (leftFinishedWithIncIndex()) {
+        return true;
+      }
+    }
+    // continue left < right, until left >= right
+    while (comparator
+        .lessThan(
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex,
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex)
+        .orElse(false)) {
+      appendOneLeftRowWithEmptyRight();
+      if (leftFinishedWithIncIndex()) {
         return true;
       }
     }
@@ -163,16 +184,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     }
 
     // has right value equals to current left, append to join result, inc leftIndex
-    if (hasMatchedRightValueToProbeLeft()) {
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        return true;
-      }
-    }
-
-    return false;
+    return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
   }
 
   @Override
@@ -191,17 +203,24 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     }
   }
 
+  /** This method will be invoked only when `allRightLessThanLeft` or `leftFinished`. */
   private void appendRightWithEmptyLeft() {
     while (rightBlockListIdx < rightBlockList.size()) {
 
+      // if `lastMatchedRightBlock` is not null, the value in `lastMatchedRightBlock` must not be
+      // NULL,
+      // if current right value is null, the right row with empty left will be appended in the join
+      // result.
       if (lastMatchedRightBlock == null
-          || comparator.lessThan(
-              lastMatchedRightBlock,
-              0,
-              0,
-              rightBlockList.get(rightBlockListIdx),
-              rightJoinKeyPosition,
-              rightIndex)) {
+          || comparator
+              .lessThan(
+                  lastMatchedRightBlock,
+                  0,
+                  0,
+                  rightBlockList.get(rightBlockListIdx),
+                  rightJoinKeyPosition,
+                  rightIndex)
+              .orElse(true)) {
         for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
           ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
           columnBuilder.appendNull();
