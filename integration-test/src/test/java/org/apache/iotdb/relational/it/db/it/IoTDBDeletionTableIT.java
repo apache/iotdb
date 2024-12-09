@@ -945,6 +945,7 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
+      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -955,8 +956,17 @@ public class IoTDBDeletionTableIT {
     Future<Void> writeThread =
         threadPool.submit(
             () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
+    int deletionRange = 150;
+    int deletionInterval = 1500;
     Future<Void> deletionThread =
-        threadPool.submit(() -> concurrentSequentialDeletion(writtenPointCounter, threadPool));
+        threadPool.submit(
+            () ->
+                concurrentSequentialDeletion(
+                    writtenPointCounter,
+                    threadPool,
+                    deletionRange,
+                    deletionInterval,
+                    fileNumMax * pointPerFile - 1));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -976,6 +986,7 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
+      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -1132,15 +1143,16 @@ public class IoTDBDeletionTableIT {
   }
 
   private Void concurrentSequentialDeletion(
-      AtomicLong writtenPointCounter, ExecutorService allThreads)
+      AtomicLong writtenPointCounter,
+      ExecutorService allThreads,
+      int deletionRange,
+      int deletionInterval,
+      long deletionEnd)
       throws SQLException, InterruptedException {
     // delete every 10 points in 100 points
     int deletionOffset = 0;
-    int deletionInterval = 100;
-    int deletionRange = 10;
     long nextPointNumToDelete = deletionInterval;
     // pointPerFile * fileNumMax
-    long deletionEnd = 100 * 10000;
 
     long deletedCnt = 0;
 
