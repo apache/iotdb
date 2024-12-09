@@ -848,7 +848,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 load-with-mods=false", tmpDir.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'load-with-mods'='false')",
+              tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
