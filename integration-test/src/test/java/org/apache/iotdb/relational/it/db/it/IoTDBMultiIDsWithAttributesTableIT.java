@@ -1864,6 +1864,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
+  @Test
+  public void mergeSortJoinTest() {}
+
   public static String[] buildHeaders(int length) {
     String[] expectedHeader = new String[length];
     for (int i = 0; i < length; i++) {

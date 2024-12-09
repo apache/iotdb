@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -42,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
@@ -67,6 +67,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -585,7 +586,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // todo: Remove this check after supporting join on multiple columns.
-      checkArgument(equiJoinClauses.size() <= 1, "Only support Join on one column for now.");
+      // checkArgument(equiJoinClauses.size() <= 1, "Only support Join on one column for now.");
       if (!equiJoinClauses.isEmpty() && hasFilter) {
         equiJoinClauses.clear();
         joinFilterBuilder.add(lastEquiJoinConjunct);
@@ -658,33 +659,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
-      // sort the left and right child of join node if it is not a cross join
+      // using MergeSortJoinNode, sort the left and right child of join node
       if (!((JoinNode) output).isCrossJoin()) {
-        JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
-        OrderingScheme leftOrderingScheme =
-            new OrderingScheme(
-                Collections.singletonList(joinCriteria.getLeft()),
-                Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
-        OrderingScheme rightOrderingScheme =
-            new OrderingScheme(
-                Collections.singletonList(joinCriteria.getRight()),
-                Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
-        SortNode leftSortNode =
-            new SortNode(
-                queryId.genPlanNodeId(),
-                ((JoinNode) output).getLeftChild(),
-                leftOrderingScheme,
-                false,
-                false);
-        SortNode rightSortNode =
-            new SortNode(
-                queryId.genPlanNodeId(),
-                ((JoinNode) output).getRightChild(),
-                rightOrderingScheme,
-                false,
-                false);
-        ((JoinNode) output).setLeftChild(leftSortNode);
-        ((JoinNode) output).setRightChild(rightSortNode);
+        appendSortNodeForMergeSortJoin((JoinNode) output);
       }
 
       if (!postJoinPredicate.equals(TRUE_LITERAL)) {
@@ -725,10 +702,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       //  This is temporary workaround.
       Expression left = equality.getLeft();
       Expression right = equality.getRight();
-      return (left instanceof SymbolReference
-              && ((SymbolReference) left).getName().contains(IoTDBConstant.TIME))
-          && (right instanceof SymbolReference
-              && ((SymbolReference) right).getName().contains(IoTDBConstant.TIME));
+      return (left instanceof SymbolReference && right instanceof SymbolReference);
     }
 
     private Symbol symbolForExpression(Expression expression) {
@@ -738,6 +712,32 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // TODO(beyyes) verify the rightness of type
       return symbolAllocator.newSymbol(expression, analysis.getType(expression));
+    }
+
+    private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
+      // TODO(beyyes) sort with the order: ID, Attr, Measurement
+
+      int size = joinNode.getCriteria().size();
+      List<Symbol> leftOrderBy = new ArrayList<>(size);
+      List<Symbol> rightOrderBy = new ArrayList<>(size);
+      Map<Symbol, SortOrder> leftOrderings = new HashMap<>(size);
+      Map<Symbol, SortOrder> rightOrderings = new HashMap<>(size);
+      for (JoinNode.EquiJoinClause equiJoinClause : joinNode.getCriteria()) {
+        leftOrderBy.add(equiJoinClause.getLeft());
+        leftOrderings.put(equiJoinClause.getLeft(), ASC_NULLS_LAST);
+        rightOrderBy.add(equiJoinClause.getRight());
+        rightOrderings.put(equiJoinClause.getRight(), ASC_NULLS_LAST);
+      }
+      OrderingScheme leftOrderingScheme = new OrderingScheme(leftOrderBy, leftOrderings);
+      OrderingScheme rightOrderingScheme = new OrderingScheme(rightOrderBy, rightOrderings);
+      SortNode leftSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(), joinNode.getLeftChild(), leftOrderingScheme, false, false);
+      SortNode rightSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(), joinNode.getRightChild(), rightOrderingScheme, false, false);
+      joinNode.setLeftChild(leftSortNode);
+      joinNode.setRightChild(rightSortNode);
     }
 
     @Override

@@ -165,7 +165,6 @@ import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -1267,23 +1266,33 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           dataTypes);
     }
 
-    Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(0).getLeft());
-    if (leftJoinKeyPosition == null) {
-      throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
+    int size = node.getCriteria().size();
+    int[] leftJoinKeyPositions = new int[size];
+    for (int i = 0; i < size; i++) {
+      Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(i).getLeft());
+      if (leftJoinKeyPosition == null) {
+        throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
+      }
+      leftJoinKeyPositions[i] = leftJoinKeyPosition;
     }
 
-    Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
-    if (rightJoinKeyPosition == null) {
-      throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
+    List<Type> joinKeyTypes = new ArrayList<>(size);
+    int[] rightJoinKeyPositions = new int[size];
+    for (int i = 0; i < size; i++) {
+      Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(0).getRight());
+      if (rightJoinKeyPosition == null) {
+        throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
+      }
+      rightJoinKeyPositions[i] = rightJoinKeyPosition;
+
+      Type leftJoinKeyType =
+          context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getLeft());
+      checkArgument(
+          leftJoinKeyType
+              == context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getRight()),
+          "Join key type mismatch.");
+      joinKeyTypes.add(leftJoinKeyType);
     }
-
-    Type leftJoinKeyType =
-        context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getLeft());
-
-    checkArgument(
-        leftJoinKeyType
-            == context.getTypeProvider().getTableModelType(node.getCriteria().get(0).getRight()),
-        "Join key type mismatch.");
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
       OperatorContext operatorContext =
@@ -1296,14 +1305,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return new MergeSortInnerJoinOperator(
           operatorContext,
           leftChild,
-          leftJoinKeyPosition,
+          leftJoinKeyPositions,
           leftOutputSymbolIdx,
           rightChild,
-          rightJoinKeyPosition,
+          rightJoinKeyPositions,
           rightOutputSymbolIdx,
-          JoinKeyComparatorFactory.getComparator(leftJoinKeyType, true),
-          dataTypes,
-          leftJoinKeyType);
+          JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
+          dataTypes);
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.FULL) {
       OperatorContext operatorContext =
           context
@@ -1315,66 +1323,64 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return new MergeSortFullOuterJoinOperator(
           operatorContext,
           leftChild,
-          leftJoinKeyPosition,
+          leftJoinKeyPositions,
           leftOutputSymbolIdx,
           rightChild,
-          rightJoinKeyPosition,
+          rightJoinKeyPositions,
           rightOutputSymbolIdx,
-          JoinKeyComparatorFactory.getComparator(leftJoinKeyType, true),
+          JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
-          leftJoinKeyType,
-          buildUpdateLastRowFunction(leftJoinKeyType.getTypeEnum()));
+          buildUpdateLastRowFunction(joinKeyTypes));
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
   }
 
-  private BiFunction<Column, Integer, TsBlock> buildUpdateLastRowFunction(TypeEnum type) {
-    switch (type) {
-      case INT32:
-      case DATE:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
-                new IntColumn(1, Optional.empty(), new int[] {column.getInt(rowIndex)}));
-      case INT64:
-      case TIMESTAMP:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
-                new LongColumn(1, Optional.empty(), new long[] {column.getLong(rowIndex)}));
-      case FLOAT:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
-                new FloatColumn(1, Optional.empty(), new float[] {column.getFloat(rowIndex)}));
-      case DOUBLE:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
-                new DoubleColumn(1, Optional.empty(), new double[] {column.getDouble(rowIndex)}));
-      case BOOLEAN:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
+  private BiFunction<Column[], Integer, TsBlock> buildUpdateLastRowFunction(
+      List<Type> joinKeyTypes) {
+    return (inputColumns, rowIndex) -> {
+      Column[] valueColumns = new Column[joinKeyTypes.size()];
+      for (int i = 0; i < joinKeyTypes.size(); i++) {
+        Type joinKeyType = joinKeyTypes.get(i);
+        switch (joinKeyType.getTypeEnum()) {
+          case INT32:
+          case DATE:
+            valueColumns[i] =
+                new IntColumn(1, Optional.empty(), new int[] {inputColumns[i].getInt(rowIndex)});
+            break;
+          case INT64:
+          case TIMESTAMP:
+            valueColumns[i] =
+                new LongColumn(1, Optional.empty(), new long[] {inputColumns[i].getLong(rowIndex)});
+            break;
+          case FLOAT:
+            valueColumns[i] =
+                new FloatColumn(
+                    1, Optional.empty(), new float[] {inputColumns[i].getFloat(rowIndex)});
+            break;
+          case DOUBLE:
+            valueColumns[i] =
+                new DoubleColumn(
+                    1, Optional.empty(), new double[] {inputColumns[i].getDouble(rowIndex)});
+            break;
+          case BOOLEAN:
+            valueColumns[i] =
                 new BooleanColumn(
-                    1, Optional.empty(), new boolean[] {column.getBoolean(rowIndex)}));
-      case STRING:
-      case TEXT:
-      case BLOB:
-        return (column, rowIndex) ->
-            new TsBlock(
-                1,
-                TIME_COLUMN_TEMPLATE,
-                new BinaryColumn(1, Optional.empty(), new Binary[] {column.getBinary(rowIndex)}));
-      default:
-        throw new UnsupportedOperationException("Unsupported data type: " + type);
-    }
+                    1, Optional.empty(), new boolean[] {inputColumns[i].getBoolean(rowIndex)});
+            break;
+          case STRING:
+          case TEXT:
+          case BLOB:
+            valueColumns[i] =
+                new BinaryColumn(
+                    1, Optional.empty(), new Binary[] {valueColumns[i].getBinary(rowIndex)});
+            break;
+          default:
+            throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
+        }
+      }
+      return new TsBlock(1, TIME_COLUMN_TEMPLATE, valueColumns);
+    };
   }
 
   @Override
