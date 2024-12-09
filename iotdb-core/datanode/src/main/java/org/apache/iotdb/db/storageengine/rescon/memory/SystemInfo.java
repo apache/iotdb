@@ -54,7 +54,7 @@ public class SystemInfo {
 
   private long memorySizeForMemtable;
   private long memorySizeForCompaction;
-  private long memorySizeForWalQueue;
+  private long memorySizeForWalBufferQueue;
   private long totalDirectBufferMemorySizeLimit;
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -77,7 +77,7 @@ public class SystemInfo {
 
   private volatile boolean isEncodingFasterThanIo = true;
 
-  private final AtomicLong walEntryQueueMemoryCost = new AtomicLong(0);
+  private final AtomicLong walBufferQueueMemoryCost = new AtomicLong(0);
 
   private SystemInfo() {
     allocateWriteMemory();
@@ -406,16 +406,16 @@ public class SystemInfo {
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
-    memorySizeForWalQueue =
+    memorySizeForWalBufferQueue =
         (long)
             (config.getAllocateMemoryForStorageEngine()
                 * config.getWriteProportionForMemtable()
-                * config.getWalQueueProportion());
+                * config.getWalBufferQueueProportion());
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
-    WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalQueue);
+    WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
   }
 
   @TestOnly
@@ -555,14 +555,14 @@ public class SystemInfo {
   }
 
   public long getCurrentWalQueueMemoryCost() {
-    return walEntryQueueMemoryCost.get();
+    return walBufferQueueMemoryCost.get();
   }
 
   public void updateWalQueueMemoryCost(long delta) {
-    walEntryQueueMemoryCost.addAndGet(delta);
+    walBufferQueueMemoryCost.addAndGet(delta);
   }
 
   public boolean cannotReserveMemoryForWalEntry(long walEntrySize) {
-    return walEntryQueueMemoryCost.get() + walEntrySize > memorySizeForWalQueue;
+    return walBufferQueueMemoryCost.get() + walEntrySize > memorySizeForWalBufferQueue;
   }
 }

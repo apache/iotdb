@@ -179,7 +179,7 @@ public class IoTDBConfig {
   private double compactionProportion = 0.2;
 
   /** The proportion of memtable memory for WAL queue */
-  private double walQueueProportion = 0.1;
+  private double walBufferQueueProportion = 0.1;
 
   /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
@@ -3574,12 +3574,12 @@ public class IoTDBConfig {
     return compactionProportion;
   }
 
-  public double getWalQueueProportion() {
-    return walQueueProportion;
+  public double getWalBufferQueueProportion() {
+    return walBufferQueueProportion;
   }
 
-  public void setWalQueueProportion(double walQueueProportion) {
-    this.walQueueProportion = walQueueProportion;
+  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
+    this.walBufferQueueProportion = walBufferQueueProportion;
   }
 
   public double getDevicePathCacheProportion() {

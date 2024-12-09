@@ -742,6 +742,11 @@ buffered_arrays_memory_proportion=0.6
 # Datatype: double
 reject_proportion=0.8
 
+# Ratio of max memory size for the WAL buffer queue, 0.1 by default
+# effectiveMode: restart
+# Datatype: double
+wal_buffer_queue_proportion=0.1
+
 # Ratio of memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
 # effectiveMode: restart
 # Datatype: double
@@ -1402,7 +1407,7 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Blocking queue capacity of each wal buffer, restricts maximum number of WALEdits cached in the blocking queue.
+# Blocking queue capacity of each PageCacheDeletionBuffer, restricts maximum number of entry in the blocking queue.
 # effectiveMode: restart
 # Datatype: int
 wal_buffer_queue_capacity=500
