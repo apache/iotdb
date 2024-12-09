@@ -50,10 +50,8 @@ public class TabletInsertionEventIterable implements Iterable<TabletInsertionEve
           if (sourceEvent != null) {
             PipeTsFileToTabletMetrics.getInstance()
                 .markTabletCount(
-                    new PipeTsFileToTabletMetrics.PipeID(
-                        sourceEvent.getPipeName(),
-                        String.valueOf(sourceEvent.getCreationTime()),
-                        Thread.currentThread().getStackTrace()[2].getMethodName()),
+                    PipeTsFileToTabletMetrics.PipeID.getPipeID(
+                        sourceEvent.getPipeName(), sourceEvent.getCreationTime()),
                     count);
           }
         }

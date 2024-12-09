@@ -205,6 +205,19 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
       this.callerName = callerName;
     }
 
+    public static PipeID getPipeID(final String pipeName, final long creationTime) {
+      String callerClassName = Thread.currentThread().getStackTrace()[3].getClassName();
+      String callerMethodName = Thread.currentThread().getStackTrace()[3].getMethodName();
+      if (callerMethodName.equals("toTabletInsertionEvents")) {
+        callerClassName = Thread.currentThread().getStackTrace()[4].getClassName();
+        callerMethodName = Thread.currentThread().getStackTrace()[4].getMethodName();
+      }
+      return new PipeTsFileToTabletMetrics.PipeID(
+          pipeName,
+          String.valueOf(creationTime),
+          callerClassName.substring(callerClassName.lastIndexOf('.') + 1) + ":" + callerMethodName);
+    }
+
     public String getPipeName() {
       return pipeName;
     }
