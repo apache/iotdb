@@ -43,6 +43,7 @@ public class LoadTsFile extends Statement {
   private String database; // For loading to table-model only
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+  private boolean loadWithMods;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -51,7 +52,10 @@ public class LoadTsFile extends Statement {
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
-  public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+  public LoadTsFile(
+      final NodeLocation location,
+      final String filePath,
+      final Map<String, String> loadAttributes) {
     super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
@@ -59,6 +63,7 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.loadWithMods = true;
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.loadAttributes = loadAttributes;
@@ -68,7 +73,7 @@ public class LoadTsFile extends Statement {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
               file);
-    } catch (FileNotFoundException e) {
+    } catch (final FileNotFoundException e) {
       throw new SemanticException(e);
     }
   }
@@ -81,7 +86,7 @@ public class LoadTsFile extends Statement {
     return loadAttributes;
   }
 
-  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
+  public void setAutoCreateDatabase(final boolean autoCreateDatabase) {
     this.autoCreateDatabase = autoCreateDatabase;
   }
 
@@ -93,6 +98,10 @@ public class LoadTsFile extends Statement {
     return autoCreateDatabase;
   }
 
+  public boolean isLoadWithMods() {
+    return loadWithMods;
+  }
+
   public int getDatabaseLevel() {
     return databaseLevel;
   }
@@ -101,7 +110,7 @@ public class LoadTsFile extends Statement {
     return database;
   }
 
-  public void setDatabase(String database) {
+  public void setDatabase(final String database) {
     this.database = database;
   }
 
@@ -113,7 +122,7 @@ public class LoadTsFile extends Statement {
     return tsFiles;
   }
 
-  public void addTsFileResource(TsFileResource resource) {
+  public void addTsFileResource(final TsFileResource resource) {
     resources.add(resource);
   }
 
@@ -121,11 +130,11 @@ public class LoadTsFile extends Statement {
     return resources;
   }
 
-  public void addWritePointCount(long writePointCount) {
+  public void addWritePointCount(final long writePointCount) {
     writePointCountList.add(writePointCount);
   }
 
-  public long getWritePointCount(int resourceIndex) {
+  public long getWritePointCount(final int resourceIndex) {
     return writePointCountList.get(resourceIndex);
   }
 
@@ -139,7 +148,7 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitLoadTsFile(this, context);
   }
 
@@ -154,14 +163,14 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    LoadTsFile other = (LoadTsFile) obj;
+    final LoadTsFile other = (LoadTsFile) obj;
     return Objects.equals(filePath, other.filePath)
         && Objects.equals(loadAttributes, other.loadAttributes);
   }

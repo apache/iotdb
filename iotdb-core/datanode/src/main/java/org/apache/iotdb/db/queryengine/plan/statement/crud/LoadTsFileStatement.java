@@ -56,6 +56,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+  private boolean loadWithMods;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
@@ -64,12 +65,13 @@ public class LoadTsFileStatement extends Statement {
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
-  public LoadTsFileStatement(String filePath) throws FileNotFoundException {
+  public LoadTsFileStatement(final String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.loadWithMods = true;
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
@@ -170,6 +172,10 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isAutoCreateDatabase() {
     return autoCreateDatabase;
+  }
+
+  public boolean isLoadWithMods() {
+    return loadWithMods;
   }
 
   public int getDatabaseLevel() {
