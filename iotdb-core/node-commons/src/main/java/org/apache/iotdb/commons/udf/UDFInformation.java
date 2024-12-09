@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.udf;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
-
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -46,8 +44,7 @@ public class UDFInformation {
   public UDFInformation(
       String functionName,
       String className,
-      Model model,
-      boolean available,
+      UDFType udfType,
       boolean isUsingURI,
       String jarName,
       String jarMD5) {
@@ -56,13 +53,7 @@ public class UDFInformation {
     this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.jarMD5 = jarMD5;
-    if (Model.TREE.equals(model)) {
-      this.udfType = available ? UDFType.TREE_AVAILABLE : UDFType.TREE_UNAVAILABLE;
-    } else if (Model.TABLE.equals(model)) {
-      this.udfType = available ? UDFType.TABLE_AVAILABLE : UDFType.TABLE_UNAVAILABLE;
-    } else {
-      throw new IllegalArgumentException("Unknown UDF type: " + model);
-    }
+    this.udfType = udfType;
   }
 
   // Only used for built-in UDF
@@ -122,11 +113,7 @@ public class UDFInformation {
   }
 
   public void setAvailable(boolean available) {
-    if (this.udfType.isTreeModel()) {
-      this.udfType = available ? UDFType.TREE_AVAILABLE : UDFType.TREE_UNAVAILABLE;
-    } else {
-      this.udfType = available ? UDFType.TABLE_AVAILABLE : UDFType.TABLE_UNAVAILABLE;
-    }
+    this.udfType = this.udfType.setAvailable(available);
   }
 
   public boolean isAvailable() {

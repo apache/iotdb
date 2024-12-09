@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -45,6 +46,11 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testIoTConnectorParallel() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -91,9 +97,13 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelTestIT {
       expectedResSet.add("2,3.0,");
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.sg1.d1.s1,",
+          expectedResSet,
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
     }
   }
 }

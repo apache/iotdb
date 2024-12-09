@@ -52,6 +52,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -540,6 +541,35 @@ public class TestUtils {
     }
   }
 
+  public static void assertResultSetEqual(
+      ResultSet actualResultSet,
+      String expectedHeader,
+      Set<String> expectedRetSet,
+      Consumer consumer) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      assertEquals(expectedHeader, header.toString());
+
+      Set<String> actualRetSet = new HashSet<>();
+
+      while (actualResultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(actualResultSet.getString(i)).append(",");
+        }
+        actualRetSet.add(builder.toString());
+      }
+      assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
   public static void assertSingleResultSetEqual(
       ResultSet actualResultSet, Map<String, String> expectedHeaderWithResult) {
     try {
@@ -977,6 +1007,15 @@ public class TestUtils {
   }
 
   public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final Consumer<String> handleFailure) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, handleFailure);
+  }
+
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env,
       String sql,
       String expectedHeader,
@@ -1047,17 +1086,67 @@ public class TestUtils {
       final String sql,
       final String expectedHeader,
       final Set<String> expectedResSet,
-      final String dataBaseName) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, dataBaseName);
+      final long timeoutSeconds,
+      final Consumer<String> handleFailure) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   public static void assertDataEventuallyOnEnv(
-      BaseEnv env,
-      String sql,
-      String expectedHeader,
-      Set<String> expectedResSet,
-      long timeoutSeconds,
-      String dataBaseName) {
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, dataBaseName, null);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String dataBaseName,
+      final Consumer<String> handleFailure) {
+    assertDataEventuallyOnEnv(
+        env, sql, expectedHeader, expectedResSet, 600, dataBaseName, handleFailure);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final long timeoutSeconds,
+      final String dataBaseName,
+      final Consumer<String> handleFailure) {
     try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
@@ -1076,8 +1165,16 @@ public class TestUtils {
                     TestUtils.assertResultSetEqual(
                         executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                   }
-                } catch (final Exception e) {
-                  Assert.fail(e.getMessage());
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
                 }
               });
     } catch (Exception e) {
@@ -1137,6 +1234,15 @@ public class TestUtils {
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
+      Consumer<String> handleFailure) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, handleFailure);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
       long consistentSeconds,
       final String database) {
     try (Connection connection =
@@ -1159,6 +1265,44 @@ public class TestUtils {
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                 } catch (Exception e) {
                   Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds,
+      Consumer<String> handleFailure) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(
+              () -> {
+                try {
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  Assert.fail();
+                } catch (Error e) {
+                  if (handleFailure != null) {
+                    handleFailure.accept(e.getMessage());
+                  }
+                  throw e;
                 }
               });
     } catch (Exception e) {
