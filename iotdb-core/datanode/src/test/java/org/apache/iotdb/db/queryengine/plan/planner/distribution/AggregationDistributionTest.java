@@ -946,4 +946,45 @@ public class AggregationDistributionTest {
     fragmentInstances.forEach(
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
+
+  /*
+   * IdentitySinkNode-36
+   *   └──AggregationMergeSort-31
+   *       ├──DeviceView-21
+   *       │   └──ProjectNode-20
+   *       │       └──FullOuterTimeJoinNode-19
+   *       │           ├──SeriesAggregationScanNode-17:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesAggregationScanNode-18:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-32: [SourceAddress:192.0.3.1/test_memory_fe.2.0/34]
+   *       └──ExchangeNode-33: [SourceAddress:192.0.2.1/test_memory_fe.3.0/35]
+   *
+   *  IdentitySinkNode-34
+   *   └──DeviceView-25
+   *       └──FullOuterTimeJoinNode-24
+   *           ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           └──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-35
+   *   └──DeviceView-30
+   *       └──ProjectNode-29
+   *           └──FullOuterTimeJoinNode-28
+   *               ├──SeriesAggregationScanNode-26:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesAggregationScanNode-27:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   */
+  @Test
+  public void feRamMemoryUsageTest() {
+    QueryId queryId = new QueryId("test_memory_fe");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    String sql = "select count(s1) from root.sg.d1 align by device";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    context.getMemoryReservationManager().reserveMemoryImmediately();
+    System.out.println(context.getMemoryReservationManager().getReservedMemory());
+    List<FragmentInstance> fragmentInstances = plan.getInstances();
+    System.out.println("====");
+  }
 }

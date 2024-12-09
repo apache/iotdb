@@ -43,4 +43,9 @@ public interface MemoryReservationManager {
    * this manager ends, Or the memory to be released in the batch may not be released correctly.
    */
   void releaseAllReservedMemory();
+
+  /**
+   * @return the total revered memory
+   */
+  long getReservedMemory();
 }

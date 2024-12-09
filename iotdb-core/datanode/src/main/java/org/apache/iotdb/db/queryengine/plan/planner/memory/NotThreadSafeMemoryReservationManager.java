@@ -30,7 +30,7 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   // bound for each batch.
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
 
-  private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
+  private final LocalExecutionPlanner localExecutionPlanner = LocalExecutionPlanner.getInstance();
 
   private final QueryId queryId;
 
@@ -58,7 +58,7 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   @Override
   public void reserveMemoryImmediately() {
     if (bytesToBeReserved != 0) {
-      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+      localExecutionPlanner.reserveFromFreeMemoryForOperators(
           bytesToBeReserved, reservedBytesInTotal, queryId.getId(), contextHolder);
       reservedBytesInTotal += bytesToBeReserved;
       bytesToBeReserved = 0;
@@ -75,7 +75,7 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
       } else {
         bytesToRelease = bytesToBeReleased - bytesToBeReserved;
         bytesToBeReserved = 0;
-        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
+        localExecutionPlanner.releaseToFreeMemoryForOperators(bytesToRelease);
         reservedBytesInTotal -= bytesToRelease;
       }
       bytesToBeReleased = 0;
@@ -85,10 +85,15 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   @Override
   public void releaseAllReservedMemory() {
     if (reservedBytesInTotal != 0) {
-      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotal);
+      localExecutionPlanner.releaseToFreeMemoryForOperators(reservedBytesInTotal);
       reservedBytesInTotal = 0;
       bytesToBeReserved = 0;
       bytesToBeReleased = 0;
     }
+  }
+
+  @Override
+  public long getReservedMemory() {
+    return reservedBytesInTotal;
   }
 }

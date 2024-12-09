@@ -344,6 +344,10 @@ public class MPPQueryContext {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
   }
 
+  public MemoryReservationManager getMemoryReservationManager() {
+    return this.memoryReservationManager;
+  }
+
   // endregion
 
   public boolean isTableQuery() {

@@ -201,7 +201,7 @@ public class Coordinator {
       }
       execution.start();
       ExecutionResult result = execution.getStatus();
-      if (!execution.isQuery() && result.status != null && needRetry(result.status)) {
+      if (!execution.isQuery() && needRetry(result.status)) {
         // if it's write request and the result status needs to retry
         result.status.setNeedRetry(true);
       }
