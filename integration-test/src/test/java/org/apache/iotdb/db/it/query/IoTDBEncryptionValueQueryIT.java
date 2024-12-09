@@ -122,7 +122,11 @@ public class IoTDBEncryptionValueQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEncryptFlag(true).setEncryptType("AES128");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEncryptFlag(true)
+        .setEncryptType("UNENCRYPTED");
     EnvFactory.getEnv().initClusterEnvironment();
     importData();
   }

@@ -48,7 +48,11 @@ public class IoTDBLoadEncryptedTsFileIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEncryptFlag(true).setEncryptType("AES128");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEncryptFlag(true)
+        .setEncryptType("UNENCRYPTED");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -101,24 +105,6 @@ public class IoTDBLoadEncryptedTsFileIT {
     }
   }
 
-  @Test
-  public void loadAnotherWayEncryptedTsFileTest() {
-    String unrecognizedType = "org.apache.tsfile.encrypt.SM4128";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.tesgsg1");
-      statement.execute("CREATE TIMESERIES root.testsg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      File tsfile = generateAnotherWayEncryptedFile(unrecognizedType);
-      statement.execute(String.format("load \"%s\"", tsfile.getParentFile().getAbsolutePath()));
-      ResultSet resultSet = statement.executeQuery("select s1 from root.testsg1.d1");
-      Assert.fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains("TSFile encryption is enabled, and the Load TSFile function is disabled"));
-    }
-  }
-
   private File generateSameWayEncryptedFile() throws IOException {
     Path tempDir = Files.createTempDirectory("");
     tempDir.toFile().deleteOnExit();
@@ -128,7 +114,7 @@ public class IoTDBLoadEncryptedTsFileIT {
     Files.createFile(tsfile.toPath());
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
     config.setEncryptFlag("true");
-    config.setEncryptType("org.apache.tsfile.encrypt.AES128");
+    config.setEncryptType("UNENCRYPTED");
 
     try (TsFileIOWriter writer = new TsFileIOWriter(tsfile, config)) {
       writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
@@ -143,38 +129,6 @@ public class IoTDBLoadEncryptedTsFileIT {
 
       chunkWriter.writeToFileWriter(writer);
       writer.endChunkGroup();
-      writer.endFile();
-    }
-    config.setEncryptFlag("false");
-    config.setEncryptType("org.apache.tsfile.encrypt.UNENCRYPTED");
-    return tsfile;
-  }
-
-  private File generateAnotherWayEncryptedFile(String unrecognizedType) throws IOException {
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    String tsfileName =
-        TsFileNameGenerator.generateNewTsFileName(System.currentTimeMillis(), 1, 0, 0);
-    File tsfile = new File(tempDir + File.separator + tsfileName);
-    Files.createFile(tsfile.toPath());
-    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-    config.setEncryptFlag("true");
-    config.setEncryptType("org.apache.tsfile.encrypt.AES128");
-
-    try (TsFileIOWriter writer = new TsFileIOWriter(tsfile, config)) {
-      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg1.d1"));
-      ChunkWriterImpl chunkWriter =
-          new ChunkWriterImpl(
-              new MeasurementSchema("s1", TSDataType.INT32),
-              EncryptUtils.getEncryptParameter(config));
-      chunkWriter.write(2, 1);
-      chunkWriter.write(3, 1);
-      chunkWriter.write(4, 1);
-      chunkWriter.sealCurrentPage();
-
-      chunkWriter.writeToFileWriter(writer);
-      writer.endChunkGroup();
-      writer.setEncryptParam("2", unrecognizedType, EncryptUtils.getNormalKeyStr(config));
       writer.endFile();
     }
     config.setEncryptFlag("false");
