@@ -37,7 +37,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -594,7 +593,7 @@ public abstract class AbstractCli {
             BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
               String line;
-              if(ctx.isDisableCliHistory()) {
+              if (ctx.isDisableCliHistory()) {
                 line = ctx.getLineReader().readLine();
               } else {
                 line = br.readLine();
