@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
@@ -29,8 +30,12 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -39,10 +44,12 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UserDefinedAggregateFunctionAccumulator.class);
   private final AggregateFunction aggregateFunction;
+  private final List<Type> inputDataTypes;
   private final State state;
 
-  public UserDefinedAggregateFunctionAccumulator(AggregateFunction aggregateFunction) {
+  public UserDefinedAggregateFunctionAccumulator(AggregateFunction aggregateFunction, List<Type> inputDataTypes) {
     this.aggregateFunction = aggregateFunction;
+    this.inputDataTypes = inputDataTypes;
     this.state = aggregateFunction.createState();
   }
 
@@ -53,12 +60,18 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public TableAccumulator copy() {
-    return new UserDefinedAggregateFunctionAccumulator(aggregateFunction);
+    return new UserDefinedAggregateFunctionAccumulator(aggregateFunction, inputDataTypes);
   }
 
   @Override
   public void addInput(Column[] arguments) {
-    aggregateFunction.addInput(state, arguments);
+//    aggregateFunction.addInput(state, arguments);
+    RecordIterator iterator =
+            new RecordIterator(
+                    Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
+    while (iterator.hasNext()) {
+      aggregateFunction.addInput(state, iterator.next());
+    }
   }
 
   @Override
@@ -92,13 +105,12 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public boolean hasFinalResult() {
-    // TODO
     return false;
   }
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    // TODO
+    // UDAF not support calculate from statistics now
   }
 
   @Override

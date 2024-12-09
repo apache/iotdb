@@ -128,7 +128,9 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   }
 
   @Override
-  public void prepareFinal() {}
+  public void prepareFinal() {
+    // do nothing
+  }
 
   @Override
   public void reset() {
