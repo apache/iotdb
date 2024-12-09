@@ -25,12 +25,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -72,7 +72,7 @@ public class TestPlanBuilder {
     return this;
   }
 
-  public TestPlanBuilder tableScan(
+  public TestPlanBuilder deviceTableScan(
       String id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -86,7 +86,7 @@ public class TestPlanBuilder {
       long pushDownOffset,
       boolean pushLimitToEachDevice) {
     this.root =
-        new TableScanNode(
+        new DeviceTableScanNode(
             new PlanNodeId(id),
             qualifiedObjectName,
             outputSymbols,

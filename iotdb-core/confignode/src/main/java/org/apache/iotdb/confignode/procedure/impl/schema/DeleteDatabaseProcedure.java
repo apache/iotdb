@@ -65,11 +65,12 @@ public class DeleteDatabaseProcedure
 
   private TDatabaseSchema deleteDatabaseSchema;
 
-  public DeleteDatabaseProcedure(boolean isGeneratedByPipe) {
+  public DeleteDatabaseProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
-  public DeleteDatabaseProcedure(TDatabaseSchema deleteDatabaseSchema, boolean isGeneratedByPipe) {
+  public DeleteDatabaseProcedure(
+      final TDatabaseSchema deleteDatabaseSchema, final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
     this.deleteDatabaseSchema = deleteDatabaseSchema;
   }
@@ -78,12 +79,13 @@ public class DeleteDatabaseProcedure
     return deleteDatabaseSchema;
   }
 
-  public void setDeleteDatabaseSchema(TDatabaseSchema deleteDatabaseSchema) {
+  public void setDeleteDatabaseSchema(final TDatabaseSchema deleteDatabaseSchema) {
     this.deleteDatabaseSchema = deleteDatabaseSchema;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, DeleteStorageGroupState state)
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final DeleteStorageGroupState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     if (deleteDatabaseSchema == null) {
       return Flow.NO_MORE_STATE;
@@ -113,11 +115,11 @@ public class DeleteDatabaseProcedure
               deleteDatabaseSchema.getName());
 
           // Submit RegionDeleteTasks
-          OfferRegionMaintainTasksPlan dataRegionDeleteTaskOfferPlan =
+          final OfferRegionMaintainTasksPlan dataRegionDeleteTaskOfferPlan =
               new OfferRegionMaintainTasksPlan();
-          List<TRegionReplicaSet> regionReplicaSets =
+          final List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteDatabaseSchema.getName());
-          List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
+          final List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
           regionReplicaSets.forEach(
               regionReplicaSet -> {
                 // Clear heartbeat cache along the way
@@ -147,12 +149,12 @@ public class DeleteDatabaseProcedure
           }
 
           // try sync delete schemaengine region
-          DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
+          final DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
               new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
-          Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
+          final Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
-          for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
-            for (TDataNodeLocation dataNodeLocation :
+          for (final TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
+            for (final TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
               asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
               asyncClientHandler.putNodeLocation(requestIndex, dataNodeLocation);
@@ -165,7 +167,7 @@ public class DeleteDatabaseProcedure
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
             CnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(asyncClientHandler);
-            for (Map.Entry<Integer, TSStatus> entry :
+            for (final Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 LOG.info(
@@ -183,7 +185,7 @@ public class DeleteDatabaseProcedure
 
             if (!schemaRegionDeleteTaskMap.isEmpty()) {
               // submit async schemaengine region delete task for failed sync execution
-              OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
+              final OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
                   new OfferRegionMaintainTasksPlan();
               schemaRegionDeleteTaskMap
                   .values()
@@ -215,7 +217,7 @@ public class DeleteDatabaseProcedure
                 new ProcedureException("[DeleteDatabaseProcedure] Delete DatabaseSchema failed"));
           }
       }
-    } catch (ConsensusException | TException | IOException e) {
+    } catch (final ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
             new ProcedureException(
@@ -238,7 +240,8 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, DeleteStorageGroupState state)
+  protected void rollbackState(
+      final ConfigNodeProcedureEnv env, final DeleteStorageGroupState state)
       throws IOException, InterruptedException {
     switch (state) {
       case PRE_DELETE_DATABASE:
@@ -254,7 +257,7 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected boolean isRollbackSupported(DeleteStorageGroupState state) {
+  protected boolean isRollbackSupported(final DeleteStorageGroupState state) {
     switch (state) {
       case PRE_DELETE_DATABASE:
       case INVALIDATE_CACHE:
@@ -265,12 +268,12 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected DeleteStorageGroupState getState(int stateId) {
+  protected DeleteStorageGroupState getState(final int stateId) {
     return DeleteStorageGroupState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(DeleteStorageGroupState deleteStorageGroupState) {
+  protected int getStateId(final DeleteStorageGroupState deleteStorageGroupState) {
     return deleteStorageGroupState.ordinal();
   }
 
@@ -284,7 +287,7 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE.getTypeCode()
@@ -294,17 +297,17 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
       deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
-    } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize DeleteStorageGroupProcedure", e);
+    } catch (final ThriftSerDeException e) {
+      LOG.error("Error in deserialize DeleteDatabaseProcedure", e);
     }
   }
 
   @Override
-  public boolean equals(Object that) {
+  public boolean equals(final Object that) {
     if (that instanceof DeleteDatabaseProcedure) {
       DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()

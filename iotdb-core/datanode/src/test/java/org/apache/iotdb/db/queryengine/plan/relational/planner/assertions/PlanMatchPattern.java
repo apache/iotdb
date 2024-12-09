@@ -22,9 +22,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -33,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -112,11 +113,22 @@ public final class PlanMatchPattern {
                       Optional.empty(),
                       Optional.empty()));
   }*/
+  public static PlanMatchPattern infoSchemaTableScan(
+      String expectedTableName, Optional<Integer> dataNodeId) {
+    return node(InformationSchemaTableScanNode.class)
+        .with(
+            new InformationSchemaTableScanMatcher(
+                expectedTableName,
+                Optional.empty(),
+                Collections.emptyList(),
+                Collections.emptySet(),
+                dataNodeId));
+  }
 
   public static PlanMatchPattern tableScan(String expectedTableName) {
-    return node(TableScanNode.class)
+    return node(DeviceTableScanNode.class)
         .with(
-            new TableScanMatcher(
+            new DeviceTableScanMatcher(
                 expectedTableName,
                 Optional.empty(),
                 Collections.emptyList(),
@@ -126,9 +138,9 @@ public final class PlanMatchPattern {
   public static PlanMatchPattern tableScan(
       String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
     PlanMatchPattern pattern =
-        node(TableScanNode.class)
+        node(DeviceTableScanNode.class)
             .with(
-                new TableScanMatcher(
+                new DeviceTableScanMatcher(
                     expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
     outputSymbols.forEach(
         symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
@@ -271,7 +283,7 @@ public final class PlanMatchPattern {
     PlanMatchPattern result = node(AggregationTableScanNode.class);
 
     result.with(
-        new AggregationTableScanMatcher(
+        new AggregationDeviceTableScanMatcher(
             groupingSets,
             preGroupedSymbols,
             ImmutableList.of(),

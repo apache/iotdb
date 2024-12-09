@@ -35,14 +35,14 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 
-public class AggregationTableScanMatcher extends TableScanMatcher {
+public class AggregationDeviceTableScanMatcher extends DeviceTableScanMatcher {
   private final PlanMatchPattern.GroupingSetDescriptor groupingSets;
   private final List<String> masks;
   private final List<String> preGroupedSymbols;
   private final Optional<Symbol> groupId;
   private final AggregationNode.Step step;
 
-  public AggregationTableScanMatcher(
+  public AggregationDeviceTableScanMatcher(
       PlanMatchPattern.GroupingSetDescriptor groupingSets,
       List<String> preGroupedSymbols,
       List<String> masks,

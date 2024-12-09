@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -60,6 +61,7 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -1476,7 +1478,13 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateFunctionPlanTest() throws IOException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", Model.TREE, true, true, "test1.jar", "12345");
+        new UDFInformation(
+            "test1",
+            "test1",
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            true,
+            "test1.jar",
+            "12345");
     CreateFunctionPlan createFunctionPlan0 =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     CreateFunctionPlan createFunctionPlan1 =
