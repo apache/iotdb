@@ -295,6 +295,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);
 
+  SettableFuture<ConfigTaskResult> alterDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists);
+
   SettableFuture<ConfigTaskResult> createTable(
       final TsTable table, final String database, final boolean ifNotExists);
 

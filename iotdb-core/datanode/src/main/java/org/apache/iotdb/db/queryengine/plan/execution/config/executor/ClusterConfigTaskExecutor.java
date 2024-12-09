@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -276,6 +277,9 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -573,11 +577,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
+      FunctionType functionType = FunctionType.NONE;
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF
         Class<?> clazz = Class.forName(className, true, classLoader);
-        baseClazz.cast(clazz.getDeclaredConstructor().newInstance());
+        Object o = baseClazz.cast(clazz.getDeclaredConstructor().newInstance());
+        if (Model.TABLE.equals(model)) {
+          // we check function type for table model
+          if (o instanceof ScalarFunction) {
+            functionType = FunctionType.SCALAR;
+          } else if (o instanceof AggregateFunction) {
+            functionType = FunctionType.AGGREGATE;
+          } else if (o instanceof TableFunction) {
+            functionType = FunctionType.TABLE;
+          }
+        }
+        tCreateFunctionReq.setFunctionType(functionType);
       } catch (ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException
@@ -656,7 +672,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // convert UDFTable and buildTsBlock
-      ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
+      ShowFunctionsTask.buildTsBlock(model, getUDFTableResp.getAllUDFInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -3132,7 +3148,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createDatabase(
-      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+      final TDatabaseSchema databaseSchema, final boolean ifExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Construct request using statement
@@ -3144,7 +3160,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-        if (ifNotExists) {
+        if (ifExists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           future.setException(
@@ -3152,6 +3168,37 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   String.format(
                       "Database %s already exists", databaseSchema.getName().substring(5)),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
+        }
+      } else {
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Construct request using statement
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+        if (ifNotExists) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          future.setException(
+              new IoTDBException(
+                  String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
         }
       } else {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
