@@ -160,7 +160,7 @@ public class LoadTsFileScheduler implements IScheduler {
   public void start() {
     try {
       stateMachine.transitionToRunning();
-      int tsFileNodeListSize = tsFileNodeList.size();
+      final int tsFileNodeListSize = tsFileNodeList.size();
       boolean isLoadSuccess = true;
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
@@ -267,13 +267,15 @@ public class LoadTsFileScheduler implements IScheduler {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
-              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
+              node.getTsFileResource().getTsFile(),
+              tsFileDataManager::addOrSendTsFileData,
+              node.isLoadWithMods())
           .splitTsFileByDataPartition();
       if (!tsFileDataManager.sendAllTsFileData()) {
         stateMachine.transitionToFailed(new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
         return false;
       }
-    } catch (IllegalStateException e) {
+    } catch (final IllegalStateException e) {
       stateMachine.transitionToFailed(e);
       LOGGER.warn(
           String.format(
@@ -293,9 +295,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean dispatchOnePieceNode(
-      LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
+      final LoadTsFilePieceNode pieceNode, final TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
-    FragmentInstance instance =
+    final FragmentInstance instance =
         new FragmentInstance(
             new PlanFragment(fragmentId, pieceNode),
             fragmentId.genFragmentInstanceId(),
@@ -304,11 +306,11 @@ public class LoadTsFileScheduler implements IScheduler {
             queryContext.getTimeOut(),
             queryContext.getSession());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
-    Future<FragInstanceDispatchResult> dispatchResultFuture =
+    final Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(Collections.singletonList(instance));
 
     try {
-      FragInstanceDispatchResult result =
+      final FragInstanceDispatchResult result =
           dispatchResultFuture.get(
               CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
@@ -328,21 +330,21 @@ public class LoadTsFileScheduler implements IScheduler {
                 status.getMessage());
           }
         }
-        TSStatus status = result.getFailureStatus();
+        final TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format("Load %s piece error in 1st phase. Because ", pieceNode.getTsFile())
                 + status.getMessage());
         stateMachine.transitionToFailed(status); // TODO: record more status
         return false;
       }
-    } catch (InterruptedException | ExecutionException | CancellationException e) {
+    } catch (final InterruptedException | ExecutionException | CancellationException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
       LOGGER.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
       return false;
-    } catch (TimeoutException e) {
+    } catch (final TimeoutException e) {
       dispatchResultFuture.cancel(true);
       LOGGER.warn(
           String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
@@ -353,7 +355,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean secondPhase(
-      boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
+      final boolean isFirstPhaseSuccess, final String uuid, final TsFileResource tsFileResource) {
     LOGGER.info("Start dispatching Load command for uuid {}", uuid);
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
@@ -363,10 +365,10 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
       loadCommandReq.setProgressIndex(assignProgressIndex(tsFileResource));
-      Future<FragInstanceDispatchResult> dispatchResultFuture =
+      final Future<FragInstanceDispatchResult> dispatchResultFuture =
           dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
-      FragInstanceDispatchResult result = dispatchResultFuture.get();
+      final FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(
@@ -377,13 +379,13 @@ public class LoadTsFileScheduler implements IScheduler {
             allReplicaSets,
             TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
             result.getFailureStatus().getMessage());
-        TSStatus status = result.getFailureStatus();
+        final TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
         stateMachine.transitionToFailed(status);
         return false;
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn(
           "Serialize Progress Index error, isFirstPhaseSuccess: {}, uuid: {}, tsFile: {}",
           isFirstPhaseSuccess,
@@ -391,7 +393,7 @@ public class LoadTsFileScheduler implements IScheduler {
           tsFile.getAbsolutePath());
       stateMachine.transitionToFailed(e);
       return false;
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }

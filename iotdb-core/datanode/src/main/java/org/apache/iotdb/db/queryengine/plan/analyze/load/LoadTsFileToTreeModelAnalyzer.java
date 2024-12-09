@@ -57,19 +57,19 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private final TreeSchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     super(loadTsFileStatement, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+      final LoadTsFile loadTsFileTableStatement, final MPPQueryContext context) {
     super(loadTsFileTableStatement, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   @Override
-  public IAnalysis analyzeFileByFile(IAnalysis analysis) {
+  public IAnalysis analyzeFileByFile(final IAnalysis analysis) {
     checkBeforeAnalyzeFileByFile(analysis);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -82,10 +82,10 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
 
     try {
       schemaAutoCreatorAndVerifier.flush();
-    } catch (AuthException e) {
+    } catch (final AuthException e) {
       setFailAnalysisForAuthException(analysis, e);
       return analysis;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",

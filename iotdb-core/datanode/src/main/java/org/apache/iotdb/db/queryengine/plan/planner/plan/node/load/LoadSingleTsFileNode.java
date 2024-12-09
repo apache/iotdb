@@ -60,6 +60,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean isTableModel;
   private final String database;
   private final boolean deleteAfterLoad;
+  private final boolean loadWithMods;
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
@@ -71,7 +72,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final boolean isTableModel,
       final String database,
       final boolean deleteAfterLoad,
-      final long writePointCount) {
+      final long writePointCount,
+      final boolean loadWithMods) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -79,6 +81,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.loadWithMods = loadWithMods;
   }
 
   public boolean isTsFileEmpty() {
@@ -138,6 +141,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public boolean isLoadWithMods() {
+    return loadWithMods;
   }
 
   public boolean isTableModel() {

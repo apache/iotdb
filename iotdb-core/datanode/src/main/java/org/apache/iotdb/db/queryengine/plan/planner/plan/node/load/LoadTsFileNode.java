@@ -124,7 +124,8 @@ public class LoadTsFileNode extends WritePlanNode {
               isTableModel.get(i),
               database,
               statement.isDeleteAfterLoad(),
-              statement.getWritePointCount(i)));
+              statement.getWritePointCount(i),
+              statement.isLoadWithMods()));
     }
     return res;
   }
@@ -146,7 +147,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 isTableModel.get(i),
                 database,
                 statement.isDeleteAfterLoad(),
-                statement.getWritePointCount(i)));
+                statement.getWritePointCount(i),
+                statement.isLoadWithMods()));
       }
     }
     return res;

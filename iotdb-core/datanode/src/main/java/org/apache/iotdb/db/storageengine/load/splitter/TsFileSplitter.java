@@ -64,8 +64,9 @@ public class TsFileSplitter {
 
   private final File tsFile;
   private final Function<TsFileData, Boolean> consumer;
-  private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
-  private List<ModEntry> deletions = new ArrayList<>();
+  private final boolean loadWithMods;
+  private final Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
+  private final List<ModEntry> deletions = new ArrayList<>();
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
   private boolean isTimeChunkNeedDecode = true;
@@ -82,15 +83,19 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
-  public TsFileSplitter(final File tsFile, final Function<TsFileData, Boolean> consumer) {
+  public TsFileSplitter(
+      final File tsFile, final Function<TsFileData, Boolean> consumer, final boolean loadWithMods) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    this.loadWithMods = loadWithMods;
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      getAllModification(deletions);
+      if (loadWithMods) {
+        getAllModification(deletions);
+      }
 
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
