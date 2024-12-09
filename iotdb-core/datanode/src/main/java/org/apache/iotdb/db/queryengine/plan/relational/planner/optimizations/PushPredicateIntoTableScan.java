@@ -562,7 +562,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =
-              node.getLeftChild().getOutputSymbols().containsAll(extractUnique(equality.getLeft()));
+              new HashSet<>(node.getLeftChild().getOutputSymbols())
+                  .containsAll(extractUnique(equality.getLeft()));
           Expression leftExpression = alignedComparison ? equality.getLeft() : equality.getRight();
           Expression rightExpression = alignedComparison ? equality.getRight() : equality.getLeft();
 

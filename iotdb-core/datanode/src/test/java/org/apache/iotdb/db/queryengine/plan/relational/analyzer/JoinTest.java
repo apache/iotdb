@@ -41,8 +41,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ALL_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.BEIJING_A1_DEVICE_ENTRY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
@@ -363,50 +361,19 @@ public class JoinTest {
   @Test
   public void innerJoinTest5() {
     // 1. has logical or in subquery filter, outer query filter
-
-    // 2. where t1.value1 > t2.value2
   }
 
   // ========== unsupported test ===============
   @Test
   public void unsupportedJoinTest() {
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time AND t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time OR t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1)",
-        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1, time)",
-        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-
-    // LEFT, RIGHT JOIN
+    // LEFT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
         "LEFT JOIN is not supported, only support INNER JOIN in current version");
 
+    // RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
         "RIGHT JOIN is not supported, only support INNER JOIN in current version");
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 CROSS JOIN table1 t2",
-        "CROSS JOIN is not supported, only support INNER JOIN in current version");
-
-    // TODO(beyyes) has non time equal join criteria;
   }
 }
