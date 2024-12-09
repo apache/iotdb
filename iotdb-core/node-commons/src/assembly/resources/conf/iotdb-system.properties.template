@@ -606,8 +606,8 @@ default_schema_region_group_num_per_database=1
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-schema_region_per_data_node=1.0
+# Datatype: Integer
+schema_region_per_data_node=1
 
 # The policy of extension DataRegionGroup for each Database.
 # These policies are currently supported:
@@ -627,11 +627,12 @@ default_data_region_group_num_per_database=2
 
 # Only take effect when set data_region_group_extension_policy=AUTO.
 # This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
+# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-data_region_per_data_node=5.0
+# Datatype: Integer
+data_region_per_data_node=0
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
