@@ -31,6 +31,7 @@ import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -81,7 +82,7 @@ public class IoTDBDeletionTableIT {
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
   @BeforeClass
-  public static void setUp() {
+  public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
 
     EnvFactory.getEnv()
@@ -91,11 +92,15 @@ public class IoTDBDeletionTableIT {
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareSeries();
+  }
+
+  @Before
+  public void setUp() {
+    prepareDatabase();
   }
 
   @AfterClass
-  public static void tearDown() {
+  public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -1473,7 +1478,7 @@ public class IoTDBDeletionTableIT {
     }
   }
 
-  private static void prepareSeries() {
+  private static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
