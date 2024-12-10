@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -59,16 +60,24 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 
 public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private boolean enableCrossCompaction;
+  private long minInsertionFileSize;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    enableCrossCompaction = config.isEnableCrossSpaceCompaction();
+    minInsertionFileSize = config.getMinInsertionCompactionUnseqFileSizeInByte();
+    config.setEnableCrossSpaceCompaction(true);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(0);
     super.setUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    config.setEnableCrossSpaceCompaction(enableCrossCompaction);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(minInsertionFileSize);
     super.tearDown();
   }
 
