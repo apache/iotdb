@@ -19,7 +19,6 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import java.io.ByteArrayOutputStream;
@@ -91,16 +90,11 @@ public class User extends Role {
     return roleSet;
   }
 
-  public TUserResp getUserInfo() {
+  public TUserResp getUserInfo(ModelType modelType) {
     TUserResp resp = new TUserResp();
-    resp.setUsername(super.getName());
+    resp.setBasicInfo(getRoleInfo(modelType));
     resp.setPassword(password);
-    resp.setSysPriSet(super.getSysPrivilegeIntSet());
-    resp.setSysPriSetGrantOpt(super.getSysPriGrantOptSet());
-    resp.setPrivilegeList(getPathPrivilegeInfo());
-    for (TDBPrivilege tdbPrivilege : getRelationalPrivilegeInfo()) {
-      resp.putToDbPrivilegeMap(tdbPrivilege.getDatabasename(), tdbPrivilege);
-    }
+    resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
     return resp;
   }
