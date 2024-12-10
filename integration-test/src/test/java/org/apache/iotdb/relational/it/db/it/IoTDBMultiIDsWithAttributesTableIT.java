@@ -1865,7 +1865,23 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void mergeSortJoinTest() {}
+  public void mergeSortJoinTest() {
+    expectedHeader = new String[] {"time1", "time2", "device1", "device2"};
+    sql =
+        "select t1.time as time1, t2.time as time2, t1.device as device1, t2.device as device2 from tablea t1 join tableb t2 "
+            + "on cast(substring(t1.device,2) as int32) = cast(substring(t2.device,2) as int32)+1 order by time1,time2,device1,device2";
+    retArray =
+        new String[] {
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:02.000Z,d2,d1,",
+          "2020-01-01T00:00:05.000Z,2020-01-01T00:00:03.000Z,d2,d1,",
+          "2020-01-01T00:00:07.000Z,2020-01-01T00:00:02.000Z,d2,d1,",
+          "2020-01-01T00:00:07.000Z,2020-01-01T00:00:03.000Z,d2,d1,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void crossJoinTest() {}
 
   public static String[] buildHeaders(int length) {
     String[] expectedHeader = new String[length];

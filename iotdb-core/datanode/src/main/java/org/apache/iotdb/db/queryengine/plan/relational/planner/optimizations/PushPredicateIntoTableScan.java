@@ -558,7 +558,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       boolean hasFilter = false;
       Expression lastEquiJoinConjunct = null;
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
-        if (joinEqualityExpressionOnTimeColumn(conjunct, node)) {
+        if (joinEqualityExpressionOnOneColumn(conjunct, node)) {
           lastEquiJoinConjunct = conjunct;
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
@@ -585,7 +585,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
       }
 
-      // checkArgument(equiJoinClauses.size() <= 1, "Only support Join on one column for now.");
       if (!equiJoinClauses.isEmpty() && hasFilter) {
         equiJoinClauses.clear();
         joinFilterBuilder.add(lastEquiJoinConjunct);
@@ -679,15 +678,17 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return output;
     }
 
-    private boolean joinEqualityExpressionOnTimeColumn(Expression conjunct, JoinNode node) {
+    private boolean joinEqualityExpressionOnOneColumn(Expression conjunct, JoinNode node) {
       if (!joinEqualityExpression(
           conjunct,
           node.getLeftChild().getOutputSymbols(),
           node.getRightChild().getOutputSymbols())) {
         return false;
       }
+
       // conjunct must be a comparison expression
       ComparisonExpression equality = (ComparisonExpression) conjunct;
+
       // After Optimization, some subqueries are transformed into Join.
       // For now, Users can only use join on time. And the join is implemented using MergeSortJoin.
       // However, it's assumed that use Filter + NestedLoopJoin is better than MergeSortJoin
@@ -696,9 +697,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       // will use Filter + NestedLoopJoin instead.
       // Attention: For now, join on time column is assumed to hold the following condition: left
       // and right both contains the substring time.
-      // todo: after supporting join on other columns for the user, we need to remove the following
-      // code, since the condition does not hold anymore.
-      //  This is temporary workaround.
       Expression left = equality.getLeft();
       Expression right = equality.getRight();
       return (left instanceof SymbolReference && right instanceof SymbolReference);
@@ -709,7 +707,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         return Symbol.from(expression);
       }
 
-      // TODO(beyyes) verify the rightness of type
       return symbolAllocator.newSymbol(expression, analysis.getType(expression));
     }
 
