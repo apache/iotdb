@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -735,7 +736,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   protected RelationPlan visitPipeEnriched(final PipeEnriched node, final Void context) {
     final RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
 
-    // TODO: Deletion
     if (relationPlan.getRoot() instanceof LoadTsFileNode) {
       return relationPlan;
     } else if (relationPlan.getRoot() instanceof InsertNode) {
@@ -744,7 +744,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           analysis.getRootScope(),
           Collections.emptyList(),
           outerContext);
+    } else if (relationPlan.getRoot() instanceof RelationalDeleteDataNode) {
+      return new RelationPlan(
+          new PipeEnrichedDeleteDataNode((RelationalDeleteDataNode) relationPlan.getRoot()),
+          analysis.getRootScope(),
+          Collections.emptyList(),
+          outerContext);
     }
+
     return new RelationPlan(
         new PipeEnrichedWritePlanNode((WritePlanNode) relationPlan.getRoot()),
         analysis.getRootScope(),
