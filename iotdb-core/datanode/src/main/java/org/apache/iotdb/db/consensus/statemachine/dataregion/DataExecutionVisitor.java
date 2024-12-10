@@ -266,7 +266,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitDeleteData(final RelationalDeleteDataNode node, final DataRegion dataRegion) {
+  public TSStatus visitDeleteData(
+      final RelationalDeleteDataNode node, final DataRegion dataRegion) {
     try {
       dataRegion.deleteByTable(node);
       return StatusUtils.OK;

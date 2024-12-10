@@ -22,10 +22,14 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class PipePlanTablePatternParseVisitor
     extends PlanVisitor<Optional<PlanNode>, TablePattern> {
@@ -47,6 +51,18 @@ public class PipePlanTablePatternParseVisitor
       final TableDeviceAttributeUpdateNode node, final TablePattern pattern) {
     return pattern.matchesDatabase(node.getDatabase()) && pattern.matchesTable(node.getTableName())
         ? Optional.of(node)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<PlanNode> visitDeleteData(
+      final RelationalDeleteDataNode node, final TablePattern pattern) {
+    final List<TableDeletionEntry> deletionEntries =
+        node.getModEntries().stream()
+            .filter(entry -> pattern.matchesTable(entry.getTableName()))
+            .collect(Collectors.toList());
+    return !deletionEntries.isEmpty()
+        ? Optional.of(new RelationalDeleteDataNode(node.getPlanNodeId(), deletionEntries))
         : Optional.empty();
   }
 }

@@ -19,16 +19,24 @@
 
 package org.apache.iotdb.db.pipe.extractor;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 public class PipePlanTablePatternParseVisitorTest {
@@ -86,5 +94,34 @@ public class PipePlanTablePatternParseVisitorTest {
         IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
             .process(falseInput2, tablePattern)
             .isPresent());
+  }
+
+  @Test
+  public void testDeleteData() {
+    Assert.assertEquals(
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""),
+            new TableDeletionEntry(
+                new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+        IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new RelationalDeleteDataNode(
+                    new PlanNodeId(""),
+                    Arrays.asList(
+                        new TableDeletionEntry(
+                            new DeletionPredicate("ab"),
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                        new TableDeletionEntry(
+                            new DeletionPredicate(
+                                "ac",
+                                new IDPredicate.And(
+                                    new IDPredicate.FullExactMatch(
+                                        DeviceIDFactory.getInstance()
+                                            .getDeviceID(
+                                                new PartialPath(new String[] {"ac", "device1"}))),
+                                    new IDPredicate.SegmentExactMatch("device2", 1))),
+                            new TimeRange(0, 1)))),
+                tablePattern)
+            .orElse(null));
   }
 }
