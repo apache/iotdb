@@ -99,7 +99,7 @@ public abstract class InsertBaseStatement extends Statement {
   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
 
-  @TableModel private String databaseName;
+  @TableModel protected String databaseName;
 
   // endregion
 
