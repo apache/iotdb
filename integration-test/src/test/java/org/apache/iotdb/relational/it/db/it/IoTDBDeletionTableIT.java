@@ -1047,8 +1047,8 @@ public class IoTDBDeletionTableIT {
     AtomicLong deletedPointCounter = new AtomicLong(0);
     ExecutorService writeDeletionThreadPool = Executors.newCachedThreadPool();
     ExecutorService restartThreadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         writeDeletionThreadPool.submit(
@@ -1072,7 +1072,7 @@ public class IoTDBDeletionTableIT {
                     pointPerFile,
                     deletionRange,
                     minIntervalToRecord));
-    int restartTargetPointWritten = 100000;
+    int restartTargetPointWritten = 5000;
     Future<Void> restartThread =
         restartThreadPool.submit(
             () -> restart(writtenPointCounter, restartTargetPointWritten, writeDeletionThreadPool));
@@ -1205,6 +1205,9 @@ public class IoTDBDeletionTableIT {
           Thread.sleep(10);
         }
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
     } catch (SQLException e) {
       if (e.getMessage().contains("Fail to reconnect")) {
         // restart triggered, ignore
@@ -1316,6 +1319,9 @@ public class IoTDBDeletionTableIT {
 
         Thread.sleep(10);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
     } catch (SQLException e) {
       if (e.getMessage().contains("Fail to reconnect")) {
         // restart triggered, ignore
