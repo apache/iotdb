@@ -1217,7 +1217,7 @@ public class TestUtils {
       final String sql,
       final String expectedHeader,
       final Set<String> expectedResSet) {
-    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, null);
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, (String) null);
   }
 
   public static void assertDataAlwaysOnEnv(

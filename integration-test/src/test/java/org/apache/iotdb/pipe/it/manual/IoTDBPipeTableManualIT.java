@@ -180,7 +180,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet(),
-          null);
+          (String) null);
     }
   }
 
