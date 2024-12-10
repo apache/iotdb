@@ -956,7 +956,8 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
-      statement.execute("SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
+      statement.execute(
+          "SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -997,7 +998,8 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
-      statement.execute("SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
+      statement.execute(
+          "SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -1205,6 +1207,9 @@ public class IoTDBDeletionTableIT {
           Thread.sleep(10);
         }
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
     } catch (SQLException e) {
       if (e.getMessage().contains("Fail to reconnect")) {
         // restart triggered, ignore
@@ -1316,6 +1321,9 @@ public class IoTDBDeletionTableIT {
 
         Thread.sleep(10);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
     } catch (SQLException e) {
       if (e.getMessage().contains("Fail to reconnect")) {
         // restart triggered, ignore
