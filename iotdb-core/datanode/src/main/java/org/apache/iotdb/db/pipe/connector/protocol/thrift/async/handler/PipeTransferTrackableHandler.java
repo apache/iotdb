@@ -74,7 +74,7 @@ public abstract class PipeTransferTrackableHandler
       clearEventsReferenceCount();
       return false;
     }
-    connector.recordHandler(this);
+    connector.trackHandler(this);
     doTransfer(client, req);
     return true;
   }

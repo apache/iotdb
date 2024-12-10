@@ -622,7 +622,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     return isClosed.get();
   }
 
-  public void recordHandler(final PipeTransferTrackableHandler handler) {
+  public void trackHandler(final PipeTransferTrackableHandler handler) {
     pendingHandlers.add(handler);
   }
 
