@@ -791,7 +791,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
               .status;
 
-      // Update device attribute is itself idempotent
+      // Delete data & Update device attribute is itself idempotent
+      // No strong need to handle the failure result
       if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
         LOGGER.warn(

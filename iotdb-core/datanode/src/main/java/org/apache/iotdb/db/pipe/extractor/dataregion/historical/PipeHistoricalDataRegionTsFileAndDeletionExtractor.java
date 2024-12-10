@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -121,6 +122,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   private String pipeName;
   private long creationTime;
+  private String databaseName;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -318,7 +320,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (Objects.nonNull(dataRegion)) {
-      final String databaseName = dataRegion.getDatabaseName();
+      databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
             treePattern.coversDb(databaseName)
@@ -674,13 +676,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
             || deviceID.getTableName().equals(PATH_ROOT));
 
-    final String databaseName = resource.getDatabaseName();
+    final String dbName = resource.getDatabaseName();
     isDbNameCoveredByPattern =
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()
-                && tablePattern.coversDb(databaseName.substring(5))
-            : treePattern.isTreeModelDataAllowedToBeCaptured()
-                && treePattern.coversDb(databaseName);
+                && tablePattern.coversDb(dbName.substring(5))
+            : treePattern.isTreeModelDataAllowedToBeCaptured() && treePattern.coversDb(dbName);
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -774,7 +775,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return terminateEvent;
   }
 
-  private Event supplyTsFileEvent(TsFileResource resource) {
+  private Event supplyTsFileEvent(final TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
@@ -833,7 +834,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             pipeTaskMeta,
             treePattern,
             tablePattern,
-            false);
+            false,
+            PathUtils.unQualifyDatabaseName(databaseName));
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();

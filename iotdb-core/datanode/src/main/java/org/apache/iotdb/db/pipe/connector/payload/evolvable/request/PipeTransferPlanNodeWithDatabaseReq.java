@@ -33,16 +33,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
-public class PipeTransferPlanNodeReq extends TPipeTransferReq {
+public class PipeTransferPlanNodeWithDatabaseReq extends PipeTransferPlanNodeReq {
+  private transient String databaseName;
 
-  protected transient PlanNode planNode;
-
-  protected PipeTransferPlanNodeReq() {
-    // Do nothing
-  }
-
-  public PlanNode getPlanNode() {
-    return planNode;
+  protected PipeTransferPlanNodeWithDatabaseReq() {
+    super();
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -87,21 +82,12 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   @Override
   public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
-    return planNode.equals(that.planNode)
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return super.equals(obj)
+        && Objects.equals(databaseName, ((PipeTransferPlanNodeWithDatabaseReq) obj).databaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(planNode, version, type, body);
+    return Objects.hash(super.hashCode(), databaseName);
   }
 }

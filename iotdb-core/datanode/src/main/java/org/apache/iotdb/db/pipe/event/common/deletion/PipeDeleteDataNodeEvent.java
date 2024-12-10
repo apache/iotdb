@@ -41,15 +41,18 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
   private ProgressIndex progressIndex;
+  private transient String database;
 
   public PipeDeleteDataNodeEvent() {
     // Used for deserialization
-    this(null, false);
+    this(null, false, null);
   }
 
   public PipeDeleteDataNodeEvent(
-      final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
+      final AbstractDeleteDataNode deleteDataNode,
+      final boolean isGeneratedByPipe,
+      final String database) {
+    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe, database);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -59,7 +62,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String database) {
     super(
         pipeName,
         creationTime,
@@ -70,6 +74,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
+    this.database = database;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
@@ -82,17 +87,21 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     return deletionResource;
   }
 
-  public void setDeletionResource(DeletionResource deletionResource) {
+  public void setDeletionResource(final DeletionResource deletionResource) {
     this.deletionResource = deletionResource;
   }
 
+  public String getDatabase() {
+    return database;
+  }
+
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
@@ -111,13 +120,13 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      long creationTime,
-      PipeTaskMeta pipeTaskMeta,
-      TreePattern treePattern,
-      TablePattern tablePattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime) {
     return new PipeDeleteDataNodeEvent(
         deleteDataNode,
         pipeName,
@@ -125,7 +134,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
-        isGeneratedByPipe);
+        isGeneratedByPipe,
+        database);
   }
 
   @Override
@@ -153,13 +163,13 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
   }
 
-  public static PipeDeleteDataNodeEvent deserialize(ByteBuffer buffer) {
+  public static PipeDeleteDataNodeEvent deserialize(final ByteBuffer buffer) {
     final PipeDeleteDataNodeEvent event = new PipeDeleteDataNodeEvent();
     event.deserializeFromByteBuffer(buffer);
     return event;
