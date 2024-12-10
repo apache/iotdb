@@ -295,6 +295,19 @@ public class LocalExecutionPlanner {
 
   public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     freeMemoryForOperators += memoryInBytes;
+
+    if (freeMemoryForOperators > ALLOCATE_MEMORY_FOR_OPERATORS) {
+      LOGGER.error(
+          "The free memory released is more than allocated memory, free memory:{} released memory: {},allocated memory:{}",
+          freeMemoryForOperators,
+          memoryInBytes,
+          ALLOCATE_MEMORY_FOR_OPERATORS);
+
+      throw new MemoryNotEnoughException(
+          String.format(
+              "The memory released is more than allocated memory, released memory: %d, allocated memory: %d",
+              memoryInBytes, ALLOCATE_MEMORY_FOR_OPERATORS));
+    }
   }
 
   public long getAllocateMemoryForOperators() {
