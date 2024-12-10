@@ -87,6 +87,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
 
@@ -2870,6 +2871,28 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update trusted_uri_pattern
+      String trustedUriPattern =
+          Optional.ofNullable(
+                  properties.getProperty(
+                      "trusted_uri_pattern",
+                      ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern")))
+              .map(String::trim)
+              .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern"));
+      Pattern pattern;
+      if (trustedUriPattern != null) {
+        try {
+          pattern = Pattern.compile(trustedUriPattern);
+        } catch (Exception e) {
+          LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+          pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+        }
+      } else {
+        pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+      }
+      commonDescriptor.getConfig().setTrustedUriPattern(pattern);
+
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

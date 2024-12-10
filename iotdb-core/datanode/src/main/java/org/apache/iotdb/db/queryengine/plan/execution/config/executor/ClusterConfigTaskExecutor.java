@@ -541,7 +541,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 UDFExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -568,12 +567,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tCreateFunctionReq.setJarFile(jarFile);
         tCreateFunctionReq.setJarMD5(jarMd5);
         tCreateFunctionReq.setIsUsingURI(true);
-        tCreateFunctionReq.setJarName(
-            String.format(
-                "%s-%s.%s",
-                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
-                jarMd5,
-                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
+        int index = jarFileName.lastIndexOf(".");
+        if (index < 0) {
+          tCreateFunctionReq.setJarName(String.format("%s-%s", jarFileName, jarMd5));
+        } else {
+          tCreateFunctionReq.setJarName(
+              String.format(
+                  "%s-%s.%s",
+                  jarFileName.substring(0, index), jarMd5, jarFileName.substring(index + 1)));
+        }
       }
 
       FunctionType functionType = FunctionType.NONE;
@@ -728,7 +730,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 TriggerExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -894,7 +895,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           final String jarFilePathUnderTempDir =
               PipePluginExecutableManager.getInstance()
                       .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                  + File.separator
                   + jarFileName;
           // libRoot should be the path of the specified jar
           libRoot = jarFilePathUnderTempDir;
