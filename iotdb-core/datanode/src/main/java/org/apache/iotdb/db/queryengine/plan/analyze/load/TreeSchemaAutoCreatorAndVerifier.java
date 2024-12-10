@@ -227,9 +227,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (loadTsFileAnalyzer.isVerifySchema()) {
         verifySchema(schemaTree);
       }
-    } catch (AuthException e) {
+    } catch (final AuthException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Auto create or verify schema error.", e);
       throw new SemanticException(
           String.format(
