@@ -15,7 +15,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
-
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -88,7 +87,7 @@ public class TableWindowOperatorTest {
           }
 
           @Override
-          public TsBlock next() throws Exception {
+          public TsBlock next() {
             if (timeArray[index] == null) {
               index++;
               return null;
@@ -111,17 +110,17 @@ public class TableWindowOperatorTest {
           }
 
           @Override
-          public boolean hasNext() throws Exception {
+          public boolean hasNext() {
             return index < timeArray.length;
           }
 
           @Override
-          public boolean isFinished() throws Exception {
+          public boolean isFinished() {
             return index >= timeArray.length;
           }
 
           @Override
-          public void close() throws Exception {
+          public void close() {
             // do nothing
           }
 
@@ -161,8 +160,8 @@ public class TableWindowOperatorTest {
         childOperator,
         inputDataTypes,
         outputDataTypes,
-        windowFunction,
-        frameInfo,
+        Collections.singletonList(windowFunction),
+        Collections.singletonList(frameInfo),
         Collections.singletonList(1),
         Collections.singletonList(2),
         Collections.singletonList(SortOrder.ASC_NULLS_FIRST));

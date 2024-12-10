@@ -37,18 +37,18 @@ public class TableWindowOperator implements ProcessOperator {
   private final TsBlockBuilder transformTsBlockBuilder;
 
   // Basic information about window operator
-  private WindowFunction windowFunction;
-  private FrameInfo frameInfo;
+  private List<WindowFunction> windowFunctions;
+  private List<FrameInfo> frameInfoList;
 
   // Partition
-  private List<Integer> partitionChannels;
-  private RowComparator partitionComparator;
+  private final List<Integer> partitionChannels;
+  private final RowComparator partitionComparator;
 
   // Sort
-  private List<Integer> sortChannels;
+  private final List<Integer> sortChannels;
   private final Comparator<SortKey> comparator;
   // Auxiliary field for sort
-  private List<SortKey> cachedData;
+  private final List<SortKey> cachedData;
   private int curRow = -1;
 
   public TableWindowOperator(
@@ -56,8 +56,8 @@ public class TableWindowOperator implements ProcessOperator {
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
-      WindowFunction windowFunction,
-      FrameInfo frameInfo,
+      List<WindowFunction> windowFunction,
+      List<FrameInfo> frameInfoList,
       List<Integer> partitionChannels,
       List<Integer> sortChannels,
       List<SortOrder> sortOrders) {
@@ -69,8 +69,8 @@ public class TableWindowOperator implements ProcessOperator {
     this.transformTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Basic information part
-    this.windowFunction = windowFunction;
-    this.frameInfo = frameInfo;
+    this.windowFunctions = windowFunction;
+    this.frameInfoList = frameInfoList;
 
     // TODO: preGroup & preSort
     // Partition Part
@@ -201,8 +201,8 @@ public class TableWindowOperator implements ProcessOperator {
               inputDataTypes,
               partitionStart,
               partitionEnd,
-              windowFunction,
-              frameInfo,
+              windowFunctions,
+              frameInfoList,
               sortChannels);
       partitions.add(partition);
 
