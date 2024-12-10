@@ -252,6 +252,7 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
+  private long pipeStuckRestartMinIntervalMs = 0;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -1017,8 +1018,16 @@ public class CommonConfig {
     return pipeStuckRestartIntervalSeconds;
   }
 
+  public long getPipeStuckRestartMinIntervalMs() {
+    return pipeStuckRestartMinIntervalMs;
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
+    this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {

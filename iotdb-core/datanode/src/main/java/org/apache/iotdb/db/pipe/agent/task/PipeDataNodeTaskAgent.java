@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -103,6 +104,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final AtomicLong LAST_FORCED_RESTART_TIME =
       new AtomicLong(System.currentTimeMillis());
+
+  private static final Map<String, Long> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
+      new ConcurrentHashMap<>();
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
@@ -522,6 +526,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+
+      // If the pipe has been restarted recently, skip it.
+      if (PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName)) {
+        if (System.currentTimeMillis() - PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName)
+            < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
+          continue;
+        }
+      }
+
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()
               .filter(e -> e.getPipeName().equals(pipeName) && e.shouldExtractInsertion())
@@ -566,6 +579,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         }
       }
     }
+
+    // Update the last restart time for all stuck pipes.
+    final long currentTime = System.currentTimeMillis();
+    stuckPipes.forEach(
+        pipeMeta ->
+            PIPE_NAME_TO_LAST_RESTART_TIME_MAP.put(
+                pipeMeta.getStaticMeta().getPipeName(), currentTime));
 
     return stuckPipes;
   }
