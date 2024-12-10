@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler<TPipeTransferResp> {
+public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
@@ -364,7 +364,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler<TPip
   }
 
   @Override
-  protected void clearEventsReferenceCount() {
+  public void clearEventsReferenceCount() {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
   }
 }

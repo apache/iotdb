@@ -32,8 +32,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
-    extends PipeTransferTrackableHandler<E> {
+public abstract class PipeTransferTabletInsertionEventHandler
+    extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
@@ -99,7 +99,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   }
 
   @Override
-  protected void clearEventsReferenceCount() {
+  public void clearEventsReferenceCount() {
     event.clearReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
   }
 

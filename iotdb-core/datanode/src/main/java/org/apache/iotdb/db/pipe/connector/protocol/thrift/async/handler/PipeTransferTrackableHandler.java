@@ -27,8 +27,8 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public abstract class PipeTransferTrackableHandler<E extends TPipeTransferResp>
-    implements AsyncMethodCallback<E> {
+public abstract class PipeTransferTrackableHandler
+    implements AsyncMethodCallback<TPipeTransferResp> {
 
   protected final IoTDBDataRegionAsyncConnector connector;
 
@@ -42,6 +42,7 @@ public abstract class PipeTransferTrackableHandler<E extends TPipeTransferResp>
       onCompleteInternal(response);
     } finally {
       connector.decreasePendingRequests();
+      connector.eliminateHandler(this);
     }
   }
 
@@ -51,6 +52,7 @@ public abstract class PipeTransferTrackableHandler<E extends TPipeTransferResp>
       onErrorInternal(exception);
     } finally {
       connector.decreasePendingRequests();
+      connector.eliminateHandler(this);
     }
   }
 
@@ -71,6 +73,7 @@ public abstract class PipeTransferTrackableHandler<E extends TPipeTransferResp>
       return false;
     }
     connector.increasePendingRequests();
+    connector.recordHandler(this);
     doTransfer(client, req);
     return true;
   }
@@ -83,5 +86,5 @@ public abstract class PipeTransferTrackableHandler<E extends TPipeTransferResp>
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException;
 
-  protected abstract void clearEventsReferenceCount();
+  public abstract void clearEventsReferenceCount();
 }

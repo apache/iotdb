@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PipeTransferTabletBatchEventHandler
-    extends PipeTransferTrackableHandler<TPipeTransferResp> {
+    extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
@@ -136,7 +136,7 @@ public class PipeTransferTabletBatchEventHandler
   }
 
   @Override
-  protected void clearEventsReferenceCount() {
+  public void clearEventsReferenceCount() {
     events.forEach(
         event -> event.clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName()));
   }

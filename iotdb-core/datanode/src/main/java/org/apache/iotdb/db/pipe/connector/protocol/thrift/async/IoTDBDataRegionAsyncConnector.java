@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTrackableHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -53,6 +56,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -97,6 +101,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final AtomicLong pendingRequests = new AtomicLong(0);
+  private final Set<PipeTransferTrackableHandler> pendingHandlers = new HashSet<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -555,7 +560,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
 
     // ensure all on-the-fly requests have been handled
-    while (hasPendingRequests()) {
+    while (hasPendingHandlers()) {
+      pendingHandlers.removeIf(handler -> {
+        handler.clearEventsReferenceCount();
+        return true;
+      });
       try {
         Thread.sleep(50);
       } catch (final InterruptedException e) {
@@ -624,5 +633,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   public void decreasePendingRequests() {
     pendingRequests.decrementAndGet();
+  }
+
+  public void recordHandler(final PipeTransferTrackableHandler handler) {
+    pendingHandlers.add(handler);
+  }
+
+  public void eliminateHandler(final PipeTransferTrackableHandler handler) {
+    pendingHandlers.remove(handler);
+  }
+
+  public boolean hasPendingHandlers() {
+    return !pendingHandlers.isEmpty();
   }
 }
