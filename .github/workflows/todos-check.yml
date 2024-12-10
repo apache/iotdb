@@ -25,8 +25,14 @@ jobs:
           # Fetch the target branch
           git fetch origin $GITHUB_BASE_REF
           
-          # Get the diff of the changes
-          DIFF=$(git diff origin/$GITHUB_BASE_REF...HEAD)
+          # Check if there is a common ancestor
+          if git merge-base --is-ancestor origin/$GITHUB_BASE_REF HEAD; then
+            # Get the diff of the changes
+            DIFF=$(git diff origin/$GITHUB_BASE_REF...HEAD)
+          else
+            # If no common ancestor, compare with the initial commit
+            DIFF=$(git diff $(git hash-object -t tree /dev/null) HEAD)
+          fi
   
           # Check the diff for TODOs
           if echo "$DIFF" | grep -q '^\+.*TODO'; then
