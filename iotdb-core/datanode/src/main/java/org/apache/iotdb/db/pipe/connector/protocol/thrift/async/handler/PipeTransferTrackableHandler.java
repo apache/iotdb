@@ -39,9 +39,10 @@ public abstract class PipeTransferTrackableHandler
   @Override
   public void onComplete(final TPipeTransferResp response) {
     try {
-      onCompleteInternal(response);
+      if (!connector.isClosed()) {
+        onCompleteInternal(response);
+      }
     } finally {
-      connector.decreasePendingRequests();
       connector.eliminateHandler(this);
     }
   }
@@ -49,9 +50,10 @@ public abstract class PipeTransferTrackableHandler
   @Override
   public void onError(final Exception exception) {
     try {
-      onErrorInternal(exception);
+      if (!connector.isClosed()) {
+        onErrorInternal(exception);
+      }
     } finally {
-      connector.decreasePendingRequests();
       connector.eliminateHandler(this);
     }
   }
@@ -72,7 +74,6 @@ public abstract class PipeTransferTrackableHandler
       clearEventsReferenceCount();
       return false;
     }
-    connector.increasePendingRequests();
     connector.recordHandler(this);
     doTransfer(client, req);
     return true;

@@ -42,8 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PipeTransferTabletBatchEventHandler
-    extends PipeTransferTrackableHandler {
+public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
