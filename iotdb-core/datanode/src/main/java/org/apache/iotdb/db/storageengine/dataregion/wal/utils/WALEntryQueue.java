@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class WALEntryQueue {
 
   private final BlockingQueue<WALEntry> queue;
-  private final Object lock = new Object();
+  private final Object nonFullCondition = new Object();
 
   public WALEntryQueue() {
     queue = new LinkedBlockingQueue<>();
@@ -39,8 +39,8 @@ public class WALEntryQueue {
     WALEntry e = queue.poll(timeout, unit);
     if (e != null) {
       SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
-      synchronized (lock) {
-        lock.notifyAll();
+      synchronized (nonFullCondition) {
+        nonFullCondition.notifyAll();
       }
     }
     return e;
@@ -48,23 +48,20 @@ public class WALEntryQueue {
 
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
-    synchronized (lock) {
+    synchronized (nonFullCondition) {
       while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
-        lock.wait();
+        nonFullCondition.wait();
       }
     }
     queue.put(e);
     SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
-    synchronized (lock) {
-      lock.notifyAll();
-    }
   }
 
   public WALEntry take() throws InterruptedException {
     WALEntry e = queue.take();
     SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
-    synchronized (lock) {
-      lock.notifyAll();
+    synchronized (nonFullCondition) {
+      nonFullCondition.notifyAll();
     }
 
     return e;
