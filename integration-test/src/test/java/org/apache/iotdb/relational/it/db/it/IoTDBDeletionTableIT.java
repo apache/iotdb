@@ -898,7 +898,7 @@ public class IoTDBDeletionTableIT {
         // check the point count
         try (ResultSet set =
             statement.executeQuery(
-                "select count(*) from table " + testNum + " where time < " + totalPointNum)) {
+                "select count(*) from table" + testNum + " where time < " + totalPointNum)) {
           assertTrue(set.next());
           long expectedCnt = totalPointNum - pointDeleted;
           if (expectedCnt != set.getLong(1)) {
