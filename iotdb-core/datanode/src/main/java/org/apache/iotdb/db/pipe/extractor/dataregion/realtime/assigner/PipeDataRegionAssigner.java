@@ -242,6 +242,8 @@ public class PipeDataRegionAssigner implements Closeable {
    * should not be used after calling this method.
    */
   @Override
+  // use synchronized here for completely preventing reference count leaks under extreme thread
+  // scheduling when closing
   public synchronized void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
     matcher.clear();
