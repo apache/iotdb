@@ -334,6 +334,15 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(Double.toString(conf.getRejectProportion())));
 
+    final double walBufferQueueProportion =
+        Double.parseDouble(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "wal_buffer_queue_proportion",
+                        Double.toString(conf.getWalBufferQueueProportion())))
+                .map(String::trim)
+                .orElse(Double.toString(conf.getWalBufferQueueProportion())));
+
     final double devicePathCacheProportion =
         Double.parseDouble(
             Optional.ofNullable(
@@ -343,11 +352,12 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(Double.toString(conf.getDevicePathCacheProportion())));
 
-    if (rejectProportion + devicePathCacheProportion >= 1) {
+    if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
       LOGGER.warn(
-          "The sum of write_memory_proportion and device_path_cache_proportion is too large, use default values 0.8 and 0.05.");
+          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
     } else {
       conf.setRejectProportion(rejectProportion);
+      conf.setWalBufferQueueProportion(walBufferQueueProportion);
       conf.setDevicePathCacheProportion(devicePathCacheProportion);
     }
 
