@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.utils.annotations.TreeModel;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
