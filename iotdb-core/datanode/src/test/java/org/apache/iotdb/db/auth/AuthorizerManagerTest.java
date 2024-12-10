@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -75,7 +76,7 @@ public class AuthorizerManagerTest {
     user.grantDBPrivilege("test2", PrivilegeType.SELECT, true);
 
     TPermissionInfoResp result = new TPermissionInfoResp();
-    result.setUserInfo(user.getUserInfo());
+    result.setUserInfo(user.getUserInfo(ModelType.ALL));
     result.setRoleInfo(new HashMap<>());
 
     // User authentication permission without role
@@ -89,9 +90,9 @@ public class AuthorizerManagerTest {
     // Authenticate users with roles
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
     result = new TPermissionInfoResp();
-    result.setUserInfo(user.getUserInfo());
-    result.putToRoleInfo(role1.getName(), role1.getRoleInfo());
-    result.putToRoleInfo(role2.getName(), role2.getRoleInfo());
+    result.setUserInfo(user.getUserInfo(ModelType.ALL));
+    result.putToRoleInfo(role1.getName(), role1.getRoleInfo(ModelType.ALL));
+    result.putToRoleInfo(role2.getName(), role2.getRoleInfo(ModelType.ALL));
 
     // Permission information for roles owned by users
     authorityFetcher
