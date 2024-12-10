@@ -797,6 +797,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** submit unsealed TsFile to WALRecoverManager. */
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
+    unsealedTsFile.setModFileManagement(
+        getTsFileManager().getModFileManagement(unsealedTsFile.getTimePartition()));
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(unsealedTsFile, isSeq, context.recoverPerformers::add);
     // remember to close UnsealedTsFileRecoverPerformer
@@ -959,6 +961,7 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileResource tsFileResource : resourceList) {
         try (SealedTsFileRecoverPerformer recoverPerformer =
             new SealedTsFileRecoverPerformer(tsFileResource)) {
+          logger.warn("{} start to recover", tsFileResource.getTsFilePath());
           recoverPerformer.recover();
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } catch (Throwable e) {
@@ -2252,6 +2255,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
 
+    logger.info("[Deletion] Executing table deletion {}", node);
+
     writeLock("delete");
     boolean hasReleasedLock = false;
     try {
@@ -2275,7 +2280,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
+        logger.info("[Deletion] unsealed files for {}: {}", unsealedTsFileResource, modEntry);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+        logger.info("[Deletion] sealed files for {}: {}", sealedTsFileResource, modEntry);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
@@ -2439,6 +2446,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
+      logger.info(
+          "[Deletion] {} skipped {}, file time [{}, {}]",
+          deletion,
+          tsFileResource,
+          fileStartTime,
+          fileEndTime);
       return true;
     }
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
@@ -2456,6 +2469,7 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     }
+    logger.info("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
     return true;
   }
 
@@ -2479,7 +2493,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
           try {
-            tsFileResource.getProcessor().deleteDataInMemory(deletion);
+            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+              sealedTsFiles.add(tsFileResource);
+            } // else do nothing
           } finally {
             tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
           }
@@ -2491,39 +2507,61 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
-    for (TsFileResource sealedTsFile : sealedTsFiles) {
-      if (canSkipDelete(sealedTsFile, deletion)) {
-        continue;
+    Set<TsFileResource> involvedTsFileResources = new HashSet<>();
+
+    try {
+      for (TsFileResource sealedTsFile : sealedTsFiles) {
+        if (canSkipDelete(sealedTsFile, deletion)) {
+          continue;
+        }
+
+        // lock the resource so that compaction mod file will not be created before the deletion is
+        // written
+        sealedTsFile.writeLock();
+        involvedTsFileResources.add(sealedTsFile);
+        if (sealedTsFile.isCompacting() && sealedTsFile.getCompactionModFile() != null) {
+          involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
+        }
+        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
       }
 
-      if (sealedTsFile.isCompacting()) {
-        involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
+      if (involvedModificationFiles.isEmpty()) {
+        logger.info("[Deletion] Deletion {} does not involve any file", deletion);
+        return;
       }
-      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
-    }
 
-    List<Exception> exceptions =
-        involvedModificationFiles.parallelStream()
-            .map(
-                modFile -> {
-                  try {
-                    modFile.write(deletion);
-                    modFile.close();
-                  } catch (Exception e) {
-                    return e;
-                  }
-                  return null;
-                })
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+      List<Exception> exceptions =
+          involvedModificationFiles.parallelStream()
+              .map(
+                  modFile -> {
+                    try {
+                      modFile.write(deletion);
+                      modFile.close();
+                    } catch (Exception e) {
+                      return e;
+                    }
+                    return null;
+                  })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
 
-    if (!exceptions.isEmpty()) {
-      if (exceptions.size() == 1) {
-        throw new IOException(exceptions.get(0));
-      } else {
-        exceptions.forEach(e -> logger.error("Fail to write modEntry {} to files", deletion, e));
-        throw new IOException(
-            "Multiple errors occurred while writing mod files, see logs for details.");
+      if (!exceptions.isEmpty()) {
+        if (exceptions.size() == 1) {
+          throw new IOException(exceptions.get(0));
+        } else {
+          exceptions.forEach(e -> logger.error("Fail to write modEntry {} to files", deletion, e));
+          throw new IOException(
+              "Multiple errors occurred while writing mod files, see logs for details.");
+        }
+      }
+
+      logger.info(
+          "[Deletion] Deletion {} is written into {} mod files",
+          deletion,
+          involvedModificationFiles.size());
+    } finally {
+      for (TsFileResource involvedTsFileResource : involvedTsFileResources) {
+        involvedTsFileResource.writeUnlock();
       }
     }
   }
@@ -2537,15 +2575,13 @@ public class DataRegion implements IDataRegionForQuery {
     // can be deleted by mods.
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     for (TsFileResource tsFileResource : deletedByMods) {
-      if (tsFileResource.isClosed()) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
         if (tsFileResource.isCompacting()) {
           involvedModificationFiles.add(tsFileResource.getCompactionModFile());
         }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
-      } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(modEntry);
-      }
+      } // else do nothing
     }
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
