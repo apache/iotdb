@@ -93,6 +93,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
 
     // all the join Keys in leftTsBlock are less than rightTsBlock, just skip left
     if (allLeftLessThanRight()) {
+      appendValueToResult(false);
       resetLeftBlock();
       return true;
     }
