@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.queryengine.execution.operator.process.window.frame;
+package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
@@ -8,11 +8,11 @@ import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.CURRENT_ROW;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.FOLLOWING;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.PRECEDING;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.CURRENT_ROW;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.FOLLOWING;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.PRECEDING;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING;
 
 public class RangeFrame implements Frame {
   private final FrameInfo frameInfo;

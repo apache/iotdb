@@ -1,10 +1,10 @@
-package org.apache.iotdb.db.queryengine.execution.operator.process.window;
+package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.Frame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.GroupsFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.RangeFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.RowsFrame;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.Frame;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.GroupsFrame;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RangeFrame;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RowsFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
@@ -18,7 +18,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
 
 public final class Partition {
   private final TsBlock tsBlock;
@@ -110,14 +110,6 @@ public final class Partition {
         // Unreachable
         throw new UnsupportedOperationException("not yet implemented");
     }
-  }
-
-  public int getPartitionStart() {
-    return partitionStart;
-  }
-
-  public int getPartitionEnd() {
-    return partitionEnd;
   }
 
   public boolean hasNext() {
