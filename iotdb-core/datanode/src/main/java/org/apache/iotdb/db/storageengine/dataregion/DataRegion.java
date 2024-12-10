@@ -2280,9 +2280,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
-        logger.info("[Deletion] unsealed files for {}: {}", unsealedTsFileResource, modEntry);
+        logger.info("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
-        logger.info("[Deletion] sealed files for {}: {}", sealedTsFileResource, modEntry);
+        logger.info("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 

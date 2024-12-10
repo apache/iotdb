@@ -842,6 +842,7 @@ public class IoTDBDeletionTableIT {
   @Category(ManualIT.class)
   @Test
   public void testRepeatedlyWriteAndDeletion() throws SQLException {
+    int testNum = 19;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
@@ -864,14 +865,17 @@ public class IoTDBDeletionTableIT {
         statement.execute("use test");
 
         statement.execute(
-            "create table if not exists table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+            "create table if not exists table"
+                + testNum
+                + "(deviceId STRING ID, s0 INT32 MEASUREMENT)");
 
         for (int i = 1; i <= fileNumMax; i++) {
           for (int j = 0; j < pointPerFile; j++) {
             statement.execute(
                 String.format(
-                    "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d0',%d)",
-                    time + 1, time + 1));
+                    "INSERT INTO test.table" + testNum + "(time, deviceId, s0) VALUES(%d,'d0',%d)",
+                    time + 1,
+                    time + 1));
             time++;
           }
           statement.execute("FLUSH");
@@ -884,18 +888,21 @@ public class IoTDBDeletionTableIT {
         LOGGER.info("{}: deletion range [{}, {}]", rep, deletionStart, deletionEnd);
 
         statement.execute(
-            "delete from test.table1 where time >= "
+            "delete from test.table"
+                + testNum
+                + " where time >= "
                 + deletionStart
                 + " and time <= "
                 + deletionEnd);
 
         // check the point count
         try (ResultSet set =
-            statement.executeQuery("select count(*) from table1 where time < " + totalPointNum)) {
+            statement.executeQuery(
+                "select count(*) from table " + testNum + " where time < " + totalPointNum)) {
           assertTrue(set.next());
           long expectedCnt = totalPointNum - pointDeleted;
           if (expectedCnt != set.getLong(1)) {
-            List<TimeRange> remainingRanges = collectDataRanges(statement, time);
+            List<TimeRange> remainingRanges = collectDataRanges(statement, time, testNum);
             LOGGER.info("{}: Remaining ranges: {}", rep, remainingRanges);
             fail(
                 String.format(
@@ -908,39 +915,50 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testMergeDeletion() throws SQLException {
+    int testNum = 20;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("create database db1");
       statement.execute("use db1");
       statement.execute(
-          "create table t1(country id,region id, city id, device id, ab1 ATTRIBUTE, s1 int32, s2 float, s3 boolean, s4 string)");
+          "create table t"
+              + testNum
+              + "(country id,region id, city id, device id, ab1 ATTRIBUTE, s1 int32, s2 float, s3 boolean, s4 string)");
       statement.execute(
-          "INSERT INTO t1(time,country,region,city,device,ab1,s1,s2,s3,s4) values (100,'china','hebei','shijiazhuang','d1','ab1',1,1,1,1),(200,null,'hebei','shijiazhuang','d2','ab2',1,1,1,1),(300,'china','beijing','beijing','d1','ab3',1,1,1,1),(400,'china','tianjin','tianjin','d1','ab4',1,1,1,1),(500,'china','sichuan','chengdu','d1',null,1,1,1,1),(600,'china','zhejiang','hangzhou','d1','ab6',1,1,1,1),(700,'japan','dao','tokyo','d1','ab7',1,1,1,1),(800,'canada','tronto','shijiazhuang','d1','ab8',null,1,1,1),(900,'usa','ca','oldmountain','d1','ab9',1,1,1,1),(1000,'tailand',null,'mangu','d1','ab10',1,1,1,1),(1100,'china','hebei','','d1','ab11',1,1,1,1),(1200,'','hebei','','d1','ab12',1,1,1,1),(1300,'china','','','d1','ab13',1,1,1,1)");
+          "INSERT INTO t"
+              + testNum
+              + "(time,country,region,city,device,ab1,s1,s2,s3,s4) values (100,'china','hebei','shijiazhuang','d1','ab1',1,1,1,1),(200,null,'hebei','shijiazhuang','d2','ab2',1,1,1,1),(300,'china','beijing','beijing','d1','ab3',1,1,1,1),(400,'china','tianjin','tianjin','d1','ab4',1,1,1,1),(500,'china','sichuan','chengdu','d1',null,1,1,1,1),(600,'china','zhejiang','hangzhou','d1','ab6',1,1,1,1),(700,'japan','dao','tokyo','d1','ab7',1,1,1,1),(800,'canada','tronto','shijiazhuang','d1','ab8',null,1,1,1),(900,'usa','ca','oldmountain','d1','ab9',1,1,1,1),(1000,'tailand',null,'mangu','d1','ab10',1,1,1,1),(1100,'china','hebei','','d1','ab11',1,1,1,1),(1200,'','hebei','','d1','ab12',1,1,1,1),(1300,'china','','','d1','ab13',1,1,1,1)");
       statement.execute("flush");
       int cnt = 0;
       try (ResultSet set =
           statement.executeQuery(
-              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t"
+                  + testNum
+                  + " order by time")) {
         while (set.next()) {
           cnt++;
         }
         assertEquals(13, cnt);
       }
       cnt = 0;
-      statement.execute("delete from t1 where country='japan'");
+      statement.execute("delete from t" + testNum + " where country='japan'");
       try (ResultSet set =
           statement.executeQuery(
-              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t"
+                  + testNum
+                  + " order by time")) {
         while (set.next()) {
           cnt++;
         }
         assertEquals(12, cnt);
       }
       cnt = 0;
-      statement.execute("delete from t1 where country='china' and region='beijing'");
+      statement.execute("delete from t" + testNum + " where country='china' and region='beijing'");
       try (ResultSet set =
           statement.executeQuery(
-              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t1 order by time")) {
+              "select time,country,region,city,device,ab1,s1,s2,s3,s4 from t"
+                  + testNum
+                  + " order by time")) {
         while (set.next()) {
           cnt++;
         }
@@ -953,6 +971,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndSequentialDeletion()
       throws InterruptedException, ExecutionException, SQLException {
+    int testNum = 21;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
@@ -967,18 +986,21 @@ public class IoTDBDeletionTableIT {
     int deviceNum = 4;
     Future<Void> writeThread =
         threadPool.submit(
-            () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
+            () ->
+                write(
+                    writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum, testNum));
     int deletionRange = 150;
     int deletionInterval = 1500;
     Future<Void> deletionThread =
         threadPool.submit(
             () ->
-                concurrentSequentialDeletion(
+                sequentialDeletion(
                     writtenPointCounter,
                     threadPool,
                     deletionRange,
                     deletionInterval,
-                    fileNumMax * pointPerFile - 1));
+                    fileNumMax * pointPerFile - 1,
+                    testNum));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -995,6 +1017,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndRandomDeletion()
       throws InterruptedException, ExecutionException, SQLException {
+    int testNum = 22;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
@@ -1010,7 +1033,9 @@ public class IoTDBDeletionTableIT {
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
         threadPool.submit(
-            () -> write(writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum));
+            () ->
+                write(
+                    writtenPointCounter, threadPool, fileNumMax, pointPerFile, deviceNum, testNum));
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
@@ -1023,7 +1048,8 @@ public class IoTDBDeletionTableIT {
                     fileNumMax,
                     pointPerFile,
                     deletionRange,
-                    minIntervalToRecord));
+                    minIntervalToRecord,
+                    testNum));
     writeThread.get();
     deletionThread.get();
     threadPool.shutdown();
@@ -1040,6 +1066,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndRandomDeletionWithRestart()
       throws InterruptedException, ExecutionException, SQLException {
+    int testNum = 23;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
@@ -1060,7 +1087,8 @@ public class IoTDBDeletionTableIT {
                     writeDeletionThreadPool,
                     fileNumMax,
                     pointPerFile,
-                    deviceNum));
+                    deviceNum,
+                    testNum));
     int deletionRange = 100;
     int minIntervalToRecord = 1000;
     Future<Void> deletionThread =
@@ -1073,7 +1101,8 @@ public class IoTDBDeletionTableIT {
                     fileNumMax,
                     pointPerFile,
                     deletionRange,
-                    minIntervalToRecord));
+                    minIntervalToRecord,
+                    testNum));
     int restartTargetPointWritten = 100000;
     Future<Void> restartThread =
         restartThreadPool.submit(
@@ -1099,7 +1128,10 @@ public class IoTDBDeletionTableIT {
       statement.execute("USE test");
       try (ResultSet set =
           statement.executeQuery(
-              "select count(*) from table1 where time < " + writtenPointCounter.get())) {
+              "select count(*) from table"
+                  + testNum
+                  + " where time < "
+                  + writtenPointCounter.get())) {
         assertTrue(set.next());
         assertEquals(writtenPointCounter.get() - deletedPointCounter.get(), set.getLong(1));
       }
@@ -1116,7 +1148,8 @@ public class IoTDBDeletionTableIT {
       ExecutorService allThreads,
       int fileNumMax,
       int pointPerFile,
-      int deviceNum)
+      int deviceNum,
+      int testNum)
       throws SQLException {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -1126,14 +1159,18 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
 
       statement.execute(
-          "create table if not exists table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+          "create table if not exists table"
+              + testNum
+              + "(deviceId STRING ID, s0 INT32 MEASUREMENT)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
           long time = writtenPointCounter.get() + 1;
           statement.execute(
               String.format(
-                  "INSERT INTO test.table1(time, deviceId, s0) VALUES(%d,'d"
+                  "INSERT INTO test.table"
+                      + testNum
+                      + "(time, deviceId, s0) VALUES(%d,'d"
                       + (time % deviceNum)
                       + "',%d)",
                   time,
@@ -1163,12 +1200,13 @@ public class IoTDBDeletionTableIT {
     return null;
   }
 
-  private Void concurrentSequentialDeletion(
+  private Void sequentialDeletion(
       AtomicLong writtenPointCounter,
       ExecutorService allThreads,
       int deletionRange,
       int deletionInterval,
-      long deletionEnd)
+      long deletionEnd,
+      int testNum)
       throws SQLException, InterruptedException {
     // delete every 10 points in 100 points
     int deletionOffset = 0;
@@ -1187,7 +1225,9 @@ public class IoTDBDeletionTableIT {
           && !Thread.interrupted()) {
         if (writtenPointCounter.get() >= nextPointNumToDelete) {
           statement.execute(
-              "delete from test.table1 where time >= "
+              "delete from test.table"
+                  + testNum
+                  + " where time >= "
                   + deletionOffset
                   + " and time < "
                   + (deletionOffset + deletionRange));
@@ -1196,7 +1236,10 @@ public class IoTDBDeletionTableIT {
 
           try (ResultSet set =
               statement.executeQuery(
-                  "select count(*) from table1 where time < " + nextPointNumToDelete)) {
+                  "select count(*) from table"
+                      + testNum
+                      + " where time < "
+                      + nextPointNumToDelete)) {
             assertTrue(set.next());
             assertEquals(nextPointNumToDelete * 9 / 10, set.getLong(1));
           }
@@ -1232,7 +1275,8 @@ public class IoTDBDeletionTableIT {
       int fileNumMax,
       int pointPerFile,
       int deletionRange,
-      int minIntervalToRecord)
+      int minIntervalToRecord,
+      int testNum)
       throws SQLException, InterruptedException {
     // delete random 100 points each time
     List<TimeRange> undeletedRanges = new ArrayList<>();
@@ -1274,7 +1318,9 @@ public class IoTDBDeletionTableIT {
         LOGGER.info("Deletion range [{}, {}]", rangeDeletionStart, rangeDeletionEnd);
 
         statement.execute(
-            "delete from test.table1 where time >= "
+            "delete from test.table"
+                + testNum
+                + " where time >= "
                 + rangeDeletionStart
                 + " and time <= "
                 + rangeDeletionEnd);
@@ -1305,12 +1351,13 @@ public class IoTDBDeletionTableIT {
         // check the point count
         try (ResultSet set =
             statement.executeQuery(
-                "select count(*) from table1 where time <= " + currentWrittenTime)) {
+                "select count(*) from table" + testNum + " where time <= " + currentWrittenTime)) {
           assertTrue(set.next());
           long expectedCnt = currentWrittenTime + 1 - deletedPointCounter.get();
           if (expectedCnt != set.getLong(1)) {
             undeletedRanges = mergeRanges(undeletedRanges);
-            List<TimeRange> remainingRanges = collectDataRanges(statement, currentWrittenTime);
+            List<TimeRange> remainingRanges =
+                collectDataRanges(statement, currentWrittenTime, testNum);
             LOGGER.info("Expected ranges: {}", undeletedRanges);
             LOGGER.info("Remaining ranges: {}", remainingRanges);
             fail(
@@ -1380,11 +1427,12 @@ public class IoTDBDeletionTableIT {
     return result;
   }
 
-  private List<TimeRange> collectDataRanges(Statement statement, long timeUpperBound)
+  private List<TimeRange> collectDataRanges(Statement statement, long timeUpperBound, int testNum)
       throws SQLException {
     List<TimeRange> ranges = new ArrayList<>();
     try (ResultSet set =
-        statement.executeQuery("select time from table1 where time <= " + timeUpperBound)) {
+        statement.executeQuery(
+            "select time from table" + testNum + " where time <= " + timeUpperBound)) {
       while (set.next()) {
         long time = set.getLong(1);
         if (ranges.isEmpty()) {
