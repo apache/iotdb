@@ -73,7 +73,7 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0"),
           "count(devices),",
