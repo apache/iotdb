@@ -7,8 +7,16 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.R
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.RowsFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.window.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
 
@@ -21,6 +29,8 @@ public final class Partition {
 
   private int peerGroupStart;
   private int peerGroupEnd;
+  private List<Column> frameColumns = new ArrayList<>();
+  private RowComparator peerGroupComparator;
 
   private int currentGroupIndex = -1;
   private int currentPosition;
@@ -29,16 +39,29 @@ public final class Partition {
 
   public Partition(
       TsBlock tsBlock,
+      List<TSDataType> dataTypes,
       int partitionStart,
       int partitionEnd,
       WindowFunction windowFunction,
-      FrameInfo frameInfo) {
+      FrameInfo frameInfo,
+      List<Integer> sortChannels) {
     this.tsBlock = tsBlock;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
     this.windowFunction = windowFunction;
+    // Prepare for peer group comparing
+    List<TSDataType> sortDataTypes = new ArrayList<>();
+    for (int channel : sortChannels) {
+      TSDataType dataType = dataTypes.get(channel);
+      sortDataTypes.add(dataType);
+    }
+    this.peerGroupComparator = new RowComparator(sortDataTypes);
+    for (Integer channel : sortChannels) {
+      Column partitionColumn = tsBlock.getColumn(channel);
+      frameColumns.add(partitionColumn);
+    }
 
-    // reset functions for new partition
+    // Reset functions for new partition
     windowFunction.reset();
 
     currentPosition = partitionStart;
@@ -52,20 +75,22 @@ public final class Partition {
                   frameInfo,
                   partitionStart,
                   partitionEnd,
-                  tsBlock,
-                  new Frame.Range(0, partitionEnd - partitionStart - 1));
+                  frameColumns,
+                  peerGroupComparator,
+                  new Range(0, partitionEnd - partitionStart - 1));
         } else {
           frame =
               new RangeFrame(
                   frameInfo,
                   partitionStart,
                   partitionEnd,
-                  tsBlock,
-                  new Frame.Range(0, peerGroupEnd - partitionStart - 1));
+                  frameColumns,
+                  peerGroupComparator,
+                  new Range(0, peerGroupEnd - partitionStart - 1));
         }
         break;
       case ROWS:
-        frame = new RowsFrame(frameInfo, partitionStart, partitionEnd, tsBlock);
+        frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
         break;
       case GROUPS:
         frame =
@@ -73,7 +98,8 @@ public final class Partition {
                 frameInfo,
                 partitionStart,
                 partitionEnd,
-                tsBlock,
+                frameColumns,
+                peerGroupComparator,
                 peerGroupEnd - partitionStart - 1);
         break;
       default:
@@ -97,15 +123,16 @@ public final class Partition {
     // Copy origin data
     int count = tsBlock.getValueColumnCount();
     for (int i = 0; i < count; i++) {
-      Object object = tsBlock.getColumn(i).getObject(currentPosition);
-      builder.getColumnBuilder(i).writeObject(object);
+      Column column = tsBlock.getColumn(i);
+      ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
+      columnBuilder.write(column, currentPosition);
     }
 
     if (currentPosition == peerGroupEnd) {
       updatePeerGroup();
     }
 
-    Frame.Range range =
+    Range range =
         frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
     windowFunction.processRow(
         builder.getColumnBuilder(count),
@@ -119,12 +146,12 @@ public final class Partition {
   }
 
   private void updatePeerGroup() {
-    //    currentGroupIndex++;
-    //    peerGroupStart = currentPosition;
-    //    // find end of peer group
-    //    peerGroupEnd = peerGroupStart + 1;
-    //    while ((peerGroupEnd < partitionEnd)) {
-    //      peerGroupEnd++;
-    //    }
+    currentGroupIndex++;
+    peerGroupStart = currentPosition;
+    // find end of peer group
+    peerGroupEnd = peerGroupStart + 1;
+    while ((peerGroupEnd < partitionEnd)) {
+      peerGroupEnd++;
+    }
   }
 }
