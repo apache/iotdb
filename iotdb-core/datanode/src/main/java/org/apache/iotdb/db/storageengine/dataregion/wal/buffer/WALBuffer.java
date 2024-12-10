@@ -34,7 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryQueue;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -83,7 +83,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage checkpoints
   private final CheckpointManager checkpointManager;
   // WALEntries
-  private final WALEntryQueue walEntries = new WALEntryQueue();
+  private final MemoryControlledWALEntryQueue walEntries = new MemoryControlledWALEntryQueue();
   // lock to provide synchronization for double buffers mechanism, protecting buffers status
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers

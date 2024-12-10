@@ -26,12 +26,12 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class WALEntryQueue {
+public class MemoryControlledWALEntryQueue {
 
   private final BlockingQueue<WALEntry> queue;
   private final Object nonFullCondition = new Object();
 
-  public WALEntryQueue() {
+  public MemoryControlledWALEntryQueue() {
     queue = new LinkedBlockingQueue<>();
   }
 
