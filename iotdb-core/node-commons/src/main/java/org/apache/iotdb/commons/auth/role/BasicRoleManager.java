@@ -121,6 +121,11 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
           role.grantSysPrivilege(type, privilegeUnion.isGrantOption());
           break;
         case RELATIONAL:
+          if (privilegeUnion.isForAny()) {
+            role.grantAnyScopePrivilege(
+                privilegeUnion.getPrivilegeType(), privilegeUnion.isGrantOption());
+            break;
+          }
           if (privilegeUnion.getDBName() != null && privilegeUnion.getTbName() == null) {
             role.grantDBPrivilege(
                 privilegeUnion.getDBName(),
@@ -160,6 +165,10 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
           role.revokePathPrivilege(privilegeUnion.getPath(), privilegeUnion.getPrivilegeType());
           break;
         case RELATIONAL:
+          if (privilegeUnion.isForAny()) {
+            role.revokeAnyScopePrivilege(privilegeUnion.getPrivilegeType());
+            break;
+          }
           if (privilegeUnion.getTbName() != null
               && role.hasPrivilegeToRevoke(
                   privilegeUnion.getDBName(),

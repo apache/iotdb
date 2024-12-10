@@ -217,6 +217,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -725,7 +726,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus operateRPermission(final TAuthorizerRelationalReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     return configManager.operatePermission(
@@ -743,7 +744,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TAuthorizerResp queryRPermission(final TAuthorizerRelationalReq req) {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     final PermissionInfoResp dataSet =

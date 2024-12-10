@@ -26,5 +26,7 @@ public enum AuthorRType {
   REVOKE_ROLE_SYS,
   LIST_USER,
   LIST_ROLE,
+  LIST_USER_PRIV,
+  LIST_ROLE_PRIV,
   INVALID
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -346,7 +347,8 @@ public class AuthorInfoTest {
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        authorInfo.getUserPermissionInfo("user0"), permissionInfoResp.getPermissionInfoResp());
+        authorInfo.getUserPermissionInfo("user0", ModelType.ALL),
+        permissionInfoResp.getPermissionInfoResp());
 
     // list privileges role
     authorPlan =
@@ -825,14 +827,7 @@ public class AuthorInfoTest {
 
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RGrantUserRole,
-            "user",
-            "role",
-            "",
-            "",
-            false,
-            PrivilegeType.INVALID.ordinal(),
-            "");
+            ConfigPhysicalPlanType.RGrantUserRole, "user", "role", "", "", false, 0, "");
     checkAuthorNonQueryReturn(plan);
 
     Assert.assertEquals(
@@ -851,25 +846,11 @@ public class AuthorInfoTest {
 
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RDropUser,
-            "user",
-            "",
-            "",
-            "",
-            false,
-            PrivilegeType.INVALID.ordinal(),
-            "");
+            ConfigPhysicalPlanType.RDropUser, "user", "", "", "", false, 0, "");
     checkAuthorNonQueryReturn(plan);
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RDropRole,
-            "",
-            "role",
-            "",
-            "",
-            false,
-            PrivilegeType.INVALID.ordinal(),
-            "");
+            ConfigPhysicalPlanType.RDropRole, "", "role", "", "", false, 0, "");
     checkAuthorNonQueryReturn(plan);
     plan =
         new AuthorTreePlan(

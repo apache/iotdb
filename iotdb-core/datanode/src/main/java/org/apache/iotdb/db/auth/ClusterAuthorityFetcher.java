@@ -567,14 +567,17 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
-    List<TPathPrivilege> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
-    user.setName(tPermissionInfoResp.getUserInfo().getUsername());
+    List<TPathPrivilege> privilegeList =
+        tPermissionInfoResp.getUserInfo().getBasicInfo().getPrivilegeList();
+    user.setName(tPermissionInfoResp.getUserInfo().getBasicInfo().getName());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    user.loadRelationalPrivileInfo(tPermissionInfoResp.getUserInfo().getDbPrivilegeMap());
+    user.loadRelationalPrivileInfo(
+        tPermissionInfoResp.getUserInfo().getBasicInfo().getDbPrivilegeMap());
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setRoleSet(tPermissionInfoResp.getUserInfo().getRoleSet());
-    user.setSysPrivilegeSetInt(tPermissionInfoResp.getUserInfo().getSysPriSet());
-    user.setSysPriGrantOptInt(tPermissionInfoResp.getUserInfo().getSysPriSetGrantOpt());
+    user.setSysPrivilegeSetInt(tPermissionInfoResp.getUserInfo().getBasicInfo().getSysPriSet());
+    user.setSysPriGrantOptInt(
+        tPermissionInfoResp.getUserInfo().getBasicInfo().getSysPriSetGrantOpt());
     try {
       user.loadPathPrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
@@ -591,7 +594,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     TRoleResp resp = tPermissionInfoResp.getRoleInfo().get(roleName);
-    Role role = new Role(resp.getRoleName());
+    Role role = new Role(resp.getName());
 
     role.loadRelationalPrivileInfo(resp.getDbPrivilegeMap());
     role.setSysPriGrantOptInt(

@@ -8,6 +8,7 @@ public class PrivilegeUnion {
   private PartialPath path;
 
   private boolean grantOption;
+  private boolean forAny;
   private final PrivilegeType privilegeType;
 
   private final PrivilegeModelType modelType;
@@ -60,6 +61,13 @@ public class PrivilegeUnion {
     this.grantOption = grantOption;
   }
 
+  public PrivilegeUnion(PrivilegeType type, boolean grantOption, boolean forAny) {
+    this.privilegeType = type;
+    this.modelType = PrivilegeModelType.RELATIONAL;
+    this.grantOption = grantOption;
+    this.forAny = forAny;
+  }
+
   public PrivilegeUnion(PrivilegeType type) {
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.SYSTEM;
@@ -88,5 +96,9 @@ public class PrivilegeUnion {
 
   public boolean isGrantOption() {
     return this.grantOption;
+  }
+
+  public boolean isForAny() {
+    return this.forAny;
   }
 }

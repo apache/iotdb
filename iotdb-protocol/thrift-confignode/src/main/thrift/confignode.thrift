@@ -358,22 +358,20 @@ struct TAuthorizerResp {
 }
 
 struct TUserResp {
-  1: required string username
+  1: required TRoleResp basicInfo
   2: required string password
-  3: required list<TPathPrivilege> privilegeList
-  4: required set<i32> sysPriSet
-  5: required set<i32> sysPriSetGrantOpt
-  6: required set<string> roleSet
-  7: required bool isOpenIdUser
-  8: required map<string, TDBPrivilege> dbPrivilegeMap
+  3: required set<string> roleSet
+  4: required bool isOpenIdUser
 }
 
 struct TRoleResp {
-  1: required string roleName
+  1: required string name
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
   5: required map<string, TDBPrivilege> dbPrivilegeMap
+  6: required set<i32> anyScopeSet
+  7: required set<i32> anyScopeGrantSet
 }
 
 struct TPathPrivilege {

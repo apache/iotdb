@@ -24,10 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.auth.entity.*;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -43,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalP
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -95,10 +91,10 @@ public class AuthorInfo implements SnapshotProcessor {
         // Bring this user's permission information back to the datanode for caching
         if (authorizer instanceof OpenIdAuthorizer) {
           username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username);
+          result = getUserPermissionInfo(username, ModelType.ALL);
           result.getUserInfo().setIsOpenIdUser(true);
         } else {
-          result = getUserPermissionInfo(username);
+          result = getUserPermissionInfo(username, ModelType.ALL);
         }
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
@@ -148,7 +144,7 @@ public class AuthorInfo implements SnapshotProcessor {
     if (status) {
       try {
         // Bring this user's permission information back to the datanode for caching
-        result = getUserPermissionInfo(username);
+        result = getUserPermissionInfo(username, ModelType.ALL);
         result.setFailPos(failedList);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
@@ -286,7 +282,8 @@ public class AuthorInfo implements SnapshotProcessor {
     boolean grantOpt = authorPlan.getGrantOpt();
     int type = authorPlan.getPermission();
     PrivilegeType priv = PrivilegeType.INVALID;
-    if (authorType.ordinal() >= ConfigPhysicalPlanType.RGrantUserRole.ordinal()) {
+    if (authorType.ordinal() >= ConfigPhysicalPlanType.RGrantUserAny.ordinal()
+        && authorType.ordinal() <= ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal()) {
       priv = PrivilegeType.values()[type];
     }
 
@@ -311,9 +308,11 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         case RGrantRoleSysPri:
+        case RGrantRoleAny:
           authorizer.grantPrivilegeToRole(roleName, priv, grantOpt);
           break;
         case RGrantUserSysPri:
+        case RGrantUserAny:
           authorizer.grantPrivilegeToUser(userName, priv, grantOpt);
           break;
         case RGrantRoleDBPriv:
@@ -329,9 +328,11 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.grantPrivilegeToUser(userName, database, table, priv, grantOpt);
           break;
         case RRevokeRoleSysPri:
+        case RRevokeRoleAny:
           authorizer.revokePrivilegeFromRole(roleName, priv);
           break;
         case RRevokeUserSysPri:
+        case RRevokeUserAny:
           authorizer.revokePrivilegeFromUser(userName, priv);
           break;
         case RRevokeRoleDBPriv:
@@ -403,6 +404,7 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
+    boolean isTreePlan = plan instanceof AuthorTreePlan;
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
     final Role role = authorizer.getRole(plan.getRoleName());
@@ -413,19 +415,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return result;
     }
     final TPermissionInfoResp resp = new TPermissionInfoResp();
-    final TRoleResp roleResp = new TRoleResp();
-    roleResp.setRoleName(role.getName());
-    List<TPathPrivilege> pathList = new ArrayList<>();
-    for (PathPrivilege path : role.getPathPrivilegeList()) {
-      TPathPrivilege pathPri = new TPathPrivilege();
-      pathPri.setPriGrantOpt(path.getGrantOptIntSet());
-      pathPri.setPriSet(path.getPrivilegeIntSet());
-      pathPri.setPath(path.getPath().toString());
-      pathList.add(pathPri);
-    }
-    roleResp.setPrivilegeList(pathList);
-    roleResp.setSysPriSet(role.getSysPrivilegeIntSet());
-    roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOptSet());
+    final TRoleResp roleResp = role.getRoleInfo(isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(role.getName(), roleResp);
     resp.setRoleInfo(roleInfo);
@@ -439,13 +429,16 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
+    boolean isTreePlan = plan instanceof AuthorTreePlan;
     final User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       result.setStatus(
           RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
       return result;
     }
-    final TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
+    final TPermissionInfoResp resp =
+        getUserPermissionInfo(
+            plan.getUserName(), isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
@@ -495,7 +488,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    resp.setPermissionInfo(getUserPermissionInfo(username));
+    resp.setPermissionInfo(getUserPermissionInfo(username, ModelType.ALL));
     return resp;
   }
 
@@ -549,7 +542,7 @@ public class AuthorInfo implements SnapshotProcessor {
     if (status) {
       try {
         // Bring this user's permission information back to the datanode for caching
-        resp = getUserPermissionInfo(username);
+        resp = getUserPermissionInfo(username, ModelType.ALL);
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
         resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
@@ -570,7 +563,7 @@ public class AuthorInfo implements SnapshotProcessor {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
     }
-    result = getUserPermissionInfo(username);
+    result = getUserPermissionInfo(username, ModelType.ALL);
     if (user.getRoleSet().contains(rolename)) {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -607,15 +600,16 @@ public class AuthorInfo implements SnapshotProcessor {
    *
    * @param username The username of the user that needs to be cached
    */
-  public TPermissionInfoResp getUserPermissionInfo(String username) throws AuthException {
+  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
+      throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
     User user = authorizer.getUser(username);
-    TUserResp tUserResp = user.getUserInfo();
+    TUserResp tUserResp = user.getUserInfo(type);
     // Permission information for roles owned by users
     if (user.getRoleSet() != null) {
       for (String roleName : user.getRoleSet()) {
         Role role = authorizer.getRole(roleName);
-        TRoleResp roleResp = role.getRoleInfo();
+        TRoleResp roleResp = role.getRoleInfo(type);
         result.putToRoleInfo(roleName, roleResp);
       }
     }

@@ -29,8 +29,10 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTablePrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -247,25 +249,13 @@ public class AuthorityChecker {
       builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
-        appendPriBuilder("", "root.**", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
-        for (TPathPrivilege path : user.getPrivilegeList()) {
-          appendPriBuilder("", path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
-        }
+        appendEntryInfo("", user.getBasicInfo(), builder);
       }
       Iterator<Map.Entry<String, TRoleResp>> it =
           authResp.getPermissionInfo().getRoleInfo().entrySet().iterator();
       while (it.hasNext()) {
         TRoleResp role = it.next().getValue();
-        appendPriBuilder(
-            role.getRoleName(),
-            "root.**",
-            role.getSysPriSet(),
-            role.getSysPriSetGrantOpt(),
-            builder);
-        for (TPathPrivilege path : role.getPrivilegeList()) {
-          appendPriBuilder(
-              role.getRoleName(), path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
-        }
+        appendEntryInfo(role.getName(), role, builder);
       }
     }
     DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
@@ -273,10 +263,10 @@ public class AuthorityChecker {
   }
 
   private static void appendPriBuilder(
-      String name, String path, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
+      String name, String scope, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
       builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).writeBinary(new Binary(path, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeBinary(new Binary(scope, TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(2)
           .writeBinary(
@@ -284,6 +274,31 @@ public class AuthorityChecker {
       builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
+    }
+  }
+
+  private static void appendEntryInfo(String name, TRoleResp resp, TsBlockBuilder builder) {
+    // System privilege.
+    appendPriBuilder(name, "", resp.getSysPriSet(), resp.getSysPriSetGrantOpt(), builder);
+    // Any scope privilege.
+    appendPriBuilder(name, "*.*", resp.getAnyScopeSet(), resp.getAnyScopeGrantSet(), builder);
+    // Path privilege.
+    for (TPathPrivilege path : resp.getPrivilegeList()) {
+      appendPriBuilder(name, path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
+    }
+    for (Map.Entry<String, TDBPrivilege> entry : resp.getDbPrivilegeMap().entrySet()) {
+      TDBPrivilege priv = entry.getValue();
+      appendPriBuilder(
+          name, entry.getKey() + ".*", priv.getPrivileges(), priv.getGrantOpt(), builder);
+      for (Map.Entry<String, TTablePrivilege> tbEntry : priv.getTableinfo().entrySet()) {
+        TTablePrivilege tb = tbEntry.getValue();
+        appendPriBuilder(
+            name,
+            entry.getKey() + "." + tbEntry.getKey(),
+            tb.getPrivileges(),
+            tb.getGrantOption(),
+            builder);
+      }
     }
   }
 }

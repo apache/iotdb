@@ -150,7 +150,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(String username, PrivilegeType priv, Boolean grantOpt)
       throws AuthException {
     checkAdmin(username, "Invalid operation, administrator already has all privileges");
-    userManager.grantPrivilegeToEntry(username, new PrivilegeUnion(priv, grantOpt));
+    if (priv.isSystemPrivilege()) {
+      userManager.grantPrivilegeToEntry(username, new PrivilegeUnion(priv, grantOpt));
+    } else {
+      userManager.grantPrivilegeToEntry(username, new PrivilegeUnion(priv, grantOpt, true));
+    }
   }
 
   @Override
