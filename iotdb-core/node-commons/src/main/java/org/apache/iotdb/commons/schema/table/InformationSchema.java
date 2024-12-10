@@ -40,7 +40,8 @@ public class InformationSchema {
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.TIME, TSDataType.TIMESTAMP));
+        new MeasurementColumnSchema(
+            ColumnHeaderConstant.TIME.toLowerCase(Locale.ENGLISH), TSDataType.TIMESTAMP));
     queriesTable.addColumnSchema(
         new MeasurementColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
@@ -50,7 +51,8 @@ public class InformationSchema {
         new MeasurementColumnSchema(
             ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.STATEMENT, TSDataType.STRING));
+        new MeasurementColumnSchema(
+            ColumnHeaderConstant.STATEMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     queriesTable.addColumnSchema(
         new MeasurementColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
     schemaTables.put(QUERIES, queriesTable);
