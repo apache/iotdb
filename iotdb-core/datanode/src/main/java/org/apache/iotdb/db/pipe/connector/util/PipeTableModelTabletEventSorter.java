@@ -52,7 +52,6 @@ public class PipeTableModelTabletEventSorter {
    * {@link IDeviceID}. For sorting, it is necessary to sort the {@link IDeviceID} first, and then
    * sort by time. Deduplication is to remove the same timestamp in the same {@link IDeviceID}, and
    * the same timestamp in different {@link IDeviceID} will not be processed.
-   *
    */
   public void sortAndDeduplicateByDevIdTimestamp() {
     if (tablet == null || tablet.getRowSize() < 1) {
