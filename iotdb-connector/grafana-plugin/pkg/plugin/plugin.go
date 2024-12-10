@@ -342,7 +342,9 @@ func recoverType(m []interface{}) interface{} {
 		case bool:
 			tmp := make([]float64, len(m))
 			for i := range m {
-				if m[i].(bool) {
+				if m[i] == nil {
+					tmp[i] = math.NaN()
+				} else if m[i].(bool) {
 					tmp[i] = 1
 				} else {
 					tmp[i] = 0
