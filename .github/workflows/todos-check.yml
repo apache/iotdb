@@ -1,14 +1,6 @@
 name: Check TODOs in Changed Files
 
 on:
-  push:
-    branches:
-      - master
-      - 'rel/*'
-      - "rc/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
   pull_request:
     branches:
       - master
@@ -30,8 +22,11 @@ jobs:
 
       - name: Check for TODOs in changed files
         run: |
+          # Fetch the target branch
+          git fetch origin $GITHUB_BASE_REF
+          
           # Get the diff of the changes
-          DIFF=$(git diff HEAD^ HEAD)
+          DIFF=$(git diff origin/$GITHUB_BASE_REF...HEAD)
   
           # Check the diff for TODOs
           if echo "$DIFF" | grep -q '^\+.*TODO'; then
