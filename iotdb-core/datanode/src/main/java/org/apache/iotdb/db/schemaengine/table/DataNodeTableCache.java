@@ -373,9 +373,13 @@ public class DataNodeTableCache implements ITableCache {
   private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return databaseTableMap.containsKey(database)
-          ? databaseTableMap.get(database).get(tableName)
-          : null;
+      final TsTable result =
+          databaseTableMap.containsKey(database)
+              ? databaseTableMap.get(database).get(tableName)
+              : null;
+      return Objects.nonNull(result)
+          ? result
+          : InformationSchemaUtils.mayGetTable(database, tableName);
     } finally {
       readWriteLock.readLock().unlock();
     }
