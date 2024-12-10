@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -39,9 +40,12 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -57,18 +61,43 @@ public abstract class TVList implements WALEntryValue {
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
   protected int rowCount;
+  // the count of sequential part started from the beginning
+  protected int seqRowCount;
+
+  // List of index array, add 1 when expanded -> data point index array
+  // Index relation: arrayIndex -> elementIndex
+  // Used in sort method, sort only changes indices
+  protected List<int[]> indices;
+
+  // used by non-aligned TVList
+  // Index relation: arrayIndex -> elementIndex
+  protected List<BitMap> bitMap;
+
+  // lock to provide synchronization for query list
+  private final ReentrantLock queryListLock = new ReentrantLock();
+  // list of query that this TVList is used
+  protected final List<QueryContext> queryContextList;
+
+  // the owner query which is obligated to release the TVList.
+  // When it is null, the TVList is owned by insert thread and released after flush.
+  protected QueryContext ownerQuery;
 
   protected boolean sorted = true;
   protected long maxTime;
+  protected long minTime;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
   private long version;
 
   protected TVList() {
-    timestamps = new ArrayList<>();
+    timestamps = new CopyOnWriteArrayList<>();
+    indices = new CopyOnWriteArrayList<>();
     rowCount = 0;
+    seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
+    queryContextList = new ArrayList<>();
     referenceCount = new AtomicInteger();
   }
 
@@ -96,6 +125,7 @@ public abstract class TVList implements WALEntryValue {
     return null;
   }
 
+  // TODO: memory cost for indices and bitmap
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
@@ -109,11 +139,20 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
-  public boolean isSorted() {
+  public long calculateRamSize() {
+    return timestamps.size() * tvListArrayMemCost(getDataType());
+  }
+
+  public synchronized boolean isSorted() {
     return sorted;
   }
 
   public abstract void sort();
+
+  public synchronized void safelySort() {
+    sort();
+    seqRowCount = rowCount;
+  }
 
   public void increaseReferenceCount() {
     referenceCount.incrementAndGet();
@@ -127,6 +166,23 @@ public abstract class TVList implements WALEntryValue {
     return rowCount;
   }
 
+  public int seqRowCount() {
+    return seqRowCount;
+  }
+
+  public int count() {
+    if (bitMap == null) {
+      return rowCount;
+    }
+    int count = 0;
+    for (int row = 0; row < rowCount; row++) {
+      if (!isNullValue(row)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   public long getTime(int index) {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -134,6 +190,102 @@ public abstract class TVList implements WALEntryValue {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return timestamps.get(arrayIndex)[elementIndex];
+  }
+
+  protected void set(int index, long timestamp, int value) {
+    if (index >= rowCount) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    indices.get(arrayIndex)[elementIndex] = value;
+  }
+
+  protected int[] cloneIndex(int[] array) {
+    return Arrays.copyOf(array, array.length);
+  }
+
+  /**
+   * Get the row index value in index column.
+   *
+   * @param index row index
+   */
+  public int getValueIndex(int index) {
+    if (index >= rowCount) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return indices.get(arrayIndex)[elementIndex];
+  }
+
+  protected void markNullValue(int arrayIndex, int elementIndex) {
+    // init bitMap if doesn't have
+    if (bitMap == null) {
+      bitMap = new CopyOnWriteArrayList<>();
+      for (int i = 0; i < timestamps.size(); i++) {
+        bitMap.add(new BitMap(ARRAY_SIZE));
+      }
+    }
+    // if the bitmap in arrayIndex is null, init the bitmap
+    if (bitMap.get(arrayIndex) == null) {
+      bitMap.set(arrayIndex, new BitMap(ARRAY_SIZE));
+    }
+
+    // mark the null value in the current bitmap
+    bitMap.get(arrayIndex).mark(elementIndex);
+  }
+
+  /**
+   * Get whether value is null at the given position in TvList.
+   *
+   * @param rowIndex value index
+   * @return boolean
+   */
+  public boolean isNullValue(int rowIndex) {
+    if (rowIndex >= rowCount) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
+    if (bitMap == null || bitMap.get(rowIndex / ARRAY_SIZE) == null) {
+      return false;
+    }
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    return bitMap.get(arrayIndex).isMarked(elementIndex);
+  }
+
+  protected void cloneSlicesAndBitMap(TVList cloneList) {
+    if (indices != null) {
+      for (int[] indicesArray : indices) {
+        cloneList.indices.add(cloneIndex(indicesArray));
+      }
+    }
+    if (bitMap != null) {
+      cloneList.bitMap = new CopyOnWriteArrayList<>();
+      for (BitMap bm : bitMap) {
+        cloneList.bitMap.add(bm == null ? null : bm.clone());
+      }
+    }
+  }
+
+  protected void clearSlicesAndBitMap() {
+    if (indices != null) {
+      for (int[] dataArray : indices) {
+        PrimitiveArrayManager.release(dataArray);
+      }
+      indices.clear();
+    }
+    if (bitMap != null) {
+      bitMap.clear();
+    }
+  }
+
+  protected void expandSlicesAndBitMap() {
+    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    if (bitMap != null) {
+      bitMap.add(null);
+    }
   }
 
   public void putLong(long time, long value) {
@@ -230,12 +382,12 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public int getValueIndex(int index) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   public long getMaxTime() {
     return maxTime;
+  }
+
+  public long getMinTime() {
+    return minTime;
   }
 
   public long getVersion() {
@@ -261,26 +413,21 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public int delete(long lowerBound, long upperBound) {
-    int newSize = 0;
-    maxTime = Long.MIN_VALUE;
+    int deletedNumber = 0;
+    long maxTime = Long.MIN_VALUE;
+    long minTime = Long.MAX_VALUE;
     for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
-      if (time < lowerBound || time > upperBound) {
-        set(i, newSize++);
+      if (time >= lowerBound && time <= upperBound) {
+        int originRowIndex = getValueIndex(i);
+        int arrayIndex = originRowIndex / ARRAY_SIZE;
+        int elementIndex = originRowIndex % ARRAY_SIZE;
+        markNullValue(arrayIndex, elementIndex);
+        deletedNumber++;
+      } else {
         maxTime = Math.max(time, maxTime);
+        minTime = Math.min(time, minTime);
       }
-    }
-    int deletedNumber = rowCount - newSize;
-    rowCount = newSize;
-    // release primitive arrays that are empty
-    int newArrayNum = newSize / ARRAY_SIZE;
-    if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum++;
-    }
-    int oldArrayNum = timestamps.size();
-    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
-      releaseLastTimeArray();
-      releaseLastValueArray();
     }
     return deletedNumber;
   }
@@ -290,14 +437,20 @@ public abstract class TVList implements WALEntryValue {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
     cloneList.rowCount = rowCount;
+    cloneList.seqRowCount = seqRowCount;
     cloneList.sorted = sorted;
     cloneList.maxTime = maxTime;
+    cloneList.minTime = minTime;
   }
 
   public void clear() {
     rowCount = 0;
+    seqRowCount = 0;
     sorted = true;
     maxTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
+    queryContextList.clear();
+    ownerQuery = null;
     clearTime();
     clearValue();
   }
@@ -330,16 +483,25 @@ public abstract class TVList implements WALEntryValue {
     return cloneArray;
   }
 
-  void updateMaxTimeAndSorted(long[] time, int start, int end) {
+  void updateMinMaxTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
+    int inputSeqRowCount = 0;
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
-        inputSorted = false;
+      minTime = Math.min(minTime, time[i]);
+      if (inputSorted) {
+        if (i < length - 1 && time[i] > time[i + 1]) {
+          inputSorted = false;
+        } else {
+          inputSeqRowCount++;
+        }
       }
+    }
+    if (sorted && (rowCount == 0 || time[start] > getTime(rowCount - 1))) {
+      seqRowCount += inputSeqRowCount;
     }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
@@ -415,5 +577,80 @@ public abstract class TVList implements WALEntryValue {
 
   public List<long[]> getTimestamps() {
     return timestamps;
+  }
+
+  public void setOwnerQuery(QueryContext queryCtx) {
+    this.ownerQuery = queryCtx;
+  }
+
+  public QueryContext getOwnerQuery() {
+    return ownerQuery;
+  }
+
+  public List<QueryContext> getQueryContextList() {
+    return queryContextList;
+  }
+
+  public List<BitMap> getBitMap() {
+    return bitMap;
+  }
+
+  public void lockQueryList() {
+    queryListLock.lock();
+  }
+
+  public void unlockQueryList() {
+    queryListLock.unlock();
+  }
+
+  public TVListIterator iterator() {
+    return new TVListIterator();
+  }
+
+  /* TVList Iterator */
+  public class TVListIterator {
+    private int index;
+
+    public TVListIterator() {
+      index = 0;
+    }
+
+    public boolean hasNext() {
+      if (bitMap != null) {
+        // skip deleted & duplicated timestamp
+        while ((index < rowCount && isNullValue(getValueIndex(index)))
+            || (index + 1 < rowCount && getTime(index + 1) == getTime(index))) {
+          index++;
+        }
+      } else {
+        // skip duplicated timestamp
+        while (index + 1 < rowCount && getTime(index + 1) == getTime(index)) {
+          index++;
+        }
+      }
+      return index < rowCount;
+    }
+
+    public TimeValuePair next() {
+      if (!hasNext()) {
+        return null;
+      }
+      return getTimeValuePair(index++);
+    }
+
+    public TimeValuePair current() {
+      if (index >= rowCount || isNullValue(getValueIndex(index))) {
+        return null;
+      }
+      return getTimeValuePair(index);
+    }
+
+    public int getIndex() {
+      return index;
+    }
+
+    public void setIndex(int index) {
+      this.index = index;
+    }
   }
 }
