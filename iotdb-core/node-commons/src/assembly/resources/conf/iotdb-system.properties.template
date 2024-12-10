@@ -1616,6 +1616,11 @@ author_cache_size=1000
 # Datatype: int
 author_cache_expire_time=30
 
+# A regex pattern representing trusted uri by system
+# effectiveMode: hot_reload
+# Datatype: regex
+trusted_uri_pattern=file:.*
+
 ####################
 ### UDF Configuration
 ####################
