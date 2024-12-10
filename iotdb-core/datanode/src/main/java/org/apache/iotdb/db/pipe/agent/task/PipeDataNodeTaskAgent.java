@@ -105,7 +105,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private static final AtomicLong LAST_FORCED_RESTART_TIME =
       new AtomicLong(System.currentTimeMillis());
 
-  private static final Map<String, Long> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
+  private static final Map<String, AtomicLong> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
       new ConcurrentHashMap<>();
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
@@ -529,7 +529,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
       // If the pipe has been restarted recently, skip it.
       if (PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName)) {
-        if (System.currentTimeMillis() - PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName)
+        if (System.currentTimeMillis() - PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName).get()
             < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
           continue;
         }
@@ -584,8 +584,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final long currentTime = System.currentTimeMillis();
     stuckPipes.forEach(
         pipeMeta ->
-            PIPE_NAME_TO_LAST_RESTART_TIME_MAP.put(
-                pipeMeta.getStaticMeta().getPipeName(), currentTime));
+            PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+                .computeIfAbsent(
+                    pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(currentTime))
+                .set(currentTime));
 
     return stuckPipes;
   }
