@@ -1697,7 +1697,7 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferQueueCapacity =
+    int pageCacheDeletionBufferQueueCapacity =
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
@@ -1705,8 +1705,8 @@ public class IoTDBDescriptor {
                         Integer.toString(conf.getPageCacheDeletionBufferQueueCapacity())))
                 .map(String::trim)
                 .orElse(Integer.toString(conf.getPageCacheDeletionBufferQueueCapacity())));
-    if (walBufferQueueCapacity > 0) {
-      conf.setPageCacheDeletionBufferQueueCapacity(walBufferQueueCapacity);
+    if (pageCacheDeletionBufferQueueCapacity > 0) {
+      conf.setPageCacheDeletionBufferQueueCapacity(pageCacheDeletionBufferQueueCapacity);
     }
 
     boolean WALInsertNodeCacheShrinkClearEnabled =
