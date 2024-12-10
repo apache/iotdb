@@ -24,13 +24,14 @@ public final class Partition {
   private final TsBlock tsBlock;
   private final int partitionStart;
   private final int partitionEnd;
+  private final Column[] partition;
 
   private final WindowFunction windowFunction;
 
+  private final List<Column> sortedColumns;
+  private final RowComparator peerGroupComparator;
   private int peerGroupStart;
   private int peerGroupEnd;
-  private List<Column> frameColumns = new ArrayList<>();
-  private RowComparator peerGroupComparator;
 
   private int currentGroupIndex = -1;
   private int currentPosition;
@@ -48,17 +49,20 @@ public final class Partition {
     this.tsBlock = tsBlock;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
+    this.partition = tsBlock.getRegion(partitionStart, partitionEnd - partitionStart).getAllColumns();
     this.windowFunction = windowFunction;
+
     // Prepare for peer group comparing
     List<TSDataType> sortDataTypes = new ArrayList<>();
     for (int channel : sortChannels) {
       TSDataType dataType = dataTypes.get(channel);
       sortDataTypes.add(dataType);
     }
-    this.peerGroupComparator = new RowComparator(sortDataTypes);
+    peerGroupComparator = new RowComparator(sortDataTypes);
+    sortedColumns = new ArrayList<>();
     for (Integer channel : sortChannels) {
       Column partitionColumn = tsBlock.getColumn(channel);
-      frameColumns.add(partitionColumn);
+      sortedColumns.add(partitionColumn);
     }
 
     // Reset functions for new partition
@@ -75,18 +79,18 @@ public final class Partition {
                   frameInfo,
                   partitionStart,
                   partitionEnd,
-                  frameColumns,
+                  sortedColumns,
                   peerGroupComparator,
-                  new Range(0, partitionEnd - partitionStart - 1));
+                  partitionEnd - partitionStart - 1);
         } else {
           frame =
               new RangeFrame(
                   frameInfo,
                   partitionStart,
                   partitionEnd,
-                  frameColumns,
+                  sortedColumns,
                   peerGroupComparator,
-                  new Range(0, peerGroupEnd - partitionStart - 1));
+                  peerGroupEnd - partitionStart - 1);
         }
         break;
       case ROWS:
@@ -98,11 +102,12 @@ public final class Partition {
                 frameInfo,
                 partitionStart,
                 partitionEnd,
-                frameColumns,
+                sortedColumns,
                 peerGroupComparator,
                 peerGroupEnd - partitionStart - 1);
         break;
       default:
+        // Unreachable
         throw new UnsupportedOperationException("not yet implemented");
     }
   }
@@ -134,12 +139,14 @@ public final class Partition {
 
     Range range =
         frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
-    windowFunction.processRow(
+    windowFunction.transform(
+        partition,
         builder.getColumnBuilder(count),
-        peerGroupStart - partitionStart,
-        peerGroupEnd - partitionStart - 1,
+        currentPosition - partitionStart,
         range.getStart(),
-        range.getEnd());
+        range.getEnd(),
+        peerGroupStart - partitionStart,
+        peerGroupEnd - partitionStart - 1);
 
     currentPosition++;
     builder.declarePosition();
@@ -148,9 +155,9 @@ public final class Partition {
   private void updatePeerGroup() {
     currentGroupIndex++;
     peerGroupStart = currentPosition;
-    // find end of peer group
+    // Find end of peer group
     peerGroupEnd = peerGroupStart + 1;
-    while ((peerGroupEnd < partitionEnd)) {
+    while (peerGroupEnd < partitionEnd && peerGroupComparator.equal(sortedColumns, peerGroupStart, peerGroupEnd)) {
       peerGroupEnd++;
     }
   }

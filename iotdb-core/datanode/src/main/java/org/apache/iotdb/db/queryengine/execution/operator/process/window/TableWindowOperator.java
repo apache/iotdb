@@ -31,6 +31,7 @@ public class TableWindowOperator implements ProcessOperator {
   // Common fields
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
+  private final List<TSDataType> inputDataTypes;
   private final TsBlockBuilder sortedTsBlockBuilder;
   private final TsBlockBuilder transformTsBlockBuilder;
 
@@ -40,9 +41,10 @@ public class TableWindowOperator implements ProcessOperator {
 
   // Partition
   private List<Integer> partitionChannels;
-  private RowComparator rowComparator;
+  private RowComparator partitionComparator;
 
   // Sort
+  private List<Integer> sortChannels;
   private final Comparator<SortKey> comparator;
   // Auxiliary field for sort
   private List<SortKey> cachedData;
@@ -61,6 +63,7 @@ public class TableWindowOperator implements ProcessOperator {
     // Common part(among all other operators)
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
+    this.inputDataTypes = ImmutableList.copyOf(inputDataTypes);
     this.sortedTsBlockBuilder = new TsBlockBuilder(inputDataTypes);
     this.transformTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
@@ -76,9 +79,10 @@ public class TableWindowOperator implements ProcessOperator {
     for (Integer channel : partitionChannels) {
       partitionDataTypes.add(inputDataTypes.get(channel));
     }
-    this.rowComparator = new RowComparator(partitionDataTypes);
+    this.partitionComparator = new RowComparator(partitionDataTypes);
 
     // Ordering part
+    this.sortChannels = ImmutableList.copyOf(sortChannels);
     // Concat partition and sort channels
     List<Integer> allSortChannels = new ArrayList<>();
     allSortChannels.addAll(partitionChannels);
@@ -186,12 +190,12 @@ public class TableWindowOperator implements ProcessOperator {
 
     while (partitionEnd < tsBlock.getPositionCount()) {
       while (partitionEnd < tsBlock.getPositionCount()
-          && rowComparator.equal(partitionColumns, partitionStart, partitionEnd)) {
+          && partitionComparator.equal(partitionColumns, partitionStart, partitionEnd)) {
         partitionEnd++;
       }
 
       Partition partition =
-          new Partition(tsBlock, partitionStart, partitionEnd, windowFunction, frameInfo);
+          new Partition(tsBlock, inputDataTypes, partitionStart, partitionEnd, windowFunction, frameInfo, sortChannels);
       partitions.add(partition);
 
       partitionStart = partitionEnd;

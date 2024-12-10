@@ -30,7 +30,7 @@ public class RangeFrame implements Frame {
       int partitionEnd,
       List<Column> columns,
       RowComparator comparator,
-      Range initialRange) {
+      int initialEnd) {
     this.frameInfo = frameInfo;
     // Only one sort key is allowed in range frame
     assert columns.size() == 1;
@@ -39,7 +39,7 @@ public class RangeFrame implements Frame {
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
     this.peerGroupComparator = comparator;
-    this.recentRange = initialRange;
+    this.recentRange = new Range(0, initialEnd);
   }
 
   @Override
