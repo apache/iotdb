@@ -82,7 +82,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
   @Override
   protected boolean processFinished() {
     if (rightFinished) {
-      buildUseRemainingBlocks();
+      appendAllLeftBlock();
       return true;
     }
     // all the join keys in rightTsBlock are less than leftTsBlock, just skip right
@@ -91,9 +91,10 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    // all the join Keys in leftTsBlock are less than rightTsBlock, just skip left
+    // all the join Keys in leftTsBlock are less than rightTsBlock, just append the left value with
+    // match flag as false
     if (allLeftLessThanRight()) {
-      appendValueToResult(false);
+      appendAllLeftBlock();
       resetLeftBlock();
       return true;
     }
@@ -171,7 +172,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
     columnBuilder.writeBoolean(value);
   }
 
-  private void buildUseRemainingBlocks() {
+  private void appendAllLeftBlock() {
     while (leftBlockNotEmpty()) {
       appendValueToResult(false);
       leftIndex++;
