@@ -956,7 +956,8 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
-      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
+      statement.execute(
+          "SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
@@ -997,7 +998,8 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
-      statement.execute("SET 'inner_compaction_task_selection_mods_file_threshold' = 1024");
+      statement.execute(
+          "SET CONFIGURATION inner_compaction_task_selection_mods_file_threshold='1024'");
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
