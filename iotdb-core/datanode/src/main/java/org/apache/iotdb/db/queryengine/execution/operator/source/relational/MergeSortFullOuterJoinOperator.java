@@ -37,10 +37,10 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
 
-  private final BiFunction<Column[], Integer, TsBlock> updateLastMatchedRowFunction;
-
   // stores last row matched join criteria, only used in outer join
   private TsBlock lastMatchedRightBlock = null;
+  private final int[] lastMatchedBlockPositions;
+  private final BiFunction<Column[], Integer, TsBlock> updateLastMatchedRowFunction;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
@@ -63,6 +63,10 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
         rightOutputSymbolIdx,
         joinKeyComparators,
         dataTypes);
+    lastMatchedBlockPositions = new int[joinKeyComparators.size()];
+    for (int i = 0; i < lastMatchedBlockPositions.length; i++) {
+      lastMatchedBlockPositions[i] = i;
+    }
     this.updateLastMatchedRowFunction = updateLastMatchedRowFunction;
   }
 
@@ -117,12 +121,24 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       }
     }
     // continue right < left, until right >= left
-    while (lessThan(rightBlockList.get(rightBlockListIdx), rightIndex, leftBlock, leftIndex)) {
+    while (lessThan(
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPositions,
+        rightIndex,
+        leftBlock,
+        leftJoinKeyPositions,
+        leftIndex)) {
       if (lastMatchedRightBlock == null) {
         appendOneRightRowWithEmptyLeft();
       } else {
         // CurrentRight can only be greater than or equal to lastMatchedRight.
-        if (lessThan(lastMatchedRightBlock, 0, rightBlockList.get(rightBlockListIdx), rightIndex)) {
+        if (lessThan(
+            lastMatchedRightBlock,
+            lastMatchedBlockPositions,
+            0,
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPositions,
+            rightIndex)) {
           appendOneRightRowWithEmptyLeft();
         }
       }
@@ -143,7 +159,13 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       }
     }
     // continue left < right, until left >= right
-    while (lessThan(leftBlock, leftIndex, rightBlockList.get(rightBlockListIdx), rightIndex)) {
+    while (lessThan(
+        leftBlock,
+        leftJoinKeyPositions,
+        leftIndex,
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPositions,
+        rightIndex)) {
       appendOneLeftRowWithEmptyRight();
       if (leftFinishedWithIncIndex()) {
         return true;
@@ -186,7 +208,12 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       // result.
       if (lastMatchedRightBlock == null
           || lessThan(
-              lastMatchedRightBlock, 0, rightBlockList.get(rightBlockListIdx), rightIndex)) {
+              lastMatchedRightBlock,
+              lastMatchedBlockPositions,
+              0,
+              rightBlockList.get(rightBlockListIdx),
+              rightJoinKeyPositions,
+              rightIndex)) {
         for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
           ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
           columnBuilder.appendNull();

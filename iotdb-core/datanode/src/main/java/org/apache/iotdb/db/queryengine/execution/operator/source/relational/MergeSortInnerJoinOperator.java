@@ -91,7 +91,13 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       }
     }
     // continue right < left, until right >= left
-    while (lessThan(rightBlockList.get(rightBlockListIdx), rightIndex, leftBlock, leftIndex)) {
+    while (lessThan(
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPositions,
+        rightIndex,
+        leftBlock,
+        leftJoinKeyPositions,
+        leftIndex)) {
       if (rightFinishedWithIncIndex()) {
         return true;
       }
@@ -107,7 +113,13 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       }
     }
     // continue left < right, until left >= right
-    while (lessThan(leftBlock, leftIndex, rightBlockList.get(rightBlockListIdx), rightIndex)) {
+    while (lessThan(
+        leftBlock,
+        leftJoinKeyPositions,
+        leftIndex,
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPositions,
+        rightIndex)) {
       if (leftFinishedWithIncIndex()) {
         return true;
       }
