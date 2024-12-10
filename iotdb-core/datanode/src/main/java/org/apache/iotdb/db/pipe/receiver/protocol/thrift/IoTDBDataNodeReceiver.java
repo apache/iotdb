@@ -877,7 +877,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         ? (isTableModelStatement
             ? statement
                 .accept(
-                    tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, dataBaseName))
+                    tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
                 .orElse(status)
             : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status))
         : status;
