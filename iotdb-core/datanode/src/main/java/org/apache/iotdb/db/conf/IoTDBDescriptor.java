@@ -2870,6 +2870,21 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update query_sample_throughput_bytes_per_sec
+      commonDescriptor
+          .getConfig()
+          .setQuerySamplingRateLimit(
+              Integer.parseInt(
+                  Optional.ofNullable(
+                          properties.getProperty(
+                              "query_sample_throughput_bytes_per_sec",
+                              ConfigurationFileUtils.getConfigurationDefaultValue(
+                                  "query_sample_throughput_bytes_per_sec")))
+                      .map(String::trim)
+                      .orElse(
+                          ConfigurationFileUtils.getConfigurationDefaultValue(
+                              "query_sample_throughput_bytes_per_sec"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
