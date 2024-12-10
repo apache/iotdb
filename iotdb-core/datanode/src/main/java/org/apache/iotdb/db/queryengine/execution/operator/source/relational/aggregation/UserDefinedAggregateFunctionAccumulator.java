@@ -83,10 +83,12 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of UDAF should be BinaryColumn");
     State otherState = aggregateFunction.createState();
-    Binary otherStateBinary = argument.getBinary(0);
-    otherState.deserialize(otherStateBinary.getValues());
-
-    aggregateFunction.combineState(state, otherState);
+    for (int i = 0; i < argument.getPositionCount(); i++) {
+      otherState.reset();
+      Binary otherStateBinary = argument.getBinary(i);
+      otherState.deserialize(otherStateBinary.getValues());
+      aggregateFunction.combineState(state, otherState);
+    }
   }
 
   @Override

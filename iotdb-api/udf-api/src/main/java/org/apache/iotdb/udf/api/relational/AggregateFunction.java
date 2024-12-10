@@ -95,17 +95,6 @@ public interface AggregateFunction extends SQLFunction {
    */
   void outputFinal(State state, ResultValue resultValue);
 
-  /**
-   * This method is optional Remove partial state from current state. Implement this method to
-   * enable sliding window feature.
-   *
-   * @param state current state
-   * @param removed state to be removed
-   */
-  default void removeState(State state, State removed) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
   /** This method is mainly used to release the resources used in the SQLFunction. */
   default void beforeDestroy() {
     // do nothing
