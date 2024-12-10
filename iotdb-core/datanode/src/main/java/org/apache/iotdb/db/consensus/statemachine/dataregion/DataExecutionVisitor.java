@@ -266,11 +266,11 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitDeleteData(RelationalDeleteDataNode node, DataRegion dataRegion) {
+  public TSStatus visitDeleteData(final RelationalDeleteDataNode node, final DataRegion dataRegion) {
     try {
       dataRegion.deleteByTable(node);
       return StatusUtils.OK;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
@@ -278,8 +278,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitPipeEnrichedDeleteDataNode(
-      PipeEnrichedDeleteDataNode node, DataRegion context) {
+      final PipeEnrichedDeleteDataNode node, final DataRegion context) {
     node.getDeleteDataNode().markAsGeneratedByPipe();
-    return visitDeleteData((DeleteDataNode) node.getDeleteDataNode(), context);
+    return node.getDeleteDataNode().accept(this, context);
   }
 }
