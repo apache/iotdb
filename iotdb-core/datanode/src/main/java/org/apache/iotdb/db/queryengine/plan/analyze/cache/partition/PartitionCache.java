@@ -48,7 +48,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -141,8 +140,7 @@ public class PartitionCache {
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
       final boolean isAutoCreate,
-      final String userName)
-      throws DatabaseModelException {
+      final String userName) {
     final DatabaseCacheResult<String, List<IDeviceID>> result =
         new DatabaseCacheResult<String, List<IDeviceID>>() {
           @Override
@@ -166,8 +164,7 @@ public class PartitionCache {
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
       final boolean isAutoCreate,
-      final String userName)
-      throws DatabaseModelException {
+      final String userName) {
     final DatabaseCacheResult<IDeviceID, String> result =
         new DatabaseCacheResult<IDeviceID, String>() {
           @Override
@@ -185,13 +182,10 @@ public class PartitionCache {
    * @param deviceID the path of device
    * @return database name, return {@code null} if cache miss
    */
-  private String getDatabaseName(final IDeviceID deviceID) throws DatabaseModelException {
+  private String getDatabaseName(final IDeviceID deviceID) {
     for (final Map.Entry<String, Boolean> entry : databaseCache.entrySet()) {
       final String database = entry.getKey();
       if (PathUtils.isStartWith(deviceID, database)) {
-        if (Boolean.TRUE.equals(entry.getValue())) {
-          throw new DatabaseModelException(database, true);
-        }
         return entry.getKey();
       }
     }
@@ -204,16 +198,10 @@ public class PartitionCache {
    * @param database name
    * @return {@code true} if this database exists
    */
-  private boolean containsDatabase(final String database) throws DatabaseModelException {
+  private boolean containsDatabase(final String database) {
     try {
       databaseCacheLock.readLock().lock();
-      if (databaseCache.containsKey(database)) {
-        if (Boolean.FALSE.equals(databaseCache.get(database))) {
-          throw new DatabaseModelException(PathUtils.unQualifyDatabaseName(database), false);
-        }
-        return true;
-      }
-      return false;
+      return databaseCache.containsKey(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -227,7 +215,7 @@ public class PartitionCache {
    */
   private void fetchDatabaseAndUpdateCache(
       final DatabaseCacheResult<?, ?> result, final List<IDeviceID> deviceIDs)
-      throws ClientManagerException, TException, DatabaseModelException {
+      throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -414,8 +402,7 @@ public class PartitionCache {
   private void getDatabaseMap(
       final DatabaseCacheResult<?, ?> result,
       final List<IDeviceID> deviceIDs,
-      final boolean failFast)
-      throws DatabaseModelException {
+      final boolean failFast) {
     try {
       databaseCacheLock.readLock().lock();
       // reset result before try
@@ -464,8 +451,7 @@ public class PartitionCache {
       final List<IDeviceID> deviceIDs,
       final boolean tryToFetch,
       final boolean isAutoCreate,
-      final String userName)
-      throws DatabaseModelException {
+      final String userName) {
     if (!isAutoCreate) {
       // TODO: avoid IDeviceID contains "*"
       // miss when deviceId contains *
@@ -498,8 +484,7 @@ public class PartitionCache {
   }
 
   public void checkAndAutoCreateDatabase(
-      final String database, final boolean isAutoCreate, final String userName)
-      throws DatabaseModelException {
+      final String database, final boolean isAutoCreate, final String userName) {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {

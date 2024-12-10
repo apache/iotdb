@@ -46,7 +46,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -129,7 +128,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -161,7 +160,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -288,7 +287,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getCode()));
         }
       }
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
@@ -352,7 +351,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -375,8 +374,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       final List<DataPartitionQueryParam> dataPartitionQueryParams,
       final boolean isAutoCreate,
-      final String userName)
-      throws DatabaseModelException {
+      final String userName) {
     final List<IDeviceID> deviceIDs = new ArrayList<>();
     for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       deviceIDs.add(dataPartitionQueryParam.getDeviceID());

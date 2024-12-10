@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -164,7 +163,7 @@ public class PartitionCacheTest {
   }
 
   @Test
-  public void testStorageGroupCache() throws DatabaseModelException {
+  public void testStorageGroupCache() {
     Map<String, List<IDeviceID>> storageGroupToDeviceMap;
     Map<IDeviceID, String> deviceToStorageGroupMap;
     // test devices in one database

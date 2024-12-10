@@ -139,7 +139,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -3078,16 +3077,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       final TGetDatabaseReq req =
-          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
       if (!resp.getDatabaseInfoMap().isEmpty()) {
-        if (!resp.getDatabaseInfoMap()
-            .get(PathUtils.qualifyDatabaseName(useDB.getDatabaseId().getValue()))
-            .isIsTableModel()) {
-          throw new IoTDBException(
-              new DatabaseModelException(useDB.getDatabaseId().getValue(), false).getMessage(),
-              TSStatusCode.DATABASE_MODEL.getStatusCode());
-        }
         clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
@@ -3096,7 +3089,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
-    } catch (final IOException | ClientManagerException | TException | IoTDBException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
