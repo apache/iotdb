@@ -67,10 +67,9 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     this.regionPerDataNode =
-        (int)
-            (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
-                ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
-                : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode());
+        consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
+            ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
+            : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
     prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
 
     // Select alpha nodes set
