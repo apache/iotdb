@@ -97,7 +97,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
-  // prevent reference count leaks under extreme thread scheduling
+  // use these variables to prevent reference count leaks under some corner cases when closing
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final Set<PipeTransferTrackableHandler> pendingHandlers = new HashSet<>();
 
@@ -557,7 +557,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       tabletBatchBuilder.close();
     }
 
-    // ensure all on-the-fly requests have been handled
+    // ensure all on-the-fly handlers have been cleared
     while (hasPendingHandlers()) {
       pendingHandlers.removeIf(
           handler -> {

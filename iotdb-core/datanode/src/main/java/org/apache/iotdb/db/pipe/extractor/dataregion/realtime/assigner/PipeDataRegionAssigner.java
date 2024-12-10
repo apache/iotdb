@@ -96,7 +96,7 @@ public class PipeDataRegionAssigner implements Closeable {
     }
 
     // use synchronized here for completely preventing reference count leaks under extreme thread
-    // scheduling
+    // scheduling when closing
     synchronized (this) {
       if (!disruptor.isClosed()) {
         disruptor.publish(event);
