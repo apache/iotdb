@@ -30,7 +30,6 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -147,12 +146,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private void bufferTableModelTablet(
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
-    final List<Pair<IDeviceID, Integer>> deviceID2Index =
-        new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-
-    if (deviceID2Index == null) {
-      return;
-    }
+    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
     totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
@@ -160,7 +154,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         new Pair<>(pipeName, creationTime),
         (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
-    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet, deviceID2Index);
+    tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {

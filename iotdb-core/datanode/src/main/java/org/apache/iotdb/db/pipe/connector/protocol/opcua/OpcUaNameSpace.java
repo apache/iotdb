@@ -30,9 +30,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -142,8 +140,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
-      final List<Pair<IDeviceID, Integer>> deviceIndex =
-          new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
+      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
       final List<Integer> columnIndexes = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
@@ -153,9 +150,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
       }
 
-      int lastRowIndex = 0;
-      for (Pair<IDeviceID, Integer> pair : deviceIndex) {
-        final Object[] segments = pair.left.getSegments();
+      for (int i = 0; i < tablet.getRowSize(); ++i) {
+        final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
         folderSegments[0] = "root";
         folderSegments[1] = unQualifiedDatabaseName;
@@ -164,20 +160,17 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           folderSegments[j + 2] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
         }
 
-        for (int j = lastRowIndex; j < pair.right; j++) {
-          final int finalJ = j;
-          transferTabletRowForClientServerModel(
-              folderSegments,
-              newSchemas,
-              Collections.singletonList(tablet.timestamps[finalJ]),
-              columnIndexes.stream()
-                  .map(
-                      index ->
-                          getTabletObjectValue4Opc(
-                              tablet.values[index], finalJ, schemas.get(index).getType()))
-                  .collect(Collectors.toList()));
-        }
-        lastRowIndex = pair.right;
+        final int finalI = i;
+        transferTabletRowForClientServerModel(
+            folderSegments,
+            newSchemas,
+            Collections.singletonList(tablet.timestamps[i]),
+            columnIndexes.stream()
+                .map(
+                    index ->
+                        getTabletObjectValue4Opc(
+                            tablet.values[index], finalI, schemas.get(index).getType()))
+                .collect(Collectors.toList()));
       }
     }
   }

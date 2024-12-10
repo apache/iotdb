@@ -28,7 +28,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
@@ -105,8 +104,7 @@ public abstract class PipeTsFileBuilder {
     return baseDir;
   }
 
-  public abstract void bufferTableModelTablet(
-      String dataBase, Tablet tablet, List<Pair<IDeviceID, Integer>> deviceID2Index);
+  public abstract void bufferTableModelTablet(String dataBase, Tablet tablet);
 
   public abstract void bufferTreeModelTablet(Tablet tablet, Boolean isAligned);
 

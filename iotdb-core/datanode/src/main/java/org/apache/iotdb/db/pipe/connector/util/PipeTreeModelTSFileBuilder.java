@@ -55,10 +55,7 @@ public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public void bufferTableModelTablet(
-      final String dataBase,
-      final Tablet tablet,
-      final List<Pair<IDeviceID, Integer>> deviceID2Index) {
+  public void bufferTableModelTablet(final String dataBase, final Tablet tablet) {
     throw new UnsupportedOperationException(
         "PipeTreeModelTSFileBuilder does not support table model tablet to build TSFile");
   }

@@ -23,11 +23,8 @@ import org.apache.iotdb.db.pipe.connector.util.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.WriteUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -243,10 +240,7 @@ public class PipeTabletEventSorterTest {
 
   public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
-
-    List<Pair<IDeviceID, Integer>> list =
-        new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-    Assert.assertEquals(WriteUtils.splitTabletByDevice(tablet), list);
+    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = tablet.timestamps[i];
       Assert.assertTrue(time > tablet.timestamps[i - 1]);
@@ -304,43 +298,69 @@ public class PipeTabletEventSorterTest {
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
     int rowIndex = 0;
-    boolean hasWrite = false;
-    do {
 
-      for (long row = 0; row < deviceIDNum; row++) {
-        for (int i = hasWrite ? 50 : 0; i < (isUnSorted && !hasWrite ? 50 : 100); i++) {
+    for (long row = 0; row < deviceIDNum; row++) {
+      for (int i = 0; i < (isUnSorted ? 50 : 100); i++) {
 
-          final long value;
-          if (isUnSorted) {
-            value = (row + 1) * 100 - i - 1;
-          } else {
-            value = (row) * 100 + i;
-          }
-          for (int j = 0; j < 10; j++) {
-            tablet.addTimestamp(rowIndex, value);
-            tablet.addValue(
-                "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
-            tablet.addValue("s1", rowIndex, value);
-            tablet.addValue("s2", rowIndex, (value * 1.0f));
-            tablet.addValue(
-                "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-            tablet.addValue("s4", rowIndex, value);
-            tablet.addValue("s5", rowIndex, (int) value);
-            tablet.addValue("s6", rowIndex, value * 0.1);
-            tablet.addValue("s7", rowIndex, getDate((int) value));
-            tablet.addValue(
-                "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-            rowIndex++;
-            tablet.setRowSize(rowIndex);
-            if (!hasDuplicates) {
-              break;
-            }
+        final long value;
+        if (isUnSorted) {
+          value = (row + 1) * 100 - i - 1;
+        } else {
+          value = (row) * 100 + i;
+        }
+        for (int j = 0; j < 10; j++) {
+          tablet.addTimestamp(rowIndex, value);
+          tablet.addValue(
+              "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s1", rowIndex, value);
+          tablet.addValue("s2", rowIndex, (value * 1.0f));
+          tablet.addValue(
+              "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s4", rowIndex, value);
+          tablet.addValue("s5", rowIndex, (int) value);
+          tablet.addValue("s6", rowIndex, value * 0.1);
+          tablet.addValue("s7", rowIndex, getDate((int) value));
+          tablet.addValue(
+              "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          rowIndex++;
+          tablet.setRowSize(rowIndex);
+          if (!hasDuplicates) {
+            break;
           }
         }
       }
-      hasWrite = !hasWrite;
-    } while (isUnSorted && hasWrite);
+    }
+    if (!isUnSorted) {
+      return tablet;
+    }
+    for (long row = 0; row < deviceIDNum; row++) {
+      for (int i = 50; i < 100; i++) {
 
+        final long value;
+        value = (row + 1) * 100 - i - 1;
+
+        for (int j = 0; j < 10; j++) {
+          tablet.addTimestamp(rowIndex, value);
+          tablet.addValue(
+              "s0", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s1", rowIndex, value);
+          tablet.addValue("s2", rowIndex, (value * 1.0f));
+          tablet.addValue(
+              "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          tablet.addValue("s4", rowIndex, value);
+          tablet.addValue("s5", rowIndex, (int) value);
+          tablet.addValue("s6", rowIndex, value * 0.1);
+          tablet.addValue("s7", rowIndex, getDate((int) value));
+          tablet.addValue(
+              "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          rowIndex++;
+          tablet.setRowSize(rowIndex);
+          if (!hasDuplicates) {
+            break;
+          }
+        }
+      }
+    }
     return tablet;
   }
 

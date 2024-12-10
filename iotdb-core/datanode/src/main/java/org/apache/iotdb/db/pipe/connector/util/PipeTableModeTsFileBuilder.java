@@ -26,6 +26,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.WriteUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +37,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,18 +50,14 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModeTsFileBuilder.class);
 
   private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
-  private final Map<String, List<List<Pair<IDeviceID, Integer>>>> tabletDeviceIdTimeIndex =
-      new HashMap<>();
 
   public PipeTableModeTsFileBuilder(AtomicLong currentBatchId, AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
-  public void bufferTableModelTablet(
-      String dataBase, Tablet tablet, List<Pair<IDeviceID, Integer>> deviceID2Index) {
+  public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
-    tabletDeviceIdTimeIndex.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(deviceID2Index);
   }
 
   @Override
@@ -75,9 +73,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     }
     List<Pair<String, File>> pairList = new ArrayList<>();
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      pairList.addAll(
-          writeTableModelTabletsToTsFiles(
-              entry.getValue(), tabletDeviceIdTimeIndex.get(entry.getKey()), entry.getKey()));
+      pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
     }
     return pairList;
   }
@@ -91,59 +87,52 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   public synchronized void onSuccess() {
     super.onSuccess();
     dataBase2TabletList.clear();
-    tabletDeviceIdTimeIndex.clear();
   }
 
   @Override
   public synchronized void close() {
     super.close();
     dataBase2TabletList.clear();
-    tabletDeviceIdTimeIndex.clear();
   }
 
   private List<Pair<String, File>> writeTableModelTabletsToTsFiles(
-      final List<Tablet> tabletList,
-      final List<List<Pair<IDeviceID, Integer>>> deviceIDPairMap,
-      final String dataBase)
-      throws IOException {
+      final List<Tablet> tabletList, final String dataBase) throws IOException {
 
-    final Map<String, List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> tableName2Tablets =
-        new HashMap<>();
+    final Map<String, List<Tablet>> tableName2Tablets = new HashMap<>();
 
     // Sort the tablets by dataBaseName
-    for (int i = 0; i < tabletList.size(); i++) {
-      final Tablet tablet = tabletList.get(i);
-      insertPairs(
-          tableName2Tablets.computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>()),
-          new Pair<>(tablet, deviceIDPairMap.get(i)));
+    for (final Tablet tablet : tabletList) {
+      tableName2Tablets.computeIfAbsent(tablet.getTableName(), k -> new ArrayList<>()).add(tablet);
     }
-
-    // Sort the devices by tableName
-    final List<String> tables = new ArrayList<>(tableName2Tablets.keySet());
-    tables.sort(Comparator.naturalOrder());
 
     // Replace ArrayList with LinkedList to improve performance
-    final LinkedHashMap<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>
-        table2TabletsLinkedList = new LinkedHashMap<>();
-    for (final String tableName : tables) {
-      table2TabletsLinkedList.put(tableName, new LinkedList<>(tableName2Tablets.get(tableName)));
-    }
+    final LinkedHashSet<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> table2Tablets =
+        new LinkedHashSet<>();
+
+    tableName2Tablets.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
+        .forEach(
+            entry -> {
+              LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list = new LinkedList<>();
+              for (final Tablet tablet : entry.getValue()) {
+                writerPairToList(list, new Pair<>(tablet, WriteUtils.splitTabletByDevice(tablet)));
+              }
+              table2Tablets.add(list);
+            });
 
     // Help GC
-    tables.clear();
     tableName2Tablets.clear();
 
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
 
     // Try making the tsfile size as large as possible
-    while (!table2TabletsLinkedList.isEmpty()) {
+    while (!table2Tablets.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
         createFileWriter();
       }
 
-      //
       try {
-        tryBestToWriteTabletsIntoOneFile(table2TabletsLinkedList);
+        tryBestToWriteTabletsIntoOneFile(table2Tablets);
       } catch (final Exception e) {
         LOGGER.warn(
             "Batch id = {}: Failed to write tablets into tsfile, because {}",
@@ -198,17 +187,14 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   private void tryBestToWriteTabletsIntoOneFile(
-      final LinkedHashMap<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>
+      final LinkedHashSet<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>
           device2TabletsLinkedList)
       throws IOException {
-    final Iterator<Map.Entry<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>>>
-        iterator = device2TabletsLinkedList.entrySet().iterator();
+    final Iterator<LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> iterator =
+        device2TabletsLinkedList.iterator();
 
     while (iterator.hasNext()) {
-      final Map.Entry<String, LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>>> entry =
-          iterator.next();
-      final String tableName = entry.getKey();
-      final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets = entry.getValue();
+      final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tablets = iterator.next();
 
       final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> tabletsToWrite = new ArrayList<>();
       final Map<IDeviceID, Long> deviceLastTimestampMap = new HashMap<>();
@@ -230,7 +216,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
         final Tablet tablet = pair.left;
         if (schemaNotRegistered) {
           fileWriter.registerTableSchema(
-              new TableSchema(tableName, tablet.getSchemas(), tablet.getColumnTypes()));
+              new TableSchema(tablet.getTableName(), tablet.getSchemas(), tablet.getColumnTypes()));
           schemaNotRegistered = false;
         }
         try {
@@ -278,19 +264,20 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
    * IDevice minimum timestamps of a certain Tablet in the List, put the current Tablet in this
    * position.
    */
-  private void insertPairs(
-      final List<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
+  private void writerPairToList(
+      final LinkedList<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> list,
       final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair) {
     int lastResult = Integer.MAX_VALUE;
     if (list.isEmpty()) {
       list.add(pair);
       return;
     }
-
-    for (int i = 0; i < list.size(); i++) {
-      final int result = comparePairs(list.get(i), pair);
+    ListIterator<Pair<Tablet, List<Pair<IDeviceID, Integer>>>> iterator = list.listIterator();
+    while (iterator.hasNext()) {
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pair2 = iterator.next();
+      final int result = compareDeviceID(pair2, pair);
       if (lastResult == 0 && result != 0) {
-        list.add(i - 1, pair);
+        iterator.add(pair);
         return;
       }
       lastResult = result;
@@ -298,21 +285,30 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     list.add(pair);
   }
 
-  private int comparePairs(
-      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairA,
-      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> pairB) {
+  /**
+   * Compares the time differences of the same DeviceID in two device ID lists. If the time of the
+   * same DeviceID in the second device list is greater than in the first, then a positive number is
+   * returned; if there is no such DeviceID, then 0 is returned.
+   *
+   * @param firstDeviceList The first device ID list and its associated times
+   * @param secondDeviceList The second device ID list and its associated times
+   * @return The comparison result
+   */
+  private int compareDeviceID(
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> firstDeviceList,
+      final Pair<Tablet, List<Pair<IDeviceID, Integer>>> secondDeviceList) {
     int bCount = 0;
     int aIndex = 0;
     int bIndex = 0;
     int aLastTimeIndex = 0;
     int bLastTimeIndex = 0;
-    final List<Pair<IDeviceID, Integer>> listA = pairA.right;
-    final List<Pair<IDeviceID, Integer>> listB = pairB.right;
+    final List<Pair<IDeviceID, Integer>> listA = firstDeviceList.right;
+    final List<Pair<IDeviceID, Integer>> listB = secondDeviceList.right;
     while (aIndex < listA.size() && bIndex < listB.size()) {
       int comparisonResult = listA.get(aIndex).left.compareTo(listB.get(bIndex).left);
       if (comparisonResult == 0) {
-        long aTime = pairA.left.timestamps[aLastTimeIndex];
-        long bTime = pairB.left.timestamps[bLastTimeIndex];
+        long aTime = firstDeviceList.left.timestamps[aLastTimeIndex];
+        long bTime = secondDeviceList.left.timestamps[bLastTimeIndex];
         if (aTime < bTime) {
           bCount++;
         }
