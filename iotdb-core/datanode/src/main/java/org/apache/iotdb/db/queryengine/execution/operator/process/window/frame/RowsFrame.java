@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.frame;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 
 public class RowsFrame implements Frame {
@@ -20,31 +21,48 @@ public class RowsFrame implements Frame {
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
     int posInPartition = currentPosition - partitionStart;
 
-    int frameStart = -1;
-    if (frameInfo.getStartType() == FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING) {
-      frameStart = 0;
-    } else if (frameInfo.getStartType() == FrameInfo.FrameBoundType.PRECEDING) {
-      int offset = (int) frameInfo.getStartOffset();
-      frameStart = Math.max(posInPartition - offset, 0);
-    } else if (frameInfo.getStartType() == FrameInfo.FrameBoundType.CURRENT_ROW) {
-      frameStart = posInPartition;
-    } else if (frameInfo.getStartType() == FrameInfo.FrameBoundType.FOLLOWING) {
-      int offset = (int) frameInfo.getStartOffset();
-      frameStart = Math.min(posInPartition + offset, partitionSize);
-    } // UNBOUND_FOLLOWING is not allowed in frame start
+    int offset;
+    int frameStart;
+    switch (frameInfo.getStartType()) {
+      case UNBOUNDED_PRECEDING:
+        frameStart = 0;
+        break;
+      case PRECEDING:
+        offset = (int) frameInfo.getStartOffset();
+        frameStart = Math.max(posInPartition - offset, 0);
+        break;
+      case CURRENT_ROW:
+        frameStart = posInPartition;
+        break;
+      case FOLLOWING:
+        offset = (int) frameInfo.getStartOffset();
+        frameStart = Math.min(posInPartition + offset, partitionSize);
+        break;
+      default:
+        // UNBOUND_FOLLOWING is not allowed in frame start
+        throw new FrameTypeException(true);
+    }
 
-    int frameEnd = -1;
-    if (frameInfo.getEndType() == FrameInfo.FrameBoundType.PRECEDING) {
-      int offset = (int) frameInfo.getEndOffset();
-      frameEnd = Math.max(posInPartition - offset, 0);
-    } else if (frameInfo.getEndType() == FrameInfo.FrameBoundType.CURRENT_ROW) {
-      frameEnd = posInPartition;
-    } else if (frameInfo.getEndType() == FrameInfo.FrameBoundType.FOLLOWING) {
-      int offset = (int) frameInfo.getEndOffset();
-      frameEnd = Math.min(posInPartition + offset, partitionSize - 1);
-    } else if (frameInfo.getEndType() == FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING) {
-      frameEnd = partitionSize - 1;
-    } // UNBOUND_PRECEDING is not allowed in frame end
+    int frameEnd;
+    switch (frameInfo.getEndType()) {
+      case PRECEDING:
+        offset = (int) frameInfo.getEndOffset();
+        frameEnd = Math.max(posInPartition - offset, 0);
+        break;
+      case CURRENT_ROW:
+        frameEnd = posInPartition;
+        break;
+      case FOLLOWING:
+        offset = (int) frameInfo.getEndOffset();
+        frameEnd = Math.min(posInPartition + offset, partitionSize - 1);
+        break;
+      case UNBOUNDED_FOLLOWING:
+        frameEnd = partitionSize - 1;
+        break;
+      default:
+        // UNBOUND_PRECEDING is not allowed in frame end
+        throw new FrameTypeException(false);
+    }
 
     return new Range(frameStart, frameEnd);
   }

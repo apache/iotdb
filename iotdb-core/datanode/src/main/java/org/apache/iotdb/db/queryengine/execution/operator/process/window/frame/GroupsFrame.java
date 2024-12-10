@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.frame;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 import org.apache.tsfile.block.column.Column;
@@ -36,29 +37,43 @@ public class GroupsFrame implements Frame {
   @Override
   public Range getRange(
       int currentPosition, int currentGroup, int peerGroupStart, int peerGroupEnd) {
-    int frameStart = -1;
-    FrameInfo.FrameBoundType startType = frameInfo.getStartType();
-    if (startType == FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING) {
-      frameStart = 0;
-    } else if (startType == FrameInfo.FrameBoundType.PRECEDING) {
-      frameStart = getStartPrecedingOffset(currentGroup) - partitionStart;
-    } else if (startType == FrameInfo.FrameBoundType.CURRENT_ROW) {
-      frameStart = peerGroupStart - partitionStart;
-    } else if (startType == FrameInfo.FrameBoundType.FOLLOWING) {
-      frameStart = getStartFollowingOffset(currentGroup) - partitionStart;
-    } // UNBOUND_FOLLOWING is not allowed in frame start
+    int frameStart;
+    switch (frameInfo.getStartType()) {
+      case UNBOUNDED_PRECEDING:
+        frameStart = 0;
+        break;
+      case PRECEDING:
+        frameStart = getStartPrecedingOffset(currentGroup);
+        break;
+      case CURRENT_ROW:
+        frameStart = peerGroupStart - partitionStart;
+        break;
+      case FOLLOWING:
+        frameStart = getStartFollowingOffset(currentGroup);
+        break;
+      default:
+        // UNBOUND_FOLLOWING is not allowed in frame start
+        throw new FrameTypeException(true);
+    }
 
-    int frameEnd = -1;
-    FrameInfo.FrameBoundType endType = frameInfo.getEndType();
-    if (endType == FrameInfo.FrameBoundType.PRECEDING) {
-      frameEnd = getEndPrecedingOffset(currentGroup) - partitionStart;
-    } else if (endType == FrameInfo.FrameBoundType.CURRENT_ROW) {
-      frameEnd = peerGroupEnd - partitionStart - 1;
-    } else if (endType == FrameInfo.FrameBoundType.FOLLOWING) {
-      frameEnd = getEndFollowingOffset(currentGroup) - partitionStart;
-    } else if (endType == FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING) {
-      frameEnd = partitionEnd - partitionStart - 1;
-    } // UNBOUND_PRECEDING is not allowed in frame end
+    int frameEnd;
+    switch (frameInfo.getEndType()) {
+      case PRECEDING:
+        frameEnd = getEndPrecedingOffset(currentGroup);
+        break;
+      case CURRENT_ROW:
+        frameEnd = peerGroupEnd - partitionStart - 1;
+        break;
+      case FOLLOWING:
+        frameEnd = getEndFollowingOffset(currentGroup);
+        break;
+      case UNBOUNDED_FOLLOWING:
+        frameEnd = partitionEnd - partitionStart - 1;
+        break;
+      default:
+        // UNBOUND_PRECEDING is not allowed in frame end
+        throw new FrameTypeException(false);
+    }
 
     recentRange = new Range(frameStart, frameEnd);
     return recentRange;
@@ -78,7 +93,7 @@ public class GroupsFrame implements Frame {
       recentStartPeerGroup = currentGroup - offset;
     }
 
-    return start;
+    return start - partitionStart;
   }
 
   private int getEndPrecedingOffset(int currentGroup) {
@@ -95,7 +110,7 @@ public class GroupsFrame implements Frame {
       recentStartPeerGroup = currentGroup - offset;
     }
 
-    return end;
+    return end - partitionStart;
   }
 
   private int getStartFollowingOffset(int currentGroup) {
@@ -125,7 +140,7 @@ public class GroupsFrame implements Frame {
       recentStartPeerGroup = currentGroup + offset;
     }
 
-    return start;
+    return start - partitionStart;
   }
 
   private int getEndFollowingOffset(int currentGroup) {
@@ -152,7 +167,7 @@ public class GroupsFrame implements Frame {
       recentStartPeerGroup = currentGroup + offset;
     }
 
-    return end;
+    return end - partitionStart;
   }
 
   private int scanPeerGroup(int currentPosition) {

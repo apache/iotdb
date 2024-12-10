@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.frame;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 import org.apache.tsfile.block.column.Column;
@@ -75,27 +76,43 @@ public class RangeFrame implements Frame {
 
     // Current row is not NULL
     // Frame definition has at least one of: X PRECEDING, Y FOLLOWING
-    int frameStart = -1;
-    if (frameInfo.getStartType() == UNBOUNDED_PRECEDING) {
-      frameStart = 0;
-    } else if (frameInfo.getStartType() == PRECEDING) {
-      frameStart = getPrecedingOffset(currentPosition, peerGroupStart, true) - partitionStart;
-    } else if (frameInfo.getStartType() == CURRENT_ROW) {
-      frameStart = peerGroupStart - partitionStart;
-    } else if (frameInfo.getStartType() == FOLLOWING) {
-      frameStart = getFollowingOffset(currentPosition, peerGroupEnd, true) - partitionStart;
-    } // UNBOUND_FOLLOWING is not allowed in frame start
+    int frameStart;
+    switch (frameInfo.getStartType()) {
+      case UNBOUNDED_PRECEDING:
+        frameStart = 0;
+        break;
+      case PRECEDING:
+        frameStart = getPrecedingOffset(currentPosition, peerGroupStart, true);
+        break;
+      case CURRENT_ROW:
+        frameStart = peerGroupStart - partitionStart;
+        break;
+      case FOLLOWING:
+        frameStart = getFollowingOffset(currentPosition, peerGroupEnd, true);
+        break;
+      default:
+        // UNBOUND_FOLLOWING is not allowed in frame start
+        throw new FrameTypeException(true);
+    }
 
-    int frameEnd = -1;
-    if (frameInfo.getStartType() == PRECEDING) {
-      frameEnd = getPrecedingOffset(currentPosition, peerGroupStart, false) - partitionStart;
-    } else if (frameInfo.getStartType() == CURRENT_ROW) {
-      frameEnd = peerGroupEnd - partitionStart - 1;
-    } else if (frameInfo.getStartType() == FOLLOWING) {
-      frameEnd = getFollowingOffset(currentPosition, peerGroupEnd, false) - partitionStart;
-    } else if (frameInfo.getStartType() == UNBOUNDED_FOLLOWING) {
-      frameEnd = partitionEnd - partitionStart - 1;
-    } // UNBOUND_PRECEDING is not allowed in frame start
+    int frameEnd;
+    switch (frameInfo.getEndType()) {
+      case PRECEDING:
+        frameEnd = getPrecedingOffset(currentPosition, peerGroupStart, false);
+        break;
+      case CURRENT_ROW:
+        frameEnd = peerGroupEnd - partitionStart - 1;
+        break;
+      case FOLLOWING:
+        frameEnd = getFollowingOffset(currentPosition, peerGroupEnd, false);
+        break;
+      case UNBOUNDED_FOLLOWING:
+        frameEnd = partitionEnd - partitionStart - 1;
+        break;
+      default:
+        // UNBOUND_PRECEDING is not allowed in frame start
+        throw new FrameTypeException(false);
+    }
 
     // Special case
     if (frameInfo.getStartType() == PRECEDING && frameInfo.getEndType() == PRECEDING && frameEnd == currentPosition
@@ -129,9 +146,9 @@ public class RangeFrame implements Frame {
     }
 
     if (frameInfo.getSortOrder().isAscending()) {
-      return getAscPrecedingOffset(currentPosition, recentStart, isStart);
+      return getAscPrecedingOffset(currentPosition, recentStart, isStart) - partitionStart;
     } else {
-      return getDescPrecedingOffset(currentPosition, recentStart, isStart);
+      return getDescPrecedingOffset(currentPosition, recentStart, isStart) - partitionStart;
     }
   }
 
@@ -146,9 +163,9 @@ public class RangeFrame implements Frame {
     int recentEnd = recentRange.getEnd() + partitionStart;
 
     if (frameInfo.getSortOrder().isAscending()) {
-      return getAscFollowingOffset(currentPosition, recentEnd, isStart);
+      return getAscFollowingOffset(currentPosition, recentEnd, isStart) - partitionStart;
     } else {
-      return getDescFollowingOffset(currentPosition, recentEnd, isStart);
+      return getDescFollowingOffset(currentPosition, recentEnd, isStart) - partitionStart;
     }
   }
 
