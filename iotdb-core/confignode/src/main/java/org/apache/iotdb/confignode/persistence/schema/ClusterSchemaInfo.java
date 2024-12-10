@@ -129,9 +129,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // Database read write lock
   private final ReentrantReadWriteLock databaseReadWriteLock;
-  private final ConfigMTree mTree;
+  private final ConfigMTree treeModelMTree;
+  private final ConfigMTree tableModelMTree;
 
-  private static final String SNAPSHOT_FILENAME = "cluster_schema.bin";
+  private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
+  private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
 
   private final String ERROR_NAME = "Error Database name";
 
@@ -143,7 +145,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock = new ReentrantReadWriteLock();
 
     try {
-      mTree = new ConfigMTree();
+      treeModelMTree = new ConfigMTree();
+      tableModelMTree = new ConfigMTree();
       templateTable = new TemplateTable();
       templatePreSetTable = new TemplatePreSetTable();
     } catch (MetadataException e) {
@@ -169,6 +172,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Set Database
       final TDatabaseSchema databaseSchema = plan.getSchema();
       final PartialPath partialPathName = PartialPath.getDatabasePath(databaseSchema.getName());
+
+      final ConfigMTree mTree =
+          plan.getSchema().isIsTableModel() ? tableModelMTree : treeModelMTree;
       mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
@@ -199,6 +205,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final TDatabaseSchema alterSchema = plan.getSchema();
       final PartialPath partialPathName = new PartialPath(alterSchema.getName());
+
+      final ConfigMTree mTree =
+          plan.getSchema().isIsTableModel() ? tableModelMTree : treeModelMTree;
 
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
@@ -280,7 +289,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       // Delete Database
-      mTree.deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
+      // TODO: Use TDatabaseSchema
+      treeModelMTree.deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
@@ -306,8 +316,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.readLock().lock();
       try {
         int count =
-            mTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false)
-                - mTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false);
+            treeModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false)
+                - treeModelMTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false)
+                + tableModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false);
         if (count >= limit) {
           throw new SchemaQuotaExceededException(limit);
         }
@@ -325,7 +336,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
-      result.setCount(mTree.getDatabaseNum(patternPath, plan.getScope(), false));
+      result.setCount(treeModelMTree.getDatabaseNum(patternPath, plan.getScope(), false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -348,11 +359,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
       final List<PartialPath> matchedPaths =
-          mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
+          treeModelMTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (final PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+            treeModelMTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -372,8 +383,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (mTree.isDatabaseAlreadySet(path)) {
-        mTree
+      if (treeModelMTree.isDatabaseAlreadySet(path)) {
+        treeModelMTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -396,8 +407,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (mTree.isDatabaseAlreadySet(path)) {
-        mTree
+      if (treeModelMTree.isDatabaseAlreadySet(path)) {
+        treeModelMTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -420,8 +431,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (mTree.isDatabaseAlreadySet(path)) {
-        mTree
+      if (treeModelMTree.isDatabaseAlreadySet(path)) {
+        treeModelMTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -452,7 +463,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       for (final Map.Entry<String, Pair<Integer, Integer>> entry :
           plan.getMaxRegionGroupNumMap().entrySet()) {
         final TDatabaseSchema databaseSchema =
-            mTree
+            treeModelMTree
                 .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(entry.getKey()))
                 .getAsMNode()
                 .getDatabaseSchema();
@@ -481,7 +492,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public List<String> getDatabaseNames(final Boolean isTableModel) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllDatabasePaths(isTableModel).stream()
+      return treeModelMTree.getAllDatabasePaths(isTableModel).stream()
           .map(PartialPath::getFullPath)
           .collect(Collectors.toList());
     } finally {
@@ -499,7 +510,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void isDatabaseNameValid(final String databaseName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      mTree.checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
+      treeModelMTree.checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -516,7 +527,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throws DatabaseNotExistsException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree
+      return treeModelMTree
           .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
           .getAsMNode()
           .getDatabaseSchema();
@@ -541,11 +552,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       for (final String rawPath : rawPathList) {
         final PartialPath patternPath = getQualifiedDatabasePartialPath(rawPath);
         final List<PartialPath> matchedPaths =
-            mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
+            treeModelMTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
         for (final PartialPath path : matchedPaths) {
           schemaMap.put(
               path.getFullPath(),
-              mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+              treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
         }
       }
     } catch (final MetadataException e) {
@@ -566,10 +577,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      List<PartialPath> matchedPaths = mTree.getMatchedDatabases(prefix, ALL_MATCH_SCOPE, true);
+      List<PartialPath> matchedPaths =
+          treeModelMTree.getMatchedDatabases(prefix, ALL_MATCH_SCOPE, true);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+            path.getFullPath(),
+            treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
     } catch (MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
@@ -591,7 +604,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final TDatabaseSchema storageGroupSchema =
-          mTree
+          treeModelMTree
               .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
               .getAsMNode()
               .getDatabaseSchema();
@@ -622,7 +635,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final TDatabaseSchema storageGroupSchema =
-          mTree
+          treeModelMTree
               .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
               .getAsMNode()
               .getDatabaseSchema();
@@ -642,14 +655,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return processMTreeTakeSnapshot(snapshotDir)
+  public boolean processTakeSnapshot(final File snapshotDir) throws IOException {
+    return processMTreeTakeSnapshot(snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree)
+        && processMTreeTakeSnapshot(snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree)
         && templateTable.processTakeSnapshot(snapshotDir)
         && templatePreSetTable.processTakeSnapshot(snapshotDir);
   }
 
-  public boolean processMTreeTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
+  public boolean processMTreeTakeSnapshot(
+      final File snapshotDir, final String snapshotFileName, final ConfigMTree mTree)
+      throws IOException {
+    final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -657,12 +673,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return false;
     }
 
-    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    final File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
     databaseReadWriteLock.readLock().lock();
     try {
-      FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      final FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         // Take snapshot for MTree
         mTree.serialize(outputStream);
@@ -688,14 +704,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws IOException {
-    processMTreeLoadSnapshot(snapshotDir);
+  public void processLoadSnapshot(final File snapshotDir) throws IOException {
+    processMTreeLoadSnapshot(snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree);
+    processMTreeLoadSnapshot(snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree);
     templateTable.processLoadSnapshot(snapshotDir);
     templatePreSetTable.processLoadSnapshot(snapshotDir);
   }
 
-  public void processMTreeLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
+  public void processMTreeLoadSnapshot(
+      final File snapshotDir, final String snapshotFileName, final ConfigMTree mTree)
+      throws IOException {
+    final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",
@@ -703,8 +722,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return;
     }
     databaseReadWriteLock.writeLock().lock();
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
+    try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       // Load snapshot of MTree
       mTree.clear();
       mTree.deserialize(bufferedInputStream);
@@ -719,7 +738,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         new Pair(new HashSet<>(), new HashSet<>());
     databaseReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true, scope);
+      matchedPathsInNextLevel =
+          treeModelMTree.getNodesListInGivenLevel(partialPath, level, true, scope);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in given level.", e);
     } finally {
@@ -734,7 +754,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         new Pair<>(new HashSet<>(), new HashSet<>());
     databaseReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath, scope);
+      matchedPathsInNextLevel = treeModelMTree.getChildNodePathInNextLevel(partialPath, scope);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in next level.", e);
     } finally {
@@ -797,7 +817,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     try {
-      mTree.checkTemplateOnPath(path);
+      treeModelMTree.checkTemplateOnPath(path);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       resp.setTemplateList(
           Collections.singletonList(
@@ -823,7 +843,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
-      mTree.setTemplate(templateId, path);
+      treeModelMTree.setTemplate(templateId, path);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -856,13 +876,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private void preSetSchemaTemplate(int templateId, PartialPath templateSetPath)
       throws MetadataException {
     templatePreSetTable.preSetTemplate(templateId, templateSetPath);
-    mTree.setTemplate(templateId, templateSetPath);
+    treeModelMTree.setTemplate(templateId, templateSetPath);
   }
 
   private void rollbackPreSetSchemaTemplate(int templateId, PartialPath templateSetPath)
       throws MetadataException {
     try {
-      mTree.unsetTemplate(templateId, templateSetPath);
+      treeModelMTree.unsetTemplate(templateId, templateSetPath);
     } catch (MetadataException ignore) {
       // node not exists or not set template
     }
@@ -898,7 +918,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private void rollbackCommitSetSchemaTemplate(int templateId, PartialPath templateSetPath)
       throws MetadataException {
-    mTree.unsetTemplate(templateId, templateSetPath);
+    treeModelMTree.unsetTemplate(templateId, templateSetPath);
   }
 
   public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
@@ -913,7 +933,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       } else {
         templateId = templateTable.getTemplate(templateName).getId();
       }
-      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, scope, false));
+      pathInfoResp.setPathList(treeModelMTree.getPathsSetOnTemplate(templateId, scope, false));
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -929,7 +949,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     for (Template template : templateList) {
       id = template.getId();
       try {
-        List<String> pathList = mTree.getPathsSetOnTemplate(id, ALL_MATCH_SCOPE, true);
+        List<String> pathList = treeModelMTree.getPathsSetOnTemplate(id, ALL_MATCH_SCOPE, true);
         if (!pathList.isEmpty()) {
           List<Pair<String, Boolean>> pathSetInfoList = new ArrayList<>();
           for (String path : pathList) {
@@ -964,7 +984,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
       for (final PartialPath pattern : plan.getPatternList()) {
-        final Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+        final Map<Integer, Set<PartialPath>> templateSetInfo =
+            treeModelMTree.getTemplateSetInfo(pattern);
         if (templateSetInfo.isEmpty()) {
           continue;
         }
@@ -1001,7 +1022,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus preUnsetSchemaTemplate(PreUnsetSchemaTemplatePlan plan) {
     try {
-      mTree.preUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      treeModelMTree.preUnsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
       LOGGER.error(e.getMessage(), e);
@@ -1011,7 +1032,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus rollbackUnsetSchemaTemplate(RollbackPreUnsetSchemaTemplatePlan plan) {
     try {
-      mTree.rollbackUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      treeModelMTree.rollbackUnsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
       LOGGER.error(e.getMessage(), e);
@@ -1021,7 +1042,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) {
     try {
-      mTree.unsetTemplate(plan.getTemplateId(), plan.getPath());
+      treeModelMTree.unsetTemplate(plan.getTemplateId(), plan.getPath());
       return StatusUtils.OK;
     } catch (MetadataException e) {
       LOGGER.error(e.getMessage(), e);
@@ -1054,10 +1075,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final PartialPath patternPath = new PartialPath(databasePathPattern);
-      final List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
+      final List<PartialPath> matchedPaths = treeModelMTree.getBelongedDatabases(patternPath);
       for (final PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+            path.getFullPath(),
+            treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
     } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
@@ -1072,7 +1094,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preCreateTable(final PreCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.preCreateTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
+      tableModelMTree.preCreateTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTable());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -1084,7 +1107,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus rollbackCreateTable(final RollbackCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.rollbackCreateTable(
+      tableModelMTree.rollbackCreateTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
@@ -1097,7 +1120,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus commitCreateTable(final CommitCreateTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.commitCreateTable(
+      tableModelMTree.commitCreateTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
@@ -1110,7 +1133,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.preDeleteTable(
+      treeModelMTree.preDeleteTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
@@ -1123,7 +1146,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus dropTable(final CommitDeleteTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.dropTable(getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+      tableModelMTree.dropTable(
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -1138,7 +1162,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return new ShowTableResp(
           StatusUtils.OK,
           plan.isDetails()
-              ? mTree
+              ? tableModelMTree
                   .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
@@ -1152,7 +1176,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         return info;
                       })
                   .collect(Collectors.toList())
-              : mTree
+              : tableModelMTree
                   .getAllUsingTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
@@ -1178,7 +1202,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getFetchTableMap().entrySet()) {
         result.put(
             database2Tables.getKey(),
-            mTree.getSpecificTablesUnderSpecificDatabase(
+            tableModelMTree.getSpecificTablesUnderSpecificDatabase(
                 getQualifiedDatabasePartialPath(database2Tables.getKey()),
                 database2Tables.getValue()));
       }
@@ -1197,11 +1221,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (plan.isDetails()) {
         final Pair<TsTable, Set<String>> pair =
-            mTree.getTableSchemaDetails(databasePath, plan.getTableName());
+            tableModelMTree.getTableSchemaDetails(databasePath, plan.getTableName());
         return new DescTableResp(StatusUtils.OK, pair.getLeft(), pair.getRight());
       }
       return new DescTableResp(
-          StatusUtils.OK, mTree.getUsingTableSchema(databasePath, plan.getTableName()), null);
+          StatusUtils.OK,
+          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          null);
     } catch (final MetadataException e) {
       return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
     } finally {
@@ -1212,7 +1238,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllUsingTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllUsingTables();
+      return tableModelMTree.getAllUsingTables();
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1221,7 +1247,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllPreCreateTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getAllPreCreateTables();
+      return tableModelMTree.getAllPreCreateTables();
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       throw new RuntimeException(e);
@@ -1234,7 +1260,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
+      return tableModelMTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1244,12 +1270,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       if (plan.isRollback()) {
-        mTree.rollbackAddTableColumn(
+        tableModelMTree.rollbackAddTableColumn(
             getQualifiedDatabasePartialPath(plan.getDatabase()),
             plan.getTableName(),
             plan.getColumnSchemaList());
       } else {
-        mTree.addTableColumn(
+        tableModelMTree.addTableColumn(
             getQualifiedDatabasePartialPath(plan.getDatabase()),
             plan.getTableName(),
             plan.getColumnSchemaList());
@@ -1267,7 +1293,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.renameTableColumn(
+      tableModelMTree.renameTableColumn(
           new PartialPath(databaseName), plan.getTableName(), plan.getOldName(), plan.getNewName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
@@ -1281,7 +1307,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.setTableProperties(
+      tableModelMTree.setTableProperties(
           getQualifiedDatabasePartialPath(plan.getDatabase()),
           plan.getTableName(),
           plan.getProperties());
@@ -1298,7 +1324,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      if (mTree.preDeleteColumn(
+      if (tableModelMTree.preDeleteColumn(
           getQualifiedDatabasePartialPath(plan.getDatabase()),
           plan.getTableName(),
           plan.getColumnName())) {
@@ -1318,7 +1344,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus commitDeleteColumn(final CommitDeleteColumnPlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      mTree.commitDeleteColumn(
+      tableModelMTree.commitDeleteColumn(
           getQualifiedDatabasePartialPath(plan.getDatabase()),
           plan.getTableName(),
           plan.getColumnName());
@@ -1340,6 +1366,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @TestOnly
   public void clear() {
-    mTree.clear();
+    treeModelMTree.clear();
   }
 }
