@@ -402,6 +402,92 @@ public class SubcolumnTest {
         return new int[] { lBest, 0, cMin };
     }
 
+    public static int subcolumnBeta(int[] x, int m) {
+        int x_length = x.length;
+        
+        int betaBest = 0;
+
+        int cMin = Integer.MAX_VALUE;
+
+        for (int beta = 1; beta <= 31; beta++) {
+            int l = (m + beta - 1) / beta;
+
+            int[] bitWidthList = new int[l];
+
+            int[][] bpListList = new int[l][x_length];
+
+            int cost = 0;
+
+            // TODO cost 的计算方式
+            cost += 8 * l;
+            
+            for (int i = 0; i < l; i++) {
+                int maxValuePart = 0;
+                for (int j = 0; j < x_length; j++) {
+                    bpListList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+                    if (bpListList[i][j] > maxValuePart) {
+                        maxValuePart = bpListList[i][j];
+                    }
+                }
+                bitWidthList[i] = bitWidthNew(maxValuePart);
+            }
+
+            for (int i = 0; i < l; i++) {
+                int bpCost = bitWidthList[i] * x_length;
+                int rleCost = 0;
+
+                int[] run_length = new int[x_length];
+                int[] rle_values = new int[x_length];
+
+                int count = 1;
+                int currentNumber = bpListList[i][0];
+
+                int index = 0;
+
+                for (int j = 1; j < x_length; j++) {
+                    if (bpListList[i][j] == currentNumber) {
+                        count++;
+                        if (count == 255) {
+                            rle_values[index] = currentNumber;
+                            run_length[index] = count;
+                            index++;
+                            count = 0;
+                        }
+                    } else {
+                        rle_values[index] = currentNumber;
+                        run_length[index] = count;
+                        index++;
+                        currentNumber = bpListList[i][j];
+                        count = 1;
+                    }
+                }
+
+                rle_values[index] = currentNumber;
+                run_length[index] = count;
+                index++;
+
+                rleCost = 16 + 8 * index + bitWidthList[i] * index;
+                // TODO rleCost 的计算方式
+                // rleCost = 8 * index + bitWidthList[i] * index;
+
+                if (bpCost <= rleCost) {
+                    cost += bpCost;
+                } else {
+                    cost += rleCost;
+                }
+            }
+
+            if (cost < cMin) {
+                cMin = cost;
+                betaBest = beta;
+            }
+        }
+
+        System.out.println("betaBest: " + betaBest);
+
+        return betaBest;
+    }
+
     public static int SubcolumnBetaEncoder(int[] list, int startBitPosition, byte[] encoded_result) {
         int list_length = list.length;
         int maxValue = 0;
@@ -414,12 +500,13 @@ public class SubcolumnTest {
         int m = bitWidthNew(maxValue);
 
         int beta;
-        beta = 2;
+        // beta = 2;
+        beta = subcolumnBeta(list, m);
 
         writeBits(encoded_result, startBitPosition, 8, m);
         startBitPosition += 8;
 
-        // System.out.println("m: " + m);
+        System.out.println("m: " + m);
 
         writeBits(encoded_result, startBitPosition, 8, beta);
         startBitPosition += 8;
@@ -1172,6 +1259,7 @@ public class SubcolumnTest {
         // System.out.println("num_blocks: " + num_blocks);
 
         for (int i = 0; i < num_blocks; i++) {
+            System.out.println("i: " + i);
             startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
         }
 
@@ -1456,7 +1544,8 @@ public class SubcolumnTest {
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
         // output_path_list.add(output_parent_dir + "bp.csv");
-        output_path_list.add(output_parent_dir + "subcolumn_beta2.csv");
+        output_path_list.add(output_parent_dir + "test0.csv");
+        // output_path_list.add(output_parent_dir + "subcolumn_beta.csv");
 
         // for (String value : dataset_name) {
         // input_path_list.add(input_parent_dir + value);
@@ -1490,7 +1579,7 @@ public class SubcolumnTest {
 
         int repeatTime2 = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime2 = 1;
+        repeatTime2 = 1;
 
         // for (int file_i = 1; file_i < 2; file_i++) {
 
