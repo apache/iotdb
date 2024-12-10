@@ -128,6 +128,11 @@ public class TableHeaderSchemaValidator {
         for (int indexInIncoming = 0; indexInIncoming < idColumns.size(); indexInIncoming++) {
           final String idName = idColumns.get(indexInIncoming).getColumnName();
           final int indexInExisting = tableSchema.getIndexAmongIdColumns(idName);
+          if (indexInExisting == -1) {
+            throw new SemanticException(
+                String.format(
+                    "Incoming id column %s not found in existing table in IoTDB", idName));
+          }
           if (indexInExisting != indexInIncoming) {
             throw new SemanticException(
                 String.format(
