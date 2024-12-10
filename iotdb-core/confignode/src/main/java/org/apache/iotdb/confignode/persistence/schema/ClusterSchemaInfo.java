@@ -548,18 +548,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return All DatabaseSchemas that matches to the specific Database patterns
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
-      final List<String> rawPathList) {
+      final List<String> rawPathList, final boolean isTableModel) {
     final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
+      final ConfigMTree mTree = isTableModel ? tableModelMTree : treeModelMTree;
       for (final String rawPath : rawPathList) {
         final PartialPath patternPath = getQualifiedDatabasePartialPath(rawPath);
         final List<PartialPath> matchedPaths =
-            treeModelMTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
+            mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
         for (final PartialPath path : matchedPaths) {
           schemaMap.put(
               path.getFullPath(),
-              treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+              mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
         }
       }
     } catch (final MetadataException e) {

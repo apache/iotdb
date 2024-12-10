@@ -771,7 +771,7 @@ public class ConfigPlanExecutor {
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
       final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
+          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups, false).values().stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

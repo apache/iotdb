@@ -529,53 +529,56 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
+  public TSStatus deleteDatabase(final TDeleteDatabaseReq tDeleteReq) {
     return configManager.deleteDatabases(
         new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
             .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe()));
   }
 
   @Override
-  public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
+  public TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
     return configManager.deleteDatabases(tDeleteReq);
   }
 
   @Override
-  public TSStatus setTTL(TSetTTLReq req) throws TException {
+  public TSStatus setTTL(final TSetTTLReq req) throws TException {
     return configManager.setTTL(new SetTTLPlan(req.getPathPattern(), req.getTTL()));
   }
 
   @Override
-  public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
+  public TSStatus setSchemaReplicationFactor(final TSetSchemaReplicationFactorReq req)
+      throws TException {
     return configManager.setSchemaReplicationFactor(
         new SetSchemaReplicationFactorPlan(req.getDatabase(), req.getSchemaReplicationFactor()));
   }
 
   @Override
-  public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
+  public TSStatus setDataReplicationFactor(final TSetDataReplicationFactorReq req)
+      throws TException {
     return configManager.setDataReplicationFactor(
         new SetDataReplicationFactorPlan(req.getDatabase(), req.getDataReplicationFactor()));
   }
 
   @Override
-  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+  public TSStatus setTimePartitionInterval(final TSetTimePartitionIntervalReq req)
+      throws TException {
     return configManager.setTimePartitionInterval(
         new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
   }
 
   @Override
-  public TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req) {
-    PathPatternTree scope =
+  public TCountDatabaseResp countMatchedDatabases(final TGetDatabaseReq req) {
+    final PathPatternTree scope =
         req.getScopePatternTree() == null
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-    CountDatabasePlan plan =
+    final CountDatabasePlan plan =
         new CountDatabasePlan(
             req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
-    CountDatabaseResp countDatabaseResp =
+    final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
-    TCountDatabaseResp resp = new TCountDatabaseResp();
+    final TCountDatabaseResp resp = new TCountDatabaseResp();
     countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
     return resp;
   }
@@ -988,6 +991,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) {
+    // TODO: Model
     GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
     RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();

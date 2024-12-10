@@ -457,8 +457,9 @@ public class ClusterSchemaManager {
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all DatabaseSchemas
+    // TODO
     Map<String, TDatabaseSchema> databaseSchemaMap =
-        getMatchedDatabaseSchemasByName(getDatabaseNames(null));
+        getMatchedDatabaseSchemasByName(getDatabaseNames(null), false);
     if (databaseSchemaMap.isEmpty()) {
       // Skip when there are no Databases
       return;
@@ -630,10 +631,10 @@ public class ClusterSchemaManager {
    * @return the matched DatabaseSchemas
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
-      final List<String> rawPathList) {
+      final List<String> rawPathList, final boolean isTableModel) {
     final Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
     clusterSchemaInfo
-        .getMatchedDatabaseSchemasByName(rawPathList)
+        .getMatchedDatabaseSchemasByName(rawPathList, isTableModel)
         .forEach(
             (database, databaseSchema) -> {
               if (isDatabaseExist(database)) {
