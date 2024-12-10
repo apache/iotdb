@@ -89,7 +89,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Map<String, Boolean> databaseCache = new HashMap<>();
+  private final Set<String> databaseCache = new HashSet<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -183,10 +183,9 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final Map.Entry<String, Boolean> entry : databaseCache.entrySet()) {
-      final String database = entry.getKey();
+    for (final String database : databaseCache) {
       if (PathUtils.isStartWith(deviceID, database)) {
-        return entry.getKey();
+        return database;
       }
     }
     return null;
@@ -201,7 +200,7 @@ public class PartitionCache {
   private boolean containsDatabase(final String database) {
     try {
       databaseCacheLock.readLock().lock();
-      return databaseCache.containsKey(database);
+      return databaseCache.contains(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -223,7 +222,8 @@ public class PartitionCache {
       getDatabaseMap(result, deviceIDs, true);
       if (!result.isSuccess()) {
         final TGetDatabaseReq req =
-            new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+            new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+                .setIsTableModel(false);
         final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -247,15 +247,12 @@ public class PartitionCache {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
-          new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+          new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+              .setIsTableModel(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(
-            databaseSchemaResp.getDatabaseSchemaMap().entrySet().stream()
-                .collect(
-                    Collectors.toMap(
-                        Map.Entry::getKey, entry -> entry.getValue().isIsTableModel())));
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -507,10 +504,10 @@ public class PartitionCache {
    *
    * @param databaseNames the database names that need to update
    */
-  public void updateDatabaseCache(final Map<String, Boolean> databaseNames) {
+  public void updateDatabaseCache(final Set<String> databaseNames) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.putAll(databaseNames);
+      databaseCache.addAll(databaseNames);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

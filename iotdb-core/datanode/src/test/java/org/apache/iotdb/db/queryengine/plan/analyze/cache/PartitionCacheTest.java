@@ -48,8 +48,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -150,8 +148,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateDatabaseCache(
-        storageGroups.stream().collect(Collectors.toMap(Function.identity(), k -> false)));
+    partitionCache.updateDatabaseCache(storageGroups);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
