@@ -21,9 +21,9 @@ public class FrameInfo {
   private final FrameBoundType startType;
   // By convention, if a value can be an integer or a floating point
   // Then it is stored in double
-  private final double startOffset;  // For PRECEDING and FOLLOWING use
+  private final double startOffset; // For PRECEDING and FOLLOWING use
   private final FrameBoundType endType;
-  private final double endOffset;   // Same as startOffset
+  private final double endOffset; // Same as startOffset
   // For RANGE type frame
   private final int sortChannel;
   private final SortOrder sortOrder;
@@ -32,27 +32,53 @@ public class FrameInfo {
     this(frameType, startType, -1, endType, -1);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, int startOffset, FrameBoundType endType) {
+  public FrameInfo(
+      FrameType frameType, FrameBoundType startType, int startOffset, FrameBoundType endType) {
     this(frameType, startType, startOffset, endType, -1);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, int startOffset, FrameBoundType endType, int sortChannel, SortOrder sortOrder) {
+  public FrameInfo(
+      FrameType frameType,
+      FrameBoundType startType,
+      int startOffset,
+      FrameBoundType endType,
+      int sortChannel,
+      SortOrder sortOrder) {
     this(frameType, startType, startOffset, endType, -1, sortChannel, sortOrder);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, FrameBoundType endType, int endOffset) {
+  public FrameInfo(
+      FrameType frameType, FrameBoundType startType, FrameBoundType endType, int endOffset) {
     this(frameType, startType, -1, endType, endOffset);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, FrameBoundType endType, int endOffset, int sortChannel, SortOrder sortOrder) {
+  public FrameInfo(
+      FrameType frameType,
+      FrameBoundType startType,
+      FrameBoundType endType,
+      int endOffset,
+      int sortChannel,
+      SortOrder sortOrder) {
     this(frameType, startType, -1, endType, endOffset, sortChannel, sortOrder);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, int startOffset, FrameBoundType endType, int endOffset) {
+  public FrameInfo(
+      FrameType frameType,
+      FrameBoundType startType,
+      int startOffset,
+      FrameBoundType endType,
+      int endOffset) {
     this(frameType, startType, startOffset, endType, endOffset, -1, SortOrder.ASC_NULLS_FIRST);
   }
 
-  public FrameInfo(FrameType frameType, FrameBoundType startType, int startOffset, FrameBoundType endType, int endOffset, int sortChannel, SortOrder sortOrder) {
+  public FrameInfo(
+      FrameType frameType,
+      FrameBoundType startType,
+      int startOffset,
+      FrameBoundType endType,
+      int endOffset,
+      int sortChannel,
+      SortOrder sortOrder) {
     this.frameType = frameType;
     this.startType = startType;
     this.startOffset = startOffset;

@@ -4,9 +4,9 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
@@ -196,7 +196,14 @@ public class TableWindowOperator implements ProcessOperator {
       }
 
       Partition partition =
-          new Partition(tsBlock, inputDataTypes, partitionStart, partitionEnd, windowFunction, frameInfo, sortChannels);
+          new Partition(
+              tsBlock,
+              inputDataTypes,
+              partitionStart,
+              partitionEnd,
+              windowFunction,
+              frameInfo,
+              sortChannels);
       partitions.add(partition);
 
       partitionStart = partitionEnd;

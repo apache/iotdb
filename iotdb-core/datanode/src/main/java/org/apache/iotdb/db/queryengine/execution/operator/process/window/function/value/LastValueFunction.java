@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -19,8 +20,10 @@ public class LastValueFunction implements WindowFunction {
       Column[] partition,
       ColumnBuilder builder,
       int index,
-      int frameStart, int frameEnd,
-      int peerGroupStart, int peerGroupEnd) {
+      int frameStart,
+      int frameEnd,
+      int peerGroupStart,
+      int peerGroupEnd) {
     builder.write(partition[channel], frameEnd);
   }
 }

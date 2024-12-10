@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.partit
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+
 import org.apache.tsfile.block.column.Column;
 
 import java.util.List;
@@ -20,9 +21,13 @@ public class GroupsFrame implements Frame {
   private int recentEndPeerGroup;
   private boolean frameStartFollowingReachEnd = false;
 
-
   public GroupsFrame(
-      FrameInfo frameInfo, int partitionStart, int partitionEnd, List<Column> columns, RowComparator peerGroupComparator, int initialEnd) {
+      FrameInfo frameInfo,
+      int partitionStart,
+      int partitionEnd,
+      List<Column> columns,
+      RowComparator peerGroupComparator,
+      int initialEnd) {
     this.frameInfo = frameInfo;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
@@ -80,7 +85,7 @@ public class GroupsFrame implements Frame {
   }
 
   private int getStartPrecedingOffset(int currentGroup) {
-    int start = recentRange.getStart()  + partitionStart;
+    int start = recentRange.getStart() + partitionStart;
     int offset = (int) frameInfo.getStartOffset();
     if (currentGroup - offset > recentStartPeerGroup) {
       int count = currentGroup - offset - recentStartPeerGroup;
@@ -97,7 +102,7 @@ public class GroupsFrame implements Frame {
   }
 
   private int getEndPrecedingOffset(int currentGroup) {
-    int end = recentRange.getEnd()  + partitionStart;
+    int end = recentRange.getEnd() + partitionStart;
     int offset = (int) frameInfo.getEndOffset();
     if (currentGroup - offset > recentStartPeerGroup) {
       int count = currentGroup - offset - recentStartPeerGroup;
@@ -144,7 +149,7 @@ public class GroupsFrame implements Frame {
   }
 
   private int getEndFollowingOffset(int currentGroup) {
-    int end = recentRange.getEnd()  + partitionStart;
+    int end = recentRange.getEnd() + partitionStart;
     // Shortcut if we have reached partition end already
     if (end == partitionEnd - 1) {
       return end;
@@ -171,7 +176,8 @@ public class GroupsFrame implements Frame {
   }
 
   private int scanPeerGroup(int currentPosition) {
-    while (currentPosition < partitionEnd - 1 && peerGroupComparator.equal(columns, currentPosition, currentPosition + 1)) {
+    while (currentPosition < partitionEnd - 1
+        && peerGroupComparator.equal(columns, currentPosition, currentPosition + 1)) {
       currentPosition++;
     }
     return currentPosition;

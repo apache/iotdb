@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -11,7 +12,7 @@ public class LeadFunction implements WindowFunction {
 
   public LeadFunction(int channel, Integer offset, Integer defaultVal) {
     this.channel = channel;
-    this.offset = offset == null? 1 : offset;
+    this.offset = offset == null ? 1 : offset;
     this.defaultVal = defaultVal;
   }
 
@@ -19,7 +20,14 @@ public class LeadFunction implements WindowFunction {
   public void reset() {}
 
   @Override
-  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+  public void transform(
+      Column[] partition,
+      ColumnBuilder builder,
+      int index,
+      int frameStart,
+      int frameEnd,
+      int peerGroupStart,
+      int peerGroupEnd) {
     int pos = index + offset;
     if (pos < partition[0].getPositionCount()) {
       builder.write(partition[channel], pos);

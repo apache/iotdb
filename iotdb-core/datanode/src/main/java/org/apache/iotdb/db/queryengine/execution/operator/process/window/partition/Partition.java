@@ -1,14 +1,14 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.Frame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.GroupsFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RangeFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RowsFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -49,7 +49,8 @@ public final class Partition {
     this.tsBlock = tsBlock;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
-    this.partition = tsBlock.getRegion(partitionStart, partitionEnd - partitionStart).getAllColumns();
+    this.partition =
+        tsBlock.getRegion(partitionStart, partitionEnd - partitionStart).getAllColumns();
     this.windowFunction = windowFunction;
 
     // Prepare for peer group comparing
@@ -129,8 +130,7 @@ public final class Partition {
       updatePeerGroup();
     }
 
-    Range range =
-        frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
+    Range range = frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
     // TODO: handle empty frame
     windowFunction.transform(
         partition,
@@ -150,7 +150,8 @@ public final class Partition {
     peerGroupStart = currentPosition;
     // Find end of peer group
     peerGroupEnd = peerGroupStart + 1;
-    while (peerGroupEnd < partitionEnd && peerGroupComparator.equal(sortedColumns, peerGroupStart, peerGroupEnd)) {
+    while (peerGroupEnd < partitionEnd
+        && peerGroupComparator.equal(sortedColumns, peerGroupStart, peerGroupEnd)) {
       peerGroupEnd++;
     }
   }
