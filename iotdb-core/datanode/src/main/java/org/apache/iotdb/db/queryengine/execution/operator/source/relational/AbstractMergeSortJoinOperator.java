@@ -209,42 +209,25 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   }
 
   // check if the last value of the right is less than left
-  // TODO introduce joinKey list, if join key size equals to 1, can return true in inner join
   protected boolean allRightLessThanLeft() {
-    for (int i = 0; i < comparators.size(); i++) {
-      if (comparators
-          .get(i)
-          .lessThan(
-              rightBlockList.get(rightBlockList.size() - 1),
-              rightJoinKeyPositions[i],
-              rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
-              leftBlock,
-              leftJoinKeyPositions[i],
-              leftIndex)
-          .orElse(false)) {
-        return true;
-      }
-    }
-    return false;
+    return lessThan(
+        rightBlockList.get(rightBlockList.size() - 1),
+        rightJoinKeyPositions,
+        rightBlockList.get(rightBlockList.size() - 1).getPositionCount() - 1,
+        leftBlock,
+        leftJoinKeyPositions,
+        leftIndex);
   }
 
   // check if the last value of the left is less than right
   protected boolean allLeftLessThanRight() {
-    for (int i = 0; i < comparators.size(); i++) {
-      if (comparators
-          .get(i)
-          .lessThan(
-              leftBlock,
-              leftJoinKeyPositions[i],
-              leftBlock.getPositionCount() - 1,
-              rightBlockList.get(rightBlockListIdx),
-              rightJoinKeyPositions[i],
-              rightIndex)
-          .orElse(false)) {
-        return true;
-      }
-    }
-    return false;
+    return lessThan(
+        leftBlock,
+        leftJoinKeyPositions,
+        leftBlock.getPositionCount() - 1,
+        rightBlockList.get(rightBlockListIdx),
+        rightJoinKeyPositions,
+        rightIndex);
   }
 
   /**

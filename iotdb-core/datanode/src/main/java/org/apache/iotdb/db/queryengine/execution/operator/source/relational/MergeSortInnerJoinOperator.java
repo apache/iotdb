@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -130,6 +131,31 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
 
     // has right values equal to current left, append to join result, inc leftIndex
     return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
+  }
+
+  @Override
+  protected boolean lessThan(
+      TsBlock leftBlock,
+      int[] leftPositions,
+      int lIndex,
+      TsBlock rightBlock,
+      int[] rightPositions,
+      int rIndex) {
+
+    // if join key size equals to 1, can return true in inner join
+    if (rightPositions.length == 1 && rightBlock.getColumn(rightPositions[0]).isNull(rIndex)) {
+      return true;
+    }
+
+    for (int i = 0; i < comparators.size(); i++) {
+      if (comparators
+          .get(i)
+          .lessThan(leftBlock, leftPositions[i], lIndex, rightBlock, rightPositions[i], rIndex)
+          .orElse(false)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

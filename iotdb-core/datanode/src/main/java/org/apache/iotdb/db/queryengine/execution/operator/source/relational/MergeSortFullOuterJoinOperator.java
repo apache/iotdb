@@ -113,7 +113,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // append all NULL join key values in right with empty left
+    // if exist NULL values in right, just output this row with empty left
     while (currentRightHasNullValue()) {
       appendOneRightRowWithEmptyLeft();
       if (rightFinishedWithIncIndex()) {
@@ -151,7 +151,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
-    // skip all NULL values in left, because NULL value can not appear in the inner join result
+    // if exist NULL values in left, just output this row with empty right
     while (currentLeftHasNullValue()) {
       appendOneLeftRowWithEmptyRight();
       if (leftFinishedWithIncIndex()) {
