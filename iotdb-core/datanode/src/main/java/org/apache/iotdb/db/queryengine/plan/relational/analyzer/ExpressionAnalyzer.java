@@ -106,6 +106,7 @@ import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -996,20 +997,14 @@ public class ExpressionAnalyzer {
         Type declaredValueType,
         SubqueryExpression subquery,
         StackableAstVisitorContext<Context> context) {
+      // For now, we only support one column in subqueries, we have checked this before.
       Type valueRowType = declaredValueType;
-      if (!(declaredValueType instanceof RowType) && !(declaredValueType instanceof UnknownType)) {
+      /*if (!(declaredValueType instanceof RowType) && !(declaredValueType instanceof UnknownType)) {
         valueRowType = RowType.anonymous(ImmutableList.of(declaredValueType));
-      }
+      }*/
 
       Type subqueryType = analyzeSubquery(subquery, context);
       setExpressionType(subquery, subqueryType);
-
-      if (subqueryType.equals(valueRowType)) {
-        throw new SemanticException(
-            String.format(
-                "Value expression and result of subquery must be of the same type: %s vs %s",
-                valueRowType, subqueryType));
-      }
 
       Optional<Type> valueCoercion = Optional.empty();
       //      if (!valueRowType.equals(commonType.get())) {
@@ -1048,7 +1043,9 @@ public class ExpressionAnalyzer {
       }
 
       sourceFields.addAll(queryScope.getRelationType().getVisibleFields());
-      return RowType.from(fields.build());
+      // return RowType.from(fields.build());
+      // For now, we only support one column in subqueries, we have checked this before.
+      return getOnlyElement(fields.build().stream().iterator()).getType();
     }
 
     @Override

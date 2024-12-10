@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -33,6 +34,8 @@ import java.util.List;
 public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortSemiJoinOperator.class);
+
+  private final int outputColumnNum;
 
   public MergeSortSemiJoinOperator(
       OperatorContext operatorContext,
@@ -55,6 +58,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
         joinKeyComparator,
         dataTypes,
         joinKeyType);
+    outputColumnNum = dataTypes.size();
   }
 
   @Override
@@ -63,17 +67,24 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    return !leftFinished && !rightFinished;
+    return !leftFinished;
   }
 
   @Override
   protected boolean prepareInput() throws Exception {
     gotCandidateBlocks();
+    if (rightFinished) {
+      return leftBlockNotEmpty();
+    }
     return leftBlockNotEmpty() && rightBlockNotEmpty() && gotNextRightBlock();
   }
 
   @Override
   protected boolean processFinished() {
+    if (rightFinished) {
+      buildUseRemainingBlocks();
+      return true;
+    }
     // all the join keys in rightTsBlock are less than leftTsBlock, just skip right
     if (allRightLessThanLeft()) {
       resetRightBlockList();
@@ -110,6 +121,8 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPosition,
         rightIndex)) {
+      // current left won't match any right, append left with false SemiJoin result
+      appendValueToResult(false);
       leftIndex++;
       if (leftIndex >= leftBlock.getPositionCount()) {
         resetLeftBlock();
@@ -134,23 +147,34 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
 
   @Override
   protected boolean hasMatchedRightValueToProbeLeft() {
-    if (comparator.equalsTo(
-        leftBlock,
-        leftJoinKeyPosition,
-        leftIndex,
-        rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
-        rightIndex)) {
-      recordsWhenDataMatches();
-      appendValueToResultWhenMatches();
-      return true;
-    }
-    return false;
+    boolean matches =
+        comparator.equalsTo(
+            leftBlock,
+            leftJoinKeyPosition,
+            leftIndex,
+            rightBlockList.get(rightBlockListIdx),
+            rightJoinKeyPosition,
+            rightIndex);
+    appendValueToResult(matches);
+    return matches;
   }
 
-  protected void appendValueToResultWhenMatches() {
+  private void appendValueToResult(boolean matches) {
     appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
+    appendSemiJoinOutput(matches);
     resultBuilder.declarePosition();
+  }
+
+  private void appendSemiJoinOutput(boolean value) {
+    ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
+    columnBuilder.writeBoolean(value);
+  }
+
+  private void buildUseRemainingBlocks() {
+    while (leftBlockNotEmpty()) {
+      appendValueToResult(false);
+      leftIndex++;
+    }
   }
 
   @Override

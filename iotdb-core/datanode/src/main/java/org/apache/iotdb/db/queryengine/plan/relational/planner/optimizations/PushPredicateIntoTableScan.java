@@ -72,6 +72,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -832,6 +833,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       Expression inheritedPredicate =
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
       Expression deterministicInheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
+      Expression sourceEffectivePredicate = TRUE_LITERAL;
+      Expression filteringSourceEffectivePredicate = TRUE_LITERAL;
       // Expression sourceEffectivePredicate =
       // filterDeterministicConjuncts(effectivePredicateExtractor.extract(session, node.getSource(),
       // types, typeAnalyzer));
@@ -853,15 +856,21 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // Generate equality inferences
       EqualityInference allInference =
-          new EqualityInference(metadata, deterministicInheritedPredicate, joinExpression);
-      // EqualityInference allInference = new EqualityInference(metadata,
-      // deterministicInheritedPredicate, sourceEffectivePredicate,
-      // filteringSourceEffectivePredicate, joinExpression);
-      // EqualityInference allInferenceWithoutSourceInferred = new EqualityInference(metadata,
-      // deterministicInheritedPredicate, filteringSourceEffectivePredicate, joinExpression);
-      // EqualityInference allInferenceWithoutFilteringSourceInferred = new
-      // EqualityInference(metadata, deterministicInheritedPredicate, sourceEffectivePredicate,
-      // joinExpression);
+          new EqualityInference(
+              metadata,
+              deterministicInheritedPredicate,
+              sourceEffectivePredicate,
+              filteringSourceEffectivePredicate,
+              joinExpression);
+      EqualityInference allInferenceWithoutSourceInferred =
+          new EqualityInference(
+              metadata,
+              deterministicInheritedPredicate,
+              filteringSourceEffectivePredicate,
+              joinExpression);
+      EqualityInference allInferenceWithoutFilteringSourceInferred =
+          new EqualityInference(
+              metadata, deterministicInheritedPredicate, sourceEffectivePredicate, joinExpression);
 
       // Push inheritedPredicates down to the source if they don't involve the semi join output
       Set<Symbol> sourceScope = ImmutableSet.copyOf(sourceSymbols);
@@ -892,23 +901,28 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 }
               });
 
-      /*
       // move effective predicate conjuncts source <-> filter
       // See if we can push the filtering source effective predicate to the source side
       EqualityInference.nonInferrableConjuncts(metadata, filteringSourceEffectivePredicate)
-              .map(conjunct -> allInference.rewrite(conjunct, sourceScope))
-              .filter(Objects::nonNull)
-              .forEach(sourceConjuncts::add);
+          .map(conjunct -> allInference.rewrite(conjunct, sourceScope))
+          .filter(Objects::nonNull)
+          .forEach(sourceConjuncts::add);
 
       // See if we can push the source effective predicate to the filtering source side
       EqualityInference.nonInferrableConjuncts(metadata, sourceEffectivePredicate)
-              .map(conjunct -> allInference.rewrite(conjunct, filterScope))
-              .filter(Objects::nonNull)
-              .forEach(filteringSourceConjuncts::add);
+          .map(conjunct -> allInference.rewrite(conjunct, filterScope))
+          .filter(Objects::nonNull)
+          .forEach(filteringSourceConjuncts::add);
 
       // Add equalities from the inference back in
-      sourceConjuncts.addAll(allInferenceWithoutSourceInferred.generateEqualitiesPartitionedBy(sourceScope).getScopeEqualities());
-      filteringSourceConjuncts.addAll(allInferenceWithoutFilteringSourceInferred.generateEqualitiesPartitionedBy(filterScope).getScopeEqualities());*/
+      sourceConjuncts.addAll(
+          allInferenceWithoutSourceInferred
+              .generateEqualitiesPartitionedBy(sourceScope)
+              .getScopeEqualities());
+      filteringSourceConjuncts.addAll(
+          allInferenceWithoutFilteringSourceInferred
+              .generateEqualitiesPartitionedBy(filterScope)
+              .getScopeEqualities());
 
       PlanNode rewrittenSource =
           node.getSource().accept(this, new RewriteContext(combineConjuncts(sourceConjuncts)));

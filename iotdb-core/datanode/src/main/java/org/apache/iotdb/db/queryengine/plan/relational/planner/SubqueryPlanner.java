@@ -572,7 +572,7 @@ class SubqueryPlanner {
     }
 
     List<Expression> fieldsList = fields.build();
-    checkArgument(fieldsList.size() <= 1, "For now, only single column subqueries are supported");
+    checkArgument(fieldsList.size() == 1, "For now, only single column subqueries are supported");
     /*subqueryPlan =
     subqueryPlan.withNewRoot(
         new ProjectNode(

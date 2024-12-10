@@ -58,7 +58,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Re
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformFilteringSemiJoinToInnerJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
 
@@ -218,10 +217,11 @@ public class LogicalOptimizeFactory {
         new CheckSubqueryNodesAreRewritten(),
         simplifyOptimizer,
         new PushPredicateIntoTableScan(),
-        new IterativeOptimizer(
-            plannerContext,
-            ruleStats,
-            ImmutableSet.of(new TransformFilteringSemiJoinToInnerJoin())),
+        // Currently, Distinct is not supported, so we cant use this rule for now.
+        //        new IterativeOptimizer(
+        //            plannerContext,
+        //            ruleStats,
+        //            ImmutableSet.of(new TransformFilteringSemiJoinToInnerJoin())),
         // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,

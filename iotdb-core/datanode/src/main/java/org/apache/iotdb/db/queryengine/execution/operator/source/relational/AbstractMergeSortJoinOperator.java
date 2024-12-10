@@ -268,7 +268,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     if (!leftBlockNotEmpty()) {
       if (leftChild.hasNextWithTimer()) {
         TsBlock block = leftChild.nextWithTimer();
-        pruneLastNullValuesOfBlock(block);
+        pruneLastNullValuesOfBlock(block, leftJoinKeyPosition);
         leftBlock = block;
         leftIndex = 0;
       } else {
@@ -284,7 +284,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
       } else {
         if (rightChild.hasNextWithTimer()) {
           TsBlock block = rightChild.nextWithTimer();
-          pruneLastNullValuesOfBlock(block);
+          pruneLastNullValuesOfBlock(block, rightJoinKeyPosition);
           if (block != null && !block.isEmpty()) {
             addRightBlockWithMemoryReservation(block);
           }
@@ -299,13 +299,12 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     }
   }
 
-  protected void pruneLastNullValuesOfBlock(TsBlock block) {
+  protected void pruneLastNullValuesOfBlock(TsBlock block, int columnIndex) {
     if (block == null) {
       return;
     }
     int lastNonNullIndex = block.getPositionCount() - 1;
-    while (lastNonNullIndex >= 0
-        && block.getColumn(rightJoinKeyPosition).isNull(lastNonNullIndex)) {
+    while (lastNonNullIndex >= 0 && block.getColumn(columnIndex).isNull(lastNonNullIndex)) {
       lastNonNullIndex--;
     }
     block.setPositionCount(lastNonNullIndex + 1);

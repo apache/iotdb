@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.recent.subquery;
+package org.apache.iotdb.relational.it.query.recent.subquery.uncorrelated;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
