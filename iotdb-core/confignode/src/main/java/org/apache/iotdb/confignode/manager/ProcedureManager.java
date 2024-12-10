@@ -145,6 +145,7 @@ import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -232,7 +233,7 @@ public class ProcedureManager {
 
   public TSStatus deleteDatabases(
       final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
-    DeleteDatabaseProcedure procedure = null;
+    List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
     final long startCheckTimeForProcedures = System.currentTimeMillis();
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       final String database = databaseSchema.getName();
@@ -246,8 +247,10 @@ public class ProcedureManager {
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
-            procedure = new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+            DeleteDatabaseProcedure procedure =
+                new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
             this.executor.submitProcedure(procedure);
+            procedures.add(procedure);
             break;
           }
           try {
@@ -265,11 +268,17 @@ public class ProcedureManager {
         }
       }
     }
-    final TSStatus result = waitingProcedureFinished(procedure);
+    List<TSStatus> results = new ArrayList<>(procedures.size());
+    procedures.forEach(procedure -> results.add(waitingProcedureFinished(procedure)));
     // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
-    return result;
+    if (results.stream()
+        .allMatch(result -> result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+      return StatusUtils.OK;
+    } else {
+      return RpcUtils.getStatus(results);
+    }
   }
 
   public TSStatus deleteTimeSeries(
@@ -911,7 +920,7 @@ public class ProcedureManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     } else {
-      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(status.getMessage());
     }
   }
@@ -941,7 +950,13 @@ public class ProcedureManager {
     }
 
     executor.submitProcedure(createTriggerProcedure);
-    return waitingProcedureFinished(createTriggerProcedure);
+    TSStatus status = waitingProcedureFinished(createTriggerProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+          .setMessage(status.getMessage());
+    }
   }
 
   /**
@@ -953,7 +968,13 @@ public class ProcedureManager {
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
     DropTriggerProcedure procedure = new DropTriggerProcedure(triggerName, isGeneratedByPipe);
     executor.submitProcedure(procedure);
-    return waitingProcedureFinished(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
+          .setMessage(status.getMessage());
+    }
   }
 
   public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
@@ -971,7 +992,13 @@ public class ProcedureManager {
   public TSStatus dropModel(String modelId) {
     DropModelProcedure procedure = new DropModelProcedure(modelId);
     executor.submitProcedure(procedure);
-    return waitingProcedureFinished(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
+          .setMessage(status.getMessage());
+    }
   }
 
   public TSStatus createPipePlugin(
@@ -994,7 +1021,13 @@ public class ProcedureManager {
     }
 
     executor.submitProcedure(createPipePluginProcedure);
-    return waitingProcedureFinished(createPipePluginProcedure);
+    TSStatus status = waitingProcedureFinished(createPipePluginProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
+          .setMessage(status.getMessage());
+    }
   }
 
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
@@ -1002,7 +1035,13 @@ public class ProcedureManager {
         new DropPipePluginProcedure(
             req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition());
     executor.submitProcedure(procedure);
-    return waitingProcedureFinished(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ERROR.getStatusCode())
+          .setMessage(status.getMessage());
+    }
   }
 
   public TSStatus createConsensusPipe(TCreatePipeReq req) {
