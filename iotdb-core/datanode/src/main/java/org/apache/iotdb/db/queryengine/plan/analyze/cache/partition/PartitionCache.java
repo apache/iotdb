@@ -74,7 +74,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class PartitionCache {
 
@@ -228,11 +227,7 @@ public class PartitionCache {
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // update all database into cache
-          updateDatabaseCache(
-              databaseSchemaResp.getDatabaseSchemaMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          Map.Entry::getKey, entry -> entry.getValue().isIsTableModel())));
+          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -252,7 +247,7 @@ public class PartitionCache {
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -294,7 +289,7 @@ public class PartitionCache {
         }
 
         // Try to create databases one by one until done or one database fail
-        final Map<String, Boolean> successFullyCreatedDatabase = new HashMap<>();
+        final Set<String> successFullyCreatedDatabase = new HashSet<>();
         for (final String databaseName : databaseNamesNeedCreated) {
           final long startTime = System.nanoTime();
           try {
@@ -318,7 +313,7 @@ public class PartitionCache {
           final TSStatus tsStatus = client.setDatabase(databaseSchema);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
               || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-            successFullyCreatedDatabase.put(databaseName, false);
+            successFullyCreatedDatabase.add(databaseName);
             // In tree model, if the user creates a conflict database concurrently, for instance,
             // the database created by user is root.db.ss.a, the auto-creation failed database is
             // root.db, we wait till "getOrCreatePartition" to judge if the time series (like
@@ -377,7 +372,7 @@ public class PartitionCache {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         // Try to update cache by databases successfully created
-        updateDatabaseCache(Collections.singletonMap(database, true));
+        updateDatabaseCache(Collections.singleton(database));
       } else {
         logger.warn(
             "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
