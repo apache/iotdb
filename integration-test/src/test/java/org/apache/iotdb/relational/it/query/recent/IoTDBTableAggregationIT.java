@@ -3712,11 +3712,6 @@ public class IoTDBTableAggregationIT {
   @Test
   public void exceptionTest() {
     tableAssertTestFail(
-        "select s1 from table1 where s2 in (select s2 from table1)",
-        "Not a valid IR expression",
-        DATABASE_NAME);
-
-    tableAssertTestFail(
         "select avg() from table1",
         "701: Aggregate functions [avg] should only have one argument",
         DATABASE_NAME);
