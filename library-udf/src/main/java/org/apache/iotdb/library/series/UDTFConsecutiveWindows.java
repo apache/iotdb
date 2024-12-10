@@ -36,27 +36,34 @@ import org.apache.commons.lang3.tuple.Pair;
 public class UDTFConsecutiveWindows implements UDTF {
   private ConsecutiveUtil consUtil;
   private static final int MAX_LEN = 128;
+  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
+  public static final String MS_PRECISION = "ms";
   private long len;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
+    String timestampPrecision =
+        validator.getParameters().getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
     validator
         .validate(
             x -> (long) x > 0,
             "gap should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(validator.getParameters().getStringOrDefault("gap", "1ms")))
+            Util.parseTime(
+                validator.getParameters().getStringOrDefault("gap", "1ms"), timestampPrecision))
         .validate(
             x -> (long) x > 0,
             "length should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(validator.getParameters().getString("length")));
+            Util.parseTime(validator.getParameters().getString("length"), timestampPrecision));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
-    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"));
-    len = Util.parseTime(parameters.getString("length"));
+    String timestampPrecision =
+        parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
+    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"), timestampPrecision);
+    len = Util.parseTime(parameters.getString("length"), timestampPrecision);
     int count = gap == 0 ? 0 : (int) (len / gap + 1);
     consUtil = new ConsecutiveUtil(-gap, -gap, gap);
     consUtil.setCount(count);
