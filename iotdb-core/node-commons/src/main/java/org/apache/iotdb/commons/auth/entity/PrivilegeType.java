@@ -30,11 +30,11 @@ public enum PrivilegeType {
   WRITE_SCHEMA(PrivilegeModelType.TREE),
   MANAGE_USER(PrivilegeModelType.SYSTEM),
   MANAGE_ROLE(PrivilegeModelType.SYSTEM),
-  USE_TRIGGER(PrivilegeModelType.TREE),
-  USE_UDF(PrivilegeModelType.TREE),
-  USE_CQ(PrivilegeModelType.TREE),
-  USE_PIPE(PrivilegeModelType.TREE),
-  USE_MODEL(PrivilegeModelType.TREE),
+  USE_TRIGGER(PrivilegeModelType.SYSTEM),
+  USE_UDF(PrivilegeModelType.SYSTEM),
+  USE_CQ(PrivilegeModelType.SYSTEM),
+  USE_PIPE(PrivilegeModelType.SYSTEM),
+  USE_MODEL(PrivilegeModelType.SYSTEM),
 
   EXTEND_TEMPLATE(PrivilegeModelType.TREE),
   MANAGE_DATABASE(PrivilegeModelType.TREE),
@@ -49,7 +49,7 @@ public enum PrivilegeType {
 
   private static final int PRIVILEGE_COUNT = values().length - 1;
 
-  private PrivilegeModelType modelType = PrivilegeModelType.INVALID;
+  private PrivilegeModelType modelType;
 
   PrivilegeType(PrivilegeModelType modelType) {
     this.modelType = modelType;
@@ -97,5 +97,12 @@ public enum PrivilegeType {
       typeSet.add(PrivilegeType.values()[pri]);
     }
     return typeSet;
+  }
+
+  public boolean forRelationalSys() {
+    if (this == MANAGE_DATABASE || this == MANAGE_USER || this == MANAGE_ROLE) {
+      return true;
+    }
+    return false;
   }
 }
