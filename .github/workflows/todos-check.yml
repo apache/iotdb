@@ -1,0 +1,42 @@
+name: Check TODOs in Changed Files
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+      - "rc/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - "rc/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+jobs:
+  todo-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for TODOs in changed files
+        run: |
+          # Get the diff of the changes
+          DIFF=$(git diff HEAD^ HEAD)
+  
+          # Check the diff for TODOs
+          if echo "$DIFF" | grep -q '^\+.*TODO'; then
+            echo "TODO found in the changes. Please resolve it before merging."
+            exit 1
+          else
+            echo "No TODOs found in changed content."
+          fi
