@@ -19,7 +19,7 @@ public class DenseRankFunction implements WindowFunction {
   }
 
   @Override
-  public void transform(Column[] columns, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
     if (currentPeerGroupStart != peerGroupStart) {
       // New peer group
       currentPeerGroupStart = peerGroupStart;

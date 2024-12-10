@@ -19,13 +19,13 @@ public class CumeDistFunction implements WindowFunction {
   }
 
   @Override
-  public void transform(Column[] columns, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
     if (currentPeerGroupStart != peerGroupStart) {
       // New peer group
       currentPeerGroupStart = peerGroupStart;
       count += (peerGroupEnd - peerGroupStart + 1);
     }
 
-    builder.writeDouble(((double) count) / columns[0].getPositionCount());
+    builder.writeDouble(((double) count) / partition[0].getPositionCount());
   }
 }

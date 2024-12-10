@@ -7,7 +7,7 @@ public interface WindowFunction {
   void reset();
 
   void transform(
-      Column[] columns,
+      Column[] partition,
       ColumnBuilder builder,
       int index,
       int frameStart,

@@ -11,7 +11,7 @@ public class RowNumberFunction implements WindowFunction {
   public void reset() {}
 
   @Override
-  public void transform(Column[] columns, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
     builder.writeLong(index + 1);
   }
 }

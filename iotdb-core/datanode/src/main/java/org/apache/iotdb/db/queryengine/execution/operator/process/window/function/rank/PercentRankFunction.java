@@ -21,8 +21,8 @@ public class PercentRankFunction implements WindowFunction {
   }
 
   @Override
-  public void transform(Column[] columns, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
-    int total = columns[0].getPositionCount();
+  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+    int total = partition[0].getPositionCount();
     if (total == 1) {
       builder.writeDouble(0);
       return;

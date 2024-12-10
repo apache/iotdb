@@ -15,8 +15,8 @@ public class NTileFunction implements WindowFunction {
   public void reset() {}
 
   @Override
-  public void transform(Column[] columns, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
-    builder.writeLong(bucket(n, index, columns[0].getPositionCount()) + 1);
+  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+    builder.writeLong(bucket(n, index, partition[0].getPositionCount()) + 1);
   }
 
   private long bucket(long buckets, int index, int count) {

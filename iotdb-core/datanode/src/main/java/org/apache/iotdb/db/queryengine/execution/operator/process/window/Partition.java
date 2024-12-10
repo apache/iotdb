@@ -139,6 +139,7 @@ public final class Partition {
 
     Range range =
         frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
+    // TODO: handle empty frame
     windowFunction.transform(
         partition,
         builder.getColumnBuilder(count),
