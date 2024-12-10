@@ -585,7 +585,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
       }
 
-      // todo: Remove this check after supporting join on multiple columns.
       // checkArgument(equiJoinClauses.size() <= 1, "Only support Join on one column for now.");
       if (!equiJoinClauses.isEmpty() && hasFilter) {
         equiJoinClauses.clear();
@@ -715,8 +714,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
-      // TODO(beyyes) sort with the order: ID, Attr, Measurement
-
       int size = joinNode.getCriteria().size();
       List<Symbol> leftOrderBy = new ArrayList<>(size);
       List<Symbol> rightOrderBy = new ArrayList<>(size);

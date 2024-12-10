@@ -2090,40 +2090,6 @@ public class StatementAnalyzer {
       if (criteria instanceof NaturalJoin) {
         throw new SemanticException("Natural join not supported");
       }
-
-      //      if (criteria instanceof JoinOn) {
-      //        JoinOn joinOn = (JoinOn) criteria;
-      //        Expression expression = joinOn.getExpression();
-      //        if (!(expression instanceof ComparisonExpression)) {
-      //          throw new SemanticException(ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        }
-      //        ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
-      //        if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-      //          throw new SemanticException(ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        }
-      //        checkArgument(
-      //            comparisonExpression.getLeft() instanceof DereferenceExpression,
-      //                ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        checkArgument(
-      //            comparisonExpression.getRight() instanceof DereferenceExpression,
-      //                ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        DereferenceExpression left = (DereferenceExpression) comparisonExpression.getLeft();
-      //        if (!left.getField().isPresent()
-      //            || !left.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-      //          throw new SemanticException(ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        }
-      //        DereferenceExpression right = (DereferenceExpression)
-      // comparisonExpression.getLeft();
-      //        if (!right.getField().isPresent()
-      //            || !right.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-      //          throw new SemanticException(ONLY_SUPPORT_ONE_COLUMN_EQUI_JOIN);
-      //        }
-      //      } else if (criteria instanceof JoinUsing) {
-      //        List<Identifier> identifiers = ((JoinUsing) criteria).getColumns();
-      //        if (identifiers.size() != 1) {
-      //          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-      //        }
-      //      }
     }
 
     private Scope analyzeJoinUsing(

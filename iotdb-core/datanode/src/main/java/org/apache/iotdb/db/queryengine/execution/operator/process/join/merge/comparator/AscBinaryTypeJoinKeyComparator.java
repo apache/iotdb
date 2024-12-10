@@ -48,6 +48,7 @@ public class AscBinaryTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex)
                 .getBinary(leftRowIndex)
@@ -67,6 +68,7 @@ public class AscBinaryTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex)
             .getBinary(leftRowIndex)
@@ -85,6 +87,7 @@ public class AscBinaryTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex)
                 .getBinary(leftRowIndex)

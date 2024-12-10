@@ -48,6 +48,7 @@ public class DescFloatTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getFloat(leftRowIndex)
             > right.getColumn(rightColumnIndex).getFloat(rightRowIndex));
@@ -65,6 +66,7 @@ public class DescFloatTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getFloat(leftRowIndex)
             == right.getColumn(rightColumnIndex).getFloat(rightRowIndex));
@@ -82,6 +84,7 @@ public class DescFloatTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getFloat(leftRowIndex)
             >= right.getColumn(rightColumnIndex).getFloat(rightRowIndex));

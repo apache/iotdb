@@ -120,7 +120,6 @@ public class JoinNode extends TwoChildProcessNode {
     //        !(criteria.isEmpty() && rightHashSymbol.isPresent()),
     //        "Right hash symbol is only valid in an equijoin");
 
-    // checkArgument(criteria.size() <= 1, "Only support Join on one column for now.");
     criteria.forEach(
         equiJoinClause ->
             checkArgument(

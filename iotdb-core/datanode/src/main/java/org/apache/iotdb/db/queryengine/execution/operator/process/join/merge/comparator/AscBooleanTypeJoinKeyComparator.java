@@ -47,6 +47,7 @@ public class AscBooleanTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
             < transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex)));
@@ -64,6 +65,7 @@ public class AscBooleanTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getBoolean(leftRowIndex)
             == right.getColumn(rightColumnIndex).getBoolean(rightRowIndex));
@@ -81,6 +83,7 @@ public class AscBooleanTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
             <= transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex)));

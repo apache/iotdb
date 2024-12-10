@@ -47,6 +47,7 @@ public class AscIntTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getInt(leftRowIndex)
             < right.getColumn(rightColumnIndex).getInt(rightRowIndex));
@@ -64,6 +65,7 @@ public class AscIntTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getInt(leftRowIndex)
             == right.getColumn(rightColumnIndex).getInt(rightRowIndex));
@@ -81,6 +83,7 @@ public class AscIntTypeJoinKeyComparator implements JoinKeyComparator {
         || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
       return Optional.empty();
     }
+
     return Optional.of(
         left.getColumn(leftColumnIndex).getInt(leftRowIndex)
             <= right.getColumn(rightColumnIndex).getInt(rightRowIndex));
