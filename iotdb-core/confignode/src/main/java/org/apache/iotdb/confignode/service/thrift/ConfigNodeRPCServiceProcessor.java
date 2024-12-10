@@ -569,7 +569,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         req.getScopePatternTree() == null
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-    CountDatabasePlan plan = new CountDatabasePlan(req.getDatabasePathPattern(), scope);
+    CountDatabasePlan plan =
+        new CountDatabasePlan(
+            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
     CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
@@ -579,13 +581,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) {
-    PathPatternTree scope =
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(final TGetDatabaseReq req) {
+    final PathPatternTree scope =
         req.getScopePatternTree() == null
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-    GetDatabasePlan plan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
-    DatabaseSchemaResp databaseSchemaResp =
+    final GetDatabasePlan plan =
+        new GetDatabasePlan(
+            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+    final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();

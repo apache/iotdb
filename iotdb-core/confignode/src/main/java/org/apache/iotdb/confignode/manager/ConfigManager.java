@@ -1875,7 +1875,8 @@ public class ConfigManager implements IManager {
               ? SchemaConstant.ALL_MATCH_SCOPE
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
       final GetDatabasePlan getDatabasePlan =
-          new GetDatabasePlan(req.getDatabasePathPattern(), scope);
+          new GetDatabasePlan(
+              req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);

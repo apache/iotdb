@@ -436,7 +436,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       final TGetDatabaseReq req =
           new TGetDatabaseReq(
-              databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
+                  databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
+              .setIsTableModel(false);
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
@@ -3047,7 +3048,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       final TGetDatabaseReq req =
-          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);

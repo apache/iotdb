@@ -336,7 +336,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
-      result.setCount(treeModelMTree.getDatabaseNum(patternPath, plan.getScope(), false));
+      result.setCount(
+          (plan.isTableModel() ? tableModelMTree : treeModelMTree)
+              .getDatabaseNum(patternPath, plan.getScope(), false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -358,12 +360,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
+      final ConfigMTree mTree = plan.isTableModel() ? tableModelMTree : treeModelMTree;
       final List<PartialPath> matchedPaths =
-          treeModelMTree.getMatchedDatabases(patternPath, plan.getScope(), false);
+          mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (final PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
-            treeModelMTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
