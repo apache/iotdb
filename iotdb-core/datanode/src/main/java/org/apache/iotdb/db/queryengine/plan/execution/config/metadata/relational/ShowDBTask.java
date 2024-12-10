@@ -144,12 +144,6 @@ public class ShowDBTask implements IConfigTask {
       builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
       builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
-      builder
-          .getColumnBuilder(5)
-          .writeBinary(
-              new Binary(
-                  storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
-                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
 

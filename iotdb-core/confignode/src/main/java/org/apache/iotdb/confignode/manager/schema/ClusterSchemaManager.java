@@ -374,7 +374,6 @@ public class ClusterSchemaManager {
           getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
       databaseInfo.setMaxDataRegionNum(
           getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
-      databaseInfo.setIsTableModel(databaseSchema.isIsTableModel());
 
       try {
         databaseInfo.setSchemaRegionNum(
