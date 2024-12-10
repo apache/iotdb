@@ -13,9 +13,8 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-
 import com.google.common.primitives.Ints;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -64,6 +63,26 @@ public class TableAggregator {
     if (arguments.length == 0) {
       arguments =
           new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, block.getPositionCount())};
+    }
+
+    if (step.isInputRaw()) {
+      accumulator.addInput(arguments);
+    } else {
+      accumulator.addIntermediate(arguments[0]);
+    }
+  }
+
+  public void processColumns(Column[] columns) {
+    Column[] arguments = new Column[inputChannels.length];
+    for (int i = 0; i < inputChannels.length; i++) {
+      arguments[i] = columns[inputChannels[i]];
+    }
+
+    // process count(*)
+    int count = columns[0].getPositionCount();
+    if (arguments.length == 0) {
+      arguments =
+          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
     }
 
     if (step.isInputRaw()) {

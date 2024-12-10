@@ -37,8 +37,8 @@ public class TableWindowOperator implements ProcessOperator {
   private final TsBlockBuilder transformTsBlockBuilder;
 
   // Basic information about window operator
-  private List<WindowFunction> windowFunctions;
-  private List<FrameInfo> frameInfoList;
+  private final List<WindowFunction> windowFunctions;
+  private final List<FrameInfo> frameInfoList;
 
   // Partition
   private final List<Integer> partitionChannels;

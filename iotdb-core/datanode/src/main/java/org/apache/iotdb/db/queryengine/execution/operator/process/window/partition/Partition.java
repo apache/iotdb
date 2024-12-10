@@ -114,7 +114,7 @@ public final class Partition {
           break;
         default:
           // Unreachable
-          throw new UnsupportedOperationException("not yet implemented");
+          throw new UnsupportedOperationException("Unreachable!");
       }
       frames.add(frame);
     }
