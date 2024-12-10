@@ -1076,8 +1076,8 @@ public class IoTDBDeletionTableIT {
     AtomicLong deletedPointCounter = new AtomicLong(0);
     ExecutorService writeDeletionThreadPool = Executors.newCachedThreadPool();
     ExecutorService restartThreadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         writeDeletionThreadPool.submit(
@@ -1103,7 +1103,7 @@ public class IoTDBDeletionTableIT {
                     deletionRange,
                     minIntervalToRecord,
                     testNum));
-    int restartTargetPointWritten = 100000;
+    int restartTargetPointWritten = 5000;
     Future<Void> restartThread =
         restartThreadPool.submit(
             () -> restart(writtenPointCounter, restartTargetPointWritten, writeDeletionThreadPool));

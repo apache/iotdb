@@ -321,6 +321,9 @@ public class TsFileResource implements PersistentResource {
       } else {
         sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
       }
+      if (modFilePath != null) {
+        sharedModFile = modFileManagement.recover(modFilePath, this);
+      }
 
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
