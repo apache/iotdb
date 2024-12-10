@@ -228,28 +228,22 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
 
     // Test case: select s in (subquery)
     sql =
-            "SELECT %s in (SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
+        "SELECT %s in (SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
     expectedHeader = new String[] {"_col0"};
-    retArray = new String[] {"true,", "true,", "false,","false,","false,"};
+    retArray = new String[] {"true,", "true,", "false,", "false,", "false,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
       tableResultSetEqualTest(
-              String.format(sql, measurement, measurement),
-              expectedHeader,
-              retArray,
-              DATABASE_NAME);
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
     // Test case: select s not in (subquery)
     sql =
-            "SELECT %s not in (SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
+        "SELECT %s not in (SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
     expectedHeader = new String[] {"_col0"};
-    retArray = new String[] {"false,", "false,", "true,","true,","true,"};
+    retArray = new String[] {"false,", "false,", "true,", "true,", "true,"};
     for (String measurement : NUMERIC_MEASUREMENTS) {
       tableResultSetEqualTest(
-              String.format(sql, measurement, measurement),
-              expectedHeader,
-              retArray,
-              DATABASE_NAME);
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
   }
 
@@ -267,14 +261,26 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
         "301: Join key type mismatch.",
         DATABASE_NAME);
 
+    // Legality check: Row Type is not supported for now.
+    tableAssertTestFail(
+        "select s1, s2 in (select (s1, s2) from table1) from table1",
+        "701: Subquery must return only one column for now. Row Type is not supported for now.",
+        DATABASE_NAME);
+
+    // Legality check: Row Type is not supported for now.
+    tableAssertTestFail(
+        "select (s1, s2) in (select (s1, s2) from table1) from table1",
+        "701: Subquery must return only one column for now. Row Type is not supported for now.",
+        DATABASE_NAME);
+
     // Legality check: subquery can not be parsed(without parentheses)
     tableAssertTestFail(
-            "select s1 from table1 where s1 in select s1 from table1",
-            "mismatched input",
-            DATABASE_NAME);
+        "select s1 from table1 where s1 in select s1 from table1",
+        "mismatched input",
+        DATABASE_NAME);
 
     // Legality check: subquery can not be parsed
     tableAssertTestFail(
-            "select s1 from table1 where s1 in (select s1 from)", "mismatched input", DATABASE_NAME);
+        "select s1 from table1 where s1 in (select s1 from)", "mismatched input", DATABASE_NAME);
   }
 }

@@ -251,6 +251,7 @@ class SubqueryPlanner {
     RelationType descriptor = relationPlan.getDescriptor();
     List<Symbol> fieldMappings = relationPlan.getFieldMappings();
     Symbol column;
+    // todo: remove this check after supporting RowType
     checkArgument(
         descriptor.getVisibleFieldCount() <= 1,
         "For now, only single column subqueries are supported");
@@ -572,7 +573,8 @@ class SubqueryPlanner {
     }
 
     List<Expression> fieldsList = fields.build();
-    checkArgument(fieldsList.size() == 1, "For now, only single column subqueries are supported");
+    // todo: remove this check after supporting RowType
+    checkArgument(fieldsList.size() == 1, "For now, only single column subqueries are supported.");
     /*subqueryPlan =
     subqueryPlan.withNewRoot(
         new ProjectNode(

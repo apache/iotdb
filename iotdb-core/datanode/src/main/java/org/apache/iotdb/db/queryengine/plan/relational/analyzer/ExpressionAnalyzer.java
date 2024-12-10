@@ -165,6 +165,9 @@ public class ExpressionAnalyzer {
   private final Map<NodeRef<DereferenceExpression>, LabelPrefixedReference> labelDereferences =
       new LinkedHashMap<>();
 
+  private static final String SUBQUERY_COLUMN_NUM_CHECK =
+      "Subquery must return only one column for now. Row Type is not supported for now.";
+
   private ExpressionAnalyzer(
       Metadata metadata,
       MPPQueryContext context,
@@ -929,6 +932,10 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
+      // todo: remove this check after supporting RowType
+      if (value instanceof Row) {
+        throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
+      }
       Expression valueList = node.getValueList();
 
       // When an IN-predicate containing a subquery: `x IN (SELECT ...)` is planned, both `value`
@@ -1040,6 +1047,13 @@ public class ExpressionAnalyzer {
             fields.add(RowType.field(field.getType()));
           }
         }
+      }
+
+      List<RowType.Field> fieldList = fields.build();
+
+      // todo: remove this check after supporting RowType
+      if (fieldList.size() != 1 || fieldList.get(0).getType() instanceof RowType) {
+        throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
       }
 
       sourceFields.addAll(queryScope.getRelationType().getVisibleFields());
