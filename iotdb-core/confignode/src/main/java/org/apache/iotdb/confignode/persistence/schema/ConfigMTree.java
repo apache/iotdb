@@ -86,7 +86,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_DEVICE_MNODE_TYPE;
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -954,7 +954,7 @@ public class ConfigMTree {
 
   private void serializeTableNode(final ConfigTableNode tableNode, final OutputStream outputStream)
       throws IOException {
-    ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(TABLE_DEVICE_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(tableNode.getName(), outputStream);
     tableNode.getTable().serialize(outputStream);
     tableNode.getStatus().serialize(outputStream);
@@ -970,7 +970,7 @@ public class ConfigMTree {
 
     String name;
     int childNum;
-    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
     IConfigMNode tableNode;
@@ -979,7 +979,7 @@ public class ConfigMTree {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
       stack.push(new Pair<>(databaseMNode, true));
-    } else if (type == TABLE_MNODE_TYPE) {
+    } else if (type == TABLE_DEVICE_MNODE_TYPE) {
       tableNode = deserializeTableMNode(inputStream);
       name = tableNode.getName();
       stack.push(new Pair<>(tableNode, false));
@@ -1015,7 +1015,7 @@ public class ConfigMTree {
           stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
-        case TABLE_MNODE_TYPE:
+        case TABLE_DEVICE_MNODE_TYPE:
           tableNode = deserializeTableMNode(inputStream).getAsMNode();
           stack.push(new Pair<>(tableNode, false));
           name = tableNode.getName();
@@ -1028,15 +1028,15 @@ public class ConfigMTree {
     this.root = stack.peek().left;
   }
 
-  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    IConfigMNode basicMNode =
+  private IConfigMNode deserializeInternalMNode(final InputStream inputStream) throws IOException {
+    final IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     return basicMNode;
   }
 
-  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
-    IDatabaseMNode<IConfigMNode> databaseMNode =
+  private IConfigMNode deserializeDatabaseMNode(final InputStream inputStream) throws IOException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode

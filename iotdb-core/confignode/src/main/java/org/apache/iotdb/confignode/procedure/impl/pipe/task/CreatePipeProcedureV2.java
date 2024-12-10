@@ -76,14 +76,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     super();
   }
 
-  public CreatePipeProcedureV2(TCreatePipeReq createPipeRequest) throws PipeException {
+  public CreatePipeProcedureV2(final TCreatePipeReq createPipeRequest) throws PipeException {
     super();
     this.createPipeRequest = createPipeRequest;
   }
 
   /** This is only used when the pipe task info lock is held by another procedure. */
   public CreatePipeProcedureV2(
-      TCreatePipeReq createPipeRequest, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      final TCreatePipeReq createPipeRequest, final AtomicReference<PipeTaskInfo> pipeTaskInfo)
       throws PipeException {
     super();
     this.pipeTaskInfo = pipeTaskInfo;
@@ -123,7 +123,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
    * @throws PipeException
    */
   @Override
-  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(final ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -140,7 +140,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -209,7 +209,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env)
+      throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -220,7 +221,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
@@ -231,7 +232,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
@@ -246,14 +247,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromValidateTask({})", createPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
-  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -261,7 +262,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -271,7 +272,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           env.getConfigManager()
               .getConsensusManager()
               .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
@@ -282,7 +283,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
@@ -300,22 +301,25 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(createPipeRequest.getPipeName(), stream);
     ReadWriteIOUtils.write(createPipeRequest.getExtractorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : createPipeRequest.getExtractorAttributes().entrySet()) {
+    for (final Map.Entry<String, String> entry :
+        createPipeRequest.getExtractorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
     ReadWriteIOUtils.write(createPipeRequest.getProcessorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : createPipeRequest.getProcessorAttributes().entrySet()) {
+    for (final Map.Entry<String, String> entry :
+        createPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
     ReadWriteIOUtils.write(createPipeRequest.getConnectorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : createPipeRequest.getConnectorAttributes().entrySet()) {
+    for (final Map.Entry<String, String> entry :
+        createPipeRequest.getConnectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -328,7 +332,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     createPipeRequest =
         new TCreatePipeReq()
@@ -360,14 +364,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
+    final CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
     return this.createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName())
         && this.createPipeRequest
             .getExtractorAttributes()

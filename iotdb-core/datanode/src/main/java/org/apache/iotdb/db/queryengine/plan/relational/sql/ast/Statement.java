@@ -23,12 +23,12 @@ import javax.annotation.Nullable;
 
 public abstract class Statement extends Node {
 
-  protected Statement(@Nullable NodeLocation location) {
+  protected Statement(final @Nullable NodeLocation location) {
     super(location);
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitStatement(this, context);
   }
 }

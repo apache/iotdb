@@ -70,6 +70,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -342,9 +343,9 @@ public class AnalyzeUtils {
   }
 
   @SuppressWarnings("java:S3655") // optional is checked
-  private static void validateSchema(Delete node, MPPQueryContext queryContext) {
-    String tableName = node.getTable().getName().getSuffix();
-    String databaseName;
+  private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
+    final String tableName = node.getTable().getName().getSuffix();
+    final String databaseName;
     if (node.getTable().getName().getPrefix().isPresent()) {
       databaseName = node.getTable().getName().getPrefix().get().toString();
     } else if (queryContext.getDatabaseName().isPresent()) {
@@ -354,12 +355,16 @@ public class AnalyzeUtils {
     }
     node.setDatabaseName(databaseName);
 
-    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
     if (table == null) {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    node.setTableDeletionEntries(parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    // Maybe set by pipe transfer
+    if (Objects.isNull(node.getTableDeletionEntries())) {
+      node.setTableDeletionEntries(
+          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    }
   }
 
   public static List<TableDeletionEntry> parseExpressions2ModEntries(

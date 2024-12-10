@@ -90,7 +90,7 @@ public class PipeInfo implements SnapshotProcessor {
                 PipeConfigNodeAgent.runtime()
                     .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
                 return null;
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 throw new PipeException("Failed to increase listener reference", e);
               }
             });
