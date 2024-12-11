@@ -620,6 +620,7 @@ public abstract class AstVisitor<R, C> {
   protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
     return visitStatement(node, context);
   }
+
   protected R visitShowStatement(ShowStatement node, C context) {
     return visitStatement(node, context);
   }
