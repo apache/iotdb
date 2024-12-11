@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -1836,6 +1837,11 @@ public class MergeTreeSortOperatorTest {
     @Override
     public String getStatementType() {
       return null;
+    }
+
+    @Override
+    public String getSQLDialect() {
+      return IClientSession.SqlDialect.TREE.toString();
     }
 
     @Override

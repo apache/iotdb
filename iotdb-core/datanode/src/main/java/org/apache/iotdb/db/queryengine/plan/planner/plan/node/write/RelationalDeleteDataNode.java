@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
@@ -53,7 +52,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S1854", "unused"})
-public class RelationalDeleteDataNode extends SearchNode implements WALEntryValue {
+public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(RelationalDeleteDataNode.class);
 
   /** byte: type */
@@ -62,9 +61,6 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   private final List<TableDeletionEntry> modEntries;
 
   private Collection<TRegionReplicaSet> replicaSets;
-
-  private TRegionReplicaSet regionReplicaSet;
-  private ProgressIndex progressIndex;
 
   public RelationalDeleteDataNode(PlanNodeId id, Delete delete) {
     super(id);
@@ -109,10 +105,14 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
       throws IOException {
     long searchIndex = stream.readLong();
 
-    TableDeletionEntry entry = ((TableDeletionEntry) ModEntry.createFrom(stream));
+    int entryNum = ReadWriteForEncodingUtils.readVarInt(stream);
+    List<TableDeletionEntry> modEntries = new ArrayList<>(entryNum);
+    for (int i = 0; i < entryNum; i++) {
+      modEntries.add((TableDeletionEntry) ModEntry.createFrom(stream));
+    }
 
     RelationalDeleteDataNode deleteDataNode =
-        new RelationalDeleteDataNode(new PlanNodeId(""), entry);
+        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries);
     deleteDataNode.setSearchIndex(searchIndex);
     return deleteDataNode;
   }
@@ -165,9 +165,11 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
     return relationalDeleteDataNode;
   }
 
+  @Override
   public ByteBuffer serializeToDAL() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      DeleteNodeType.RELATIONAL_DELETE_NODE.serialize(outputStream);
       serializeAttributes(outputStream);
       progressIndex.serialize(outputStream);
       id.serialize(outputStream);
@@ -180,26 +182,6 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   }
 
   @Override
-  public ProgressIndex getProgressIndex() {
-    return progressIndex;
-  }
-
-  @Override
-  public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return new ArrayList<>();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("Not supported.");
-  }
-
-  @Override
   public PlanNodeType getType() {
     return PlanNodeType.RELATIONAL_DELETE_DATA;
   }
@@ -208,16 +190,6 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
   @Override
   public PlanNode clone() {
     return new RelationalDeleteDataNode(getPlanNodeId(), modEntries);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   @Override
@@ -288,7 +260,7 @@ public class RelationalDeleteDataNode extends SearchNode implements WALEntryValu
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntries);
+    return Objects.hash(getPlanNodeId(), modEntries, progressIndex);
   }
 
   public String toString() {

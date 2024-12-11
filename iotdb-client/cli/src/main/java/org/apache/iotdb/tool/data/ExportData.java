@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.tsfile.ExportTsFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -39,6 +40,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
@@ -52,9 +54,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -70,36 +74,35 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 public class ExportData extends AbstractDataTool {
 
   private static final String TARGET_DIR_ARGS = "t";
-  private static final String TARGET_DIR_NAME = "targetDirectory";
+  private static final String TARGET_DIR_NAME = "target";
+  private static final String TARGET_DIR_ARGS_NAME = "target_directory";
 
-  private static final String TARGET_FILE_ARGS = "tfn";
-  private static final String TARGET_FILE_NAME = "targetFileName";
+  private static final String TARGET_FILE_ARGS = "pfn";
+  private static final String TARGET_FILE_NAME = "prefix_file_name";
 
   private static final String SQL_FILE_ARGS = "s";
   private static final String SQL_FILE_NAME = "sourceSqlFile";
 
-  private static final String DATA_TYPE_ARGS = "datatype";
+  private static final String DATA_TYPE_ARGS = "dt";
   private static final String DATA_TYPE_NAME = "datatype";
 
   private static final String QUERY_COMMAND_ARGS = "q";
-  private static final String QUERY_COMMAND_NAME = "queryCommand";
-
-  private static final String EXPORT_TYPE_ARGS = "type";
-
-  private static final String EXPORT_TYPE_NAME = "exportType";
+  private static final String QUERY_COMMAND_NAME = "query";
+  private static final String QUERY_COMMAND_ARGS_NAME = "query_command";
 
   private static final String EXPORT_SQL_TYPE_NAME = "sql";
 
   private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "export aligned insert sql";
+  private static final String ALIGNED_NAME = "export_aligned";
+  private static final String ALIGNED_ARGS_NAME = "export aligned insert sql";
   private static final String LINES_PER_FILE_ARGS = "lpf";
-  private static final String LINES_PER_FILE_ARGS_NAME = "linesPerFile";
+  private static final String LINES_PER_FILE_NAME = "lines_per_file";
 
-  private static final String TSFILEDB_CLI_PREFIX = "ExportData";
+  private static final String TSFILEDB_CLI_PREFIX = "Export Data";
 
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
-
+  private static Session session;
   private static String targetDirectory;
 
   private static Boolean needDataTypePrinted;
@@ -113,8 +116,14 @@ public class ExportData extends AbstractDataTool {
   private static long timeout = -1;
 
   private static Boolean aligned = false;
+  private static String fileType = null;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+  private static final String TSFILEDB_CLI_HEAD =
+      "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
+          + "./export_data.sh -help tsfile\n"
+          + "./export_data.sh -help sql\n"
+          + "./export_data.sh -help csv";
 
   @SuppressWarnings({
     "squid:S3776",
@@ -122,7 +131,10 @@ public class ExportData extends AbstractDataTool {
   }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /* main function of export csv tool. */
   public static void main(String[] args) {
-    Options options = createOptions();
+    Options helpOptions = createHelpOptions();
+    Options tsFileOptions = createTsFileOptions();
+    Options csvOptions = createCsvOptions();
+    Options sqlOptions = createSqlOptions();
     HelpFormatter hf = new HelpFormatter();
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
@@ -130,19 +142,110 @@ public class ExportData extends AbstractDataTool {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      ioTPrinter.println("Too few params input, please check the following hint.");
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      printHelpOptions(
+          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
     try {
-      commandLine = parser.parse(options, args);
+      commandLine = parser.parse(helpOptions, args, true);
     } catch (ParseException e) {
-      ioTPrinter.println(e.getMessage());
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      printHelpOptions(
+          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    if (commandLine.hasOption(HELP_ARGS)) {
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+    final List<String> argList = Arrays.asList(args);
+    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
+    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
+    if (ftIndex < 0) {
+      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
+    }
+    if (helpIndex >= 0) {
+      fileType = argList.get(helpIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              TSFILEDB_CLI_HEAD,
+              TSFILEDB_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+        }
+      } else {
+        printHelpOptions(
+            TSFILEDB_CLI_HEAD,
+            TSFILEDB_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+      }
+      System.exit(CODE_ERROR);
+    } else if (ftIndex >= 0) {
+      fileType = argList.get(ftIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(tsFileOptions, args, true);
+            ExportTsFile exportTsFile = new ExportTsFile(commandLine);
+            exportTsFile.exportTsfile(CODE_OK);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(csvOptions, args, true);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(sqlOptions, args, true);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
+            System.exit(CODE_ERROR);
+          }
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              TSFILEDB_CLI_HEAD,
+              TSFILEDB_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+          System.exit(CODE_ERROR);
+        }
+      } else {
+        printHelpOptions(
+            TSFILEDB_CLI_HEAD,
+            TSFILEDB_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+        System.exit(CODE_ERROR);
+      }
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
       System.exit(CODE_ERROR);
     }
     int exitCode = CODE_OK;
@@ -208,12 +311,213 @@ public class ExportData extends AbstractDataTool {
     System.exit(exitCode);
   }
 
+  private static Options createTsFileOptions() {
+    Options options = createExportOptions();
+
+    Option opFile =
+        Option.builder(TARGET_DIR_ARGS)
+            .required()
+            .longOpt(TARGET_DIR_NAME)
+            .argName(TARGET_DIR_ARGS_NAME)
+            .hasArg()
+            .desc("Target File Directory (required)")
+            .build();
+    options.addOption(opFile);
+
+    Option opOnSuccess =
+        Option.builder(TARGET_FILE_ARGS)
+            .longOpt(TARGET_FILE_NAME)
+            .argName(TARGET_FILE_NAME)
+            .hasArg()
+            .desc("Export file name (optional)")
+            .build();
+    options.addOption(opOnSuccess);
+
+    Option opQuery =
+        Option.builder(QUERY_COMMAND_ARGS)
+            .longOpt(QUERY_COMMAND_NAME)
+            .argName(QUERY_COMMAND_ARGS_NAME)
+            .hasArg()
+            .desc("The query command that you want to execute. (optional)")
+            .build();
+    options.addOption(opQuery);
+
+    Option opTimeOut =
+        Option.builder(TIMEOUT_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .argName(TIMEOUT_NAME)
+            .hasArg()
+            .desc("Timeout for session query (optional)")
+            .build();
+    options.addOption(opTimeOut);
+
+    return options;
+  }
+
+  private static Options createCsvOptions() {
+    Options options = createExportOptions();
+
+    Option opFile =
+        Option.builder(TARGET_DIR_ARGS)
+            .required()
+            .longOpt(TARGET_DIR_NAME)
+            .argName(TARGET_DIR_ARGS_NAME)
+            .hasArg()
+            .desc("Target File Directory (required)")
+            .build();
+    options.addOption(opFile);
+
+    Option opOnSuccess =
+        Option.builder(TARGET_FILE_ARGS)
+            .longOpt(TARGET_FILE_NAME)
+            .argName(TARGET_FILE_NAME)
+            .hasArg()
+            .desc("Export file name (optional)")
+            .build();
+    options.addOption(opOnSuccess);
+
+    Option opDataType =
+        Option.builder(DATA_TYPE_ARGS)
+            .longOpt(DATA_TYPE_NAME)
+            .argName(DATA_TYPE_NAME)
+            .hasArg()
+            .desc(
+                "Will the data type of timeseries be printed in the head line of the CSV file?"
+                    + '\n'
+                    + "You can choose true) or false) . (optional)")
+            .build();
+    options.addOption(opDataType);
+
+    Option opLinesPerFile =
+        Option.builder(LINES_PER_FILE_ARGS)
+            .longOpt(LINES_PER_FILE_NAME)
+            .argName(LINES_PER_FILE_NAME)
+            .hasArg()
+            .desc("Lines per dump file.(optional)")
+            .build();
+    options.addOption(opLinesPerFile);
+
+    Option opTimeFormat =
+        Option.builder(TIME_FORMAT_ARGS)
+            .longOpt(TIME_FORMAT_NAME)
+            .argName(TIME_FORMAT_NAME)
+            .hasArg()
+            .desc(
+                "Output time Format in csv file. "
+                    + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
+                    + "user-defined pattern like yyyy-MM-dd HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
+            .build();
+    options.addOption(opTimeFormat);
+
+    Option opTimeZone =
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .argName(TIME_ZONE_NAME)
+            .hasArg()
+            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
+            .build();
+    options.addOption(opTimeZone);
+
+    Option opQuery =
+        Option.builder(QUERY_COMMAND_ARGS)
+            .longOpt(QUERY_COMMAND_NAME)
+            .argName(QUERY_COMMAND_ARGS_NAME)
+            .hasArg()
+            .desc("The query command that you want to execute. (optional)")
+            .build();
+    options.addOption(opQuery);
+
+    Option opTimeOut =
+        Option.builder(TIMEOUT_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .argName(TIMEOUT_NAME)
+            .hasArg()
+            .desc("Timeout for session query (optional)")
+            .build();
+    options.addOption(opTimeOut);
+
+    return options;
+  }
+
+  private static Options createSqlOptions() {
+    Options options = createExportOptions();
+
+    Option opFile =
+        Option.builder(TARGET_DIR_ARGS)
+            .required()
+            .longOpt(TARGET_DIR_NAME)
+            .argName(TARGET_DIR_ARGS_NAME)
+            .hasArg()
+            .desc("Target File Directory (required)")
+            .build();
+    options.addOption(opFile);
+
+    Option opOnSuccess =
+        Option.builder(TARGET_FILE_ARGS)
+            .longOpt(TARGET_FILE_NAME)
+            .argName(TARGET_FILE_NAME)
+            .hasArg()
+            .desc("Export file name (optional)")
+            .build();
+    options.addOption(opOnSuccess);
+
+    Option opAligned =
+        Option.builder(ALIGNED_ARGS)
+            .longOpt(ALIGNED_NAME)
+            .argName(ALIGNED_ARGS_NAME)
+            .hasArgs()
+            .desc("Whether export to sql of aligned (optional)")
+            .build();
+    options.addOption(opAligned);
+
+    Option opTimeFormat =
+        Option.builder(TIME_FORMAT_ARGS)
+            .longOpt(TIME_FORMAT_NAME)
+            .argName(TIME_FORMAT_NAME)
+            .hasArg()
+            .desc(
+                "Output time Format in csv file. "
+                    + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
+                    + "user-defined pattern like yyyy-MM-dd HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
+            .build();
+    options.addOption(opTimeFormat);
+
+    Option opTimeZone =
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
+            .argName(TIME_ZONE_NAME)
+            .hasArg()
+            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
+            .build();
+    options.addOption(opTimeZone);
+
+    Option opQuery =
+        Option.builder(QUERY_COMMAND_ARGS)
+            .longOpt(QUERY_COMMAND_NAME)
+            .argName(QUERY_COMMAND_ARGS_NAME)
+            .hasArg()
+            .desc("The query command that you want to execute. (optional)")
+            .build();
+    options.addOption(opQuery);
+
+    Option opTimeOut =
+        Option.builder(TIMEOUT_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .argName(TIMEOUT_NAME)
+            .hasArg()
+            .desc("Timeout for session query (optional)")
+            .build();
+    options.addOption(opTimeOut);
+
+    return options;
+  }
+
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine, null);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
-    exportType = commandLine.getOptionValue(EXPORT_TYPE_ARGS);
+    exportType = commandLine.getOptionValue(FILE_TYPE_ARGS);
     String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
@@ -232,6 +536,12 @@ public class ExportData extends AbstractDataTool {
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
+    final File file = new File(targetDirectory);
+    if (!file.isDirectory()) {
+      ioTPrinter.println(
+          String.format("Source file or directory %s does not exist", targetDirectory));
+      System.exit(CODE_ERROR);
+    }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
       linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
     }
@@ -240,117 +550,11 @@ public class ExportData extends AbstractDataTool {
     }
   }
 
-  /**
-   * commandline option create.
-   *
-   * @return object Options
-   */
-  private static Options createOptions() {
-    Options options = createNewOptions();
-
-    Option opTargetFile =
-        Option.builder(TARGET_DIR_ARGS)
-            .required()
-            .argName(TARGET_DIR_NAME)
-            .hasArg()
-            .desc("Target File Directory (required)")
-            .build();
-    options.addOption(opTargetFile);
-
-    Option targetFileName =
-        Option.builder(TARGET_FILE_ARGS)
-            .argName(TARGET_FILE_NAME)
-            .hasArg()
-            .desc("Export file name (optional)")
-            .build();
-    options.addOption(targetFileName);
-
-    Option opSqlFile =
-        Option.builder(SQL_FILE_ARGS)
-            .argName(SQL_FILE_NAME)
-            .hasArg()
-            .desc("SQL File Path (optional)")
-            .build();
-    options.addOption(opSqlFile);
-
-    Option opTimeFormat =
-        Option.builder(TIME_FORMAT_ARGS)
-            .argName(TIME_FORMAT_NAME)
-            .hasArg()
-            .desc(
-                "Output time Format in csv file. "
-                    + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
-                    + "user-defined pattern like yyyy-MM-dd HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
-            .build();
-    options.addOption(opTimeFormat);
-
-    Option opTimeZone =
-        Option.builder(TIME_ZONE_ARGS)
-            .argName(TIME_ZONE_NAME)
-            .hasArg()
-            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
-            .build();
-    options.addOption(opTimeZone);
-
-    Option opDataType =
-        Option.builder(DATA_TYPE_ARGS)
-            .argName(DATA_TYPE_NAME)
-            .hasArg()
-            .desc(
-                "Will the data type of timeseries be printed in the head line of the CSV file?"
-                    + '\n'
-                    + "You can choose true) or false) . (optional)")
-            .build();
-    options.addOption(opDataType);
-
-    Option opQuery =
-        Option.builder(QUERY_COMMAND_ARGS)
-            .argName(QUERY_COMMAND_NAME)
-            .hasArg()
-            .desc("The query command that you want to execute. (optional)")
-            .build();
-    options.addOption(opQuery);
-
-    Option opTypeQuery =
-        Option.builder(EXPORT_TYPE_ARGS)
-            .argName(EXPORT_TYPE_NAME)
-            .hasArg()
-            .desc("Export file type ?" + '\n' + "You can choose csv) or sql) . (optional)")
-            .build();
-    options.addOption(opTypeQuery);
-
-    Option opAligned =
-        Option.builder(ALIGNED_ARGS)
-            .argName(ALIGNED_NAME)
-            .hasArg()
-            .desc("Whether export to sql of aligned (only sql optional)")
-            .build();
-    options.addOption(opAligned);
-
-    Option opLinesPerFile =
-        Option.builder(LINES_PER_FILE_ARGS)
-            .argName(LINES_PER_FILE_ARGS_NAME)
-            .hasArg()
-            .desc("Lines per dump file.")
-            .build();
-    options.addOption(opLinesPerFile);
-
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
-            .build();
-    options.addOption(opHelp);
-
-    Option opTimeout =
-        Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
-            .hasArg()
-            .desc("Timeout for session query")
-            .build();
-    options.addOption(opTimeout);
-    return options;
+  protected static void setTimeZone() throws IoTDBConnectionException, StatementExecutionException {
+    if (timeZoneID != null) {
+      session.setTimeZone(timeZoneID);
+    }
+    zoneId = ZoneId.of(session.getTimeZone());
   }
 
   /**

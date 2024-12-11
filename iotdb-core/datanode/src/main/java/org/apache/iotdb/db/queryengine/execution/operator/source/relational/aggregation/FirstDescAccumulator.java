@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class FirstDescAccumulator extends FirstAccumulator {
@@ -30,5 +31,59 @@ public class FirstDescAccumulator extends FirstAccumulator {
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  @Override
+  protected void addIntInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateIntFirstValue(valueColumn.getInt(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addLongInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateLongFirstValue(valueColumn.getLong(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addFloatInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateFloatFirstValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addDoubleInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateDoubleFirstValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addBinaryInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBinaryFirstValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addBooleanInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBooleanFirstValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+      }
+    }
   }
 }

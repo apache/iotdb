@@ -498,10 +498,6 @@ public class DataRegion implements IDataRegionForQuery {
                     true,
                     resource.getTsFile().getName());
             resource.upgradeModFile(upgradeModFileThreadPool);
-            if (resource.anyModFileExists()) {
-              FileMetrics.getInstance().increaseModFileNum(1);
-              FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
-            }
           }
         }
         while (!value.isEmpty()) {
@@ -531,10 +527,6 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().getName());
           }
           resource.upgradeModFile(upgradeModFileThreadPool);
-          if (resource.anyModFileExists()) {
-            FileMetrics.getInstance().increaseModFileNum(1);
-            FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
-          }
         }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
@@ -914,7 +906,8 @@ public class DataRegion implements IDataRegionForQuery {
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
       tsFileManager.add(tsFileResource, isSeq);
-      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())
+          && tsFileResource.resourceFileExists()) {
         tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         resourceListForAsyncRecover.add(tsFileResource);
@@ -1237,7 +1230,7 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
+    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
@@ -1723,9 +1716,10 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.forEach(
           x -> {
             FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
-            if (x.getExclusiveModFile().exists()) {
-              FileMetrics.getInstance().decreaseModFileNum(1);
-              FileMetrics.getInstance().decreaseModFileSize(x.getExclusiveModFile().getSize());
+            try {
+              x.removeModFile();
+            } catch (IOException e) {
+              logger.warn("Cannot remove mod file {}", x, e);
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
@@ -1941,10 +1935,6 @@ public class DataRegion implements IDataRegionForQuery {
                 resource.getTsFileSize(),
                 resource.isSeq(),
                 resource.getTsFile().getName());
-        if (resource.getExclusiveModFile().exists()) {
-          FileMetrics.getInstance().increaseModFileNum(1);
-          FileMetrics.getInstance().increaseModFileSize(resource.getExclusiveModFile().getSize());
-        }
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
@@ -2560,7 +2550,6 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
       // delete data in sealed file
-      long originSize = involvedModificationFile.getSize();
       involvedModificationFile.write(modEntry);
       // The file size may be smaller than the original file, so the increment here may be
       // negative
@@ -2569,8 +2558,6 @@ public class DataRegion implements IDataRegionForQuery {
           "[Deletion] Deletion with path {} written into mods file:{}.",
           modEntry,
           involvedModificationFile);
-      FileMetrics.getInstance()
-          .increaseModFileSize(involvedModificationFile.getSize() - originSize);
     }
 
     // can be deleted by files
@@ -3075,9 +3062,6 @@ public class DataRegion implements IDataRegionForQuery {
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
-
-    // help tsfile resource degrade
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 

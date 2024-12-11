@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
  *
  * <p>2.{@link DataExecutionVisitor}, to actually write data on data region and mark it as received
  * from pipe.
+ *
+ * <p>TODO: support relational deleteNode
  */
 public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
 

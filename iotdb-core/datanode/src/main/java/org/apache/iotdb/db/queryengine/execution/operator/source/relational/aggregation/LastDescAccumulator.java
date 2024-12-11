@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class LastDescAccumulator extends LastAccumulator {
@@ -30,5 +31,65 @@ public class LastDescAccumulator extends LastAccumulator {
   @Override
   public boolean hasFinalResult() {
     return initResult;
+  }
+
+  @Override
+  protected void addIntInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateIntLastValue(valueColumn.getInt(i), timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addLongInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateLongLastValue(valueColumn.getLong(i), timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addFloatInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addDoubleInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addBinaryInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addBooleanInput(Column valueColumn, Column timeColumn) {
+    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+      if (!valueColumn.isNull(i)) {
+        updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+        return;
+      }
+    }
   }
 }

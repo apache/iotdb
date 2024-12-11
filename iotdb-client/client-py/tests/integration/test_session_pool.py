@@ -17,7 +17,7 @@
 #
 from threading import Thread
 
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 from iotdb.SessionPool import create_session_pool, PoolConfig
 
 CONTAINER_NAME = "iotdb:dev"

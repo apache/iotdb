@@ -198,12 +198,12 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       return;
     }
     RepairDataFileScanUtil repairDataFileScanUtil = new RepairDataFileScanUtil(sourceFile, true);
-    repairDataFileScanUtil.scanTsFile();
+    repairDataFileScanUtil.scanTsFile(true);
     if (repairDataFileScanUtil.isBrokenFile()) {
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
       return;
     }
-    if (repairDataFileScanUtil.hasUnsortedData()) {
+    if (repairDataFileScanUtil.hasUnsortedDataOrWrongStatistics()) {
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
       return;
     }

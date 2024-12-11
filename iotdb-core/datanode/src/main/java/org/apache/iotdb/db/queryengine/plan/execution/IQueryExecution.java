@@ -67,4 +67,6 @@ public interface IQueryExecution {
   Optional<String> getExecuteSQL();
 
   String getStatementType();
+
+  String getSQLDialect();
 }

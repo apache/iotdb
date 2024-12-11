@@ -35,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
@@ -65,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 
 public class TestPlanBuilder {
 
@@ -79,6 +81,13 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder scan(String id, PartialPath path) {
     this.root = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
+    return this;
+  }
+
+  public TestPlanBuilder scan(String id, PartialPath path, long pushDownLimit) {
+    SeriesScanNode node = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
+    node.setPushDownLimit(pushDownLimit);
+    this.root = node;
     return this;
   }
 
@@ -354,6 +363,42 @@ public class TestPlanBuilder {
                     new SortItem(OrderByKey.DEVICE, Ordering.ASC),
                     new SortItem(OrderByKey.TIME, Ordering.ASC))),
             Arrays.asList(DEVICE, measurement),
+            deviceToMeasurementIndexesMap);
+    deviceViewNode.addChildDeviceNode(deviceID, getRoot());
+    this.root = deviceViewNode;
+    return this;
+  }
+
+  public TestPlanBuilder sort(String id, OrderByParameter orderParameter) {
+    this.root = new SortNode(new PlanNodeId(id), getRoot(), orderParameter);
+    return this;
+  }
+
+  public TestPlanBuilder topK(
+      String id, int topKValue, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
+    this.root =
+        new TopKNode(
+            new PlanNodeId(id),
+            topKValue,
+            Collections.singletonList(getRoot()),
+            mergeOrderParameter,
+            outputColumns);
+    return this;
+  }
+
+  public TestPlanBuilder singleOrderedDeviceView(
+      String id, String device, OrderByParameter orderByParameter, String... measurement) {
+    IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put(
+        deviceID, measurement.length == 1 ? Collections.singletonList(1) : Arrays.asList(1, 2));
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            new PlanNodeId(id),
+            orderByParameter,
+            measurement.length == 1
+                ? Arrays.asList(DEVICE, measurement[0])
+                : Arrays.asList(DEVICE, measurement[0], measurement[1]),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(deviceID, getRoot());
     this.root = deviceViewNode;

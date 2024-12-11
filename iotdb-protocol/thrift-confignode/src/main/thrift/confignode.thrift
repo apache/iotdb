@@ -166,6 +166,7 @@ struct TDeleteDatabaseReq {
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
+  3: optional bool isTableModel
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -393,8 +394,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -442,10 +443,17 @@ struct TCreateFunctionReq {
   4: optional string jarName
   5: optional binary jarFile
   6: optional string jarMD5
+  7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+  2: optional common.Model model
+}
+
+struct TGetUdfTableReq {
+  1: required common.Model model
 }
 
 // Get UDF table from config node
@@ -730,6 +738,7 @@ struct TCreatePipeReq {
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
     5: optional bool ifNotExistsCondition
+    6: optional bool needManuallyStart
 }
 
 struct TAlterPipeReq {
@@ -1412,7 +1421,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF table
    */
-  TGetUDFTableResp getUDFTable()
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req)
 
   /**
    * Return the UDF jar list of the jar name list

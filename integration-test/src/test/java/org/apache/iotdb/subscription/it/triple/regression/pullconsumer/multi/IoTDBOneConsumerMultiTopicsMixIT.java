@@ -107,7 +107,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row + 2.45f);
       tablet.addValue("s_1", rowIndex, "rowIndex" + rowIndex);
@@ -231,7 +231,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                           final Tablet tablet = it.next();
                           try {
                             session_dest.insertTablet(tablet);
-                            System.out.println(FORMAT.format(new Date()) + " " + tablet.rowSize);
+                            System.out.println(
+                                FORMAT.format(new Date()) + " " + tablet.getRowSize());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {

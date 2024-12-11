@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.old.orderBy;
 
-import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -46,9 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -1465,9 +1463,7 @@ public class IoTDBOrderByTableIT {
           51536000000L);
 
   protected static void sessionInsertData1() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-
-      session.open();
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE \"db0\"");
       session.executeNonQueryStatement("USE \"db0\"");
 
@@ -1479,21 +1475,17 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
-      List<String> measurementIds =
-          schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
+      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       List<Object[]> values =
           Arrays.asList(
@@ -1512,19 +1504,22 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d1", "a1", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d1", "a1", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d1", "a1", 15, 3147483648L, 235.213, "watermelon", true});
+      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
-        session.insertRelationalRecord(
-            "table0", TIMES.get(i), measurementIds, dataTypes, columnTypes, values.get(i));
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, TIMES.get(i));
+        for (int j = 0; j < schemaList.size(); j++) {
+          tablet.addValue(schemaList.get(j).getMeasurementName(), rowIndex, values.get(i)[j]);
+        }
       }
+      session.insert(tablet);
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
   protected static void sessionInsertData2() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
-
-      session.open();
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db0\"");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -1535,21 +1530,17 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnType> columnTypes =
+      final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnType.ID,
-              Tablet.ColumnType.ATTRIBUTE,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT,
-              Tablet.ColumnType.MEASUREMENT);
-      List<String> measurementIds =
-          schemaList.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
-      List<TSDataType> dataTypes =
-          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.ATTRIBUTE,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT,
+              Tablet.ColumnCategory.MEASUREMENT);
+      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =
           Arrays.asList(
               new Object[] {"d2", "a2", 3, 2947483648L, 231.2121, "coconut", false},
@@ -1567,10 +1558,15 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d2", "a2", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d2", "a2", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d2", "a2", 15, 3147483648L, 235.213, "watermelon", true});
+      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
-        session.insertRelationalRecord(
-            "table0", TIMES.get(i), measurementIds, dataTypes, columnTypes, values.get(i));
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, TIMES.get(i));
+        for (int j = 0; j < schemaList.size(); j++) {
+          tablet.addValue(schemaList.get(j).getMeasurementName(), rowIndex, values.get(i)[j]);
+        }
       }
+      session.insert(tablet);
     } catch (Exception e) {
       e.printStackTrace();
     }

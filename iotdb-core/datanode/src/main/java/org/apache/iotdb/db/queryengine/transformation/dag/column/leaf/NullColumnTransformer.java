@@ -21,10 +21,12 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
 import org.apache.tsfile.read.common.block.column.NullColumn;
 
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
+
 public class NullColumnTransformer extends LeafColumnTransformer {
 
   public NullColumnTransformer() {
-    super(null);
+    super(UNKNOWN);
   }
 
   @Override
