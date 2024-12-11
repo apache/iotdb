@@ -1422,6 +1422,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitListUser(RelationalSqlParser.ListUserContext ctx) {
+    return new RelationalAuthorStatement(AuthorRType.LIST_USER);
+  }
+
+  @Override
+  public Node visitListRole(RelationalSqlParser.ListRoleContext ctx) {
+    return new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+  }
+
+  @Override
   public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
     boolean toUser;
     String username;
