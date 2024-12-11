@@ -473,11 +473,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
-    config.setPipeAirGapMaxWaitedCheckSumClearTimeInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_air_gap_max_waited_check_sum_clear_time_in_ms",
-                Long.toString(config.getPipeAirGapMaxWaitedCheckSumClearTimeInMs()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(

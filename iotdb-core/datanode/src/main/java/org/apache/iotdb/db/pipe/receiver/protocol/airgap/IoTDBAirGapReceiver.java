@@ -54,12 +54,11 @@ import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiver.class);
-  private static final long MAX_WAIT_CLEAR_TIME_IN_MS =
-      PipeConfig.getInstance().getPipeAirGapMaxWaitedCheckSumClearTimeInMs();
 
   private final Socket socket;
   private final long receiverId;
   private long waitClearTimeInMs = 1000L;
+  private final long waitClearTimeInMsMaxValue = 1000L << 4;
 
   private final IoTDBDataNodeReceiverAgent agent;
 
@@ -120,7 +119,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // data. This will eventually succeed, though we do not guarantee how long it takes.
       if (!checkSum(data)) {
         Thread.sleep(waitClearTimeInMs);
-        if (waitClearTimeInMs < MAX_WAIT_CLEAR_TIME_IN_MS) {
+        if (waitClearTimeInMs < waitClearTimeInMsMaxValue) {
           waitClearTimeInMs <<= 1;
         }
         LOGGER.warn(
