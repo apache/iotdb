@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -1112,28 +1113,37 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus startPipe(String pipeName) {
-    return configManager.startPipe(pipeName);
+    return configManager.startPipe(
+        new TStartPipeReq()
+            .setPipeName(pipeName)
+            .setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
   @Override
-  public TSStatus startPipeExtended(TStartPipeReq req) throws TException {
-    return null;
+  public TSStatus startPipeExtended(TStartPipeReq req) {
+    return configManager.startPipe(req);
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) {
-    return configManager.stopPipe(pipeName);
+    return configManager.stopPipe(
+        new TStopPipeReq()
+            .setPipeName(pipeName)
+            .setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
   @Override
-  public TSStatus stopPipeExtended(TStopPipeReq req) throws TException {
-    return null;
+  public TSStatus stopPipeExtended(TStopPipeReq req) {
+    return configManager.stopPipe(req);
   }
 
   @Override
   public TSStatus dropPipe(String pipeName) {
     return configManager.dropPipe(
-        new TDropPipeReq().setPipeName(pipeName).setIfExistsCondition(false));
+        new TDropPipeReq()
+            .setPipeName(pipeName)
+            .setIfExistsCondition(false)
+            .setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
   @Override

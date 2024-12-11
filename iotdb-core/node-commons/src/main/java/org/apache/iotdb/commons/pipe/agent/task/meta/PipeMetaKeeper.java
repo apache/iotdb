@@ -85,12 +85,12 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.containsKey(pipeName);
   }
 
-  public boolean containsPipeMeta(String pipeName, String dialect) {
+  public boolean containsPipeMeta(String pipeName, String sqlDialect) {
     final PipeMeta pipeMeta = pipeNameToPipeMetaMap.get(pipeName);
     if (Objects.isNull(pipeMeta)) {
       return false;
     }
-    return pipeMeta.matchDialect(dialect);
+    return pipeMeta.matchSqlDialect(sqlDialect);
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {

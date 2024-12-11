@@ -94,6 +94,13 @@ public class PipeTableResp implements DataSet {
     }
   }
 
+  public PipeTableResp filter(
+      final Boolean whereClause, final String pipeName, final String sqlDialect) {
+    final PipeTableResp resp = filter(whereClause, pipeName);
+    resp.allPipeMeta.removeIf(meta -> !meta.matchSqlDialect(sqlDialect));
+    return resp;
+  }
+
   public TGetAllPipeInfoResp convertToTGetAllPipeInfoResp() throws IOException {
     final List<ByteBuffer> pipeInformationByteBuffers = new ArrayList<>();
     for (final PipeMeta pipeMeta : allPipeMeta) {

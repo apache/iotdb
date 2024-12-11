@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 
 import org.apache.tsfile.utils.PublicBAOS;
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -64,8 +63,8 @@ public class PipeMeta {
     return temporaryMeta;
   }
 
-  public boolean matchDialect(@NonNull final String dialect) {
-    return dialect.equalsIgnoreCase(
+  public boolean matchSqlDialect(final String sqlDialect) {
+    return sqlDialect.equalsIgnoreCase(
         getStaticMeta()
             .getExtractorParameters()
             .getStringOrDefault(
