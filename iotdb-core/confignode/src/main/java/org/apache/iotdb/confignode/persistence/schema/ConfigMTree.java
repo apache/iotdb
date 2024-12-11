@@ -827,7 +827,8 @@ public class ConfigMTree {
           if (Objects.nonNull(v)) {
             table.addProp(k, v);
           } else if (k.equals(TsTable.TTL_PROPERTY)
-              && databaseNode.getDatabaseSchema().isSetTTL()) {
+              && databaseNode.getDatabaseSchema().isSetTTL()
+              && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
             table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
           } else {
             table.removeProp(k);
@@ -839,7 +840,7 @@ public class ConfigMTree {
   // false if measurement column
   public boolean preDeleteColumn(
       final PartialPath database, final String tableName, final String columnName)
-      throws MetadataException {
+      throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {

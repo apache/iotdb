@@ -28,9 +28,7 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,27 +95,28 @@ public class TableModelSessionPoolExample {
       }
 
       // insert table data by tablet
-      List<IMeasurementSchema> measurementSchemaList =
+      List<String> measurementNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "model", "temperature", "humidity");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE);
+      List<ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  new MeasurementSchema("region_id", TSDataType.STRING),
-                  new MeasurementSchema("plant_id", TSDataType.STRING),
-                  new MeasurementSchema("device_id", TSDataType.STRING),
-                  new MeasurementSchema("model", TSDataType.STRING),
-                  new MeasurementSchema("temperature", TSDataType.FLOAT),
-                  new MeasurementSchema("humidity", TSDataType.DOUBLE)));
-      List<ColumnType> columnTypeList =
-          new ArrayList<>(
-              Arrays.asList(
-                  ColumnType.ID,
-                  ColumnType.ID,
-                  ColumnType.ID,
-                  ColumnType.ATTRIBUTE,
-                  ColumnType.MEASUREMENT,
-                  ColumnType.MEASUREMENT));
-      Tablet tablet = new Tablet("test1", measurementSchemaList, columnTypeList, 100);
+                  ColumnCategory.ID,
+                  ColumnCategory.ID,
+                  ColumnCategory.ID,
+                  ColumnCategory.ATTRIBUTE,
+                  ColumnCategory.MEASUREMENT,
+                  ColumnCategory.MEASUREMENT));
+      Tablet tablet = new Tablet("test1", measurementNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("region_id", rowIndex, "1");
         tablet.addValue("plant_id", rowIndex, "5");
@@ -125,12 +124,12 @@ public class TableModelSessionPoolExample {
         tablet.addValue("model", rowIndex, "A");
         tablet.addValue("temperature", rowIndex, 37.6F);
         tablet.addValue("humidity", rowIndex, 111.1);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }

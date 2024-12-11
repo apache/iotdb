@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -117,8 +118,18 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource).getOverlapped(deviceID, measurement));
+    List<ModEntry> modEntries =
+        ModificationUtils.sortAndMerge(
+            getAllModifications(tsFileResource).getOverlapped(deviceID, measurement));
+    if (deviceID.isTableModel()) {
+      // the pattern tree has false-positive for table model deletion, so we do a further
+      //     filtering
+      modEntries =
+          modEntries.stream()
+              .filter(mod -> mod.affects(deviceID) && mod.affects(measurement))
+              .collect(Collectors.toList());
+    }
+    return modEntries;
   }
 
   public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)

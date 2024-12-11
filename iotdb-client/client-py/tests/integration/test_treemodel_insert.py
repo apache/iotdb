@@ -17,9 +17,8 @@
 #
 
 import numpy as np
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 from iotdb.Session import Session
-from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet
 from datetime import date
 from iotdb.utils.BitMap import BitMap

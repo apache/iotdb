@@ -906,7 +906,8 @@ public class DataRegion implements IDataRegionForQuery {
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
       tsFileManager.add(tsFileResource, isSeq);
-      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())
+          && tsFileResource.resourceFileExists()) {
         tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         resourceListForAsyncRecover.add(tsFileResource);
@@ -3061,9 +3062,6 @@ public class DataRegion implements IDataRegionForQuery {
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
-
-    // help tsfile resource degrade
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 

@@ -330,13 +330,15 @@ public class DataNodeTableCache implements ITableCache {
     try {
       final AtomicBoolean isUpdated = new AtomicBoolean(false);
       fetchedTables.forEach(
-          (database, tableInfoMap) -> {
+          (qualifiedDatabase, tableInfoMap) -> {
+            final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
             if (preUpdateTableMap.containsKey(database)) {
               tableInfoMap.forEach(
                   (tableName, tsTable) -> {
                     final Pair<TsTable, Long> existingPair =
                         preUpdateTableMap.get(database).get(tableName);
                     if (Objects.isNull(existingPair)
+                        || Objects.isNull(existingPair.getLeft())
                         || !Objects.equals(
                             existingPair.getRight(),
                             previousVersions.get(database).get(tableName))) {

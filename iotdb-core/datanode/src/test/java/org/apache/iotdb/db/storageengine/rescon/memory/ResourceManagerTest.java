@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -145,20 +146,20 @@ public class ResourceManagerTest {
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i + valueOffset)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
         tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();

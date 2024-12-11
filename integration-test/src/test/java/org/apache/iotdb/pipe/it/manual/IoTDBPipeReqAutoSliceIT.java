@@ -410,16 +410,16 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
 
   private Pair<List<List<String>>, List<List<TSDataType>>> getMeasurementSchemasAndType(
       Tablet tablet) {
-    List<List<String>> schemaData = new ArrayList<>(tablet.rowSize);
-    List<List<TSDataType>> typeData = new ArrayList<>(tablet.rowSize);
+    List<List<String>> schemaData = new ArrayList<>(tablet.getRowSize());
+    List<List<TSDataType>> typeData = new ArrayList<>(tablet.getRowSize());
     List<String> measurementSchemas = new ArrayList<>(tablet.getSchemas().size());
-    List<TSDataType> types = new ArrayList<>(tablet.rowSize);
+    List<TSDataType> types = new ArrayList<>(tablet.getRowSize());
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurementSchemas.add(measurementSchema.getMeasurementId());
+      measurementSchemas.add(measurementSchema.getMeasurementName());
       types.add(measurementSchema.getType());
     }
 
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       schemaData.add(measurementSchemas);
       typeData.add(types);
     }
@@ -428,18 +428,18 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
   }
 
   private List<String> getDeviceID(Tablet tablet) {
-    List<String> data = new ArrayList<>(tablet.rowSize);
-    for (int i = 0; i < tablet.rowSize; i++) {
+    List<String> data = new ArrayList<>(tablet.getRowSize());
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       data.add(tablet.getDeviceId());
     }
     return data;
   }
 
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
-    List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
+    List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
         switch (schemas.get(j).getType()) {
@@ -459,10 +459,10 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
   }
 
   private List<List<String>> generateTabletInsertStrRecordForTable(Tablet tablet) {
-    List<List<String>> insertRecords = new ArrayList<>(tablet.rowSize);
+    List<List<String>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
-    for (int i = 0; i < tablet.rowSize; i++) {
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       List<String> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
         switch (schemas.get(j).getType()) {

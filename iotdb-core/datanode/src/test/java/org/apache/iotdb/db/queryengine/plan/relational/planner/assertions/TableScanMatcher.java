@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -24,12 +30,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 
-public class TableScanMatcher implements Matcher {
+public abstract class TableScanMatcher implements Matcher {
   protected final String expectedTableName;
   protected final Optional<Boolean> hasTableLayout;
   // this field empty means no need to match
@@ -46,11 +51,6 @@ public class TableScanMatcher implements Matcher {
     this.hasTableLayout = requireNonNull(hasTableLayout, "hasTableLayout is null");
     this.outputSymbols = requireNonNull(outputSymbols, "outputSymbols is null");
     this.assignmentsKeys = requireNonNull(assignmentsKeys, "assignmentsKeys is null");
-  }
-
-  @Override
-  public boolean shapeMatches(PlanNode node) {
-    return node instanceof TableScanNode;
   }
 
   @Override
@@ -86,16 +86,5 @@ public class TableScanMatcher implements Matcher {
     }
 
     return new MatchResult(true);
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this)
-        .omitNullValues()
-        .add("expectedTableName", expectedTableName)
-        .add("hasTableLayout", hasTableLayout.orElse(null))
-        .add("outputSymbols", outputSymbols)
-        .add("assignmentsKeys", assignmentsKeys)
-        .toString();
   }
 }

@@ -67,7 +67,9 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.satisfiedTimeRange;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.CURRENT_DEVICE_INDEX_STRING;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class TableAggregationTableScanOperator extends AbstractSeriesAggregationScanOperator {
@@ -161,6 +163,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.columnsIndexArray = columnsIndexArray;
     this.deviceEntries = deviceEntries;
     this.deviceCount = deviceEntries.size();
+    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(this.deviceCount));
     this.scanOrder = scanOrder;
     this.seriesScanOptions = seriesScanOptions;
     this.measurementColumnNames = measurementColumnNames;
@@ -169,6 +172,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
+    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
     this.aggArguments = aggArguments;
     this.timeIterator = tableTimeRangeIterator;
     if (tableTimeRangeIterator.getType()
@@ -327,7 +331,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         // all data of current device has been consumed
         updateResultTsBlock();
         timeIterator.resetCurTimeRange();
-        currentDeviceIndex++;
+        nextDevice();
       }
 
       if (currentDeviceIndex < deviceCount) {
@@ -800,27 +804,32 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   private void checkIfAllAggregatorHasFinalResult() {
-    if (allAggregatorsHasFinalResult) {
-      // for SINGLE_TIME_ITERATOR, if allAggregatorsHasFinalResult, just consume next device
-      if (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
-        currentDeviceIndex++;
-        inputTsBlock = null;
+    if (allAggregatorsHasFinalResult
+        && timeIterator.getType()
+            == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
+      nextDevice();
+      inputTsBlock = null;
 
-        if (currentDeviceIndex < deviceCount) {
-          // construct AlignedSeriesScanUtil for next device
-          constructAlignedSeriesScanUtil();
-          queryDataSource.reset();
-          this.seriesScanUtil.initQueryDataSource(queryDataSource);
-        }
-
-        if (currentDeviceIndex >= deviceCount) {
-          // all devices have been consumed
-          timeIterator.setFinished();
-        }
-
-        allAggregatorsHasFinalResult = false;
+      if (currentDeviceIndex < deviceCount) {
+        // construct AlignedSeriesScanUtil for next device
+        constructAlignedSeriesScanUtil();
+        queryDataSource.reset();
+        this.seriesScanUtil.initQueryDataSource(queryDataSource);
       }
+
+      if (currentDeviceIndex >= deviceCount) {
+        // all devices have been consumed
+        timeIterator.setFinished();
+      }
+
+      allAggregatorsHasFinalResult = false;
     }
+  }
+
+  private void nextDevice() {
+    currentDeviceIndex++;
+    this.operatorContext.recordSpecifiedInfo(
+        CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   private void resetTableAggregators() {

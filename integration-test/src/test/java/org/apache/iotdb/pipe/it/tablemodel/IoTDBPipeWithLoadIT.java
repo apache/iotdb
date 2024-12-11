@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -38,6 +39,7 @@ import org.junit.runner.RunWith;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -68,8 +70,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -81,6 +83,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     final Map<String, String> extractorAttributes = new HashMap<>();
@@ -88,7 +95,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     final Map<String, String> connectorAttributes = new HashMap<>();
 
     // Enable mods transfer
-    extractorAttributes.put("modes", "true");
+    extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
 
     connectorAttributes.put("connector.batch.enable", "false");
@@ -114,7 +121,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertCountData("test", "test", 50, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 50, receiverEnv, handleFailure);
     }
   }
 }

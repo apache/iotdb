@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -73,7 +71,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
@@ -308,20 +305,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    if (parameters.hasAnyAttributes(EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY)) {
-      ConsensusPipeName currentNode2CoordinatorPipeName =
-          new ConsensusPipeName(
-              parameters.getString(EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY));
-      // For region migration in IoTV2, non-coordinators will only transfer data after
-      // `ProgressIndex(non-coordinators2coordinator)`
-      startIndex =
-          PipeDataNodeAgent.task()
-              .getPipeTaskProgressIndex(
-                  currentNode2CoordinatorPipeName.toString(),
-                  currentNode2CoordinatorPipeName.getConsensusGroupId().getId());
-    } else {
-      startIndex = environment.getPipeTaskMeta().getProgressIndex();
-    }
+    startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -750,7 +734,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
         pipeName,
         dataRegionId,
-        resourceList.size(),
+        allDeletionResources.size(),
         originalDeletionCount,
         System.currentTimeMillis() - startTime);
   }

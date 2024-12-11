@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -35,7 +41,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -86,6 +94,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
@@ -192,12 +201,15 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
     TableScanNode tableScanNode =
-        new TableScanNode(
-            idAllocator.genPlanNodeId(),
-            qualifiedObjectName,
-            outputSymbols,
-            tableColumnSchema,
-            idAndAttributeIndexMap);
+        qualifiedObjectName.getDatabaseName().equals(INFORMATION_SCHEMA)
+            ? new InformationSchemaTableScanNode(
+                idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema)
+            : new DeviceTableScanNode(
+                idAllocator.genPlanNodeId(),
+                qualifiedObjectName,
+                outputSymbols,
+                tableColumnSchema,
+                idAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
@@ -610,16 +622,16 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(root, analysis.getScope(node), mappings, outerContext);
   }
 
+  @Override
+  protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
+    return process(node.getQuery(), context);
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
   protected RelationPlan visitValues(Values node, Void context) {
     throw new IllegalStateException("Values is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
-    throw new IllegalStateException("SubqueryExpression is not supported in current version.");
   }
 
   @Override

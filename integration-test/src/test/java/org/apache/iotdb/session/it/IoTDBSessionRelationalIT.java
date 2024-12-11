@@ -31,7 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -149,25 +149,31 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table1", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -175,18 +181,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -231,6 +237,22 @@ public class IoTDBSessionRelationalIT {
                 row, "id:" + row, "attr:" + row, row * 1.0));
       }
 
+      // without specifying column name
+      for (long row = 30; row < 40; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 VALUES (%d, '%s', '%s', %f)",
+                row, "id:" + row, "attr:" + row, row * 1.0));
+      }
+
+      // auto data type conversion
+      for (long row = 40; row < 50; row++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO table1 VALUES (%d, '%s', '%s', %d)",
+                row, "id:" + row, "attr:" + row, row));
+      }
+
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
@@ -241,7 +263,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
       }
-      assertEquals(30, cnt);
+      assertEquals(50, cnt);
 
       // sql cannot create column
       assertThrows(
@@ -251,6 +273,50 @@ public class IoTDBSessionRelationalIT {
                   String.format(
                       "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
                       "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+
+      // fewer columns than defined
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ( '%s', %f)", "attr:" + 100, 100 * 1.0)));
+
+      // more columns than defined
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%s', '%s', '%s', '%s', %f)",
+                      "id:" + 100, "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+
+      // invalid conversion - id column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
+                      100, 100, "attr:" + 100, 100 * 1.0)));
+
+      // invalid conversion - attr column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
+                      100, "id:" + 100, 100, 100 * 1.0)));
+
+      // invalid conversion - measurement column
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              session.executeNonQueryStatement(
+                  String.format(
+                      "INSERT INTO table1 VALUES ('%d', '%s', '%s', %s)",
+                      100, "id:" + 100, "attr:" + 100, "measurement" + (100 * 1.0))));
     }
   }
 
@@ -307,21 +373,30 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT, ColumnType.MEASUREMENT);
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT,
+              ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table4", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table4",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insert(tablet);
           } catch (StatementExecutionException e) {
@@ -336,7 +411,7 @@ public class IoTDBSessionRelationalIT {
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insert(tablet);
         } catch (StatementExecutionException e) {
@@ -352,13 +427,13 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insert(tablet);
           } catch (StatementExecutionException e) {
@@ -372,7 +447,7 @@ public class IoTDBSessionRelationalIT {
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insert(tablet);
         } catch (StatementExecutionException e) {
@@ -421,25 +496,31 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table5",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -447,18 +528,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -492,25 +573,31 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table5", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table5",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -518,19 +605,19 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         // cache leader should work for devices that have inserted before
         tablet.addValue("id1", rowIndex, "id:" + (row - 15));
         tablet.addValue("attr1", rowIndex, "attr:" + (row - 15));
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -566,25 +653,31 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table7", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table7",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -592,18 +685,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -633,14 +726,20 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table6", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table6",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (int row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
@@ -652,7 +751,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (int row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id1", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
@@ -688,25 +787,31 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table8", schemaList, columnTypes, 15);
+      Tablet tablet =
+          new Tablet(
+              "table8",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -714,18 +819,18 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insert(tablet);
           tablet.reset();
         }
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insert(tablet);
         tablet.reset();
       }
@@ -763,14 +868,20 @@ public class IoTDBSessionRelationalIT {
       schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
-      final List<ColumnType> columnTypes =
-          Arrays.asList(ColumnType.ID, ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(
+              ColumnCategory.ID,
+              ColumnCategory.ID,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.MEASUREMENT);
+      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+      List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table9", schemaList, columnTypes, 15);
+      Tablet tablet = new Tablet("table9", measurementIds, dataTypes, columnTypes, 15);
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id2:" + row);
         tablet.addValue("id1", rowIndex, "id1:" + row);
@@ -783,7 +894,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         tablet.addValue("id2", rowIndex, "id2:" + row);
         tablet.addValue("id1", rowIndex, "id1:" + row);
@@ -959,6 +1070,38 @@ public class IoTDBSessionRelationalIT {
       } catch (StatementExecutionException e) {
         assertEquals("507: Table table13 does not exist", e.getMessage());
       }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertWithoutMeasurementTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement("create table tb (a string id, b string measurement)");
+      session.executeNonQueryStatement("insert into tb(a) values ('w')");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from tb");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        cnt++;
+      }
+      assertEquals(1, cnt);
+
+      session.executeNonQueryStatement("flush");
+
+      dataSet = session.executeQueryStatement("select * from tb");
+      cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        cnt++;
+      }
+      assertEquals(1, cnt);
     }
   }
 }

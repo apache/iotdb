@@ -320,7 +320,7 @@ public class ProcedureFactory implements IProcedureFactory {
     return procedure;
   }
 
-  public static ProcedureType getProcedureType(Procedure<?> procedure) {
+  public static ProcedureType getProcedureType(final Procedure<?> procedure) {
     if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_DATABASE_PROCEDURE;
     } else if (procedure instanceof AddConfigNodeProcedure) {

@@ -153,7 +153,7 @@ public class MemTableFlushTask {
         /*
          * sort task (first task of flush pipeline)
          */
-        series.sortTvListForFlush(!deviceID.isTableModel());
+        series.sortTvListForFlush();
         long subTaskTime = System.currentTimeMillis() - startTime;
         sortTime += subTaskTime;
         WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.SORT_TASK, subTaskTime);

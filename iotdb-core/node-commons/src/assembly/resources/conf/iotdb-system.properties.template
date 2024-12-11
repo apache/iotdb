@@ -456,7 +456,7 @@ cn_selector_thread_nums_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-cn_max_client_count_for_each_node_in_client_manager=300
+cn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -516,7 +516,7 @@ dn_selector_thread_count_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-dn_max_client_count_for_each_node_in_client_manager=300
+dn_max_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -620,8 +620,8 @@ default_schema_region_group_num_per_database=1
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-schema_region_per_data_node=1.0
+# Datatype: Integer
+schema_region_per_data_node=1
 
 # The policy of extension DataRegionGroup for each Database.
 # These policies are currently supported:
@@ -641,11 +641,12 @@ default_data_region_group_num_per_database=2
 
 # Only take effect when set data_region_group_extension_policy=AUTO.
 # This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
+# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-data_region_per_data_node=5.0
+# Datatype: Integer
+data_region_per_data_node=0
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -1492,6 +1493,40 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # effectiveMode: hot_reload
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 33554432
+
+####################
+### Blob Allocator Configuration
+####################
+# Whether to enable binary allocator.
+# For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
+# effectiveMode: hot_reload
+enable_binary_allocator=true
+
+# The size boundaries that allocator is responsible for
+# lower boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+small_binary_object=4096
+
+# The size boundaries that allocator is responsible for
+# upper boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+huge_binary_object=1048576
+
+# Number of arena regions in blob allocator, used to control concurrent performance
+# Datatype: int
+# effectiveMode: restart
+arena_num=4
+
+# Control the number of slabs in allocator
+# The number of different sizes in each power-of-2 interval is 2^LOG2_SIZE_CLASS_GROUP
+# For example: if LOG2_SIZE_CLASS_GROUP=3, between 1024-2048 there will be 8 different sizes
+# Datatype: int
+# effectiveMode: restart
+log2_size_class_group=3
 
 ####################
 ### TsFile Configurations

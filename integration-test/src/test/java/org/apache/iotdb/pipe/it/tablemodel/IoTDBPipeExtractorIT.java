@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -77,8 +78,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -90,6 +91,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     boolean insertResult = true;
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -185,9 +191,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
-          Collections.singleton("2,2,"));
+          Collections.singleton("2,2,"),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
     }
   }
 
@@ -197,6 +204,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -310,18 +323,20 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-          Collections.singleton("1,0,1,"));
+          Collections.singleton("1,0,1,"),
+          handleFailure);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-          Collections.singleton("2,1,0,"));
+          Collections.singleton("2,1,0,"),
+          handleFailure);
 
-      TableModelUtils.assertData("test", "test2", 100, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test2", 100, 200, receiverEnv, handleFailure);
 
-      TableModelUtils.assertData("test", "test3", 100, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test3", 100, 200, receiverEnv, handleFailure);
 
-      TableModelUtils.assertData("test", "test4", 100, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test4", 100, 200, receiverEnv, handleFailure);
     }
   }
 
@@ -332,6 +347,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
 
@@ -398,7 +418,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
-          Collections.singleton("2,"));
+          Collections.singleton("2,"),
+          handleFailure);
 
       extractorAttributes.remove("extractor.table-name");
       extractorAttributes.remove("extractor.pattern");
@@ -415,10 +436,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
-          Collections.singleton("2,2,"));
+          Collections.singleton("2,2,"),
+          handleFailure);
 
-      TableModelUtils.assertData("test", "test1", 2, 4, receiverEnv);
-      TableModelUtils.assertData("test", "test2", 2, 4, receiverEnv);
+      TableModelUtils.assertData("test", "test1", 2, 4, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test2", 2, 4, receiverEnv, handleFailure);
     }
   }
 
@@ -428,6 +450,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -480,9 +508,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
+          Collections.singleton("3,"),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that overlapped with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -502,10 +531,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("3,3,"),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
-      TableModelUtils.assertCountData("test", "test3", 3, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
+      TableModelUtils.assertCountData("test", "test3", 3, receiverEnv, handleFailure);
 
       // Insert realtime data that does not overlap with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -526,10 +556,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("3,3,"),
+          600,
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
-      TableModelUtils.assertCountData("test", "test3", 3, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
+      TableModelUtils.assertCountData("test", "test3", 3, receiverEnv, handleFailure);
     }
   }
 
@@ -540,6 +572,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     boolean insertResult = true;
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -596,8 +633,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
-          Collections.singleton("3,"));
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
+          Collections.singleton("3,"),
+          handleFailure);
+
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
 
       extractorAttributes.remove("source.pattern");
       extractorAttributes.remove("source.table-name");
@@ -614,10 +653,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
-          Collections.singleton("3,3,"));
+          Collections.singleton("3,3,"),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
-      TableModelUtils.assertCountData("test", "test2", 3, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
+      TableModelUtils.assertCountData("test", "test2", 3, receiverEnv, handleFailure);
     }
   }
 
@@ -628,6 +668,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
@@ -705,9 +750,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "select count(*) from root.** group by level=0",
           "count(root.*.*.*),",
-          Collections.singleton("4,"));
+          Collections.singleton("4,"),
+          handleFailure);
 
-      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 3, receiverEnv, handleFailure);
     }
   }
 
@@ -717,6 +763,11 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     boolean insertResult = true;
     insertResult = TableModelUtils.insertData("test", "test2", 0, 20, senderEnv);
@@ -792,7 +843,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertCountData("test", "test1", 20, receiverEnv);
+      TableModelUtils.assertCountData("test", "test1", 20, receiverEnv, handleFailure);
     }
   }
 

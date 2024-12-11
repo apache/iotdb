@@ -99,7 +99,7 @@ public abstract class InsertBaseStatement extends Statement {
   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
 
-  @TableModel private String databaseName;
+  @TableModel protected String databaseName;
 
   // endregion
 
@@ -585,7 +585,7 @@ public abstract class InsertBaseStatement extends Statement {
     }
     if (measurementSchemas != null) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        measurementSchema.setMeasurementId(measurementSchema.getMeasurementId().toLowerCase());
+        measurementSchema.setMeasurementName(measurementSchema.getMeasurementName().toLowerCase());
       }
     }
   }

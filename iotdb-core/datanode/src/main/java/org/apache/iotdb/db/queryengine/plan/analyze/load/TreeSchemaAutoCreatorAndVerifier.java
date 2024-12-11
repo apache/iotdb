@@ -244,7 +244,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final IDeviceID device = entry.getKey();
       final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
       for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
-        final String measurement = timeseriesSchema.getMeasurementId();
+        final String measurement = timeseriesSchema.getMeasurementName();
         if (measurement2Schema.containsKey(measurement)) {
           throw new VerifyMetadataException(
               String.format("Duplicated measurements %s in device %s.", measurement, device));
@@ -366,7 +366,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
       int index = 0;
       for (final MeasurementSchema measurementSchema : entry.getValue()) {
-        measurements[index] = measurementSchema.getMeasurementId();
+        measurements[index] = measurementSchema.getMeasurementName();
         tsDataTypes[index] = measurementSchema.getType();
         encodings[index] = measurementSchema.getEncodingType();
         compressionTypes[index++] = measurementSchema.getCompressor();
@@ -401,7 +401,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           schemaTree.searchDeviceSchemaInfo(
               new PartialPath(device),
               tsfileTimeseriesSchemas.stream()
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementName)
                   .collect(Collectors.toList()));
 
       if (iotdbDeviceSchemaInfo == null) {
@@ -445,7 +445,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
                   device,
                   TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementId(),
+                  iotdbSchema.getMeasurementName(),
                   tsFileSchema.getType(),
                   iotdbSchema.getType()));
         }
@@ -459,7 +459,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   + "TsFile encoding: {}, IoTDB encoding: {}",
               device,
               TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementId(),
+              iotdbSchema.getMeasurementName(),
               tsFileSchema.getEncodingType().name(),
               iotdbSchema.getEncodingType().name());
         }
@@ -473,7 +473,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   + "TsFile compressor: {}, IoTDB compressor: {}",
               device,
               TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementId(),
+              iotdbSchema.getMeasurementName(),
               tsFileSchema.getCompressor().name(),
               iotdbSchema.getCompressor().name());
         }

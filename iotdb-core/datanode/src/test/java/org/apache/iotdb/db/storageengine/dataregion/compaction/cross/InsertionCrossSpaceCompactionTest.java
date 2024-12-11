@@ -72,6 +72,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     enableInsertionCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    TsFileResourceManager.getInstance().clear();
   }
 
   @After
@@ -80,6 +81,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
         .getConfig()
         .setEnableCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
     super.tearDown();
+    TsFileResourceManager.getInstance().clear();
   }
 
   @Test
@@ -127,6 +129,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -168,6 +173,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -209,6 +217,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(0, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -256,6 +267,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -291,6 +305,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -340,6 +357,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
     Assert.assertEquals(6, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -378,6 +398,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile3 = tsFileManager.getTsFileList(true).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -423,6 +446,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
     Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -473,6 +499,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile3 = tsFileManager.getOrCreateSequenceListByTimePartition(2808).get(0);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
     Assert.assertEquals(4, timestamp);
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   @Test
@@ -526,6 +555,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(seqFileNumBeforeCompaction, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(
         unseqFileNumBeforeCompaction, FileMetrics.getInstance().getFileCount(false));
+    Assert.assertEquals(
+        tsFileManager.size(true) + tsFileManager.size(false),
+        TsFileResourceManager.getInstance().getPriorityQueueSize());
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(

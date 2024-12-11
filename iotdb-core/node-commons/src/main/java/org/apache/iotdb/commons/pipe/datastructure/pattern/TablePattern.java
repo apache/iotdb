@@ -41,7 +41,7 @@ public class TablePattern {
   private final Pattern databasePattern;
   private final Pattern tablePattern;
 
-  protected TablePattern(
+  public TablePattern(
       final boolean isTableModelDataAllowedToBeCaptured,
       final String databasePatternString,
       final String tablePatternString) {

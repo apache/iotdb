@@ -90,7 +90,7 @@ public class IoTDBDataSet1TopicConsumerSpecialIT extends AbstractSubscriptionReg
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("`ABH#01`", rowIndex, row * 20 + row);
       tablet.addValue("`BJ-ABH#01`", rowIndex, true);

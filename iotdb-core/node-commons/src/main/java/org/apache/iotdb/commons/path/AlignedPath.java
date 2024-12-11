@@ -166,7 +166,7 @@ public class AlignedPath extends PartialPath {
     schemaList.sort(
         Comparator.comparing(
             iMeasurementSchema ->
-                new Binary(iMeasurementSchema.getMeasurementId(), TSFileConfig.STRING_CHARSET),
+                new Binary(iMeasurementSchema.getMeasurementName(), TSFileConfig.STRING_CHARSET),
             comparator));
   }
 

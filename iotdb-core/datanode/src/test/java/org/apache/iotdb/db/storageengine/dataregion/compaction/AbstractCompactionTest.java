@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -855,7 +856,7 @@ public class AbstractCompactionTest {
         }
         List<String> existedMeasurements =
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList());
         IFullPath seriesPath;
         if (isAlign) {
