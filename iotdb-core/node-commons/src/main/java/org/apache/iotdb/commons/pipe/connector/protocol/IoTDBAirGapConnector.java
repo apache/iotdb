@@ -62,7 +62,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
     private final TEndPoint endPoint;
 
-    public AirGapSocket(String ip, int port) {
+    public AirGapSocket(final String ip, final int port) {
       this.endPoint = new TEndPoint(ip, port);
     }
 

@@ -57,6 +57,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   private final Socket socket;
   private final long receiverId;
+  private long waitClearTimeInMs = 1000L;
+  private final long waitClearTimeInMsMaxValue = 1000L << 4;
 
   private final IoTDBDataNodeReceiverAgent agent;
 
@@ -109,8 +111,22 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     try {
       final byte[] data = readData(inputStream);
 
+      // If check sum failed, it indicates that the length we read may not be correct.
+      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
+      // attempts to read from that.
+      // We directly clear all the bytes we already received here. Note that TCP does not guarantee
+      // the rim of the data, thus we wait for some time to clear sender's potential un-transferred
+      // data. This will eventually succeed, though we do not guarantee how long it takes.
       if (!checkSum(data)) {
-        LOGGER.warn("Checksum failed, receiverId: {}", receiverId);
+        Thread.sleep(waitClearTimeInMs);
+        if (waitClearTimeInMs < waitClearTimeInMsMaxValue) {
+          waitClearTimeInMs <<= 1;
+        }
+        LOGGER.warn(
+            "Checksum failed, will clear the input stream. Waited ms: {}, Cleared bytes: {}, ReceiverId: {}",
+            waitClearTimeInMs,
+            inputStream.skip(inputStream.available()),
+            receiverId);
         fail();
         return;
       }

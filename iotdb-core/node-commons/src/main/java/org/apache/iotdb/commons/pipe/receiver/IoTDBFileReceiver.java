@@ -319,7 +319,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.write(req.getFilePiece());
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to write file piece from req {}.", receiverId.get(), req, e);
       final TSStatus status =
