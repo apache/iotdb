@@ -224,6 +224,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  public long getPipeAirGapMaxWaitedCheckSumClearTimeInMs() {
+    return COMMON_CONFIG.getPipeAirGapMaxWaitedCheckSumClearTimeInMs();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -429,6 +433,9 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+    LOGGER.info(
+        "PipeAirGapMaxWaitedCheckSumClearTimeInMs: {}",
+        getPipeAirGapMaxWaitedCheckSumClearTimeInMs());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",

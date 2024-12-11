@@ -245,6 +245,7 @@ public class CommonConfig {
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
+  private long pipeAirGapMaxWaitedCheckSumClearTimeInMs = 1000L << 4;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
@@ -966,6 +967,15 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public long getPipeAirGapMaxWaitedCheckSumClearTimeInMs() {
+    return pipeAirGapMaxWaitedCheckSumClearTimeInMs;
+  }
+
+  public void setPipeAirGapMaxWaitedCheckSumClearTimeInMs(
+      long pipeAirGapMaxWaitedCheckSumClearTimeInMs) {
+    this.pipeAirGapMaxWaitedCheckSumClearTimeInMs = pipeAirGapMaxWaitedCheckSumClearTimeInMs;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
