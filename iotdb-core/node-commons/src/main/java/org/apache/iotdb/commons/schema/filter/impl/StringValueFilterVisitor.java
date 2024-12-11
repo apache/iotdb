@@ -80,10 +80,8 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
     if (Objects.isNull(context)) {
       return null;
     }
-    return filter
-        .getPattern()
-        .getMatcher()
-        .match(context.getBytes(TSFileConfig.STRING_CHARSET), 0, context.getBytes().length);
+    final byte[] bytes = context.getBytes(TSFileConfig.STRING_CHARSET);
+    return filter.getPattern().getMatcher().match(bytes, 0, bytes.length);
   }
 
   @Override
