@@ -121,10 +121,10 @@ public class IoTDBDeviceIT {
           Collections.singleton("1,"));
       // Test get from cache
       statement.executeQuery(
-          "select * from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
+          "select * from table0 where region_id = '1' and plant_id in ('木兰', '5') and device_id = '3'");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3' offset 0 limit ALL"),
+              "show devices from table0 where region_id = '1' and plant_id in ('3', '木兰') and device_id = '3' offset 0 limit ALL"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
