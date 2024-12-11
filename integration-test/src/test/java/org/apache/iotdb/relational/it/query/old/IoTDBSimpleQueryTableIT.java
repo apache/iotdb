@@ -611,24 +611,28 @@ public class IoTDBSimpleQueryTableIT {
 
   @Test
   public void testStorageGroupWithHyphenInName() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE group_with_hyphen");
     } catch (SQLException e) {
       fail();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          final StringBuilder builder = new StringBuilder();
           builder.append(resultSet.getString(1));
-          Assert.assertEquals(builder.toString(), "group_with_hyphen");
+          Assert.assertTrue(
+              builder.toString().equals("group_with_hyphen")
+                  || builder.toString().equals("information_schema"));
         }
       }
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail();
     }
   }
