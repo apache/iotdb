@@ -560,10 +560,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
       boolean hasFilter = false;
-      Expression lastEquiJoinConjunct = null;
+      // Expression lastEquiJoinConjunct = null;
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
         if (joinEqualityExpressionOnOneColumn(conjunct, node)) {
-          lastEquiJoinConjunct = conjunct;
+          // lastEquiJoinConjunct = conjunct;
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =
@@ -592,11 +592,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
       }
 
-      if (!equiJoinClauses.isEmpty() && hasFilter) {
-        equiJoinClauses.clear();
-        joinFilterBuilder.add(lastEquiJoinConjunct);
-      }
-
       PlanNode leftSource;
       PlanNode rightSource;
       boolean equiJoinClausesUnmodified =
@@ -622,13 +617,22 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         equiJoinClauses.clear();
       }
 
+      //      if (!equiJoinClauses.isEmpty() && hasFilter) {
+      //        equiJoinClauses.forEach(
+      //                equiJoinClause -> joinFilterBuilder.add(equiJoinClause.toExpression()));
+      //        equiJoinClauses.clear();
+      //        //joinFilterBuilder.add(lastEquiJoinConjunct);
+      //      }
+
       List<Expression> joinFilter = joinFilterBuilder.build();
       Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
       if (TRUE_LITERAL.equals(newJoinFilter.get())) {
         newJoinFilter = Optional.empty();
       }
 
-      if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
+      if (node.getJoinType() == INNER && newJoinFilter.isPresent()
+      // && equiJoinClauses.isEmpty()
+      ) {
         // if we do not have any equi conjunct we do not pushdown non-equality condition into
         // inner join, so we plan execution as nested-loops-join followed by filter instead
         // hash join.
@@ -668,8 +672,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       JoinNode outputJoinNode = (JoinNode) output;
       if (!((JoinNode) output).isCrossJoin()) {
-        // inner join or full join, use MergeSortJoinNode, sort the left and right child of join
-        // node
+        // inner join or full join, use MergeSortJoinNode
         appendSortNodeForMergeSortJoin(outputJoinNode);
       }
 
