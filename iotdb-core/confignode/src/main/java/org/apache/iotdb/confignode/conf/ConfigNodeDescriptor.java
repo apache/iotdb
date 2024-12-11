@@ -238,12 +238,13 @@ public class ConfigNodeDescriptor {
                 .trim()));
 
     conf.setSchemaRegionPerDataNode(
-        Double.parseDouble(
-            properties
-                .getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode()))
-                .trim()));
+        (int)
+            Double.parseDouble(
+                properties
+                    .getProperty(
+                        "schema_region_per_data_node",
+                        String.valueOf(conf.getSchemaRegionPerDataNode()))
+                    .trim()));
 
     conf.setDataRegionGroupExtensionPolicy(
         RegionGroupExtensionPolicy.parse(
@@ -258,11 +259,13 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
     conf.setDataRegionPerDataNode(
-        Double.parseDouble(
-            properties
-                .getProperty(
-                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
-                .trim()));
+        (int)
+            Double.parseDouble(
+                properties
+                    .getProperty(
+                        "data_region_per_data_node",
+                        String.valueOf(conf.getDataRegionPerDataNode()))
+                    .trim()));
 
     try {
       conf.setRegionAllocateStrategy(
