@@ -99,31 +99,33 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     boolean shouldFlush;
-    switch (schema.getType()) {
-      case BOOLEAN:
-        shouldFlush = putBooleanWithFlushCheck(insertTime, (boolean) objectValue);
-        break;
-      case INT32:
-      case DATE:
-        shouldFlush = putIntWithFlushCheck(insertTime, (int) objectValue);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        shouldFlush = putLongWithFlushCheck(insertTime, (long) objectValue);
-        break;
-      case FLOAT:
-        shouldFlush = putFloatWithFlushCheck(insertTime, (float) objectValue);
-        break;
-      case DOUBLE:
-        shouldFlush = putDoubleWithFlushCheck(insertTime, (double) objectValue);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        shouldFlush = putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
+    synchronized (list) {
+      switch (schema.getType()) {
+        case BOOLEAN:
+          shouldFlush = putBooleanWithFlushCheck(insertTime, (boolean) objectValue);
+          break;
+        case INT32:
+        case DATE:
+          shouldFlush = putIntWithFlushCheck(insertTime, (int) objectValue);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          shouldFlush = putLongWithFlushCheck(insertTime, (long) objectValue);
+          break;
+        case FLOAT:
+          shouldFlush = putFloatWithFlushCheck(insertTime, (float) objectValue);
+          break;
+        case DOUBLE:
+          shouldFlush = putDoubleWithFlushCheck(insertTime, (double) objectValue);
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          shouldFlush = putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
+      }
     }
     if (shouldFlush) {
       return true;
@@ -145,36 +147,38 @@ public class WritableMemChunk implements IWritableMemChunk {
   public boolean writeWithFlushCheck(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     boolean shouldFlush;
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        shouldFlush = putBooleansWithFlushCheck(times, boolValues, bitMap, start, end);
-        break;
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) valueList;
-        shouldFlush = putIntsWithFlushCheck(times, intValues, bitMap, start, end);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) valueList;
-        return putLongsWithFlushCheck(times, longValues, bitMap, start, end);
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        shouldFlush = putFloatsWithFlushCheck(times, floatValues, bitMap, start, end);
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        shouldFlush = putDoublesWithFlushCheck(times, doubleValues, bitMap, start, end);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        Binary[] binaryValues = (Binary[]) valueList;
-        shouldFlush = putBinariesWithFlushCheck(times, binaryValues, bitMap, start, end);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
+    synchronized (list) {
+      switch (dataType) {
+        case BOOLEAN:
+          boolean[] boolValues = (boolean[]) valueList;
+          shouldFlush = putBooleansWithFlushCheck(times, boolValues, bitMap, start, end);
+          break;
+        case INT32:
+        case DATE:
+          int[] intValues = (int[]) valueList;
+          shouldFlush = putIntsWithFlushCheck(times, intValues, bitMap, start, end);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          long[] longValues = (long[]) valueList;
+          return putLongsWithFlushCheck(times, longValues, bitMap, start, end);
+        case FLOAT:
+          float[] floatValues = (float[]) valueList;
+          shouldFlush = putFloatsWithFlushCheck(times, floatValues, bitMap, start, end);
+          break;
+        case DOUBLE:
+          double[] doubleValues = (double[]) valueList;
+          shouldFlush = putDoublesWithFlushCheck(times, doubleValues, bitMap, start, end);
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          Binary[] binaryValues = (Binary[]) valueList;
+          shouldFlush = putBinariesWithFlushCheck(times, binaryValues, bitMap, start, end);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
+      }
     }
     if (shouldFlush) {
       return true;

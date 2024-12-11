@@ -125,24 +125,9 @@ public class ReadOnlyMemChunk {
     this.pageStatisticsList = new ArrayList<>();
     this.pageOffsetsList = new ArrayList<>();
     this.context.addTVListToSet(tvListQueryMap);
-
-    initChunkAndPageStatistics();
   }
 
-  private void initChunkAndPageStatistics() {
-    // create chunk metadata
-    Statistics chunkStatistics = Statistics.getStatsByType(dataType);
-    IChunkMetadata metaData =
-        new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
-    metaData.setChunkLoader(new MemChunkLoader(context, this));
-    metaData.setVersion(Long.MAX_VALUE);
-    cachedMetaData = metaData;
-
-    sortTvLists();
-    updateChunkAndPageStatisticsFromTvLists();
-  }
-
-  private void sortTvLists() {
+  public void sortTvLists() {
     for (Map.Entry<TVList, Integer> entry : getTvListQueryMap().entrySet()) {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
@@ -152,9 +137,9 @@ public class ReadOnlyMemChunk {
     }
   }
 
-  private void updateChunkAndPageStatisticsFromTvLists() {
-    Statistics chunkStatistics = cachedMetaData.getStatistics();
-
+  public void initChunkMetaFromTvLists() {
+    // create chunk statistics
+    Statistics chunkStatistics = Statistics.getStatsByType(dataType);
     int cnt = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
@@ -209,6 +194,13 @@ public class ReadOnlyMemChunk {
     }
     pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
     chunkStatistics.setEmpty(cnt == 0);
+
+    // chunk meta
+    IChunkMetadata metaData =
+        new ChunkMetadata(measurementUid, dataType, null, null, 0, chunkStatistics);
+    metaData.setChunkLoader(new MemChunkLoader(context, this));
+    metaData.setVersion(Long.MAX_VALUE);
+    cachedMetaData = metaData;
   }
 
   public TSDataType getDataType() {

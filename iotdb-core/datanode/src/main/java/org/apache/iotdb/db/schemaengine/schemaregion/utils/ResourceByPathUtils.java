@@ -362,6 +362,8 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
+        memChunk.sortTvLists();
+        memChunk.initChunkMetaFromTvLists();
         seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
       }
     }
