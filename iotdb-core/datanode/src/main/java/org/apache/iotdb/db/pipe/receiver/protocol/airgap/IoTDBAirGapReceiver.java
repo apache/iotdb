@@ -113,7 +113,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
       // attempts to read from that.
       // We directly close the socket here.
-      if (checkSum(data)) {
+      if (!checkSum(data)) {
         LOGGER.warn("Checksum failed, will close the socket. Air gap receiverId: {}", receiverId);
         fail();
         socket.close();
