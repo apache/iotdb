@@ -29,13 +29,16 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -47,11 +50,15 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   private final ObjectBigArray<State> stateArray;
   private final List<Type> inputDataTypes;
 
+  private final Sort sort;
+  private boolean sorted = true;
+
   public GroupedUserDefinedAggregateAccumulator(
       AggregateFunction aggregateFunction, List<Type> inputDataTypes) {
     this.aggregateFunction = aggregateFunction;
     this.stateArray = new ObjectBigArray<>();
     this.inputDataTypes = inputDataTypes;
+    this.sort = new Sort(inputDataTypes.size()+1, 0);
   }
 
   @Override
@@ -75,6 +82,12 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments) {
+//    Column groupIdColumn = new IntColumn(groupIds.length, Optional.empty(), groupIds);
+//    Column[] columns = new Column[arguments.length + 1];
+//    columns[0] = groupIdColumn;
+//    System.arraycopy(arguments, 0, columns, 1, arguments.length);
+//    sort.addColumn(columns);
+//    sorted = false;
     RecordIterator iterator =
         new RecordIterator(
             Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
@@ -113,6 +126,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
+//    prepare();
     if (stateArray.get(groupId) == null) {
       columnBuilder.writeBinary(new Binary(new byte[0]));
     } else {
@@ -123,6 +137,7 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
+//    prepare();
     ResultValue resultValue = new ResultValue(columnBuilder);
     aggregateFunction.outputFinal(getOrCreateState(groupId), resultValue);
   }
@@ -130,6 +145,22 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   @Override
   public void prepareFinal() {
     // do nothing
+  }
+
+  private void prepare(){
+    if(sorted){
+      return;
+    }
+    sort.sort();
+    Iterator<Column[]> iterator = sort.getByPartition();
+    while (iterator.hasNext()){
+      Column[] columns = iterator.next();
+      Column[] arguments = Arrays.copyOfRange(columns, 1, columns.length);
+      int groupId = columns[0].getInt(0);
+      State state = getOrCreateState(groupId);
+      aggregateFunction.addInput(state, arguments);
+    }
+    sorted = true;
   }
 
   @Override

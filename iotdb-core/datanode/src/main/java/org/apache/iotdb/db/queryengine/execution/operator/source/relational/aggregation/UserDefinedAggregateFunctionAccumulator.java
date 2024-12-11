@@ -66,7 +66,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public void addInput(Column[] arguments) {
-    //    aggregateFunction.addInput(state, arguments);
+//    aggregateFunction.addInput(state, arguments);
     RecordIterator iterator =
         new RecordIterator(
             Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());

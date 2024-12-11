@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.example.relational;
+package org.apache.iotdb.udf;
 
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
@@ -32,71 +32,89 @@ import org.apache.tsfile.block.column.Column;
 
 import java.nio.ByteBuffer;
 
-public class MyCount implements AggregateFunction {
+public class MyFirst implements AggregateFunction {
 
-  static class CountState implements State {
-    long count;
+  static class MyFirstState implements State {
+    long firstTime = Long.MAX_VALUE;
+    double firstValue;
 
     @Override
     public void reset() {
-      count = 0;
+      firstTime = Long.MAX_VALUE;
+      firstValue = 0;
     }
 
     @Override
     public byte[] serialize() {
-      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-      buffer.putLong(count);
-
+      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2 + Double.BYTES * 2);
+      buffer.putLong(firstTime);
+      buffer.putDouble(firstValue);
       return buffer.array();
     }
 
     @Override
     public void deserialize(byte[] bytes) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      count = buffer.getLong();
+      firstTime = buffer.getLong();
+      firstValue = buffer.getDouble();
     }
   }
 
   @Override
   public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() == 0) {
-      throw new UDFException("MyCount accepts at least one parameter");
+    if (parameters.getChildExpressionsSize() != 2) {
+      throw new UDFException("MyFirst should accept two parameters");
+    }
+    if (parameters.getDataType(0) != Type.DOUBLE) {
+      throw new UDFException("The first parameter of MyFirst should be DOUBLE");
+    }
+    if (parameters.getDataType(1) != Type.TIMESTAMP) {
+      throw new UDFException("The second parameter of MyFirst should be TIMESTAMP");
     }
   }
 
   @Override
   public void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.INT64);
+    configurations.setOutputDataType(Type.DOUBLE);
   }
 
   @Override
   public State createState() {
-    return new CountState();
+    return new MyFirstState();
   }
 
   @Override
   public void addInput(State state, Column[] columns) {
-
-  }
-
-  @Override
-  public void addInput(State state, Record input) {
-    CountState countState = (CountState) state;
-    for (int i = 0; i < input.size(); i++) {
-      if (!input.isNull(i)) {
-        countState.count++;
-        break;
+    MyFirstState myFirstState = (MyFirstState) state;
+    for (int i = 0; i < columns[0].getPositionCount(); i++) {
+      if (!columns[0].isNull(i) && columns[1].getLong(i) < myFirstState.firstTime) {
+        myFirstState.firstTime = columns[1].getLong(i);
+        myFirstState.firstValue = columns[0].getDouble(i);
       }
     }
   }
 
   @Override
+  public void addInput(State state, Record input) {
+    MyFirstState myFirstState = (MyFirstState) state;
+    if (!input.isNull(0) && input.getLong(1) < myFirstState.firstTime) {
+      myFirstState.firstTime = input.getLong(1);
+      myFirstState.firstValue = input.getDouble(0);
+    }
+  }
+
+  @Override
   public void combineState(State state, State rhs) {
-    ((CountState) state).count += ((CountState) rhs).count;
+    MyFirstState myFirstState = (MyFirstState) state;
+    MyFirstState rhsState = (MyFirstState) rhs;
+    if (rhsState.firstTime < myFirstState.firstTime) {
+      myFirstState.firstTime = rhsState.firstTime;
+      myFirstState.firstValue = rhsState.firstValue;
+    }
   }
 
   @Override
   public void outputFinal(State state, ResultValue resultValue) {
-    resultValue.setLong(((CountState) state).count);
+    resultValue.setDouble(((MyFirstState) state).firstValue);
   }
 }
