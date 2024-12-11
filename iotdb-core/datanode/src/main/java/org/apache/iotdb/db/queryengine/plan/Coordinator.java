@@ -186,6 +186,7 @@ public class Coordinator {
       long queryId,
       SessionInfo session,
       String sql,
+      boolean userQuery,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -202,6 +203,7 @@ public class Coordinator {
               session,
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+      queryContext.setUserQuery(userQuery);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -233,7 +235,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
+        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
   }
 
   public ExecutionResult executeForTreeModel(
@@ -243,11 +245,13 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      long timeOut) {
+      long timeOut,
+      boolean userQuery) {
     return execution(
         queryId,
         session,
         sql,
+        userQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -296,11 +300,13 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       Metadata metadata,
-      long timeOut) {
+      long timeOut,
+      boolean userQuery) {
     return execution(
         queryId,
         session,
         sql,
+        userQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -325,6 +331,7 @@ public class Coordinator {
         queryId,
         session,
         sql,
+        false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -344,7 +351,6 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       long startTime) {
-    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     TableModelPlanner tableModelPlanner =
@@ -373,7 +379,6 @@ public class Coordinator {
       final Metadata metadata,
       final long timeOut,
       final long startTime) {
-    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
@@ -482,7 +487,7 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
-        if (queryExecution.isQuery()) {
+        if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
           // print slow query
           if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
@@ -492,8 +497,8 @@ public class Coordinator {
                 getContentOfRequest(nativeApiRequest, queryExecution));
           }
 
-          // sample query
-          if (COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+          // only sample successful query
+          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
             String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
             if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
               if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
