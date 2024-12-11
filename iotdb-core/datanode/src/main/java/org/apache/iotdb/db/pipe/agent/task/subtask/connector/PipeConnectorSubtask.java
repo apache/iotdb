@@ -295,37 +295,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         : 0;
   }
 
-  // For performance, this will not acquire lock and does not guarantee the correct
-  // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getEventCount(final String pipeName) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Exception occurred when counting event of pipe {}, root cause: {}",
-            pipeName,
-            ErrorHandlingUtils.getRootCause(e).getMessage(),
-            e);
-      }
-    }
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return count.get()
-        + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
-            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
-            : 0)
-        + (Objects.nonNull(event) && pipeName.equals(event.getPipeName()) ? 1 : 0);
-  }
-
   //////////////////////////// Error report ////////////////////////////
 
   @Override
