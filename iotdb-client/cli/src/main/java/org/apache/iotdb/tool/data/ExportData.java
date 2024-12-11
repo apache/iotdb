@@ -540,7 +540,7 @@ public class ExportData extends AbstractDataTool {
     }
     final File file = new File(targetDirectory);
     if (!file.isDirectory() && !file.mkdirs()) {
-      System.out.println("Failed to create directories or they already exist");
+      ioTPrinter.println(String.format("Failed to create directories %s", targetDirectory));
       System.exit(CODE_ERROR);
     }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
