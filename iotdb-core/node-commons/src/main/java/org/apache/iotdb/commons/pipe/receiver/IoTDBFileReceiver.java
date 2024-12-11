@@ -288,9 +288,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     try {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
+      if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
+        writingFileWriter.setLength(req.getStartWritingOffset());
+      }
+
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
-        if (isRequestThroughAirGap
-            || !writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
           // 1. If the request is through air gap, the sender will resend the file piece from the
           // beginning of the file. So the receiver should reset the offset of the writing file to
           // the beginning of the file.
