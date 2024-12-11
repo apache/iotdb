@@ -846,7 +846,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "1603: The scheme of URI is not set, please specify the scheme of URI.",
+        "701: Untrusted uri xxx",
         "test",
         "test123");
     tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
