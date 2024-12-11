@@ -49,6 +49,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -176,7 +178,6 @@ public abstract class AbstractDataTool {
   protected static Boolean aligned;
   protected static Session session;
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
-  protected static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
 
   protected static final String DATATYPE_BOOLEAN = "boolean";
   protected static final String DATATYPE_INT = "int";
@@ -188,9 +189,12 @@ public abstract class AbstractDataTool {
   protected static final String DATATYPE_BLOB = "blob";
   protected static final String DATATYPE_NAN = "NaN";
   protected static final String DATATYPE_TEXT = "text";
+  protected static final String DATATYPE_STRING = "string";
 
   protected static final String DATATYPE_NULL = "null";
   protected static int batchPointSize = 100_000;
+
+  protected static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
 
   static {
     TYPE_INFER_KEY_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
@@ -200,8 +204,9 @@ public abstract class AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
     TYPE_INFER_KEY_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
     TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_STRING, TSDataType.STRING);
   }
 
   protected static final Map<String, TSDataType> TYPE_INFER_VALUE_DICT = new HashMap<>();
@@ -213,9 +218,10 @@ public abstract class AbstractDataTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.DATE);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.BLOB);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_STRING, TSDataType.STRING);
   }
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -689,6 +695,8 @@ public abstract class AbstractDataTool {
       // "NaN" is returned if the NaN Literal is given in Parser
     } else if (DATATYPE_NAN.equals(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
+    } else if (isBlob(strValue)) {
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_BLOB);
     } else if (strValue.length() <= 512) {
       return STRING;
     } else {
@@ -706,6 +714,10 @@ public abstract class AbstractDataTool {
       return false;
     }
     return true;
+  }
+
+  private static boolean isBlob(String s) {
+    return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
   private static boolean isBoolean(String s) {
@@ -745,14 +757,26 @@ public abstract class AbstractDataTool {
         case DOUBLE:
           return Double.parseDouble(value);
         case TIMESTAMP:
+          return Long.parseLong(value);
         case DATE:
+          return LocalDate.parse(value);
         case BLOB:
+          return new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
         default:
           return null;
       }
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  private static byte[] parseHexStringToByteArray(String hexString) {
+    byte[] bytes = new byte[hexString.length() / 2];
+    for (int i = 0; i < hexString.length(); i += 2) {
+      int value = Integer.parseInt(hexString.substring(i, i + 2), 16);
+      bytes[i / 2] = (byte) value;
+    }
+    return bytes;
   }
 
   private static long parseTimestamp(String str) {

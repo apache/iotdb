@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -45,6 +47,12 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
+
+  private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
+      new PipePeriodicalPhantomReferenceCleaner();
+
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
@@ -58,6 +66,13 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     // Clean receiver file dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
+    // Start periodical job executor
+    pipePeriodicalJobExecutor.start();
+
+    if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+      pipePeriodicalPhantomReferenceCleaner.start();
+    }
+
     isShutdown.set(false);
     LOGGER.info("PipeRuntimeConfigNodeAgent started");
   }
@@ -68,6 +83,9 @@ public class PipeConfigNodeRuntimeAgent implements IService {
       return;
     }
     isShutdown.set(true);
+
+    // Stop periodical job executor
+    pipePeriodicalJobExecutor.stop();
 
     PipeConfigNodeAgent.task().dropAllPipeTasks();
 
@@ -142,5 +160,16 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
     }
+  }
+
+  /////////////////////////// Periodical Job Executor ///////////////////////////
+
+  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
+  }
+
+  public void registerPhantomReferenceCleanJob(
+      String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalPhantomReferenceCleaner.register(id, periodicalJob, intervalInSeconds);
   }
 }

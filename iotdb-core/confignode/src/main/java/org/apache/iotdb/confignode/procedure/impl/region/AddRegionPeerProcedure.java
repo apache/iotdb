@@ -123,8 +123,9 @@ public class AddRegionPeerProcedure
               return warnAndRollBackAndNoMoreState(
                   env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
-              // should never happen
-              return warnAndRollBackAndNoMoreState(env, handler, "should never return PROCESSING");
+              LOGGER.info(
+                  "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback");
+              return Flow.NO_MORE_STATE;
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;
