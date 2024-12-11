@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;

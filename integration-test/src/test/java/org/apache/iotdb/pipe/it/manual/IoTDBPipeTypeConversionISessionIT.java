@@ -780,8 +780,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           break;
       }
     }
-    return new Tablet(
-        deviceId, measurementSchemas, columnTypes, timestamp, objects, bitMaps, generateDataSize);
+    return new Tablet(deviceId, measurementSchemas, timestamp, objects, bitMaps, generateDataSize);
   }
 
   private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemas() {

@@ -77,7 +77,7 @@ public class TableModelSessionExample {
       }
 
       // insert table data by tablet
-      List<String> measurementNameList =
+      List<String> columnNameList =
           Arrays.asList("region_id", "plant_id", "device_id", "model", "temperature", "humidity");
       List<TSDataType> dataTypeList =
           Arrays.asList(
@@ -96,7 +96,7 @@ public class TableModelSessionExample {
                   Tablet.ColumnCategory.ATTRIBUTE,
                   Tablet.ColumnCategory.MEASUREMENT,
                   Tablet.ColumnCategory.MEASUREMENT));
-      Tablet tablet = new Tablet("test1", measurementNameList, dataTypeList, columnTypeList, 100);
+      Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
