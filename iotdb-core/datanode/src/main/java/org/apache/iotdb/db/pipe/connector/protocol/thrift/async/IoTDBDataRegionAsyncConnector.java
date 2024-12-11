@@ -64,12 +64,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,7 +98,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   // use these variables to prevent reference count leaks under some corner cases when closing
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-  private final Set<PipeTransferTrackableHandler> pendingHandlers = new HashSet<>();
+  private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
+      new ConcurrentHashMap<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -558,21 +558,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
 
     // ensure all on-the-fly handlers have been cleared
-    while (hasPendingHandlers()) {
-      pendingHandlers.removeIf(
-          handler -> {
-            handler.clearEventsReferenceCount();
-            return true;
-          });
-      try {
-        Thread.sleep(10);
-      } catch (final InterruptedException e) {
-        LOGGER.warn(
-            "Interrupted when connector {} waiting for handling pending handlers, remaining {} pending handlers",
-            this,
-            pendingHandlers.size());
-        Thread.currentThread().interrupt();
-      }
+    if (hasPendingHandlers()) {
+      pendingHandlers.forEach((handler, _handler) -> handler.clearEventsReferenceCount());
+      pendingHandlers.clear();
     }
 
     try {
@@ -623,7 +611,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   public void trackHandler(final PipeTransferTrackableHandler handler) {
-    pendingHandlers.add(handler);
+    pendingHandlers.put(handler, handler);
   }
 
   public void eliminateHandler(final PipeTransferTrackableHandler handler) {

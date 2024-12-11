@@ -38,24 +38,26 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
-    try {
-      if (!connector.isClosed()) {
-        onCompleteInternal(response);
+    if (!connector.isClosed()) {
+      if (onCompleteInternal(response)) {
+        // eliminate handler only when all transmissions corresponding to the handler have been
+        // completed
+        connector.eliminateHandler(this);
       }
-    } finally {
+    } else {
+      clearEventsReferenceCount();
       connector.eliminateHandler(this);
     }
   }
 
   @Override
   public void onError(final Exception exception) {
-    try {
-      if (!connector.isClosed()) {
-        onErrorInternal(exception);
-      }
-    } finally {
-      connector.eliminateHandler(this);
+    if (!connector.isClosed()) {
+      onErrorInternal(exception);
+    } else {
+      clearEventsReferenceCount();
     }
+    connector.eliminateHandler(this);
   }
 
   /**
@@ -70,16 +72,21 @@ public abstract class PipeTransferTrackableHandler
   protected boolean tryTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
+    // track handler before checking if connector is closed
+    connector.trackHandler(this);
     if (connector.isClosed()) {
       clearEventsReferenceCount();
       return false;
     }
-    connector.trackHandler(this);
     doTransfer(client, req);
     return true;
   }
 
-  protected abstract void onCompleteInternal(final TPipeTransferResp response);
+  /**
+   * @return {@code true} if all transmissions corresponding to the handler have been completed,
+   *     {@code false} otherwise
+   */
+  protected abstract boolean onCompleteInternal(final TPipeTransferResp response);
 
   protected abstract void onErrorInternal(final Exception exception);
 

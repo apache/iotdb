@@ -58,11 +58,11 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   }
 
   @Override
-  protected void onCompleteInternal(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
-      return;
+      return false;
     }
 
     final TSStatus status = response.getStatus();
@@ -80,7 +80,10 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       }
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return true;
   }
 
   @Override

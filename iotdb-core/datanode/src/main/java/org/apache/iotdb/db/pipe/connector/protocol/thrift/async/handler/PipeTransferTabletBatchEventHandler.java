@@ -84,11 +84,11 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   }
 
   @Override
-  protected void onCompleteInternal(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
-      return;
+      return false;
     }
 
     try {
@@ -111,7 +111,10 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
                   PipeTransferTabletBatchEventHandler.class.getName(), true));
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return true;
   }
 
   @Override

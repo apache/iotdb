@@ -211,7 +211,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  protected void onCompleteInternal(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
         final TSStatus status = response.getStatus();
@@ -228,7 +228,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         }
       } catch (final Exception e) {
         onError(e);
-        return;
+        return false;
       }
 
       try {
@@ -270,7 +270,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           client.returnSelf();
         }
       }
-      return;
+      return true;
     }
 
     // If the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
@@ -300,7 +300,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       transfer(clientManager, client);
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return false; // due to seal transfer not yet completed
   }
 
   @Override
