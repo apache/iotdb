@@ -21,17 +21,15 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class TimBinaryTVList extends BinaryTVList implements TimSort {
-
   private long[][] sortedTimestamps;
-  private long pivotTime;
+  private int[][] sortedIndices;
 
-  private Binary[][] sortedValues;
-  private Binary pivotValue;
+  private long pivotTime;
+  private int pivotIndex;
 
   @Override
   public void sort() {
@@ -40,10 +38,10 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, rowCount);
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedIndices =
+          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }
     sort(0, rowCount);
     clearSortedValue();
@@ -59,20 +57,20 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
   @Override
   public void set(int src, int dest) {
     long srcT = getTime(src);
-    Binary srcV = getBinary(src);
+    int srcV = getValueIndex(src);
     set(dest, srcT, srcV);
   }
 
   @Override
   public void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getBinary(src);
+    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
   public void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
-    pivotValue = getBinary(pos);
+    pivotIndex = getValueIndex(pos);
   }
 
   @Override
@@ -80,12 +78,12 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
     set(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   @Override
   public void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
+    set(pos, pivotTime, pivotIndex);
   }
 
   @Override
@@ -97,8 +95,8 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
 
   @Override
   public void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
+    if (sortedIndices != null) {
+      sortedIndices = null;
     }
   }
 
@@ -114,9 +112,9 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      Binary loV = getBinary(lo);
+      int loV = getValueIndex(lo);
       long hiT = getTime(hi);
-      Binary hiV = getBinary(hi);
+      int hiV = getValueIndex(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }

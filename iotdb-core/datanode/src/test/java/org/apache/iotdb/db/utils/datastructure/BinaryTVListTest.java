@@ -133,7 +133,7 @@ public class BinaryTVListTest {
     Assert.assertEquals(tvList.memoryBinaryChunkSize, 540);
 
     tvList.delete(5, 15);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize, 252);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, 540);
 
     tvList.clear();
     Assert.assertEquals(tvList.memoryBinaryChunkSize, 0);
