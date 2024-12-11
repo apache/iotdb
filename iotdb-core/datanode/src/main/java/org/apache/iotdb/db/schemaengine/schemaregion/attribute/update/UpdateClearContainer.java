@@ -93,6 +93,12 @@ public class UpdateClearContainer implements UpdateContainer {
     return 0;
   }
 
+  @Override
+  public long invalidate(final String tableName, final String attributeName) {
+    // Do nothing
+    return 0;
+  }
+
   private void serializeWithLimit(
       final RewritableByteArrayOutputStream outputStream,
       final AtomicInteger limitBytes,

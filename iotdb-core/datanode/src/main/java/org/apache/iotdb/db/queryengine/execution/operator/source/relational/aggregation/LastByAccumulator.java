@@ -42,8 +42,8 @@ public class LastByAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LastByAccumulator.class);
 
-  private final TSDataType xDataType;
-  private final TSDataType yDataType;
+  protected final TSDataType xDataType;
+  protected final TSDataType yDataType;
 
   private final boolean xIsTimeColumn;
   private final boolean yIsTimeColumn;
@@ -311,7 +311,7 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   // TODO can add last position optimization if last position is null ?
-  private void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateIntLastValue(xColumn, i, timeColumn.getLong(i));
@@ -341,7 +341,7 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateLongLastValue(xColumn, i, timeColumn.getLong(i));
@@ -371,7 +371,7 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
@@ -401,7 +401,7 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
@@ -431,7 +431,7 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
@@ -461,7 +461,7 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
+  protected void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
     for (int i = 0; i < yColumn.getPositionCount(); i++) {
       if (!yColumn.isNull(i)) {
         updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));

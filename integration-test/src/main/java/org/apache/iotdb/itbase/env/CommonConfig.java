@@ -36,6 +36,12 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
+  CommonConfig setEncryptFlag(boolean encryptFlag);
+
+  CommonConfig setEncryptType(String encryptType);
+
+  CommonConfig setEncryptKeyPath(String encryptKeyPath);
+
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
@@ -142,7 +148,7 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
-  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+  CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
   CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
       int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);

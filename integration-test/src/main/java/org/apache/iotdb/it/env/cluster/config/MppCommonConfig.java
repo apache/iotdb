@@ -98,6 +98,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    setProperty("encrypt_flag", String.valueOf(encryptFlag));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    setProperty("encrypt_type", encryptType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    setProperty("encrypt_key_path", encryptKeyPath);
+    return this;
+  }
+
+  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -443,8 +461,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
     return this;
   }
 

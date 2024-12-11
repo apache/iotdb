@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -44,6 +45,7 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 
 public class JoinNode extends TwoChildProcessNode {
 
@@ -119,6 +121,8 @@ public class JoinNode extends TwoChildProcessNode {
     //        !(criteria.isEmpty() && rightHashSymbol.isPresent()),
     //        "Right hash symbol is only valid in an equijoin");
 
+    // todo: Remove this check after supporting join on multiple columns.
+    checkArgument(criteria.size() <= 1, "Only support Join on one column for now.");
     criteria.forEach(
         equiJoinClause ->
             checkArgument(
@@ -290,6 +294,10 @@ public class JoinNode extends TwoChildProcessNode {
 
   public Optional<Boolean> isSpillable() {
     return spillable;
+  }
+
+  public boolean isCrossJoin() {
+    return criteria.isEmpty() && !filter.isPresent() && joinType == INNER;
   }
 
   @Override

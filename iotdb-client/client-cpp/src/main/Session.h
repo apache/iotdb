@@ -41,6 +41,7 @@
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TBufferTransports.h>
 #include "IClientRPCService.h"
+#include "AbstractSessionBuilder.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -134,6 +135,15 @@ public:
     explicit UnSupportedDataTypeException(const std::string &m) : IoTDBException("UnSupported dataType: " + m) {}
 };
 
+class SchemaNotFoundException : public IoTDBException {
+public:
+    SchemaNotFoundException() {}
+
+    explicit SchemaNotFoundException(const char *m) : IoTDBException(m) {}
+
+    explicit SchemaNotFoundException(const std::string &m) : IoTDBException(m) {}
+};
+
 namespace Version {
     enum Version {
         V_0_12, V_0_13, V_1_0
@@ -164,7 +174,8 @@ namespace TSDataType {
         DOUBLE = (char) 4,
         TEXT = (char) 5,
         VECTOR = (char) 6,
-        NULLTYPE = (char) 7
+        NULLTYPE = (char) 254,
+        INVALID_DATATYPE = (char) 255
     };
 }
 
@@ -180,9 +191,8 @@ namespace TSEncoding {
         REGULAR = (char) 7,
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
-	    CHIMP = (char) 11,
-	    SPRINTZ = (char) 12,
-	    RLBE = (char) 13
+	    FREQ = (char) 10,
+        INVALID_ENCODING = (char) 255
     };
 }
 
@@ -536,6 +546,47 @@ public:
     Field() = default;
 };
 
+enum class ColumnCategory {
+    ID,
+    MEASUREMENT,
+    ATTRIBUTE
+};
+
+template<typename T, typename Target>
+const Target* safe_cast(const T& value) {
+    /*
+        Target	Allowed Source Types
+        BOOLEAN	BOOLEAN
+        INT32	INT32
+        INT64	INT32 INT64
+        FLOAT	INT32 FLOAT
+        DOUBLE	INT32 INT64 FLOAT DOUBLE
+        TEXT	TEXT
+    */
+    if (std::is_same<Target, T>::value) {
+        return (Target*)&value;
+    } else if (std::is_same<Target, int64_t>::value && std::is_same<T, int32_t>::value) {
+        int64_t tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, float>::value && std::is_same<T, int32_t>::value) {
+        float tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, int32_t>::value) {
+        double tmp = *(int32_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, int64_t>::value) {
+        double tmp = *(int64_t*)&value;
+        return (Target*)&tmp;
+    } else if (std::is_same<Target, double>::value && std::is_same<T, float>::value) {
+        double tmp = *(float*)&value;
+        return (Target*)&tmp;
+    } else {
+        throw UnSupportedDataTypeException("Parameter type " +
+                                           std::string(typeid(T).name()) + " cannot be converted to DataType" +
+                                           std::string(typeid(Target).name()));
+    }
+}
+
 /*
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
@@ -560,6 +611,8 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
+    std::map<std::string, size_t> schemaNameIndex; // the map of schema name to index
+    std::vector<ColumnCategory> columnTypes; // the list of column types (used in table model)
     std::vector<int64_t> timestamps;   // timestamps in this tablet
     std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
     std::vector<BitMap> bitMaps; // each bitmap represents the existence of each value in the current column
@@ -580,6 +633,11 @@ public:
            const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries)
            : Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE) {}
 
+    Tablet(const std::string &deviceId,
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries,
+           const std::vector<ColumnCategory> &columnTypes)
+           : Tablet(deviceId, timeseries, columnTypes, DEFAULT_ROW_SIZE) {}
+
     /**
      * Return a tablet with the specified number of rows (maxBatchSize). Only
      * call this constructor directly for testing purposes. Tablet should normally
@@ -588,10 +646,16 @@ public:
      * @param deviceId     the name of the device specified to be written in
      * @param schemas   the list of measurement schemas for creating the row
      *                     batch
+     * @param columnTypes the list of column types (used in table model)
      * @param maxRowNumber the maximum number of rows for this tablet
      */
+    Tablet(const std::string &deviceId,
+        const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
+        int maxRowNumber)
+        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::MEASUREMENT), maxRowNumber) {}
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
+           const std::vector<ColumnCategory> columnTypes,
+           size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes),
                                                         maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
@@ -602,6 +666,10 @@ public:
         bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
             bitMaps[i].resize(maxRowNumber);
+        }
+        // create schemaNameIndex
+        for (size_t i = 0; i < schemas.size(); i++) {
+            schemaNameIndex[schemas[i].first] = i;
         }
         this->rowSize = 0;
     }
@@ -614,7 +682,59 @@ public:
         }
     }
 
-    void addValue(size_t schemaId, size_t rowIndex, void *value);
+    template<typename T>
+    void addValue(size_t schemaId, size_t rowIndex, const T& value) {
+        if (schemaId >= schemas.size()) {
+            char tmpStr[100];
+            sprintf(tmpStr, "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.", schemaId, schemas.size());
+            throw std::out_of_range(tmpStr);
+        }
+
+        if (rowIndex >= rowSize) {
+            char tmpStr[100];
+            sprintf(tmpStr, "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.", rowIndex, rowSize);
+            throw std::out_of_range(tmpStr);
+        }
+
+        TSDataType::TSDataType dataType = schemas[schemaId].second;
+        switch (dataType) {
+            case TSDataType::BOOLEAN: {
+                ((bool*)values[schemaId])[rowIndex] = *safe_cast<T, bool>(value);
+                break;
+            }
+            case TSDataType::INT32: {
+                ((int*)values[schemaId])[rowIndex] = *safe_cast<T, int>(value);
+                break;
+            }
+            case TSDataType::INT64: {
+                ((int64_t*)values[schemaId])[rowIndex] = *safe_cast<T, int64_t>(value);
+                break;
+            }
+            case TSDataType::FLOAT: {
+                ((float*)values[schemaId])[rowIndex] = *safe_cast<T, float>(value);
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                ((double*)values[schemaId])[rowIndex] = *safe_cast<T, double>(value);
+                break;
+            }
+            case TSDataType::TEXT: {
+                ((string*)values[schemaId])[rowIndex] = *safe_cast<T, string>(value);
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
+    }
+
+    template<typename T>
+    void addValue(const string &schemaName, size_t rowIndex, const T& value) {
+        if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
+            throw SchemaNotFoundException(string("Schema ") + schemaName + " not found.");
+        }
+        size_t schemaId = schemaNameIndex[schemaName];
+        addValue(schemaId, rowIndex, value);
+    }
 
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
 
@@ -973,6 +1093,8 @@ private:
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
+    std::string sqlDialect = "tree"; // default sql dialect
+    std::string database;
 
 private:
     static bool checkSorted(const Tablet &tablet);
@@ -1044,7 +1166,36 @@ public:
         initZoneId();
     }
 
+    Session(AbstractSessionBuilder* builder) {
+        this->host = builder->host;
+        this->rpcPort = builder->rpcPort;
+        this->username = builder->username;
+        this->password = builder->password;
+        this->zoneId = builder->zoneId;
+        this->fetchSize = builder->fetchSize;
+        this->version = Version::V_1_0;
+        this->sqlDialect = builder->sqlDialect;
+        this->database = builder->database;
+        initZoneId();
+    }
+
     ~Session();
+
+    void setSqlDialect(const std::string &dialect){
+        this->sqlDialect = dialect;
+    }
+
+    void setDatabase(const std::string &database) {
+        this->database = database;
+    }
+
+    string getDatabase() {
+        return database;
+    }
+
+    void changeDatabase(string database) {
+        this->database = database;
+    }
 
     int64_t getSessionId();
 
@@ -1124,6 +1275,10 @@ public:
 
     void insertTablet(Tablet &tablet, bool sorted);
 
+    void insertRelationalTablet(Tablet &tablet);
+
+    void insertRelationalTablet(Tablet &tablet, bool sorted);
+
     static void buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted);
 
     void insertTablet(const TSInsertTabletReq &request);
@@ -1164,6 +1319,12 @@ public:
     void deleteStorageGroup(const std::string &storageGroup);
 
     void deleteStorageGroups(const std::vector<std::string> &storageGroups);
+
+    void createDatabase(const std::string &database);
+
+    void deleteDatabase(const std::string &database);
+
+    void deleteDatabases(const std::vector<std::string> &databases);
 
     void createTimeseries(const std::string &path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
                           CompressionType::CompressionType compressor);

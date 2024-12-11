@@ -74,8 +74,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -118,7 +118,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
         "count(timeseries),",

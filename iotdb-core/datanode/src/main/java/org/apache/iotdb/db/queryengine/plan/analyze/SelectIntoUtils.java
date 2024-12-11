@@ -48,6 +48,18 @@ public class SelectIntoUtils {
     // forbidding instantiation
   }
 
+  public static PartialPath constructTargetPathWithoutPlaceHolder(
+      PartialPath devicePath, String measurement) {
+    String[] originalDeviceNodes = devicePath.getNodes();
+    String[] resNodes = new String[originalDeviceNodes.length + 1];
+
+    for (int i = 0; i < originalDeviceNodes.length; i++) {
+      resNodes[i] = parseNodeString(originalDeviceNodes[i]);
+    }
+    resNodes[resNodes.length - 1] = parseNodeString(measurement);
+    return new MeasurementPath(resNodes);
+  }
+
   public static PartialPath constructTargetPath(
       PartialPath sourcePath, PartialPath deviceTemplate, String measurementTemplate) {
     PartialPath targetDevice = constructTargetDevice(sourcePath.getDevicePath(), deviceTemplate);

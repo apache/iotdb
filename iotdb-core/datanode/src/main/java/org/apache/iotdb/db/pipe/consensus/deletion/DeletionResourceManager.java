@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -64,7 +64,7 @@ public class DeletionResourceManager implements AutoCloseable {
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
-  private final Map<DeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
+  private final Map<AbstractDeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
       new ConcurrentHashMap<>();
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
@@ -133,7 +133,7 @@ public class DeletionResourceManager implements AutoCloseable {
     LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
   }
 
-  public DeletionResource registerDeletionResource(DeleteDataNode deleteDataNode) {
+  public DeletionResource registerDeletionResource(AbstractDeleteDataNode deleteDataNode) {
     DeletionResource deletionResource =
         deleteNode2ResourcesMap.computeIfAbsent(
             deleteDataNode,
@@ -144,7 +144,7 @@ public class DeletionResourceManager implements AutoCloseable {
     return deletionResource;
   }
 
-  public DeletionResource getDeletionResource(DeleteDataNode deleteDataNode) {
+  public DeletionResource getDeletionResource(AbstractDeleteDataNode deleteDataNode) {
     return deleteNode2ResourcesMap.get(deleteDataNode);
   }
 

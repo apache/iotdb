@@ -174,13 +174,19 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     receiverFileDirWithIdSuffix.set(newReceiverDir);
 
     LOGGER.info(
-        "Receiver id = {}: Handshake successfully, receiver file dir = {}.",
+        "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
         receiverId.get(),
+        getSenderHost(),
+        getSenderPort(),
         newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
+
+  protected abstract String getSenderHost();
+
+  protected abstract String getSenderPort();
 
   protected TPipeTransferResp handleTransferHandshakeV2(final PipeTransferHandshakeV2Req req)
       throws IOException {
@@ -383,9 +389,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         }
         writingFileWriter.close();
         LOGGER.info(
-            "Receiver id = {}: Current writing file writer {} was closed.",
+            "Receiver id = {}: Current writing file writer {} was closed, length {}.",
             receiverId.get(),
-            writingFile == null ? "null" : writingFile.getPath());
+            writingFile == null ? "null" : writingFile.getPath(),
+            writingFile == null ? 0 : writingFile.length());
       } catch (Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to close current writing file writer {}, because {}.",

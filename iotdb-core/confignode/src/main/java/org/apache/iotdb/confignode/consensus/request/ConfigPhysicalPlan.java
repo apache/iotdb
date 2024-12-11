@@ -48,7 +48,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
@@ -96,8 +97,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -292,8 +295,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateFunction:
           plan = new CreateFunctionPlan();
           break;
-        case DropFunction:
-          plan = new DropFunctionPlan();
+        case DropTreeModelFunction:
+          plan = new DropTreeModelFunctionPlan();
+          break;
+        case DropTableModelFunction:
+          plan = new DropTableModelFunctionPlan();
           break;
         case AddTriggerInTable:
           plan = new AddTriggerInTablePlan();
@@ -352,8 +358,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PreDeleteTable:
           plan = new PreDeleteTablePlan();
           break;
-        case DropTable:
-          plan = new DropTablePlan();
+        case CommitDeleteTable:
+          plan = new CommitDeleteTablePlan();
+          break;
+        case PreDeleteColumn:
+          plan = new PreDeleteColumnPlan();
+          break;
+        case CommitDeleteColumn:
+          plan = new CommitDeleteColumnPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

@@ -78,7 +78,7 @@ public class Template implements Serializable {
       IMeasurementSchema schema =
           new MeasurementSchema(
               measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));
-      schemaMap.put(schema.getMeasurementId(), schema);
+      schemaMap.put(schema.getMeasurementName(), schema);
     }
   }
 

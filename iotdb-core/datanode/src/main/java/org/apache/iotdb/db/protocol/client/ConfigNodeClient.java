@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -123,6 +124,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -549,7 +551,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
+  public TSStatus deleteDatabases(final TDeleteDatabasesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteDatabases(req), status -> !updateConfigNodeLeader(status));
   }
@@ -887,9 +889,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TGetUDFTableResp getUDFTable() throws TException {
+  public TGetUDFTableResp getUDFTable(TGetUdfTableReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getUDFTable(), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.getUDFTable(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1284,6 +1286,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTables(database, isDetails), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.describeTable(database, tableName, isDetails),
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

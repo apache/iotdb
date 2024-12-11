@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -857,13 +858,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override
@@ -1450,6 +1456,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode) {
     throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 

@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -101,6 +102,8 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class Analysis implements IAnalysis {
 
@@ -140,6 +143,8 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
   private final Map<NodeRef<Join>, JoinUsingAnalysis> joinUsing = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, SubqueryAnalysis> subQueries = new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, PredicateCoercions> predicateCoercions =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
 
@@ -200,6 +205,8 @@ public class Analysis implements IAnalysis {
   // if emptyDataSource, there is no need to execute the query in BE
   private boolean emptyDataSource = false;
 
+  private boolean isQuery = false;
+
   public DataPartition getDataPartition() {
     return dataPartition;
   }
@@ -214,6 +221,7 @@ public class Analysis implements IAnalysis {
   }
 
   public Statement getStatement() {
+    requireNonNull(root);
     return root;
   }
 
@@ -676,6 +684,14 @@ public class Analysis implements IAnalysis {
     return tableColumnSchemas.get(qualifiedObjectName);
   }
 
+  public void addPredicateCoercions(Map<NodeRef<Expression>, PredicateCoercions> coercions) {
+    predicateCoercions.putAll(coercions);
+  }
+
+  public PredicateCoercions getPredicateCoercions(Expression expression) {
+    return predicateCoercions.get(NodeRef.of(expression));
+  }
+
   public boolean hasValueFilter() {
     return hasValueFilter;
   }
@@ -750,12 +766,17 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean isQuery() {
-    return false;
+    return isQuery;
+  }
+
+  public void setQuery(boolean query) {
+    isQuery = query;
   }
 
   @Override
   public boolean needSetHighestPriority() {
-    return false;
+    return root instanceof ShowStatement
+        && ((ShowStatement) root).getTableName().equals(QUERIES.getSchemaTableName());
   }
 
   @Override
@@ -820,7 +841,7 @@ public class Analysis implements IAnalysis {
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String database, IDeviceID deviceId, Filter timeFilter) {
     if (dataPartition == null) {
-      return Collections.singletonList(new TRegionReplicaSet());
+      return Collections.singletonList(NOT_ASSIGNED);
     } else {
       return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
     }
@@ -1097,6 +1118,35 @@ public class Analysis implements IAnalysis {
 
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
+    }
+  }
+
+  /**
+   * Analysis for predicates such as <code>x IN (subquery)</code> or <code>x = SOME (subquery)
+   * </code>
+   */
+  public static class PredicateCoercions {
+    private final Type valueType;
+    private final Optional<Type> valueCoercion;
+    private final Optional<Type> subqueryCoercion;
+
+    public PredicateCoercions(
+        Type valueType, Optional<Type> valueCoercion, Optional<Type> subqueryCoercion) {
+      this.valueType = requireNonNull(valueType, "valueType is null");
+      this.valueCoercion = requireNonNull(valueCoercion, "valueCoercion is null");
+      this.subqueryCoercion = requireNonNull(subqueryCoercion, "subqueryCoercion is null");
+    }
+
+    public Type getValueType() {
+      return valueType;
+    }
+
+    public Optional<Type> getValueCoercion() {
+      return valueCoercion;
+    }
+
+    public Optional<Type> getSubqueryCoercion() {
+      return subqueryCoercion;
     }
   }
 

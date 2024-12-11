@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -71,6 +72,31 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
   }
 
   @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOG.info(
+          "procedureId {}-RemoveDataNodes skips acquiring lock, since upper layer ensures the serial execution.",
+          getProcId());
+      return ProcedureLockState.LOCK_ACQUIRED;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOG.info(
+          "procedureId {}-RemoveDataNodes skips releasing lock, since it hasn't acquire any lock.",
+          getProcId());
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveDataNodeState state) {
     if (removedDataNodes.isEmpty()) {
       return Flow.NO_MORE_STATE;
@@ -107,7 +133,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
-          submitChildRegionMigrate(env);
+          // Avoid re-submit region-migration when leader change or ConfigNode reboot
+          if (!isStateDeserialized()) {
+            submitChildRegionMigrate(env);
+          }
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
@@ -154,7 +183,13 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                     coordinatorForAddPeer,
                     coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
-            LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
+            LOG.info(
+                "Submit RegionMigrateProcedure for regionId {}: removedDataNode={}, destDataNode={}, coordinatorForAddPeer={}, coordinatorForRemovePeer={}",
+                regionId,
+                simplifyTDataNodeLocation(removedDataNode),
+                simplifyTDataNodeLocation(destDataNode),
+                simplifyTDataNodeLocation(coordinatorForAddPeer),
+                simplifyTDataNodeLocation(coordinatorForRemovePeer));
           } else {
             LOG.error(
                 "{}, Cannot find target DataNode to migrate the region: {}",
@@ -163,6 +198,12 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             // TODO terminate all the uncompleted remove datanode process
           }
         });
+  }
+
+  private String simplifyTDataNodeLocation(TDataNodeLocation dataNodeLocation) {
+    return String.format(
+        "DataNode(id:%d, address:%s)",
+        dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint().getIp());
   }
 
   private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {

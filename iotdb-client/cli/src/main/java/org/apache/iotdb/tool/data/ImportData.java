@@ -21,15 +21,12 @@ package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tool.tsfile.ImportTsFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -37,176 +34,226 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.thrift.annotation.Nullable;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.Field;
-import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.tsfile.enums.TSDataType.STRING;
-import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class ImportData extends AbstractDataTool {
 
   private static final String FILE_ARGS = "s";
-  private static final String FILE_NAME = "sourceFileOrFolder";
+  private static final String FILE_NAME = "source";
 
-  private static final String FAILED_FILE_ARGS = "fd";
-  private static final String FAILED_FILE_NAME = "failed file directory";
+  private static final String ON_SUCCESS_ARGS = "os";
+  private static final String ON_SUCCESS_NAME = "on_success";
+
+  private static final String SUCCESS_DIR_ARGS = "sd";
+  private static final String SUCCESS_DIR_NAME = "success_dir";
+
+  private static final String FAIL_DIR_ARGS = "fd";
+  private static final String FAIL_DIR_NAME = "fail_dir";
+
+  private static final String ON_FAIL_ARGS = "of";
+  private static final String ON_FAIL_NAME = "on_fail";
+
+  private static final String THREAD_NUM_ARGS = "tn";
+  private static final String THREAD_NUM_NAME = "thread_num";
 
   private static final String BATCH_POINT_SIZE_ARGS = "batch";
-  private static final String BATCH_POINT_SIZE_NAME = "batch point size";
+  private static final String BATCH_POINT_SIZE_NAME = "batch_size";
+  private static final String BATCH_POINT_SIZE_ARGS_NAME = "batch_size";
 
   private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "use the aligned interface";
-
-  private static final String CSV_SUFFIXS = "csv";
-  private static final String TXT_SUFFIXS = "txt";
-
-  private static final String SQL_SUFFIXS = "sql";
+  private static final String ALIGNED_NAME = "use_aligned";
+  private static final String ALIGNED_ARGS_NAME = "use the aligned interface";
 
   private static final String TIMESTAMP_PRECISION_ARGS = "tp";
-  private static final String TIMESTAMP_PRECISION_NAME = "timestamp precision (ms/us/ns)";
+  private static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
+  private static final String TIMESTAMP_PRECISION_ARGS_NAME = "timestamp precision (ms/us/ns)";
 
-  private static final String TYPE_INFER_ARGS = "typeInfer";
-  private static final String TYPE_INFER_ARGS_NAME = "type infer";
+  private static final String TYPE_INFER_ARGS = "ti";
+  private static final String TYPE_INFER_NAME = "type_infer";
 
   private static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
-  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "linesPerFailedFile";
+  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "lines_per_failed_file";
 
-  private static final String TSFILEDB_CLI_PREFIX = "ImportData";
+  private static final String TSFILEDB_CLI_PREFIX = "Import Data";
+  private static final String TSFILEDB_CLI_HEAD =
+      "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
+          + "./import_data.sh -help tsfile\n"
+          + "./import_data.sh -help sql\n"
+          + "./import_data.sh -help csv";
 
   private static String targetPath;
-  private static String failedFileDirectory = null;
-  private static int linesPerFailedFile = 10000;
+  private static String fileType = null;
   private static Boolean aligned = false;
-
-  private static String timeColumn = "Time";
-  private static String deviceColumn = "Device";
-
-  private static int batchPointSize = 100_000;
-
-  private static String timestampPrecision = "ms";
-
-  private static final String DATATYPE_BOOLEAN = "boolean";
-  private static final String DATATYPE_INT = "int";
-  private static final String DATATYPE_LONG = "long";
-  private static final String DATATYPE_FLOAT = "float";
-  private static final String DATATYPE_DOUBLE = "double";
-  private static final String DATATYPE_TIMESTAMP = "timestamp";
-  private static final String DATATYPE_DATE = "date";
-  private static final String DATATYPE_BLOB = "blob";
-  private static final String DATATYPE_NAN = "NaN";
-  private static final String DATATYPE_TEXT = "text";
-
-  private static final String DATATYPE_NULL = "null";
-  private static int fetchSize = 1000;
-
-  private static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
-
-  private static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
-
-  static {
-    TYPE_INFER_KEY_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_INT, TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_LONG, TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
-    TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
-  }
-
-  private static final Map<String, TSDataType> TYPE_INFER_VALUE_DICT = new HashMap<>();
-
-  static {
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_INT, TSDataType.INT32);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_LONG, TSDataType.INT64);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
-    TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
-  }
+  private static int threadNum = 8;
+  private static SessionPool sessionPool;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  /**
-   * create the commandline options.
-   *
-   * @return object Options
-   */
-  private static Options createOptions() {
-    Options options = createNewOptions();
+  private static Options createTsFileOptions() {
+    Options options = createImportOptions();
 
     Option opFile =
         Option.builder(FILE_ARGS)
             .required()
+            .longOpt(FILE_NAME)
             .argName(FILE_NAME)
             .hasArg()
-            .desc(
-                "If input a file path, load a csv file, "
-                    + "otherwise load all csv file under this directory (required)")
+            .desc("The local directory path of the script file (folder) to be loaded. (required)")
             .build();
     options.addOption(opFile);
 
-    Option opFailedFile =
-        Option.builder(FAILED_FILE_ARGS)
-            .argName(FAILED_FILE_NAME)
+    Option opOnSuccess =
+        Option.builder(ON_SUCCESS_ARGS)
+            .longOpt(ON_SUCCESS_NAME)
+            .argName(ON_SUCCESS_NAME)
+            .required()
+            .hasArg()
+            .desc(
+                "When loading tsfile successfully, do operation on tsfile (and its .resource and .mods files), "
+                    + "optional parameters are none, mv, cp, delete. (required)")
+            .build();
+    options.addOption(opOnSuccess);
+
+    Option opSuccessDir =
+        Option.builder(SUCCESS_DIR_ARGS)
+            .longOpt(SUCCESS_DIR_NAME)
+            .argName(SUCCESS_DIR_NAME)
+            .hasArg()
+            .desc("The target folder when 'os' is 'mv' or 'cp'.(optional)")
+            .build();
+    options.addOption(opSuccessDir);
+
+    Option opOnFail =
+        Option.builder(ON_FAIL_ARGS)
+            .longOpt(ON_FAIL_NAME)
+            .argName(ON_FAIL_NAME)
+            .required()
+            .hasArg()
+            .desc(
+                "When loading tsfile fail, do operation on tsfile (and its .resource and .mods files), "
+                    + "optional parameters are none, mv, cp, delete. (required)")
+            .build();
+    options.addOption(opOnFail);
+
+    Option opFailDir =
+        Option.builder(FAIL_DIR_ARGS)
+            .longOpt(FAIL_DIR_NAME)
+            .argName(FAIL_DIR_NAME)
+            .hasArg()
+            .desc("The target folder when 'of' is 'mv' or 'cp'.(optional)")
+            .build();
+    options.addOption(opFailDir);
+
+    Option opThreadNum =
+        Option.builder(THREAD_NUM_ARGS)
+            .longOpt(THREAD_NUM_NAME)
+            .argName(THREAD_NUM_NAME)
+            .hasArg()
+            .desc("The number of threads used to import tsfile, default is 8.(optional)")
+            .build();
+    options.addOption(opThreadNum);
+
+    Option opTimeZone =
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
+            .argName(TIME_ZONE_NAME)
+            .hasArg()
+            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
+            .build();
+    options.addOption(opTimeZone);
+
+    Option opTimestampPrecision =
+        Option.builder(TIMESTAMP_PRECISION_ARGS)
+            .longOpt(TIMESTAMP_PRECISION_NAME)
+            .argName(TIMESTAMP_PRECISION_ARGS_NAME)
+            .hasArg()
+            .desc("Timestamp precision (ms/us/ns) (optional)")
+            .build();
+
+    options.addOption(opTimestampPrecision);
+    return options;
+  }
+
+  private static Options createCsvOptions() {
+    Options options = createImportOptions();
+
+    Option opFile =
+        Option.builder(FILE_ARGS)
+            .longOpt(FILE_NAME)
+            .argName(FILE_NAME)
+            .required()
+            .hasArg()
+            .desc("The local directory path of the script file (folder) to be loaded. (required)")
+            .build();
+    options.addOption(opFile);
+
+    Option opFailDir =
+        Option.builder(FAIL_DIR_ARGS)
+            .longOpt(FAIL_DIR_NAME)
+            .argName(FAIL_DIR_NAME)
             .hasArg()
             .desc(
                 "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
             .build();
-    options.addOption(opFailedFile);
+    options.addOption(opFailDir);
+
+    Option opFailedLinesPerFile =
+        Option.builder(LINES_PER_FAILED_FILE_ARGS)
+            .longOpt(LINES_PER_FAILED_FILE_ARGS_NAME)
+            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
+            .hasArgs()
+            .desc("Lines per failed file (optional)")
+            .build();
+    options.addOption(opFailedLinesPerFile);
 
     Option opAligned =
         Option.builder(ALIGNED_ARGS)
-            .argName(ALIGNED_NAME)
+            .longOpt(ALIGNED_NAME)
+            .argName(ALIGNED_ARGS_NAME)
             .hasArg()
-            .desc("Whether to use the interface of aligned(only csv optional)")
+            .desc("Whether to use the interface of aligned (optional)")
             .build();
     options.addOption(opAligned);
 
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
+    Option opTypeInfer =
+        Option.builder(TYPE_INFER_ARGS)
+            .longOpt(TYPE_INFER_NAME)
+            .argName(TYPE_INFER_NAME)
+            .numberOfArgs(5)
+            .hasArgs()
+            .valueSeparator(',')
+            .desc("Define type info by option:\"boolean=text,int=long, ... (optional)")
             .build();
-    options.addOption(opHelp);
+    options.addOption(opTypeInfer);
+
+    Option opTimestampPrecision =
+        Option.builder(TIMESTAMP_PRECISION_ARGS)
+            .longOpt(TIMESTAMP_PRECISION_NAME)
+            .argName(TIMESTAMP_PRECISION_ARGS_NAME)
+            .hasArg()
+            .desc("Timestamp precision (ms/us/ns) (optional)")
+            .build();
+
+    options.addOption(opTimestampPrecision);
 
     Option opTimeZone =
         Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
             .argName(TIME_ZONE_NAME)
             .hasArg()
             .desc("Time Zone eg. +08:00 or -01:00 (optional)")
@@ -215,39 +262,81 @@ public class ImportData extends AbstractDataTool {
 
     Option opBatchPointSize =
         Option.builder(BATCH_POINT_SIZE_ARGS)
+            .longOpt(BATCH_POINT_SIZE_NAME)
+            .argName(BATCH_POINT_SIZE_ARGS_NAME)
+            .hasArg()
+            .desc("100000 (optional)")
+            .build();
+    options.addOption(opBatchPointSize);
+
+    Option opThreadNum =
+        Option.builder(THREAD_NUM_ARGS)
+            .longOpt(THREAD_NUM_NAME)
+            .argName(THREAD_NUM_NAME)
+            .hasArg()
+            .desc("The number of threads used to import tsfile, default is 8. (optional)")
+            .build();
+    options.addOption(opThreadNum);
+    return options;
+  }
+
+  private static Options createSqlOptions() {
+    Options options = createImportOptions();
+
+    Option opFile =
+        Option.builder(FILE_ARGS)
+            .required()
+            .longOpt(FILE_NAME)
+            .argName(FILE_NAME)
+            .hasArg()
+            .desc("The local directory path of the script file (folder) to be loaded. (required)")
+            .build();
+    options.addOption(opFile);
+
+    Option opFailDir =
+        Option.builder(FAIL_DIR_ARGS)
+            .longOpt(FAIL_DIR_NAME)
+            .argName(FAIL_DIR_NAME)
+            .hasArg()
+            .desc(
+                "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
+            .build();
+    options.addOption(opFailDir);
+
+    Option opFailedLinesPerFile =
+        Option.builder(LINES_PER_FAILED_FILE_ARGS)
+            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
+            .hasArgs()
+            .desc("Lines per failed file (optional)")
+            .build();
+    options.addOption(opFailedLinesPerFile);
+
+    Option opTimeZone =
+        Option.builder(TIME_ZONE_ARGS)
+            .longOpt(TIME_ZONE_NAME)
+            .argName(TIME_ZONE_NAME)
+            .hasArg()
+            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
+            .build();
+    options.addOption(opTimeZone);
+
+    Option opBatchPointSize =
+        Option.builder(BATCH_POINT_SIZE_ARGS)
+            .longOpt(BATCH_POINT_SIZE_NAME)
             .argName(BATCH_POINT_SIZE_NAME)
             .hasArg()
             .desc("100000 (optional)")
             .build();
     options.addOption(opBatchPointSize);
 
-    Option opTimestampPrecision =
-        Option.builder(TIMESTAMP_PRECISION_ARGS)
-            .argName(TIMESTAMP_PRECISION_NAME)
-            .hasArg()
-            .desc("Timestamp precision (ms/us/ns)")
-            .build();
-
-    options.addOption(opTimestampPrecision);
-
-    Option opTypeInfer =
-        Option.builder(TYPE_INFER_ARGS)
-            .argName(TYPE_INFER_ARGS_NAME)
-            .numberOfArgs(5)
+    Option opThreadNum =
+        Option.builder(THREAD_NUM_ARGS)
+            .longOpt(THREAD_NUM_NAME)
+            .argName(THREAD_NUM_NAME)
             .hasArgs()
-            .valueSeparator(',')
-            .desc("Define type info by option:\"boolean=text,int=long, ...")
+            .desc("The number of threads used to import tsfile, default is 8. (optional)")
             .build();
-    options.addOption(opTypeInfer);
-
-    Option opFailedLinesPerFile =
-        Option.builder(LINES_PER_FAILED_FILE_ARGS)
-            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .hasArgs()
-            .desc("Lines per failed file")
-            .build();
-    options.addOption(opFailedLinesPerFile);
-
+    options.addOption(opThreadNum);
     return options;
   }
 
@@ -262,8 +351,8 @@ public class ImportData extends AbstractDataTool {
     if (commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS) != null) {
       batchPointSize = Integer.parseInt(commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS));
     }
-    if (commandLine.getOptionValue(FAILED_FILE_ARGS) != null) {
-      failedFileDirectory = commandLine.getOptionValue(FAILED_FILE_ARGS);
+    if (commandLine.getOptionValue(FAIL_DIR_ARGS) != null) {
+      failedFileDirectory = commandLine.getOptionValue(FAIL_DIR_ARGS);
       File file = new File(failedFileDirectory);
       if (!file.isDirectory()) {
         file.mkdir();
@@ -275,7 +364,15 @@ public class ImportData extends AbstractDataTool {
     if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
       aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
     }
-
+    if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
+      threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
+      if (threadNum <= 0) {
+        ioTPrinter.println(
+            String.format(
+                "error: Invalid thread number '%s'. Please set a positive integer.", threadNum));
+        System.exit(CODE_ERROR);
+      }
+    }
     if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
       timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
     }
@@ -321,7 +418,10 @@ public class ImportData extends AbstractDataTool {
   }
 
   public static void main(String[] args) throws IoTDBConnectionException {
-    Options options = createOptions();
+    Options helpOptions = createHelpOptions();
+    Options tsFileOptions = createTsFileOptions();
+    Options csvOptions = createCsvOptions();
+    Options sqlOptions = createSqlOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -329,19 +429,104 @@ public class ImportData extends AbstractDataTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      ioTPrinter.println("Too few params input, please check the following hint.");
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      printHelpOptions(
+          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
     try {
-      commandLine = parser.parse(options, args);
+      commandLine = parser.parse(helpOptions, args, true);
     } catch (org.apache.commons.cli.ParseException e) {
-      ioTPrinter.println("Parse error: " + e.getMessage());
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      printHelpOptions(
+          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
       System.exit(CODE_ERROR);
     }
-    if (commandLine.hasOption(HELP_ARGS)) {
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+    final List<String> argList = Arrays.asList(args);
+    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
+    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
+    if (ftIndex < 0) {
+      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
+    }
+    if (helpIndex >= 0) {
+      fileType = argList.get(helpIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              TSFILEDB_CLI_HEAD,
+              TSFILEDB_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+        }
+      } else {
+        printHelpOptions(
+            TSFILEDB_CLI_HEAD,
+            TSFILEDB_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+      }
+      System.exit(CODE_ERROR);
+    } else if (ftIndex >= 0) {
+      fileType = argList.get(ftIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(tsFileOptions, args);
+            ImportTsFile.importData(commandLine);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(csvOptions, args);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(sqlOptions, args);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
+            System.exit(CODE_ERROR);
+          }
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              TSFILEDB_CLI_HEAD,
+              TSFILEDB_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+          System.exit(CODE_ERROR);
+        }
+      } else {
+        ioTPrinter.println(
+            String.format(
+                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
+        System.exit(CODE_ERROR);
+      }
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
       System.exit(CODE_ERROR);
     }
 
@@ -349,7 +534,9 @@ public class ImportData extends AbstractDataTool {
       parseBasicParams(commandLine);
       String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
-        hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+        ioTPrinter.println(TSFILEDB_CLI_HEAD);
+        printHelpOptions(
+            null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
         System.exit(CODE_ERROR);
       }
       parseSpecialParams(commandLine);
@@ -360,10 +547,67 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println("Encounter an error, because: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
+    final int resultCode = importFromTargetPathAsync();
+    if (ImportDataScanTool.getTsFileQueueSize() <= 0) {
+      System.exit(CODE_OK);
+    }
+    asyncImportDataFiles();
+    System.exit(resultCode);
+  }
 
-    System.exit(
-        importFromTargetPath(
-            host, Integer.parseInt(port), username, password, targetPath, timeZoneID));
+  private static void asyncImportDataFiles() {
+    List<Thread> list = new ArrayList<>(threadNum);
+    for (int i = 0; i < threadNum; i++) {
+      final Thread thread = new Thread(new AsyncImportData());
+      thread.start();
+      list.add(thread);
+    }
+    list.forEach(
+        thread -> {
+          try {
+            thread.join();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
+          }
+        });
+    ioTPrinter.println("Import completely!");
+  }
+
+  private static int importFromTargetPathAsync() {
+    try {
+      sessionPool =
+          new SessionPool.Builder()
+              .host(host)
+              .port(Integer.parseInt(port))
+              .user(username)
+              .password(password)
+              .maxSize(threadNum + 1)
+              .enableCompression(false)
+              .enableRedirection(false)
+              .enableAutoFetch(false)
+              .build();
+      sessionPool.setEnableQueryRedirection(false);
+      AsyncImportData.setAligned(aligned);
+      AsyncImportData.setSessionPool(sessionPool);
+      AsyncImportData.setTimeZone();
+      ImportDataScanTool.setSourceFullPath(targetPath);
+      final File file = new File(targetPath);
+      if (!file.isFile() && !file.isDirectory()) {
+        ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+        System.exit(CODE_ERROR);
+      }
+      ImportDataScanTool.traverseAndCollectFiles();
+      asyncImportDataFiles();
+      return CODE_OK;
+    } catch (InterruptedException e) {
+      ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      Thread.currentThread().interrupt();
+      return CODE_ERROR;
+    } catch (Exception e) {
+      ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      return CODE_ERROR;
+    }
   }
 
   /**
@@ -392,9 +636,9 @@ public class ImportData extends AbstractDataTool {
       File file = new File(targetPath);
       if (file.isFile()) {
         if (file.getName().endsWith(SQL_SUFFIXS)) {
-          importFromSqlFile(file);
+          importFromSqlFile(session, file);
         } else {
-          importFromSingleFile(file);
+          importFromSingleFile(session, file);
         }
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
@@ -405,9 +649,9 @@ public class ImportData extends AbstractDataTool {
         for (File subFile : files) {
           if (subFile.isFile()) {
             if (subFile.getName().endsWith(SQL_SUFFIXS)) {
-              importFromSqlFile(subFile);
+              importFromSqlFile(session, subFile);
             } else {
-              importFromSingleFile(subFile);
+              importFromSingleFile(session, subFile);
             }
           }
         }
@@ -431,7 +675,7 @@ public class ImportData extends AbstractDataTool {
    *
    * @param file the File object of the CSV file that you want to import.
    */
-  private static void importFromSingleFile(File file) {
+  private static void importFromSingleFile(Session session, File file) {
     if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
@@ -452,9 +696,9 @@ public class ImportData extends AbstractDataTool {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
         if (!deviceColumn.equalsIgnoreCase(headerNames.get(1))) {
-          writeDataAlignedByTime(headerNames, records, failedFilePath);
+          writeDataAlignedByTime(session, headerNames, records, failedFilePath);
         } else {
-          writeDataAlignedByDevice(headerNames, records, failedFilePath);
+          writeDataAlignedByDevice(session, headerNames, records, failedFilePath);
         }
       } catch (IOException | IllegalPathException e) {
         ioTPrinter.println("CSV file read exception because: " + e.getMessage());
@@ -465,7 +709,7 @@ public class ImportData extends AbstractDataTool {
   }
 
   @SuppressWarnings("java:S2259")
-  private static void importFromSqlFile(File file) {
+  private static void importFromSqlFile(Session session, File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
     String failedFilePath = null;
     if (failedFileDirectory == null) {
@@ -505,568 +749,5 @@ public class ImportData extends AbstractDataTool {
         }
       }
     }
-  }
-
-  /**
-   * if the data is aligned by time, the data will be written by this method.
-   *
-   * @param headerNames the header names of CSV file
-   * @param records the records of CSV file
-   * @param failedFilePath the directory to save the failed files
-   */
-  @SuppressWarnings("squid:S3776")
-  private static void writeDataAlignedByTime(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
-      throws IllegalPathException {
-    HashMap<String, List<String>> deviceAndMeasurementNames = new HashMap<>();
-    HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
-    HashMap<String, String> headerNameMap = new HashMap<>();
-    parseHeaders(headerNames, deviceAndMeasurementNames, headerTypeMap, headerNameMap);
-
-    Set<String> devices = deviceAndMeasurementNames.keySet();
-    if (headerTypeMap.isEmpty()) {
-      queryType(devices, headerTypeMap, "Time");
-    }
-
-    List<String> deviceIds = new ArrayList<>();
-    List<Long> times = new ArrayList<>();
-    List<List<String>> measurementsList = new ArrayList<>();
-    List<List<TSDataType>> typesList = new ArrayList<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-
-    AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
-    AtomicInteger pointSize = new AtomicInteger(0);
-
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
-
-    records.forEach(
-        recordObj -> {
-          if (Boolean.FALSE.equals(hasStarted.get())) {
-            hasStarted.set(true);
-          } else if (pointSize.get() >= batchPointSize) {
-            writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
-            pointSize.set(0);
-          }
-
-          boolean isFail = false;
-
-          for (Map.Entry<String, List<String>> entry : deviceAndMeasurementNames.entrySet()) {
-            String deviceId = entry.getKey();
-            List<String> measurementNames = entry.getValue();
-            ArrayList<TSDataType> types = new ArrayList<>();
-            ArrayList<Object> values = new ArrayList<>();
-            ArrayList<String> measurements = new ArrayList<>();
-            for (String measurement : measurementNames) {
-              String header = deviceId + "." + measurement;
-              String value = recordObj.get(headerNameMap.get(header));
-              if (!"".equals(value)) {
-                TSDataType type;
-                if (!headerTypeMap.containsKey(header)) {
-                  type = typeInfer(value);
-                  if (type != null) {
-                    headerTypeMap.put(header, type);
-                  } else {
-                    ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
-                    isFail = true;
-                  }
-                }
-                type = headerTypeMap.get(header);
-                if (type != null) {
-                  Object valueTrans = typeTrans(value, type);
-                  if (valueTrans == null) {
-                    isFail = true;
-                    ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        recordObj.getRecordNumber(), header, value, type);
-                  } else {
-                    measurements.add(header.replace(deviceId + '.', ""));
-                    types.add(type);
-                    values.add(valueTrans);
-                    pointSize.getAndIncrement();
-                  }
-                }
-              }
-            }
-            if (!measurements.isEmpty()) {
-              times.add(parseTimestamp(recordObj.get(timeColumn)));
-              deviceIds.add(deviceId);
-              typesList.add(types);
-              valuesList.add(values);
-              measurementsList.add(measurements);
-            }
-          }
-          if (isFail) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-          }
-        });
-    if (!deviceIds.isEmpty()) {
-      writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
-      pointSize.set(0);
-    }
-
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
-    }
-    if (Boolean.TRUE.equals(hasStarted.get())) {
-      ioTPrinter.println("Import completely!");
-    } else {
-      ioTPrinter.println("No records!");
-    }
-  }
-
-  /**
-   * if the data is aligned by device, the data will be written by this method.
-   *
-   * @param headerNames the header names of CSV file
-   * @param records the records of CSV file
-   * @param failedFilePath the directory to save the failed files
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static void writeDataAlignedByDevice(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
-      throws IllegalPathException {
-    HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
-    HashMap<String, String> headerNameMap = new HashMap<>();
-    parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
-
-    AtomicReference<String> deviceName = new AtomicReference<>(null);
-
-    HashSet<String> typeQueriedDevice = new HashSet<>();
-
-    // the data that interface need
-    List<Long> times = new ArrayList<>();
-    List<List<TSDataType>> typesList = new ArrayList<>();
-    List<List<Object>> valuesList = new ArrayList<>();
-    List<List<String>> measurementsList = new ArrayList<>();
-
-    AtomicInteger pointSize = new AtomicInteger(0);
-
-    ArrayList<List<Object>> failedRecords = new ArrayList<>();
-
-    records.forEach(
-        recordObj -> {
-          // only run in first record
-          if (deviceName.get() == null) {
-            deviceName.set(recordObj.get(1));
-          } else if (!Objects.equals(deviceName.get(), recordObj.get(1))) {
-            // if device changed
-            writeAndEmptyDataSet(
-                deviceName.get(), times, typesList, valuesList, measurementsList, 3);
-            deviceName.set(recordObj.get(1));
-            pointSize.set(0);
-          } else if (pointSize.get() >= batchPointSize) {
-            // insert a batch
-            writeAndEmptyDataSet(
-                deviceName.get(), times, typesList, valuesList, measurementsList, 3);
-            pointSize.set(0);
-          }
-
-          // the data of the record
-          ArrayList<TSDataType> types = new ArrayList<>();
-          ArrayList<Object> values = new ArrayList<>();
-          ArrayList<String> measurements = new ArrayList<>();
-
-          AtomicReference<Boolean> isFail = new AtomicReference<>(false);
-
-          // read data from record
-          for (Map.Entry<String, String> headerNameEntry : headerNameMap.entrySet()) {
-            // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
-            String headerNameWithoutType = headerNameEntry.getKey();
-            String headerName = headerNameEntry.getValue();
-            String value = recordObj.get(headerName);
-            if (!"".equals(value)) {
-              TSDataType type;
-              // Get the data type directly if the CSV column have data type.
-              if (!headerTypeMap.containsKey(headerNameWithoutType)) {
-                boolean hasResult = false;
-                // query the data type in iotdb
-                if (!typeQueriedDevice.contains(deviceName.get())) {
-                  if (headerTypeMap.isEmpty()) {
-                    Set<String> devices = new HashSet<>();
-                    devices.add(deviceName.get());
-                    queryType(devices, headerTypeMap, deviceColumn);
-                  }
-                  typeQueriedDevice.add(deviceName.get());
-                }
-                type = typeInfer(value);
-                if (type != null) {
-                  headerTypeMap.put(headerNameWithoutType, type);
-                } else {
-                  ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
-                  isFail.set(true);
-                }
-              }
-              type = headerTypeMap.get(headerNameWithoutType);
-              if (type != null) {
-                Object valueTrans = typeTrans(value, type);
-                if (valueTrans == null) {
-                  isFail.set(true);
-                  ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
-                } else {
-                  values.add(valueTrans);
-                  measurements.add(headerNameWithoutType);
-                  types.add(type);
-                  pointSize.getAndIncrement();
-                }
-              }
-            }
-          }
-          if (Boolean.TRUE.equals(isFail.get())) {
-            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-          }
-          if (!measurements.isEmpty()) {
-            times.add(parseTimestamp(recordObj.get(timeColumn)));
-            typesList.add(types);
-            valuesList.add(values);
-            measurementsList.add(measurements);
-          }
-        });
-    if (!times.isEmpty()) {
-      writeAndEmptyDataSet(deviceName.get(), times, typesList, valuesList, measurementsList, 3);
-      pointSize.set(0);
-    }
-    if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
-    }
-    ioTPrinter.println("Import completely!");
-  }
-
-  private static void writeFailedLinesFile(
-      List<String> headerNames, String failedFilePath, ArrayList<List<Object>> failedRecords) {
-    int fileIndex = 0;
-    int from = 0;
-    int failedRecordsSize = failedRecords.size();
-    int restFailedRecords = failedRecordsSize;
-    while (from < failedRecordsSize) {
-      int step = Math.min(restFailedRecords, linesPerFailedFile);
-      writeCsvFile(
-          headerNames,
-          failedRecords.subList(from, from + step),
-          failedFilePath + "_" + fileIndex++);
-      from += step;
-      restFailedRecords -= step;
-    }
-  }
-
-  private static void writeAndEmptyDataSet(
-      String device,
-      List<Long> times,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList,
-      List<List<String>> measurementsList,
-      int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
-      } else {
-        session.insertAlignedRecordsOfOneDevice(
-            device, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        try {
-          session.open();
-        } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-        }
-        writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
-      System.exit(1);
-    } finally {
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
-  }
-
-  private static void writeAndEmptyDataSet(
-      List<String> deviceIds,
-      List<Long> times,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList,
-      List<List<String>> measurementsList,
-      int retryTime) {
-    try {
-      if (Boolean.FALSE.equals(aligned)) {
-        session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
-    } catch (IoTDBConnectionException e) {
-      if (retryTime > 0) {
-        try {
-          session.open();
-        } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-        }
-        writeAndEmptyDataSet(
-            deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      try {
-        session.close();
-      } catch (IoTDBConnectionException ex) {
-        // do nothing
-      }
-      System.exit(1);
-    } finally {
-      deviceIds.clear();
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    }
-  }
-
-  /**
-   * read data from the CSV file
-   *
-   * @param path
-   * @return CSVParser csv parser
-   * @throws IOException when reading the csv file failed.
-   */
-  private static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.Builder.create(CSVFormat.DEFAULT)
-        .setHeader()
-        .setSkipHeaderRecord(true)
-        .setQuote('`')
-        .setEscape('\\')
-        .setIgnoreEmptyLines(true)
-        .build()
-        .parse(new InputStreamReader(new FileInputStream(path)));
-  }
-
-  /**
-   * parse deviceNames, measurementNames(aligned by time), headerType from headers
-   *
-   * @param headerNames
-   * @param deviceAndMeasurementNames
-   * @param headerTypeMap
-   * @param headerNameMap
-   */
-  @SuppressWarnings(
-      "squid:S135") // ignore for loops should not contain more than a single "break" or "continue"
-  // statement
-  private static void parseHeaders(
-      List<String> headerNames,
-      @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
-      HashMap<String, TSDataType> headerTypeMap,
-      HashMap<String, String> headerNameMap)
-      throws IllegalPathException {
-    String regex = "(?<=\\()\\S+(?=\\))";
-    Pattern pattern = Pattern.compile(regex);
-    for (String headerName : headerNames) {
-      if ("Time".equalsIgnoreCase(filterBomHeader(headerName))) {
-        timeColumn = headerName;
-        continue;
-      } else if ("Device".equalsIgnoreCase(headerName)) {
-        deviceColumn = headerName;
-        continue;
-      }
-      Matcher matcher = pattern.matcher(headerName);
-      String type;
-      String headerNameWithoutType;
-      if (matcher.find()) {
-        type = matcher.group();
-        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
-        headerNameMap.put(headerNameWithoutType, headerName);
-        headerTypeMap.put(headerNameWithoutType, getType(type));
-      } else {
-        headerNameWithoutType = headerName;
-        headerNameMap.put(headerName, headerName);
-      }
-      String[] split = PathUtils.splitPathToDetachedNodes(headerNameWithoutType);
-      String measurementName = split[split.length - 1];
-      String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
-      if (deviceAndMeasurementNames != null) {
-        deviceAndMeasurementNames.putIfAbsent(deviceName, new ArrayList<>());
-        deviceAndMeasurementNames.get(deviceName).add(measurementName);
-      }
-    }
-  }
-
-  /**
-   * query data type of timeseries from IoTDB
-   *
-   * @param deviceNames
-   * @param headerTypeMap
-   * @param alignedType
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
-   */
-  private static void queryType(
-      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType) {
-    for (String deviceName : deviceNames) {
-      String sql = "show timeseries " + deviceName + ".*";
-      SessionDataSet sessionDataSet = null;
-      try {
-        sessionDataSet = session.executeQueryStatement(sql);
-        int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
-        int dtIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
-        while (sessionDataSet.hasNext()) {
-          RowRecord rowRecord = sessionDataSet.next();
-          List<Field> fields = rowRecord.getFields();
-          String timeseries = fields.get(tsIndex).getStringValue();
-          String dataType = fields.get(dtIndex).getStringValue();
-          if (Objects.equals(alignedType, "Time")) {
-            headerTypeMap.put(timeseries, getType(dataType));
-          } else if (Objects.equals(alignedType, deviceColumn)) {
-            String[] split = PathUtils.splitPathToDetachedNodes(timeseries);
-            String measurement = split[split.length - 1];
-            headerTypeMap.put(measurement, getType(dataType));
-          }
-        }
-      } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
-        ioTPrinter.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
-        try {
-          session.close();
-        } catch (IoTDBConnectionException ex) {
-          // do nothing
-        }
-        System.exit(1);
-      }
-    }
-  }
-
-  /**
-   * return the TSDataType
-   *
-   * @param typeStr
-   * @return
-   */
-  private static TSDataType getType(String typeStr) {
-    try {
-      return TSDataType.valueOf(typeStr);
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  /**
-   * if data type of timeseries is not defined in headers of schema, this method will be called to
-   * do type inference
-   *
-   * @param strValue
-   * @return
-   */
-  private static TSDataType typeInfer(String strValue) {
-    if (strValue.contains("\"")) {
-      return strValue.length() <= 512 + 2 ? STRING : TEXT;
-    }
-    if (isBoolean(strValue)) {
-      return TYPE_INFER_KEY_DICT.get(DATATYPE_BOOLEAN);
-    } else if (isNumber(strValue)) {
-      if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-        if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return TYPE_INFER_KEY_DICT.get(DATATYPE_LONG);
-        }
-        return TYPE_INFER_KEY_DICT.get(DATATYPE_INT);
-      } else {
-        return TYPE_INFER_KEY_DICT.get(DATATYPE_FLOAT);
-      }
-    } else if (DATATYPE_NULL.equals(strValue) || DATATYPE_NULL.toUpperCase().equals(strValue)) {
-      return null;
-      // "NaN" is returned if the NaN Literal is given in Parser
-    } else if (DATATYPE_NAN.equals(strValue)) {
-      return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
-    } else if (strValue.length() <= 512) {
-      return STRING;
-    } else {
-      return TEXT;
-    }
-  }
-
-  static boolean isNumber(String s) {
-    if (s == null || s.equals(DATATYPE_NAN)) {
-      return false;
-    }
-    try {
-      Double.parseDouble(s);
-    } catch (NumberFormatException e) {
-      return false;
-    }
-    return true;
-  }
-
-  private static boolean isBoolean(String s) {
-    return s.equalsIgnoreCase(SqlConstant.BOOLEAN_TRUE)
-        || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
-  }
-
-  private static boolean isConvertFloatPrecisionLack(String s) {
-    return Long.parseLong(s) > (2 << 24);
-  }
-
-  /**
-   * @param value
-   * @param type
-   * @return
-   */
-  private static Object typeTrans(String value, TSDataType type) {
-    try {
-      switch (type) {
-        case TEXT:
-        case STRING:
-          if (value.startsWith("\"") && value.endsWith("\"")) {
-            return value.substring(1, value.length() - 1);
-          }
-          return value;
-        case BOOLEAN:
-          if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-            return null;
-          }
-          return Boolean.parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TIMESTAMP:
-        case DATE:
-        case BLOB:
-        default:
-          return null;
-      }
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
-
-  private static long parseTimestamp(String str) {
-    long timestamp;
-    try {
-      timestamp = Long.parseLong(str);
-    } catch (NumberFormatException e) {
-      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
-    }
-    return timestamp;
-  }
-
-  private static String filterBomHeader(String s) {
-    byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-    byte[] bytes = Arrays.copyOf(s.getBytes(), 3);
-    if (Arrays.equals(bom, bytes)) {
-      return s.substring(1);
-    }
-    return s;
   }
 }

@@ -47,6 +47,7 @@ import java.util.Map;
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -57,19 +58,19 @@ public class IoTDBInTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device1 STRING ID, device2 STRING ID, qrcode TEXT MEASUREMENT, date_v DATE MEASUREMENT, blob_v BLOB MEASUREMENT)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d1','s1','qrcode004', '2024-08-04', X'abc3')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465720000,'d1','s2','qrcode002', '2024-08-05', X'abc4')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d1','s2','qrcode003', '2024-08-06', X'abc5')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465840000,'d1','s2','qrcode004', '2024-08-07', X'abc6')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465900000,'d1','s2','qrcode005', '2024-08-08', X'abc7')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d2','s1','qrcode002', '2024-08-09', X'abc8')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca')",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb')",
+        "CREATE TABLE sg(device1 STRING ID, device2 STRING ID, qrcode TEXT MEASUREMENT, date_v DATE MEASUREMENT, blob_v BLOB MEASUREMENT, timestamp_v TIMESTAMP MEASUREMENT)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0',1509465600000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1',1509465660000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2',1509465720000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s1','qrcode004', '2024-08-04', X'abc3',1509465780000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s2','qrcode002', '2024-08-05', X'abc4',1509465720000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s2','qrcode003', '2024-08-06', X'abc5',1509465780000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d1','s2','qrcode004', '2024-08-07', X'abc6',1509465840000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d1','s2','qrcode005', '2024-08-08', X'abc7',1509465900000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d2','s1','qrcode002', '2024-08-09', X'abc8',1509465780000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9',1509465840000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca',1509465900000)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb',1509465960000)",
         "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT)",
       };
 
@@ -213,6 +214,68 @@ public class IoTDBInTableIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testTimestampIn() {
+    // select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000)
+    // 1509465600000,'d1','s1',
+    String[] expectedHeader = new String[] {"time", "device1", "device2", "timestamp_v"};
+    String[] retArray =
+        new String[] {
+          "2017-10-31T16:00:00.000Z,d1,s1,2017-10-31T16:00:00.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v=1509465600000",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v=2017-11-01T00:00:00.000+08:00",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v=CAST('2017-11-01T00:00:00.000+08:00' AS TIMESTAMP)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000.0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v=1509465600000.0",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray =
+        new String[] {
+          "2017-10-31T16:03:00.000Z,d1,s1,2017-10-31T16:03:00.000Z,",
+          "2017-10-31T16:03:00.000Z,d1,s2,2017-10-31T16:03:00.000Z,",
+          "2017-10-31T16:04:00.000Z,d1,s2,2017-10-31T16:04:00.000Z,",
+          "2017-10-31T16:05:00.000Z,d1,s2,2017-10-31T16:05:00.000Z,",
+          "2017-10-31T16:03:00.000Z,d2,s1,2017-10-31T16:03:00.000Z,",
+          "2017-10-31T16:04:00.000Z,d2,s1,2017-10-31T16:04:00.000Z,",
+          "2017-10-31T16:05:00.000Z,d2,s1,2017-10-31T16:05:00.000Z,",
+          "2017-10-31T16:06:00.000Z,d2,s1,2017-10-31T16:06:00.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from sg where timestamp_v not in (2017-11-01T00:00:00.000+08:00,1509465660000.0,CAST('2017-11-01T00:02:00.000+08:00' AS TIMESTAMP)) order by device1,device2,time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   private List<Integer> checkHeader(

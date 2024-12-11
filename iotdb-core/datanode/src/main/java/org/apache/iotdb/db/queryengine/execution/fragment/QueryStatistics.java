@@ -29,6 +29,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class QueryStatistics {
 
+  private final AtomicLong loadBloomFilterFromCacheCount = new AtomicLong(0);
+  private final AtomicLong loadBloomFilterFromDiskCount = new AtomicLong(0);
+  private final AtomicLong loadBloomFilterActualIOSize = new AtomicLong(0);
+  private final AtomicLong loadBloomFilterTime = new AtomicLong(0);
+
   // statistics for count and time of load timeseriesmetadata
   private final AtomicLong loadTimeSeriesMetadataDiskSeqCount = new AtomicLong(0);
   private final AtomicLong loadTimeSeriesMetadataDiskUnSeqCount = new AtomicLong(0);
@@ -48,6 +53,10 @@ public class QueryStatistics {
   private final AtomicLong loadTimeSeriesMetadataAlignedMemSeqTime = new AtomicLong(0);
   private final AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqTime = new AtomicLong(0);
 
+  private final AtomicLong loadTimeSeriesMetadataFromCacheCount = new AtomicLong(0);
+  private final AtomicLong loadTimeSeriesMetadataFromDiskCount = new AtomicLong(0);
+  private final AtomicLong loadTimeSeriesMetadataActualIOSize = new AtomicLong(0);
+
   // statistics for count and time of construct chunk readers(disk io and decompress)
   private final AtomicLong constructNonAlignedChunkReadersDiskCount = new AtomicLong(0);
   private final AtomicLong constructNonAlignedChunkReadersMemCount = new AtomicLong(0);
@@ -58,6 +67,10 @@ public class QueryStatistics {
   private final AtomicLong constructNonAlignedChunkReadersMemTime = new AtomicLong(0);
   private final AtomicLong constructAlignedChunkReadersDiskTime = new AtomicLong(0);
   private final AtomicLong constructAlignedChunkReadersMemTime = new AtomicLong(0);
+
+  private final AtomicLong loadChunkFromCacheCount = new AtomicLong(0);
+  private final AtomicLong loadChunkFromDiskCount = new AtomicLong(0);
+  private final AtomicLong loadChunkActualIOSize = new AtomicLong(0);
 
   // statistics for count and time of page decode
   private final AtomicLong pageReadersDecodeAlignedDiskCount = new AtomicLong(0);
@@ -225,6 +238,46 @@ public class QueryStatistics {
     return pageReaderMaxUsedMemorySize;
   }
 
+  public AtomicLong getLoadBloomFilterActualIOSize() {
+    return loadBloomFilterActualIOSize;
+  }
+
+  public AtomicLong getLoadBloomFilterFromCacheCount() {
+    return loadBloomFilterFromCacheCount;
+  }
+
+  public AtomicLong getLoadBloomFilterFromDiskCount() {
+    return loadBloomFilterFromDiskCount;
+  }
+
+  public AtomicLong getLoadBloomFilterTime() {
+    return loadBloomFilterTime;
+  }
+
+  public AtomicLong getLoadChunkActualIOSize() {
+    return loadChunkActualIOSize;
+  }
+
+  public AtomicLong getLoadChunkFromCacheCount() {
+    return loadChunkFromCacheCount;
+  }
+
+  public AtomicLong getLoadChunkFromDiskCount() {
+    return loadChunkFromDiskCount;
+  }
+
+  public AtomicLong getLoadTimeSeriesMetadataActualIOSize() {
+    return loadTimeSeriesMetadataActualIOSize;
+  }
+
+  public AtomicLong getLoadTimeSeriesMetadataFromCacheCount() {
+    return loadTimeSeriesMetadataFromCacheCount;
+  }
+
+  public AtomicLong getLoadTimeSeriesMetadataFromDiskCount() {
+    return loadTimeSeriesMetadataFromDiskCount;
+  }
+
   public TQueryStatistics toThrift() {
     return new TQueryStatistics(
         loadTimeSeriesMetadataDiskSeqCount.get(),
@@ -263,6 +316,16 @@ public class QueryStatistics {
         alignedTimeSeriesMetadataModificationCount.get(),
         alignedTimeSeriesMetadataModificationTime.get(),
         nonAlignedTimeSeriesMetadataModificationCount.get(),
-        nonAlignedTimeSeriesMetadataModificationTime.get());
+        nonAlignedTimeSeriesMetadataModificationTime.get(),
+        loadBloomFilterFromCacheCount.get(),
+        loadBloomFilterFromDiskCount.get(),
+        loadBloomFilterActualIOSize.get(),
+        loadBloomFilterTime.get(),
+        loadTimeSeriesMetadataFromCacheCount.get(),
+        loadTimeSeriesMetadataFromDiskCount.get(),
+        loadTimeSeriesMetadataActualIOSize.get(),
+        loadChunkFromCacheCount.get(),
+        loadChunkFromDiskCount.get(),
+        loadChunkActualIOSize.get());
   }
 }

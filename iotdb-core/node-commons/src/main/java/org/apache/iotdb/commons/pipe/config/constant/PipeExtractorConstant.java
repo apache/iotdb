@@ -59,6 +59,8 @@ public class PipeExtractorConstant {
   public static final String SOURCE_DATABASE_NAME_KEY = "source.database-name";
   public static final String EXTRACTOR_TABLE_NAME_KEY = "extractor.table-name";
   public static final String SOURCE_TABLE_NAME_KEY = "source.table-name";
+  public static final String EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE = ".*";
+  public static final String EXTRACTOR_TABLE_NAME_DEFAULT_VALUE = ".*";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
@@ -118,6 +120,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
+  public static final String NOW_TIME_VALUE = "now";
 
   public static final String _EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
   public static final String _SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
@@ -132,8 +135,6 @@ public class PipeExtractorConstant {
       "extractor.consensus.sender-dn-id";
   public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
       "extractor.consensus.receiver-dn-id";
-  public static final String EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY =
-      "extractor.consensus.restore-progress-pipe-task-name";
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

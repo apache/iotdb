@@ -20,12 +20,34 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class DatabaseModelException extends MetadataException {
   public DatabaseModelException(final String path, final boolean isTableModel) {
     super(
-        "The database " + path + " is a " + (isTableModel ? "table" : "tree") + " model database.",
+        "The database "
+            + (isTableModel
+                ? PathUtils.qualifyDatabaseName(path)
+                : PathUtils.unQualifyDatabaseName(path))
+            + " is a "
+            + (isTableModel ? "table" : "tree")
+            + " model database.",
+        TSStatusCode.DATABASE_MODEL.getStatusCode());
+  }
+
+  public DatabaseModelException(final List<String> paths, final boolean isTableModel) {
+    super(
+        "The databases "
+            + (isTableModel
+                ? paths.stream().map(PathUtils::qualifyDatabaseName).collect(Collectors.toList())
+                : paths.stream().map(PathUtils::unQualifyDatabaseName).collect(Collectors.toList()))
+            + " are all "
+            + (isTableModel ? "table" : "tree")
+            + " model databases.",
         TSStatusCode.DATABASE_MODEL.getStatusCode());
   }
 }

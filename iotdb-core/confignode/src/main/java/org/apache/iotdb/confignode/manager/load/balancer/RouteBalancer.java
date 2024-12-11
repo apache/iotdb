@@ -262,6 +262,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             entry -> {
               // set target
               final Integer dataNodeId = entry.getValue();
+              if (dataNodeId == -1) {
+                return;
+              }
               final TDataNodeLocation dataNodeLocation =
                   getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
               if (dataNodeLocation == null) {
@@ -272,7 +275,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                   requestIndex.get(), dataNodeLocation);
               // set req
               final TConsensusGroupId consensusGroupId = entry.getKey();
-              final String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
+              final String database = getPartitionManager().getRegionDatabase(consensusGroupId);
               invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
               requestIndex.incrementAndGet();
             });

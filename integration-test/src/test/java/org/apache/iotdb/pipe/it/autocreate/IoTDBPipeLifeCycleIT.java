@@ -63,8 +63,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -233,8 +233,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -297,8 +297,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -361,8 +361,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -426,8 +426,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -648,7 +648,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       // Add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -691,7 +692,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       // Add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);

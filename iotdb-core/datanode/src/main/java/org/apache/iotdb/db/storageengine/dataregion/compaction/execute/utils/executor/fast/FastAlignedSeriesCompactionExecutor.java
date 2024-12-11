@@ -35,7 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -78,7 +78,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       IDeviceID deviceId,
@@ -93,7 +93,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
     this.measurementSchemaMap = new HashMap<>();
     this.measurementSchemas.forEach(
-        schema -> measurementSchemaMap.put(schema.getMeasurementId(), schema));
+        schema -> measurementSchemaMap.put(schema.getMeasurementName(), schema));
     this.ignoreAllNullRows = ignoreAllNullRows;
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.
@@ -235,11 +235,11 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       }
 
       // get time modifications of this file
-      List<Modification> timeModifications =
+      List<ModEntry> timeModifications =
           getModificationsFromCache(
               resource, CompactionPathUtils.getPath(deviceId, AlignedPath.VECTOR_PLACEHOLDER));
       // get value modifications of this file
-      List<List<Modification>> valueModifications = new ArrayList<>();
+      List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
           .get(0)
           .getValueChunkMetadataList()

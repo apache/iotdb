@@ -107,6 +107,7 @@ public enum Metric {
   SERIES_SCAN_COST("series_scan_cost"),
   MEMORY_USAGE_MONITOR("memory_usage_monitor"),
   METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
+  METRIC_QUERY_CACHE("metric_query_cache"),
   QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),
   QUERY_EXECUTION("query_execution"),
@@ -120,6 +121,8 @@ public enum Metric {
   FRAGMENT_INSTANCE_MANAGER("fragment_instance_manager"),
   MEMORY_POOL("memory_pool"),
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
+  QUERY_DISK_READ("query_disk_read"),
+
   // file related
   FILE_SIZE("file_size"),
   FILE_COUNT("file_count"),
@@ -181,6 +184,7 @@ public enum Metric {
   LOAD_TIME_COST("load_time_cost"),
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
+  BINARY_ALLOCATOR("binary_allocator"),
   ;
 
   final String value;

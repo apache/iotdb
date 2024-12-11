@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -59,6 +61,7 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -78,7 +81,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -120,8 +124,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -1244,12 +1250,42 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void DropTablePlanTest() throws IOException {
-    final DropTablePlan dropTablePlan = new DropTablePlan("root.database1", "table1");
-    final DropTablePlan dropTablePlan1 =
-        (DropTablePlan) ConfigPhysicalPlan.Factory.create(dropTablePlan.serializeToByteBuffer());
-    Assert.assertEquals(dropTablePlan.getDatabase(), dropTablePlan1.getDatabase());
-    Assert.assertEquals(dropTablePlan.getTableName(), dropTablePlan1.getTableName());
+  public void CommitDeleteTablePlanTest() throws IOException {
+    final CommitDeleteTablePlan commitDeleteTablePlan =
+        new CommitDeleteTablePlan("root.database1", "table1");
+    final CommitDeleteTablePlan commitDeleteTablePlan1 =
+        (CommitDeleteTablePlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteTablePlan.getTableName(), commitDeleteTablePlan1.getTableName());
+  }
+
+  @Test
+  public void PreDeleteColumnPlanTest() throws IOException {
+    final PreDeleteColumnPlan preDeleteColumnPlan =
+        new PreDeleteColumnPlan("root.database1", "table1", "measurement");
+    final PreDeleteColumnPlan preDeleteColumnPlan1 =
+        (PreDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(preDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(preDeleteColumnPlan.getDatabase(), preDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(preDeleteColumnPlan.getTableName(), preDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(preDeleteColumnPlan.getColumnName(), preDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void CommitDeleteColumnPlanTest() throws IOException {
+    final CommitDeleteColumnPlan commitDeleteColumnPlan =
+        new CommitDeleteColumnPlan("root.database1", "table1", "measurement");
+    final CommitDeleteColumnPlan commitDeleteColumnPlan1 =
+        (CommitDeleteColumnPlan)
+            ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
+    Assert.assertEquals(
+        commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
   }
 
   @Test
@@ -1442,7 +1478,13 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateFunctionPlanTest() throws IOException {
     UDFInformation udfInformation =
-        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+        new UDFInformation(
+            "test1",
+            "test1",
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            true,
+            "test1.jar",
+            "12345");
     CreateFunctionPlan createFunctionPlan0 =
         new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
     CreateFunctionPlan createFunctionPlan1 =
@@ -1453,11 +1495,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropFunctionPlanTest() throws IOException {
-    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan("test");
-    DropFunctionPlan dropFunctionPlan1 =
-        (DropFunctionPlan)
-            ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(dropFunctionPlan0, dropFunctionPlan1);
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan0 = new DropTreeModelFunctionPlan("test");
+    DropTreeModelFunctionPlan dropTreeModelFunctionPlan1 =
+        (DropTreeModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTreeModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTreeModelFunctionPlan0, dropTreeModelFunctionPlan1);
+
+    DropTableModelFunctionPlan dropTableModelFunctionPlan0 = new DropTableModelFunctionPlan("test");
+    DropTableModelFunctionPlan dropTableModelFunctionPlan1 =
+        (DropTableModelFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropTableModelFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropTableModelFunctionPlan0, dropTableModelFunctionPlan1);
   }
 
   @Test

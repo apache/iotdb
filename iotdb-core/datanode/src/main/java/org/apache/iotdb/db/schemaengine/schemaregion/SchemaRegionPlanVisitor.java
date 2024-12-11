@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -172,5 +173,10 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitDeleteTableDevicesInBlackList(
       final DeleteTableDevicesInBlackListNode deleteTableDevicesInBlackListPlan, final C context) {
     return visitSchemaRegionPlan(deleteTableDevicesInBlackListPlan, context);
+  }
+
+  public R visitDropTableAttribute(
+      final TableAttributeColumnDropNode dropTableAttributePlan, final C context) {
+    return visitSchemaRegionPlan(dropTableAttributePlan, context);
   }
 }

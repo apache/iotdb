@@ -87,7 +87,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
@@ -117,6 +119,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
@@ -518,9 +521,9 @@ public interface IManager {
 
   TSStatus createFunction(TCreateFunctionReq req);
 
-  TSStatus dropFunction(String udfName);
+  TSStatus dropFunction(TDropFunctionReq req);
 
-  TGetUDFTableResp getUDFTable();
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req);
 
   TGetJarInListResp getUDFJar(TGetJarInListReq req);
 
@@ -841,6 +844,9 @@ public interface IManager {
   TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req);
 
   TShowTableResp showTables(final String database, final boolean isDetails);
+
+  TDescTableResp describeTable(
+      final String database, final String tableName, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 }

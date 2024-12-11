@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
@@ -30,7 +31,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
@@ -118,7 +118,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }

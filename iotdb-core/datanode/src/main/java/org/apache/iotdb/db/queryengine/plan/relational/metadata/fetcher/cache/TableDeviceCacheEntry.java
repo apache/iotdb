@@ -91,6 +91,19 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
+  int invalidateAttributeColumn(final String attribute) {
+    final AtomicInteger size = new AtomicInteger(0);
+    deviceSchema.updateAndGet(
+        schema -> {
+          if (schema instanceof TableAttributeSchema) {
+            size.set(((TableAttributeSchema) schema).removeAttribute(attribute));
+            return schema;
+          }
+          return schema;
+        });
+    return size.get();
+  }
+
   Map<String, Binary> getAttributeMap() {
     final IDeviceSchema map = deviceSchema.get();
     // Cache miss
@@ -184,9 +197,9 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int invalidateLastCache(final String measurement) {
+  int invalidateLastCache(final String measurement, final boolean isTableModel) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement, isTableModel) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
