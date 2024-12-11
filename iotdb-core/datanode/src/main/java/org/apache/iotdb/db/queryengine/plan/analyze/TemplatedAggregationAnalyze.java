@@ -81,7 +81,9 @@ public class TemplatedAggregationAnalyze {
 
     if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
       // remove the device which won't appear in resultSet after limit/offset
-      deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
+      deviceList =
+          pushDownLimitOffsetInGroupByTimeForDevice(
+              deviceList, queryStatement, context.getZoneId());
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();

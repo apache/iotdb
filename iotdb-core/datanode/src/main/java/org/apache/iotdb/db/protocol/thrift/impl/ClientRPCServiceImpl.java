@@ -789,7 +789,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               Collections.singletonList(aggregator),
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
@@ -805,7 +805,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               Collections.singletonList(aggregator),
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
