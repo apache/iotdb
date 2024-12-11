@@ -9,11 +9,13 @@ public class LagFunction implements WindowFunction {
   private final int channel;
   private final Integer offset;
   private final Integer defaultVal;
+  private final boolean ignoreNull;
 
-  public LagFunction(int channel, Integer offset, Integer defaultVal) {
+  public LagFunction(int channel, Integer offset, Integer defaultVal, boolean ignoreNull) {
     this.channel = channel;
     this.offset = offset == null ? 1 : offset;
     this.defaultVal = defaultVal;
+    this.ignoreNull = ignoreNull;
   }
 
   @Override
@@ -28,7 +30,24 @@ public class LagFunction implements WindowFunction {
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    int pos = index - offset;
+    int pos;
+    if (ignoreNull) {
+      int nonNullCount = 0;
+      pos = index - 1;
+      while (pos >= 0) {
+        if (partition[channel].isNull(pos)) {
+          nonNullCount++;
+          if (nonNullCount == offset) {
+            break;
+          }
+        }
+
+        pos--;
+      }
+    } else {
+      pos = index - offset;
+    }
+
     if (pos >= 0) {
       builder.write(partition[channel], pos);
     } else if (defaultVal != null) {

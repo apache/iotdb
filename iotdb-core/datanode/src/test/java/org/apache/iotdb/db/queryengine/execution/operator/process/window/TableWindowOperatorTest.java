@@ -148,7 +148,7 @@ public class TableWindowOperatorTest {
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32);
     List<TSDataType> outputDataTypes =
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32);
-    WindowFunction windowFunction = new FirstValueFunction(2);
+    WindowFunction windowFunction = new FirstValueFunction(2, true);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.ROWS,

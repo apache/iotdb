@@ -8,10 +8,12 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 public class NthValueFunction implements WindowFunction {
   private final int n;
   private final int channel;
+  private final boolean ignoreNull;
 
-  public NthValueFunction(int n, int channel) {
+  public NthValueFunction(int n, int channel, boolean ignoreNull) {
     this.n = n;
     this.channel = channel;
+    this.ignoreNull = ignoreNull;
   }
 
   @Override
@@ -26,12 +28,33 @@ public class NthValueFunction implements WindowFunction {
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    // n starts with 1
-    int count = partition[0].getPositionCount();
-    int offset = frameStart + n - 1;
+    // Empty frame
+    if (frameStart < 0) {
+      builder.appendNull();
+      return;
+    }
 
-    if (offset < count) {
-      builder.write(partition[channel], offset);
+    int pos;
+    if (ignoreNull) {
+      // Handle nulls
+      pos = index;
+      int nonNullCount = 0;
+      while (pos <= frameEnd) {
+        if (!partition[channel].isNull(pos)) {
+          nonNullCount++;
+          if (nonNullCount == n) {
+            break;
+          }
+        }
+        pos++;
+      }
+    } else {
+      // n starts with 1
+      pos = frameStart + n - 1;
+    }
+
+    if (pos >= frameStart && pos <= frameEnd) {
+      builder.write(partition[channel], pos);
     } else {
       builder.appendNull();
     }
