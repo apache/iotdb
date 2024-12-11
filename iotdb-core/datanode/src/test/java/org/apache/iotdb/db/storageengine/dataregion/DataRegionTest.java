@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -1582,5 +1584,37 @@ public class DataRegionTest {
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceSeq.getModFile().exists());
     Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataWithMetricUpdate()
+      throws IllegalPathException, IOException, WriteProcessException {
+    int modFileNumWhenTestStart = FileMetrics.getInstance().getModFileNum();
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileResource resource : dataRegion.getTsFileManager().getTsFileList(true)) {
+      resource.setStatusForTest(TsFileResourceStatus.COMPACTING);
+    }
+
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 101, 200, 0);
+
+    for (int j = 200; j < 300; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 201, 300, 0);
+
+    Assert.assertEquals(
+        dataRegion.getTsFileManager().getTsFileList(true).size() + modFileNumWhenTestStart,
+        FileMetrics.getInstance().getModFileNum());
   }
 }
