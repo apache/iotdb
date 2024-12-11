@@ -24,6 +24,8 @@ import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.time.ZoneId;
+
 public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
   private static final int HEAP_MAX_SIZE = 100;
@@ -46,11 +48,13 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
       TimeDuration interval,
       TimeDuration slidingStep,
       boolean isAscending,
-      boolean leftCRightO) {
+      boolean leftCRightO,
+      ZoneId zoneId) {
     this.isAscending = isAscending;
     this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
     this.aggrWindowIterator =
-        new AggrWindowIterator(startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
+        new AggrWindowIterator(
+            startTime, endTime, interval, slidingStep, isAscending, leftCRightO, zoneId);
     this.leftCRightO = leftCRightO;
     initHeap();
   }

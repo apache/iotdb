@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -443,7 +446,13 @@ public class LimitOffsetPushDownTest {
       long endTime) {
     QueryStatement statement =
         (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+    MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("test_query"),
+            new SessionInfo(-1L, "", ZoneId.systemDefault()),
+            new TEndPoint(),
+            new TEndPoint());
     Analyzer analyzer =
         new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
     Analysis analysis = analyzer.analyze(statement);

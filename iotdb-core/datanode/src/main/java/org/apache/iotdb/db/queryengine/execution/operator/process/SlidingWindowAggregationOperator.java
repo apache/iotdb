@@ -32,6 +32,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -61,7 +62,8 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       boolean ascending,
       boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      ZoneId zoneId) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
@@ -78,7 +80,8 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
 
     this.timeRangeIterator = timeRangeIterator;
     this.outputEndTime = outputEndTime;
-    this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.subTimeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, true, zoneId);
   }
 
   @Override

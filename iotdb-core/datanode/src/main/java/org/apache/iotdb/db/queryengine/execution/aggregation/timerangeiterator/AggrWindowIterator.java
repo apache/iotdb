@@ -25,6 +25,8 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.time.ZoneId;
+
 /**
  * This class iteratively generates aggregated time windows.
  *
@@ -46,6 +48,8 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   // The number of current timeRange, it's used to calculate the cpu when there contains month
   private int timeRangeCount;
 
+  private final ZoneId zoneId;
+
   @SuppressWarnings("squid:S107")
   public AggrWindowIterator(
       long startTime,
@@ -53,7 +57,8 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       TimeDuration interval,
       TimeDuration slidingStep,
       boolean isAscending,
-      boolean leftCRightO) {
+      boolean leftCRightO,
+      ZoneId zoneId) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
@@ -61,6 +66,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     this.isAscending = isAscending;
     this.leftCRightO = leftCRightO;
     this.timeRangeCount = 0;
+    this.zoneId = zoneId;
   }
 
   @Override
@@ -78,7 +84,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       // calculate interval length by natural month based on startTime
       // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
       retEndTime =
-          Math.min(DateTimeUtils.calcPositiveIntervalByMonth(startTime, interval), endTime);
+          Math.min(DateTimeUtils.calcPositiveIntervalByMonth(startTime, interval, zoneId), endTime);
     } else {
       retEndTime = Math.min(startTime + interval.nonMonthDuration, endTime);
     }
@@ -99,14 +105,14 @@ public class AggrWindowIterator implements ITimeRangeIterator {
                       / (slidingStep.getMaxTotalDuration(TimestampPrecisionUtils.currPrecision)));
       long tempRetStartTime =
           DateTimeUtils.calcPositiveIntervalByMonth(
-              startTime, slidingStep.multiple(intervalNum - 1));
+              startTime, slidingStep.multiple(intervalNum - 1), zoneId);
       retStartTime = tempRetStartTime;
       while (tempRetStartTime < endTime) {
         intervalNum++;
         retStartTime = tempRetStartTime;
         tempRetStartTime =
             DateTimeUtils.calcPositiveIntervalByMonth(
-                retStartTime, slidingStep.multiple(intervalNum - 1));
+                retStartTime, slidingStep.multiple(intervalNum - 1), zoneId);
       }
       intervalNum -= 1;
     } else {
@@ -120,7 +126,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       retEndTime =
           Math.min(
               DateTimeUtils.calcPositiveIntervalByMonth(
-                  startTime, interval.merge(slidingStep.multiple(intervalNum - 1))),
+                  startTime, interval.merge(slidingStep.multiple(intervalNum - 1)), zoneId),
               endTime);
     } else {
       retEndTime = Math.min(retStartTime + interval.nonMonthDuration, endTime);
@@ -147,7 +153,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       if (slidingStep.containsMonth()) {
         retStartTime =
             DateTimeUtils.calcPositiveIntervalByMonth(
-                startTime, slidingStep.multiple(timeRangeCount));
+                startTime, slidingStep.multiple(timeRangeCount), zoneId);
       } else {
         retStartTime = curStartTime + slidingStep.nonMonthDuration;
       }
@@ -171,7 +177,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     if (interval.containsMonth()) {
       retEndTime =
           DateTimeUtils.calcPositiveIntervalByMonth(
-              startTime, slidingStep.multiple(timeRangeCount).merge(interval));
+              startTime, slidingStep.multiple(timeRangeCount).merge(interval), zoneId);
     } else {
       retEndTime = retStartTime + interval.nonMonthDuration;
     }
@@ -213,11 +219,13 @@ public class AggrWindowIterator implements ITimeRangeIterator {
                   (double) queryRange
                       / (slidingStep.getMaxTotalDuration(TimestampPrecisionUtils.currPrecision)));
       long retStartTime =
-          DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep.multiple(intervalNum));
+          DateTimeUtils.calcPositiveIntervalByMonth(
+              startTime, slidingStep.multiple(intervalNum), zoneId);
       while (retStartTime < endTime) {
         intervalNum++;
         retStartTime =
-            DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep.multiple(intervalNum));
+            DateTimeUtils.calcPositiveIntervalByMonth(
+                startTime, slidingStep.multiple(intervalNum), zoneId);
       }
     } else {
       intervalNum = (long) Math.ceil(queryRange / (double) slidingStep.nonMonthDuration);

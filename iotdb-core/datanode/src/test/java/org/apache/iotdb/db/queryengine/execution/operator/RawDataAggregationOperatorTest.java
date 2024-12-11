@@ -69,6 +69,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -995,7 +996,7 @@ public class RawDataAggregationOperatorTest {
     return new RawDataAggregationOperator(
         driverContext.getOperatorContexts().get(3),
         aggregators,
-        initTimeRangeIterator(groupByTimeParameter, true, true),
+        initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
         timeJoinOperator,
         true,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
