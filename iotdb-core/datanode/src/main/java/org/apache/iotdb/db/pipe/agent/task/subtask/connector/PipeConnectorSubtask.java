@@ -44,9 +44,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
