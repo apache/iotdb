@@ -78,26 +78,6 @@ public class TableAggregator {
     }
   }
 
-  public void processColumns(Column[] columns) {
-    Column[] arguments = new Column[inputChannels.length];
-    for (int i = 0; i < inputChannels.length; i++) {
-      arguments[i] = columns[inputChannels[i]];
-    }
-
-    // process count(*)
-    int count = columns[0].getPositionCount();
-    if (arguments.length == 0) {
-      arguments =
-          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
-    }
-
-    if (step.isInputRaw()) {
-      accumulator.addInput(arguments);
-    } else {
-      accumulator.addIntermediate(arguments[0]);
-    }
-  }
-
   public void evaluate(ColumnBuilder columnBuilder) {
     if (step.isOutputPartial()) {
       accumulator.evaluateIntermediate(columnBuilder);
