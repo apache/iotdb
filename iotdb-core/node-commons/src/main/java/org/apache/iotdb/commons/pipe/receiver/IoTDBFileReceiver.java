@@ -416,6 +416,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void deleteCurrentWritingFile() {
     if (writingFile != null) {
       deleteFile(writingFile);
+      writingFile = null;
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -432,7 +433,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
             file.getPath());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to delete original writing file {}, because {}.",
             receiverId.get(),
