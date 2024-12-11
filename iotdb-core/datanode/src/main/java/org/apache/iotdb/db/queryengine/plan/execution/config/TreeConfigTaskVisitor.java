@@ -671,7 +671,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateModel(
       CreateModelStatement createModelStatement, MPPQueryContext context) {
-    return new CreateModelTask(createModelStatement, context);
+    if (createModelStatement.getUri() != null && isUriTrusted(createModelStatement.getUri())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateModelTask(createModelStatement, context);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException("Untrusted uri " + createModelStatement.getUri());
+    }
   }
 
   @Override
