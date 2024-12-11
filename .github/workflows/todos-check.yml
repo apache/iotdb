@@ -1,0 +1,43 @@
+name: Check TODOs and FIXMEs in Changed Files
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - "rc/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+jobs:
+  todo-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for TODOs and FIXMEs in changed files
+        run: |
+          # Fetch the target branch
+          git fetch origin $GITHUB_BASE_REF
+          
+          # Check if there is a common ancestor
+          if git merge-base --is-ancestor origin/$GITHUB_BASE_REF HEAD; then
+            # Get the diff of the changes
+            DIFF=$(git diff origin/$GITHUB_BASE_REF...HEAD)
+          else
+            # If no common ancestor, compare with the initial commit
+            DIFF=$(git diff $(git hash-object -t tree /dev/null) HEAD)
+          fi
+  
+          # Check the diff for TODOs
+          if echo "$DIFF" | grep -Eq '^\+.*(TODO|FIXME)'; then
+            echo "TODO found in the changes. Please resolve it before merging."
+            exit 1
+          else
+            echo "No TODOs found in changed content."
+          fi
