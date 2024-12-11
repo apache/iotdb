@@ -30,10 +30,12 @@ import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TabletInsertionEventIterable;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeTsFileToTabletMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -493,8 +495,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
+
       waitForResourceEnough4Parsing(timeoutMs);
-      return initEventParser().toTabletInsertionEvents();
+      Iterable<TabletInsertionEvent> events = initEventParser().toTabletInsertionEvents();
+      if (pipeName != null) {
+        events = new TabletInsertionEventIterable(events, this);
+        final PipeTsFileToTabletMetrics.PipeID pipeID =
+            PipeTsFileToTabletMetrics.PipeID.getPipeID(pipeName, creationTime);
+        PipeTsFileToTabletMetrics.getInstance().register(pipeID);
+        PipeTsFileToTabletMetrics.getInstance().markTsFileSize(pipeID, tsFile.length());
+      }
+      return events;
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
