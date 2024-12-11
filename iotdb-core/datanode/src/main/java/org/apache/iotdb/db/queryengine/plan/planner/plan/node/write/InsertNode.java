@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -73,6 +74,8 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
+
+  protected long memorySize;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -309,5 +312,12 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     result = 31 * result + Arrays.hashCode(measurements);
     result = 31 * result + Arrays.hashCode(dataTypes);
     return result;
+  }
+
+  public long getMemorySize() {
+    if (memorySize == 0) {
+      memorySize = InsertNodeMemoryEstimator.sizeOf(this);
+    }
+    return memorySize;
   }
 }
