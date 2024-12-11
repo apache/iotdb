@@ -90,9 +90,11 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
   static final boolean[] compactionBeforeHasMods = new boolean[] {true, false};
   static final boolean[] compactionHasMods = new boolean[] {true, false};
   private static int prevMaxDegreeOfIndexNode;
+  private CompactionConfigRestorer compactionConfigRestorer = new CompactionConfigRestorer();
 
   @Before
   public void setUp() throws MetadataException {
+    compactionConfigRestorer.recordCompactionConfig();
     prevMaxDegreeOfIndexNode = TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
     EnvironmentUtils.envSetUp();
@@ -100,7 +102,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    new CompactionConfigRestorer().restoreCompactionConfig();
+    compactionConfigRestorer.restoreCompactionConfig();
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -214,19 +216,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       sourceResources.get(0));
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(sourceResources);
-              if (compactionHasMod) {
-                Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
-                toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
-                CompactionFileGeneratorUtils.generateMods(
-                    toDeleteTimeseriesAndTime, sourceResources.get(0), true);
 
-                // remove data in source data list
-                List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
-                timeValuePairs.removeIf(
-                    timeValuePair ->
-                        timeValuePair.getTimestamp() >= 250L
-                            && timeValuePair.getTimestamp() <= 300L);
-              }
               ICompactionPerformer performer =
                   new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource);
               performer.setSummary(new FastCompactionTaskSummary());
@@ -413,7 +403,8 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
   @Test
   public void testAppendPage() throws Exception {
-
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(128);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(100);
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
@@ -510,7 +501,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
               Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
               toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
               CompactionFileGeneratorUtils.generateMods(
-                  toDeleteTimeseriesAndTime, toMergeResources.get(0), true);
+                  toDeleteTimeseriesAndTime, toMergeResources, true);
 
               // remove data in source data list
               List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
@@ -536,8 +527,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                  CompactionCheckerUtils.putOnePageChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1098L);
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -547,10 +543,16 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[0],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  } else {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  }
+
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -560,8 +562,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                  CompactionCheckerUtils.putOnePageChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1749);
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1698L);
+                  }
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[2], 1749L);
                 } else {
@@ -569,10 +576,16 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[0],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                  }
+
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -584,10 +597,15 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  } else {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -597,10 +615,15 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 } else {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  } else {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -612,10 +635,15 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  } else {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -627,10 +655,15 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 } else {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged,
-                      fullPaths[1],
-                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  if (compactionHasMod) {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  } else {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged,
+                        fullPaths[1],
+                        new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -648,8 +681,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 549L);
+                  }
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[2], 549L);
                   CompactionCheckerUtils.putChunk(
@@ -661,8 +699,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 } else {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 549L);
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
                   CompactionCheckerUtils.putChunk(
@@ -676,8 +719,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 if (compactionBeforeHasMod) {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 549L);
+                  }
                   CompactionCheckerUtils.putOnePageChunk(
                       chunkPagePointsNumMerged, fullPaths[2], 549L);
                   CompactionCheckerUtils.putChunk(
@@ -695,8 +743,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 } else {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(
-                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  if (!compactionHasMod) {
+                    CompactionCheckerUtils.putChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  } else {
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 549L);
+                  }
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
                   CompactionCheckerUtils.putChunk(
@@ -830,19 +883,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       toMergeResources.get(0));
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(toMergeResources);
-              if (compactionHasMod) {
-                Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
-                toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(250L, 300L));
-                CompactionFileGeneratorUtils.generateMods(
-                    toDeleteTimeseriesAndTime, toMergeResources.get(0), true);
 
-                // remove data in source data list
-                List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
-                timeValuePairs.removeIf(
-                    timeValuePair ->
-                        timeValuePair.getTimestamp() >= 250L
-                            && timeValuePair.getTimestamp() <= 300L);
-              }
               ICompactionPerformer performer =
                   new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
               performer.setSummary(new FastCompactionTaskSummary());
@@ -1134,31 +1175,28 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
       Assert.assertTrue(resource.anyModFileExists());
       if (i < 2) {
         Assert.assertEquals(3, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else if (i < 3) {
         Assert.assertEquals(2, resource.getAllModEntries().size());
-        Assert.assertEquals(2, resource.getCompactionModFile().getAllMods().size());
       } else {
         Assert.assertEquals(1, resource.getAllModEntries().size());
-        Assert.assertEquals(1, resource.getCompactionModFile().getAllMods().size());
       }
     }
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.anyModFileExists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertNull(resource.getCompactionModFile());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
+    resource.deserialize();
     Assert.assertTrue(resource.anyModFileExists());
-    Assert.assertEquals(2, resource.getAllModEntries().size());
-    Assert.assertFalse(resource.getCompactionModFile().exists());
+    Assert.assertEquals(0, resource.getAllModEntries().size());
+    Assert.assertNull(resource.getCompactionModFile());
   }
 }

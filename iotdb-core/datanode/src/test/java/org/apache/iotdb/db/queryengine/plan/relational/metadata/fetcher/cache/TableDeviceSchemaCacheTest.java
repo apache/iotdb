@@ -76,6 +76,7 @@ public class TableDeviceSchemaCacheTest {
 
   @BeforeClass
   public static void prepareEnvironment() {
+
     final List<ColumnHeader> columnHeaderList =
         Arrays.asList(
             new ColumnHeader("hebei", TSDataType.STRING),
@@ -146,6 +147,8 @@ public class TableDeviceSchemaCacheTest {
 
     originMemConfig = config.getAllocateMemoryForSchemaCache();
     config.setAllocateMemoryForSchemaCache(1300L);
+    // make sure the change of config take effect
+    TableDeviceSchemaCache.getInstance().reinit();
   }
 
   @AfterClass
