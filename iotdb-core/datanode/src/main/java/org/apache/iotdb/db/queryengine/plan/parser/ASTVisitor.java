@@ -1481,7 +1481,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
         }
         if (canPushDownLimitOffsetToGroupByTime(queryStatement)) {
-          pushDownLimitOffsetToTimeParameter(queryStatement);
+          pushDownLimitOffsetToTimeParameter(queryStatement, zoneId);
         }
       }
     }

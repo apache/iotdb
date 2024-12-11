@@ -64,6 +64,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -466,6 +467,21 @@ public abstract class AbstractEnv implements BaseEnv {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session =
+        new Session(
+            dataNode.getIp(),
+            dataNode.getPort(),
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            zoneId);
     session.open();
     return session;
   }

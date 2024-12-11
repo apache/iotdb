@@ -58,6 +58,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -257,7 +258,7 @@ public class SlidingWindowAggregationOperatorTest {
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, ascending, true),
+            initTimeRangeIterator(groupByTimeParameter, ascending, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);
@@ -283,11 +284,12 @@ public class SlidingWindowAggregationOperatorTest {
     return new SlidingWindowAggregationOperator(
         driverContext.getOperatorContexts().get(1),
         finalAggregators,
-        initTimeRangeIterator(groupByTimeParameter, ascending, false),
+        initTimeRangeIterator(groupByTimeParameter, ascending, false, ZoneId.systemDefault()),
         seriesAggregationScanOperator,
         ascending,
         false,
         groupByTimeParameter,
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        ZoneId.systemDefault());
   }
 }

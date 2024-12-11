@@ -54,6 +54,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -147,7 +148,7 @@ public class HorizontallyConcatOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators,
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -168,7 +169,7 @@ public class HorizontallyConcatOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(1),
               aggregators,
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
