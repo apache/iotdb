@@ -27,39 +27,49 @@ import static java.util.Objects.requireNonNull;
 public class StartPipe extends PipeStatement {
 
   private final String pipeName;
+  private String sqlDialect;
 
   public StartPipe(final String pipeName) {
     this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+  }
+
+  public void setSqlDialect(final String sqlDialect) {
+    this.sqlDialect = requireNonNull(sqlDialect, "sql dialect can not be null");
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
+  public String getSqlDialect() {
+    return sqlDialect;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitStartPipe(this, context);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName);
+    return Objects.hash(pipeName, sqlDialect);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    StartPipe other = (StartPipe) obj;
-    return Objects.equals(pipeName, other.pipeName);
+    final StartPipe that = (StartPipe) obj;
+    return Objects.equals(this.pipeName, that.pipeName)
+        && Objects.equals(this.sqlDialect, that.sqlDialect);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("pipeName", pipeName).toString();
+    return toStringHelper(this).add("pipeName", pipeName).add("sqlDialect", sqlDialect).toString();
   }
 }

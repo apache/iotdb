@@ -39,6 +39,8 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
 
   private boolean whereClause;
 
+  private String sqlDialect;
+
   public String getPipeName() {
     return pipeName;
   }
@@ -47,12 +49,20 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
     return whereClause;
   }
 
-  public void setPipeName(String pipeName) {
+  public String getSqlDialect() {
+    return sqlDialect;
+  }
+
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setWhereClause(boolean whereClause) {
+  public void setWhereClause(final boolean whereClause) {
     this.whereClause = whereClause;
+  }
+
+  public void setSqlDialect(final String sqlDialect) {
+    this.sqlDialect = sqlDialect;
   }
 
   @Override
@@ -61,7 +71,7 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -71,7 +81,7 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitShowPipes(this, context);
   }
 }

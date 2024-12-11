@@ -36,8 +36,9 @@ import java.util.List;
 public class StopPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private String sqlDialect;
 
-  public StopPipeStatement(StatementType stopPipeStatement) {
+  public StopPipeStatement(final StatementType stopPipeStatement) {
     this.statementType = stopPipeStatement;
   }
 
@@ -45,8 +46,16 @@ public class StopPipeStatement extends Statement implements IConfigStatement {
     return pipeName;
   }
 
-  public void setPipeName(String pipeName) {
+  public String getSqlDialect() {
+    return sqlDialect;
+  }
+
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setSqlDialect(final String sqlDialect) {
+    this.sqlDialect = sqlDialect;
   }
 
   @Override
@@ -60,7 +69,7 @@ public class StopPipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -70,7 +79,7 @@ public class StopPipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitStopPipe(this, context);
   }
 }
