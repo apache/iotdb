@@ -72,6 +72,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
   private final LoadBalancer loadBalancer;
+
   private volatile boolean isClosed = false;
 
   public IoTDBDataNodeAsyncClientManager(
@@ -287,10 +288,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private void waitHandshakeFinished(final AtomicBoolean isHandshakeFinished) {
     try {
       final long startTime = System.currentTimeMillis();
-      while (!isHandshakeFinished.get()
-          && !isClosed
-          && System.currentTimeMillis() - startTime
-              <= PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs()) {
+      while (!isHandshakeFinished.get()) {
+        if (isClosed
+            || System.currentTimeMillis() - startTime
+                > PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs() * 2L) {
+          throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
+        }
         Thread.sleep(10);
       }
     } catch (final InterruptedException e) {
