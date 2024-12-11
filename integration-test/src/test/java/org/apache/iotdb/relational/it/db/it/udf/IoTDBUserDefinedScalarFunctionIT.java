@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.db.it.udf.scalar;
+package org.apache.iotdb.relational.it.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBScalarFunctionIT {
+public class IoTDBUserDefinedScalarFunctionIT {
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE test",
@@ -64,14 +64,14 @@ public class IoTDBScalarFunctionIT {
         "CREATE FUNCTION date_plus as 'org.apache.iotdb.db.query.udf.example.relational.DatePlusOne'"
       };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
