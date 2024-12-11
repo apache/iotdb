@@ -23,10 +23,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import static java.util.Objects.requireNonNull;
 
-class SymbolAlias implements PlanTestSymbol {
+public class SymbolAlias implements PlanTestSymbol {
   private final String alias;
 
-  SymbolAlias(String alias) {
+  public SymbolAlias(String alias) {
     this.alias = requireNonNull(alias, "alias is null");
   }
 

@@ -21,13 +21,15 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.co
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.util.Optional;
+
 public interface JoinKeyComparator {
 
   /**
    * Get values at the given position from the TsBlocks and then compare these two values. Return
    * true if the left value is less than the right value.
    */
-  boolean lessThan(
+  Optional<Boolean> lessThan(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,
@@ -39,7 +41,7 @@ public interface JoinKeyComparator {
    * Get values at the given position from the TsBlocks and then compare these two values. Return
    * true if the left value equals to the right value.
    */
-  boolean equalsTo(
+  Optional<Boolean> equalsTo(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,
@@ -51,7 +53,7 @@ public interface JoinKeyComparator {
    * Get values at the given position from the TsBlocks and then compare these two values. Return
    * true if the left value is less than or equals to the right value.
    */
-  boolean lessThanOrEqual(
+  Optional<Boolean> lessThanOrEqual(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,

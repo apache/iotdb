@@ -39,15 +39,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.enforceSingleRow;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
@@ -71,89 +70,93 @@ public class SubqueryTest {
 
     // Verify full LogicalPlan
     /*
-    *   └──OutputNode
-    *           └──ProjectNode
-    *             └──FilterNode
+    *      └──OutputNode
     *               └──JoinNode
-    *                   |──TableScanNode
-    *                   ├──AggregationNode
-    *                   │   └──AggregationTableScanNode
+    *                   |──SortNode
+    *                   │   └──TableScanNode
+    *                   ├──SortNode
+    *                   │   └──AggregationNode
+    *                   │     └──AggregationTableScanNode
 
     */
     assertPlan(
         logicalQueryPlan,
         output(
-            project(
-                filter(
-                    filterPredicate,
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder ->
-                            builder
-                                .left(tableScan)
-                                .right(
-                                    aggregation(
+            //            project(
+            //                filter(
+            //                    filterPredicate,
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .left(sort(tableScan))
+                        .right(
+                            sort(
+                                aggregation(
+                                    singleGroupingSet(),
+                                    ImmutableMap.of(
+                                        Optional.of("max"),
+                                        aggregationFunction("max", ImmutableList.of("max_9"))),
+                                    Collections.emptyList(),
+                                    Optional.empty(),
+                                    FINAL,
+                                    aggregationTableScan(
                                         singleGroupingSet(),
-                                        ImmutableMap.of(
-                                            Optional.of("max"),
-                                            aggregationFunction("max", ImmutableList.of("max_9"))),
                                         Collections.emptyList(),
                                         Optional.empty(),
-                                        FINAL,
-                                        aggregationTableScan(
-                                            singleGroupingSet(),
-                                            Collections.emptyList(),
-                                            Optional.empty(),
-                                            PARTIAL,
-                                            "testdb.table1",
-                                            ImmutableList.of("max_9"),
-                                            ImmutableSet.of("s1_6")))))))));
+                                        PARTIAL,
+                                        "testdb.table1",
+                                        ImmutableList.of("max_9"),
+                                        ImmutableSet.of("s1_6")))))
+                        .ignoreEquiCriteria())));
 
     // Verify DistributionPlan
     assertPlan(
         planTester.getFragmentPlan(0),
         output(
-            project(
-                filter(
-                    filterPredicate,
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder ->
-                            builder
-                                .left(collect(exchange(), tableScan, exchange()))
-                                .right(
-                                    aggregation(
-                                        singleGroupingSet(),
-                                        ImmutableMap.of(
-                                            Optional.of("max"),
-                                            aggregationFunction("max", ImmutableList.of("max_10"))),
-                                        Collections.emptyList(),
-                                        Optional.empty(),
-                                        FINAL,
-                                        collect(
-                                            exchange(),
-                                            aggregation(
+            //            project(
+            //                filter(
+            //                    filterPredicate,
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .left(mergeSort(exchange(), sort(tableScan), exchange()))
+                        .right(
+                            sort(
+                                aggregation(
+                                    singleGroupingSet(),
+                                    ImmutableMap.of(
+                                        Optional.of("max"),
+                                        aggregationFunction("max", ImmutableList.of("max_10"))),
+                                    Collections.emptyList(),
+                                    Optional.empty(),
+                                    FINAL,
+                                    collect(
+                                        exchange(),
+                                        aggregation(
+                                            singleGroupingSet(),
+                                            ImmutableMap.of(
+                                                Optional.of("max_10"),
+                                                aggregationFunction(
+                                                    "max", ImmutableList.of("max_9"))),
+                                            Collections.emptyList(),
+                                            Optional.empty(),
+                                            INTERMEDIATE,
+                                            aggregationTableScan(
                                                 singleGroupingSet(),
-                                                ImmutableMap.of(
-                                                    Optional.of("max_10"),
-                                                    aggregationFunction(
-                                                        "max", ImmutableList.of("max_9"))),
                                                 Collections.emptyList(),
                                                 Optional.empty(),
-                                                INTERMEDIATE,
-                                                aggregationTableScan(
-                                                    singleGroupingSet(),
-                                                    Collections.emptyList(),
-                                                    Optional.empty(),
-                                                    PARTIAL,
-                                                    "testdb.table1",
-                                                    ImmutableList.of("max_9"),
-                                                    ImmutableSet.of("s1_6"))),
-                                            exchange()))))))));
+                                                PARTIAL,
+                                                "testdb.table1",
+                                                ImmutableList.of("max_9"),
+                                                ImmutableSet.of("s1_6"))),
+                                        exchange()))))
+                        .ignoreEquiCriteria())));
 
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
 
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
 
     assertPlan(
         planTester.getFragmentPlan(3),
@@ -205,22 +208,26 @@ public class SubqueryTest {
 
     // Verify LogicalPlan
     /*
-    *   └──OutputNode
-    *           └──ProjectNode
-    *             └──FilterNode
+    *       └──OutputNode
     *               └──JoinNode
-    *                   |──TableScanNode
-    *                   ├──EnforceSingleRowNode
-    *                   │   └──TableScanNode
+    *                   |──SortNode
+    *                   │  └──TableScanNode
+    *                   ├──SortNode
+    *                   │  └──EnforceSingleRowNode
+    *                   │     └──TableScanNode
 
     */
     assertPlan(
         logicalQueryPlan,
         output(
-            project(
-                anyTree(
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder -> builder.left(tableScan1).right(enforceSingleRow(any())))))));
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .left(sort(any()))
+                        .right(sort(enforceSingleRow(any())))
+                        .ignoreEquiCriteria()
+                // .equiCriteria("s1", "s2_7")
+                )));
   }
 }

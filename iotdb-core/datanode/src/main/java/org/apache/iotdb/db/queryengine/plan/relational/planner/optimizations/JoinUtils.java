@@ -48,6 +48,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class JoinUtils {
+  private JoinUtils() {}
 
   static Expression extractJoinPredicate(JoinNode joinNode) {
     ImmutableList.Builder<Expression> builder = ImmutableList.builder();
@@ -58,6 +59,12 @@ public class JoinUtils {
     return combineConjuncts(builder.build());
   }
 
+  /**
+   * If the expression is EQUAL ComparisonExpression
+   *
+   * @return true if the expression is EQUAL ComparisonExpression and leftSymbols contains
+   *     expression.getLeft() and rightSymbols contains expression.getRight().
+   */
   static boolean joinEqualityExpression(
       Expression expression, Collection<Symbol> leftSymbols, Collection<Symbol> rightSymbols) {
     return joinComparisonExpression(
@@ -67,7 +74,7 @@ public class JoinUtils {
         ImmutableSet.of(ComparisonExpression.Operator.EQUAL));
   }
 
-  static boolean joinComparisonExpression(
+  private static boolean joinComparisonExpression(
       Expression expression,
       Collection<Symbol> leftSymbols,
       Collection<Symbol> rightSymbols,

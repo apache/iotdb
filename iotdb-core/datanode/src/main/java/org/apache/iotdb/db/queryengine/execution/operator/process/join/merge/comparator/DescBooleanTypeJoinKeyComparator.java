@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.co
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.util.Optional;
+
 public class DescBooleanTypeJoinKeyComparator implements JoinKeyComparator {
 
   private static final DescBooleanTypeJoinKeyComparator INSTANCE =
@@ -33,39 +35,57 @@ public class DescBooleanTypeJoinKeyComparator implements JoinKeyComparator {
   }
 
   @Override
-  public boolean lessThan(
+  public Optional<Boolean> lessThan(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,
       TsBlock right,
       int rightColumnIndex,
       int rightRowIndex) {
-    return transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
-        > transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex));
+    if (left.getColumn(leftColumnIndex).isNull(leftRowIndex)
+        || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(
+        transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
+            > transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex)));
   }
 
   @Override
-  public boolean equalsTo(
+  public Optional<Boolean> equalsTo(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,
       TsBlock right,
       int rightColumnIndex,
       int rightRowIndex) {
-    return left.getColumn(leftColumnIndex).getBoolean(leftRowIndex)
-        == right.getColumn(rightColumnIndex).getBoolean(rightRowIndex);
+    if (left.getColumn(leftColumnIndex).isNull(leftRowIndex)
+        || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(
+        left.getColumn(leftColumnIndex).getBoolean(leftRowIndex)
+            == right.getColumn(rightColumnIndex).getBoolean(rightRowIndex));
   }
 
   @Override
-  public boolean lessThanOrEqual(
+  public Optional<Boolean> lessThanOrEqual(
       TsBlock left,
       int leftColumnIndex,
       int leftRowIndex,
       TsBlock right,
       int rightColumnIndex,
       int rightRowIndex) {
-    return transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
-        >= transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex));
+    if (left.getColumn(leftColumnIndex).isNull(leftRowIndex)
+        || right.getColumn(rightColumnIndex).isNull(rightRowIndex)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(
+        transformBooleanToInt(left.getColumn(leftColumnIndex).getBoolean(leftRowIndex))
+            >= transformBooleanToInt(right.getColumn(rightColumnIndex).getBoolean(rightRowIndex)));
   }
 
   private int transformBooleanToInt(boolean value) {
