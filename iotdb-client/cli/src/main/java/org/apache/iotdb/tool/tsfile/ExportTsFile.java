@@ -252,9 +252,8 @@ public class ExportTsFile extends AbstractTsFileTool {
       targetDirectory += File.separator;
     }
     final File file = new File(targetDirectory);
-    if (!file.isDirectory()) {
-      ioTPrinter.println(
-          String.format("Source file or directory %s does not exist", targetDirectory));
+    if (!file.isDirectory() && !file.mkdirs()) {
+      System.out.println("Failed to create directories or they already exist");
       System.exit(CODE_ERROR);
     }
   }
