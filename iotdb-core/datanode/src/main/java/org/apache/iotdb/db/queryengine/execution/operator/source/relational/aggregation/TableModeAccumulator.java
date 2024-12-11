@@ -161,7 +161,6 @@ public class TableModeAccumulator implements TableAccumulator {
     }
   }
 
-
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
