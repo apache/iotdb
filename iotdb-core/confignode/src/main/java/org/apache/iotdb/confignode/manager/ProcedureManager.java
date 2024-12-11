@@ -131,11 +131,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
@@ -215,40 +213,43 @@ public class ProcedureManager {
 
   public TSStatus deleteDatabases(
       List<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
-    List<Long> procedureIds = new ArrayList<>();
-    for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
+    List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
+    for (TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       DeleteDatabaseProcedure deleteDatabaseProcedure =
-          new DeleteDatabaseProcedure(storageGroupSchema, isGeneratedByPipe);
-      long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
-      procedureIds.add(procedureId);
+          new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+      DeleteDatabaseProcedure procedure =
+          new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+      this.executor.submitProcedure(procedure);
+      procedures.add(procedure);
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
+    List<TSStatus> results = new ArrayList<>(procedures.size());
+    procedures.forEach(procedure -> results.add(waitingProcedureFinished(procedure)));
     // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
-    if (isSucceed) {
+    if (results.stream()
+        .allMatch(result -> result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
       return StatusUtils.OK;
     } else {
-      return RpcUtils.getStatus(procedureStatus);
+      return RpcUtils.getStatus(results);
     }
   }
 
   public TSStatus deleteTimeSeries(
       String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeleteTimeSeriesProcedure deleteTimeSeriesProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
           continue;
         }
-        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) procedure);
+        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) runningProcedure);
         if (queryId.equals(deleteTimeSeriesProcedure.getQueryId())) {
-          procedureId = deleteTimeSeriesProcedure.getProcId();
+          procedure = deleteTimeSeriesProcedure;
           break;
         }
         if (patternTree.isOverlapWith(deleteTimeSeriesProcedure.getPatternTree())) {
@@ -257,44 +258,36 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe));
+        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
     String queryId = req.getQueryId();
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    long procedureId = -1;
+    DeleteLogicalViewProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeleteLogicalViewProcedure deleteLogicalViewProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE)) {
           continue;
         }
-        deleteLogicalViewProcedure = ((DeleteLogicalViewProcedure) procedure);
+        deleteLogicalViewProcedure = ((DeleteLogicalViewProcedure) runningProcedure);
         if (queryId.equals(deleteLogicalViewProcedure.getQueryId())) {
-          procedureId = deleteLogicalViewProcedure.getProcId();
+          procedure = deleteLogicalViewProcedure;
           break;
         }
         if (patternTree.isOverlapWith(deleteLogicalViewProcedure.getPatternTree())) {
@@ -303,28 +296,19 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target views.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeleteLogicalViewProcedure(
-                    queryId,
-                    patternTree,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+        procedure =
+            new DeleteLogicalViewProcedure(
+                queryId, patternTree, req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
@@ -340,56 +324,49 @@ public class ProcedureManager {
       viewPathToSourceMap.put(path, viewExpression);
     }
 
-    long procedureId = -1;
+    AlterLogicalViewProcedure procedure = null;
     synchronized (this) {
       ProcedureType type;
       AlterLogicalViewProcedure alterLogicalViewProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE)) {
           continue;
         }
-        alterLogicalViewProcedure = ((AlterLogicalViewProcedure) procedure);
+        alterLogicalViewProcedure = ((AlterLogicalViewProcedure) runningProcedure);
         if (queryId.equals(alterLogicalViewProcedure.getQueryId())) {
-          procedureId = alterLogicalViewProcedure.getProcId();
+          procedure = alterLogicalViewProcedure;
           break;
         }
       }
 
-      if (procedureId == -1) {
-        procedureId =
-            this.executor.submitProcedure(
-                new AlterLogicalViewProcedure(
-                    queryId,
-                    viewPathToSourceMap,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+      if (procedure == null) {
+        procedure =
+            new AlterLogicalViewProcedure(
+                queryId,
+                viewPathToSourceMap,
+                req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus setSchemaTemplate(
       String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    SetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       SetTemplateProcedure setTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        setTemplateProcedure = (SetTemplateProcedure) procedure;
+        setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
         if (queryId.equals(setTemplateProcedure.getQueryId())) {
-          procedureId = setTemplateProcedure.getProcId();
+          procedure = setTemplateProcedure;
           break;
         }
         if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
@@ -398,43 +375,35 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is setting template on target path.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new SetTemplateProcedure(
-                    queryId, templateName, templateSetPath, isGeneratedByPipe));
+        procedure =
+            new SetTemplateProcedure(queryId, templateName, templateSetPath, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus deactivateTemplate(
       String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    DeactivateTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeactivateTemplateProcedure deactivateTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        deactivateTemplateProcedure = (DeactivateTemplateProcedure) procedure;
+        deactivateTemplateProcedure = (DeactivateTemplateProcedure) runningProcedure;
         if (queryId.equals(deactivateTemplateProcedure.getQueryId())) {
-          procedureId = deactivateTemplateProcedure.getProcId();
+          procedure = deactivateTemplateProcedure;
           break;
         }
         for (PartialPath pattern : templateSetInfo.keySet()) {
@@ -454,42 +423,34 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deactivating some target template from target path.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe));
+        procedure = new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus unsetSchemaTemplate(
       String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    UnsetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       UnsetTemplateProcedure unsetTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        unsetTemplateProcedure = (UnsetTemplateProcedure) procedure;
+        unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
         if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
-          procedureId = unsetTemplateProcedure.getProcId();
+          procedure = unsetTemplateProcedure;
           break;
         }
         if (template.getId() == unsetTemplateProcedure.getTemplateId()
@@ -499,26 +460,18 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is unsetting target template from target path "
                   + path.getFullPath());
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe));
+        procedure = new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   /**
@@ -914,17 +867,15 @@ public class ProcedureManager {
    */
   public TSStatus createRegionGroups(
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
-    final long procedureId =
-        executor.submitProcedure(
-            new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    CreateRegionGroupsProcedure procedure =
+        new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan);
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -952,15 +903,13 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    final long procedureId = executor.submitProcedure(createTriggerProcedure);
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    executor.submitProcedure(createTriggerProcedure);
+    TSStatus status = waitingProcedureFinished(createTriggerProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -971,25 +920,21 @@ public class ProcedureManager {
    *     {@link TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
-    long procedureId =
-        executor.submitProcedure(new DropTriggerProcedure(triggerName, isGeneratedByPipe));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropTriggerProcedure procedure = new DropTriggerProcedure(triggerName, isGeneratedByPipe);
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
   public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
-    final long procedureId =
-        executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
-    final List<TSStatus> statusList = new ArrayList<>();
-    waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    return statusList.get(0);
+    CreateCQProcedure procedure = new CreateCQProcedure(req, scheduledExecutor);
+    executor.submitProcedure(procedure);
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus createModel(String modelName, String uri) {
@@ -999,15 +944,14 @@ public class ProcedureManager {
   }
 
   public TSStatus dropModel(String modelId) {
-    long procedureId = executor.submitProcedure(new DropModelProcedure(modelId));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropModelProcedure procedure = new DropModelProcedure(modelId);
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -1030,45 +974,40 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    final long procedureId = executor.submitProcedure(createPipePluginProcedure);
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    executor.submitProcedure(createPipePluginProcedure);
+    TSStatus status = waitingProcedureFinished(createPipePluginProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
-    final long procedureId =
-        executor.submitProcedure(
-            new DropPipePluginProcedure(
-                req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition()));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropPipePluginProcedure procedure =
+        new DropPipePluginProcedure(
+            req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition());
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1077,15 +1016,14 @@ public class ProcedureManager {
 
   public TSStatus alterPipe(TAlterPipeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new AlterPipeProcedureV2(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      AlterPipeProcedureV2 procedure = new AlterPipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1094,15 +1032,14 @@ public class ProcedureManager {
 
   public TSStatus startPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1111,15 +1048,14 @@ public class ProcedureManager {
 
   public TSStatus stopPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1128,15 +1064,14 @@ public class ProcedureManager {
 
   public TSStatus dropPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1171,18 +1106,16 @@ public class ProcedureManager {
   public TSStatus pipeHandleMetaChangeWithBlock(
       boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
     try {
-      final long procedureId =
-          executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(
-                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      PipeHandleMetaChangeProcedure procedure =
+          new PipeHandleMetaChangeProcedure(
+              needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1191,15 +1124,14 @@ public class ProcedureManager {
 
   public TSStatus pipeMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      PipeMetaSyncProcedure procedure = new PipeMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1208,15 +1140,14 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreateTopicProcedure procedure = new CreateTopicProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
@@ -1226,15 +1157,14 @@ public class ProcedureManager {
 
   public TSStatus dropTopic(String topicName) {
     try {
-      final long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropTopicProcedure procedure = new DropTopicProcedure(topicName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1243,15 +1173,14 @@ public class ProcedureManager {
 
   public TSStatus topicMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new TopicMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      TopicMetaSyncProcedure procedure = new TopicMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
@@ -1261,15 +1190,14 @@ public class ProcedureManager {
 
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreateConsumerProcedure procedure = new CreateConsumerProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
@@ -1279,15 +1207,14 @@ public class ProcedureManager {
 
   public TSStatus dropConsumer(TCloseConsumerReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropConsumerProcedure procedure = new DropConsumerProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
@@ -1297,15 +1224,14 @@ public class ProcedureManager {
 
   public TSStatus consumerGroupMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new ConsumerGroupMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      ConsumerGroupMetaSyncProcedure procedure = new ConsumerGroupMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -1315,17 +1241,16 @@ public class ProcedureManager {
 
   public TSStatus createSubscription(TSubscribeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(statusList.get(0).getMessage())) {
+      CreateSubscriptionProcedure procedure = new CreateSubscriptionProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode());
       }
@@ -1337,17 +1262,16 @@ public class ProcedureManager {
 
   public TSStatus dropSubscription(TUnsubscribeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(statusList.get(0).getMessage())) {
+      DropSubscriptionProcedure procedure = new DropSubscriptionProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode());
       }
@@ -1360,16 +1284,10 @@ public class ProcedureManager {
   public TSStatus operateAuthPlan(
       AuthorPlan authorPlan, List<TDataNodeConfiguration> dns, boolean isGeneratedByPipe) {
     try {
-      final long procedureId =
-          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(statusList.get(0).getCode()).setMessage(statusList.get(0).getMessage());
-      }
+      AuthOperationProcedure procedure =
+          new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe);
+      executor.submitProcedure(procedure);
+      return waitingProcedureFinished(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
           .setMessage(e.getMessage());
@@ -1377,71 +1295,60 @@ public class ProcedureManager {
   }
 
   public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
-    long procedureId = executor.submitProcedure(new SetTTLProcedure(setTTLPlan, isGeneratedByPipe));
-
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
-    } else {
-      return procedureStatus.get(0);
-    }
+    SetTTLProcedure procedure = new SetTTLProcedure(setTTLPlan, isGeneratedByPipe);
+    executor.submitProcedure(procedure);
+    return waitingProcedureFinished(procedure);
   }
 
   /**
-   * Waiting until the specific procedures finished.
+   * Waiting until the specific procedure finished.
    *
-   * @param procedureIds The specific procedures' index
-   * @param statusList The corresponding running results of these procedures
-   * @return True if all Procedures finished successfully, false otherwise
+   * @param procedure The specific procedure
+   * @return TSStatus the running result of this procedure
    */
-  private boolean waitingProcedureFinished(List<Long> procedureIds, List<TSStatus> statusList) {
-    boolean isSucceed = true;
-    for (long procedureId : procedureIds) {
-      final long startTimeForCurrentProcedure = System.currentTimeMillis();
-      while (executor.isRunning()
-          && !executor.isFinished(procedureId)
-          && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
-        sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
-      }
-      final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
-          executor.getResultOrProcedure(procedureId);
-      if (!finishedProcedure.isFinished()) {
-        // The procedure is still executing
-        statusList.add(
-            RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE));
-        isSucceed = false;
-        continue;
-      }
-      if (finishedProcedure.isSuccess()) {
-        if (Objects.nonNull(finishedProcedure.getResult())) {
-          statusList.add(
+  private TSStatus waitingProcedureFinished(Procedure<?> procedure) {
+    if (procedure == null) {
+      LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+    TSStatus status;
+    final long startTimeForCurrentProcedure = System.currentTimeMillis();
+    while (executor.isRunning()
+        && !executor.isFinished(procedure.getProcId())
+        && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
+      sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
+    }
+    if (!procedure.isFinished()) {
+      // The procedure is still executing
+      status =
+          RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE);
+    } else {
+      if (procedure.isSuccess()) {
+        if (procedure.getResult() != null) {
+          status =
               RpcUtils.getStatus(
-                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(finishedProcedure.getResult())));
+                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(procedure.getResult()));
         } else {
-          statusList.add(StatusUtils.OK);
+          status = StatusUtils.OK;
         }
       } else {
-        if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
-          final IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
+        if (procedure.getException().getCause() instanceof IoTDBException) {
+          final IoTDBException e = (IoTDBException) procedure.getException().getCause();
           if (e instanceof BatchProcessException) {
-            statusList.add(
+            status =
                 RpcUtils.getStatus(
                     Arrays.stream(((BatchProcessException) e).getFailingStatus())
-                        .collect(Collectors.toList())));
+                        .collect(Collectors.toList()));
           } else {
-            statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
           }
         } else {
-          statusList.add(
-              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
-                  finishedProcedure.getException().getMessage()));
+          status =
+              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(procedure.getException().getMessage());
         }
-        isSucceed = false;
       }
     }
-    return isSucceed;
+    return status;
   }
 
   private static String wrapTimeoutMessageForPipeProcedure(String message) {
