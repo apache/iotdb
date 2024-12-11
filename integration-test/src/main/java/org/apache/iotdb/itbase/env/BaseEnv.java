@@ -40,6 +40,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -189,6 +190,8 @@ public interface BaseEnv {
   }
 
   ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException;
+
+  ISession getSessionConnection(String sqlDialect, ZoneId zoneId) throws IoTDBConnectionException;
 
   ISession getSessionConnectionWithDB(String sqlDialect, String database)
       throws IoTDBConnectionException;

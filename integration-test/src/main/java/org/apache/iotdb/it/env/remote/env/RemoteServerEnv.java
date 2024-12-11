@@ -47,6 +47,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -251,6 +252,20 @@ public class RemoteServerEnv implements BaseEnv {
             .host(ip_addr)
             .port(Integer.parseInt(port))
             .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(final String sqlDialect, final ZoneId zoneId)
+      throws IoTDBConnectionException {
+    final Session session =
+        new Session.Builder()
+            .host(ip_addr)
+            .port(Integer.parseInt(port))
+            .sqlDialect(sqlDialect)
+            .zoneId(zoneId)
             .build();
     session.open();
     return session;
