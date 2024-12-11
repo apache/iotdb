@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -199,12 +200,14 @@ public class ReadOnlyMemChunk {
             pageStatistics.update(tvPair.getTimestamp(), tvPair.getValue().getBinary());
             break;
           default:
-            // do nothing
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
         }
         pageStatistics.setEmpty(false);
       }
       cnt++;
     }
+    pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
     chunkStatistics.setEmpty(cnt == 0);
   }
 

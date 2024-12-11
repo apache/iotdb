@@ -68,7 +68,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
@@ -143,7 +143,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
@@ -218,7 +218,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
@@ -293,7 +293,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
@@ -368,7 +368,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 
@@ -443,7 +443,7 @@ public class MemChunkLoaderTest {
 
     Statistics pageStatitstics = Mockito.mock(Statistics.class);
     List<Statistics> pageStats = Arrays.asList(pageStatitstics);
-    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0});
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
 

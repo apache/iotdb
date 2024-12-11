@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class MemChunkReader implements IChunkReader, IPointReader {
 
   private final ReadOnlyMemChunk readableChunk;
-  private final IPointReader timeValuePairIterator;
+  private final MergeSortTvListIterator timeValuePairIterator;
   private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 
@@ -78,9 +78,9 @@ public class MemChunkReader implements IChunkReader, IPointReader {
       MemPageReader pageReader =
           new MemPageReader(
               tsBlockSupplier,
-              (MergeSortTvListIterator) timeValuePairIterator,
+              timeValuePairIterator,
               pageOffsetsList.get(i),
-              i < pageStats.size() - 1 ? pageOffsetsList.get(i + 1) : null,
+              pageOffsetsList.get(i + 1),
               metadata.getDataType(),
               metadata.getMeasurementUid(),
               pageStats.get(i),
@@ -185,14 +185,13 @@ public class MemChunkReader implements IChunkReader, IPointReader {
       if (pageEndOffsets == null) {
         return false;
       }
-      int[] currTvListOffsets =
-          ((MergeSortTvListIterator) timeValuePairIterator).getTVListOffsets();
+      int[] currTvListOffsets = timeValuePairIterator.getTVListOffsets();
       for (int i = 0; i < pageEndOffsets.length; i++) {
-        if (currTvListOffsets[i] >= pageEndOffsets[i]) {
-          return true;
+        if (currTvListOffsets[i] < pageEndOffsets[i]) {
+          return false;
         }
       }
-      return false;
+      return true;
     }
 
     // read one page and write to tsblock
