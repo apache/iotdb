@@ -39,14 +39,15 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.enforceSingleRow;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
@@ -54,6 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class SubqueryTest {
+
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
     PlanTester planTester = new PlanTester();
@@ -70,93 +72,89 @@ public class SubqueryTest {
 
     // Verify full LogicalPlan
     /*
-    *      └──OutputNode
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
     *               └──JoinNode
-    *                   |──SortNode
-    *                   │   └──TableScanNode
-    *                   ├──SortNode
-    *                   │   └──AggregationNode
-    *                   │     └──AggregationTableScanNode
+    *                   |──TableScanNode
+    *                   ├──AggregationNode
+    *                   │   └──AggregationTableScanNode
 
     */
     assertPlan(
         logicalQueryPlan,
         output(
-            //            project(
-            //                filter(
-            //                    filterPredicate,
-            join(
-                JoinNode.JoinType.INNER,
-                builder ->
-                    builder
-                        .left(sort(tableScan))
-                        .right(
-                            sort(
-                                aggregation(
-                                    singleGroupingSet(),
-                                    ImmutableMap.of(
-                                        Optional.of("max"),
-                                        aggregationFunction("max", ImmutableList.of("max_9"))),
-                                    Collections.emptyList(),
-                                    Optional.empty(),
-                                    FINAL,
-                                    aggregationTableScan(
+            project(
+                filter(
+                    filterPredicate,
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(tableScan)
+                                .right(
+                                    aggregation(
                                         singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("max"),
+                                            aggregationFunction("max", ImmutableList.of("max_9"))),
                                         Collections.emptyList(),
                                         Optional.empty(),
-                                        PARTIAL,
-                                        "testdb.table1",
-                                        ImmutableList.of("max_9"),
-                                        ImmutableSet.of("s1_6")))))
-                        .ignoreEquiCriteria())));
+                                        FINAL,
+                                        aggregationTableScan(
+                                            singleGroupingSet(),
+                                            Collections.emptyList(),
+                                            Optional.empty(),
+                                            PARTIAL,
+                                            "testdb.table1",
+                                            ImmutableList.of("max_9"),
+                                            ImmutableSet.of("s1_6")))))))));
 
     // Verify DistributionPlan
     assertPlan(
         planTester.getFragmentPlan(0),
         output(
-            //            project(
-            //                filter(
-            //                    filterPredicate,
-            join(
-                JoinNode.JoinType.INNER,
-                builder ->
-                    builder
-                        .left(mergeSort(exchange(), sort(tableScan), exchange()))
-                        .right(
-                            sort(
-                                aggregation(
-                                    singleGroupingSet(),
-                                    ImmutableMap.of(
-                                        Optional.of("max"),
-                                        aggregationFunction("max", ImmutableList.of("max_10"))),
-                                    Collections.emptyList(),
-                                    Optional.empty(),
-                                    FINAL,
-                                    collect(
-                                        exchange(),
-                                        aggregation(
-                                            singleGroupingSet(),
-                                            ImmutableMap.of(
-                                                Optional.of("max_10"),
-                                                aggregationFunction(
-                                                    "max", ImmutableList.of("max_9"))),
-                                            Collections.emptyList(),
-                                            Optional.empty(),
-                                            INTERMEDIATE,
-                                            aggregationTableScan(
+            project(
+                filter(
+                    filterPredicate,
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(collect(exchange(), tableScan, exchange()))
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("max"),
+                                            aggregationFunction("max", ImmutableList.of("max_10"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        FINAL,
+                                        collect(
+                                            exchange(),
+                                            aggregation(
                                                 singleGroupingSet(),
+                                                ImmutableMap.of(
+                                                    Optional.of("max_10"),
+                                                    aggregationFunction(
+                                                        "max", ImmutableList.of("max_9"))),
                                                 Collections.emptyList(),
                                                 Optional.empty(),
-                                                PARTIAL,
-                                                "testdb.table1",
-                                                ImmutableList.of("max_9"),
-                                                ImmutableSet.of("s1_6"))),
-                                        exchange()))))
-                        .ignoreEquiCriteria())));
+                                                INTERMEDIATE,
+                                                aggregationTableScan(
+                                                    singleGroupingSet(),
+                                                    Collections.emptyList(),
+                                                    Optional.empty(),
+                                                    PARTIAL,
+                                                    "testdb.table1",
+                                                    ImmutableList.of("max_9"),
+                                                    ImmutableSet.of("s1_6"))),
+                                            exchange()))))))));
 
-    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
 
-    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
 
     assertPlan(
         planTester.getFragmentPlan(3),
@@ -208,26 +206,22 @@ public class SubqueryTest {
 
     // Verify LogicalPlan
     /*
-    *       └──OutputNode
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
     *               └──JoinNode
-    *                   |──SortNode
-    *                   │  └──TableScanNode
-    *                   ├──SortNode
-    *                   │  └──EnforceSingleRowNode
-    *                   │     └──TableScanNode
+    *                   |──TableScanNode
+    *                   ├──EnforceSingleRowNode
+    *                   │   └──TableScanNode
 
     */
     assertPlan(
         logicalQueryPlan,
         output(
-            join(
-                JoinNode.JoinType.INNER,
-                builder ->
-                    builder
-                        .left(sort(any()))
-                        .right(sort(enforceSingleRow(any())))
-                        .ignoreEquiCriteria()
-                // .equiCriteria("s1", "s2_7")
-                )));
+            project(
+                anyTree(
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder -> builder.left(tableScan1).right(enforceSingleRow(any())))))));
   }
 }

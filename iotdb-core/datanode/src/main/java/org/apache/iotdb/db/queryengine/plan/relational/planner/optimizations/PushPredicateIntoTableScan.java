@@ -92,10 +92,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -536,7 +539,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           newJoinPredicate = joinPredicate;
           break;
         default:
-          throw new IllegalStateException("Only support INNER JOIN in current version");
+          throw new IllegalStateException(
+              "Only support INNER JOIN and FULL OUTER JOIN in current version");
       }
 
       // newJoinPredicate = simplifyExpression(newJoinPredicate);
@@ -580,6 +584,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (node.getJoinType() == FULL) {
+            throw new UnsupportedOperationException(FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN);
+          }
           joinFilterBuilder.add(conjunct);
           hasFilter = true;
         }
@@ -589,14 +596,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         equiJoinClauses.clear();
         joinFilterBuilder.add(lastEquiJoinConjunct);
       }
-
-      List<Expression> joinFilter = joinFilterBuilder.build();
-      //      DynamicFiltersResult dynamicFiltersResult = createDynamicFilters(node,
-      // equiJoinClauses, joinFilter, session, idAllocator);
-      //      Map<DynamicFilterId, Symbol> dynamicFilters =
-      // dynamicFiltersResult.getDynamicFilters();
-      // leftPredicate = combineConjuncts(metadata, leftPredicate, combineConjuncts(metadata,
-      // dynamicFiltersResult.getPredicates()));
 
       PlanNode leftSource;
       PlanNode rightSource;
@@ -614,8 +613,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         rightSource = node.getRightChild().accept(this, new RewriteContext(rightPredicate));
       }
 
+      Cardinality leftCardinality = extractCardinality(leftSource);
+      Cardinality rightCardinality = extractCardinality(rightSource);
+      if (leftCardinality.isAtMostScalar() || rightCardinality.isAtMostScalar()) {
+        // if cardinality of left or right equals to 1, use NestedLoopJoin
+        equiJoinClauses.forEach(
+            equiJoinClause -> joinFilterBuilder.add(equiJoinClause.toExpression()));
+        equiJoinClauses.clear();
+      }
+
+      List<Expression> joinFilter = joinFilterBuilder.build();
       Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
-      if (newJoinFilter.get().equals(TRUE_LITERAL)) {
+      if (TRUE_LITERAL.equals(newJoinFilter.get())) {
         newJoinFilter = Optional.empty();
       }
 
@@ -635,8 +644,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (leftSource != node.getLeftChild()
           || rightSource != node.getRightChild()
           || !filtersEquivalent
-          // !dynamicFilters.equals(node.getDynamicFilters()) ||
           || !equiJoinClausesUnmodified) {
+        // this branch is always executed in current version
         leftSource =
             new ProjectNode(
                 queryContext.getQueryId().genPlanNodeId(), leftSource, leftProjections.build());
@@ -657,14 +666,17 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
-      // using MergeSortJoinNode, sort the left and right child of join node
+      JoinNode outputJoinNode = (JoinNode) output;
       if (!((JoinNode) output).isCrossJoin()) {
-        appendSortNodeForMergeSortJoin((JoinNode) output);
+        // inner join or full join, use MergeSortJoinNode, sort the left and right child of join
+        // node
+        appendSortNodeForMergeSortJoin(outputJoinNode);
       }
 
-      if (!postJoinPredicate.equals(TRUE_LITERAL)) {
+      if (!TRUE_LITERAL.equals(postJoinPredicate)) {
         output =
-            new FilterNode(queryContext.getQueryId().genPlanNodeId(), output, postJoinPredicate);
+            new FilterNode(
+                queryContext.getQueryId().genPlanNodeId(), outputJoinNode, postJoinPredicate);
       }
 
       if (!node.getOutputSymbols().equals(output.getOutputSymbols())) {

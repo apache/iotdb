@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -206,6 +207,11 @@ public final class QueryCardinalityUtil {
     //        {
     //            return node.getSource().accept(this, null);
     //        }
+
+    @Override
+    public Range<Long> visitAggregationTableScan(AggregationTableScanNode node, Void context) {
+      return Range.atLeast((long) node.getDeviceEntries().size());
+    }
 
     private Range<Long> applyLimit(PlanNode source, long limit) {
       Range<Long> sourceCardinalityRange = source.accept(this, null);
