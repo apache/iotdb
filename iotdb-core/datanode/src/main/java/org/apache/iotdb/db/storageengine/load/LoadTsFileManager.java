@@ -42,6 +42,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -531,7 +532,7 @@ public class LoadTsFileManager {
         }
       }
       if (dataPartition2ModificationFile != null) {
-        for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
+        for (final Map.Entry<DataPartitionInfo, ModificationFile> entry :
             dataPartition2ModificationFile.entrySet()) {
           try {
             final ModificationFile modificationFile = entry.getValue();
@@ -547,7 +548,7 @@ public class LoadTsFileManager {
       }
       try {
         Files.delete(taskDir.toPath());
-      } catch (DirectoryNotEmptyException e) {
+      } catch (final DirectoryNotEmptyException e) {
         LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
@@ -556,6 +557,19 @@ public class LoadTsFileManager {
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
       isClosed = true;
+    }
+  }
+
+  public static void cleanTsFile(final File tsFile) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    } catch (final IOException e) {
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 
