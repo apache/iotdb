@@ -24,7 +24,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -423,9 +422,7 @@ public class IoTDBGroupByNaturalMonthIT {
   @Test
   public void groupByNaturalMonthWithNonSystemDefaultTimeZone() {
     try (ISession session =
-        EnvFactory.getEnv()
-            .getSessionConnection(
-                BaseEnv.TREE_SQL_DIALECT, TimeZone.getTimeZone("UTC+09:00").toZoneId())) {
+        EnvFactory.getEnv().getSessionConnection(TimeZone.getTimeZone("UTC+09:00").toZoneId())) {
 
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
