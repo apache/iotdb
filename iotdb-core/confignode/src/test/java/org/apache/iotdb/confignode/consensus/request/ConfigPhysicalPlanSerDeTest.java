@@ -62,8 +62,6 @@ import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
