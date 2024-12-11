@@ -110,7 +110,7 @@ public class CountAccumulator implements TableAccumulator {
   }
 
   @Override
-  public boolean hasRemoveInput() {
+  public boolean removable() {
     return true;
   }
 }

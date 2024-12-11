@@ -161,7 +161,7 @@ public class SumAccumulator implements TableAccumulator {
   }
 
   @Override
-  public boolean hasRemoveInput() {
+  public boolean removable() {
     return true;
   }
 

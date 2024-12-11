@@ -183,7 +183,7 @@ public class AvgAccumulator implements TableAccumulator {
   }
 
   @Override
-  public boolean hasRemoveInput() {
+  public boolean removable() {
     return true;
   }
 

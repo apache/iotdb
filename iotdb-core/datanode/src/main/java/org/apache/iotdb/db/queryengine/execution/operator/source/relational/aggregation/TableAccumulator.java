@@ -54,7 +54,7 @@ public interface TableAccumulator {
 
   void reset();
 
-  default boolean hasRemoveInput() {
+  default boolean removable() {
     return false;
   }
 }
