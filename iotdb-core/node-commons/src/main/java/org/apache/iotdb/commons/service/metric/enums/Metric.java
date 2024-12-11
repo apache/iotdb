@@ -74,6 +74,7 @@ public enum Metric {
   WAL_BUFFER("wal_buffer"),
   PENDING_FLUSH_TASK("pending_flush_task"),
   WAL_COST("wal_cost"),
+  WAL_QUEUE_MEM_COST("wal_queue_mem_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
   MEMTABLE_THRESHOLD("memtable_threshold"),

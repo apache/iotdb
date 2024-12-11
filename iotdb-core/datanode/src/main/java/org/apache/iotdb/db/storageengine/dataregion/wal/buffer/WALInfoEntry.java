@@ -21,8 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 
@@ -97,6 +101,10 @@ public class WALInfoEntry extends WALEntry {
       this.tabletEnd = tabletEnd;
     }
 
+    public int getRangeRowCount() {
+      return tabletEnd - tabletStart;
+    }
+
     @Override
     public int hashCode() {
       return Objects.hash(tabletStart, tabletEnd);
@@ -121,6 +129,27 @@ public class WALInfoEntry extends WALEntry {
   @Override
   public boolean isSignal() {
     return false;
+  }
+
+  @Override
+  public long getMemorySize() {
+    switch (type) {
+      case INSERT_TABLET_NODE:
+        return ((InsertNode) value).getMemorySize()
+            / ((InsertTabletNode) value).getRowCount()
+            * tabletInfo.getRangeRowCount();
+      case INSERT_ROW_NODE:
+      case INSERT_ROWS_NODE:
+        return ((InsertNode) value).getMemorySize();
+      case MEMORY_TABLE_SNAPSHOT:
+        return ((IMemTable) value).getTVListsRamCost();
+      case DELETE_DATA_NODE:
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+      case MEMORY_TABLE_CHECKPOINT:
+        return RamUsageEstimator.sizeOfObject(value);
+      default:
+        throw new RuntimeException("Unsupported wal entry type " + type);
+    }
   }
 
   @Override
