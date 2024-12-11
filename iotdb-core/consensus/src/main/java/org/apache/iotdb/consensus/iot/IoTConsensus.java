@@ -296,53 +296,55 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (impl.getConfiguration().contains(peer)) {
-      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
-    }
-    try {
-      // step 1: inactive new Peer to prepare for following steps
-      logger.info("[IoTConsensus] inactivate new peer: {}", peer);
-      impl.inactivePeer(peer, false);
-
-      // step 2: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.notifyPeersToBuildSyncLogChannel(peer);
-
-      // step 3: take snapshot
-      logger.info("[IoTConsensus] start to take snapshot...");
-
-      impl.takeSnapshot();
-
-      // step 4: transit snapshot
-      logger.info("[IoTConsensus] start to transmit snapshot...");
-      impl.transmitSnapshot(peer);
-
-      // step 5: let the new peer load snapshot
-      logger.info("[IoTConsensus] trigger new peer to load snapshot...");
-      impl.triggerSnapshotLoad(peer);
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
-
-      // step 6: active new Peer
-      logger.info("[IoTConsensus] activate new peer...");
-      impl.activePeer(peer);
-
-      // step 7: notify remote peer to clean up transferred snapshot
-      logger.info("[IoTConsensus] clean up remote snapshot...");
-      try {
-        impl.cleanupRemoteSnapshot(peer);
-      } catch (ConsensusGroupModifyPeerException e) {
-        logger.warn("[IoTConsensus] failed to cleanup remote snapshot", e);
+    synchronized (impl) {
+      if (impl.getConfiguration().contains(peer)) {
+        throw new PeerAlreadyInConsensusGroupException(groupId, peer);
       }
-      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
+      try {
+        // step 1: inactive new Peer to prepare for following steps
+        logger.info("[IoTConsensus] inactivate new peer: {}", peer);
+        impl.inactivePeer(peer, false);
 
-    } catch (ConsensusGroupModifyPeerException e) {
-      logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
-      // try to clean up the sync log channel
-      impl.notifyPeersToRemoveSyncLogChannel(peer);
-      throw new ConsensusException(e);
-    } finally {
-      logger.info("[IoTConsensus] clean up local snapshot...");
-      impl.cleanupLocalSnapshot();
+        // step 2: notify all the other Peers to build the sync connection to newPeer
+        logger.info("[IoTConsensus] notify current peers to build sync log...");
+        impl.notifyPeersToBuildSyncLogChannel(peer);
+
+        // step 3: take snapshot
+        logger.info("[IoTConsensus] start to take snapshot...");
+
+        impl.takeSnapshot();
+
+        // step 4: transit snapshot
+        logger.info("[IoTConsensus] start to transmit snapshot...");
+        impl.transmitSnapshot(peer);
+
+        // step 5: let the new peer load snapshot
+        logger.info("[IoTConsensus] trigger new peer to load snapshot...");
+        impl.triggerSnapshotLoad(peer);
+        KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
+
+        // step 6: active new Peer
+        logger.info("[IoTConsensus] activate new peer...");
+        impl.activePeer(peer);
+
+        // step 7: notify remote peer to clean up transferred snapshot
+        logger.info("[IoTConsensus] clean up remote snapshot...");
+        try {
+          impl.cleanupRemoteSnapshot(peer);
+        } catch (ConsensusGroupModifyPeerException e) {
+          logger.warn("[IoTConsensus] failed to cleanup remote snapshot", e);
+        }
+        KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
+
+      } catch (ConsensusGroupModifyPeerException e) {
+        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+        // try to clean up the sync log channel
+        impl.notifyPeersToRemoveSyncLogChannel(peer);
+        throw new ConsensusException(e);
+      } finally {
+        logger.info("[IoTConsensus] clean up local snapshot...");
+        impl.cleanupLocalSnapshot();
+      }
     }
   }
 
