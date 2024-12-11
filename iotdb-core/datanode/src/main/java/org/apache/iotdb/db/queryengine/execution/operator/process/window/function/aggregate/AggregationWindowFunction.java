@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -23,7 +23,14 @@ public class AggregationWindowFunction implements WindowFunction {
   }
 
   @Override
-  public void transform(Column[] partition, ColumnBuilder builder, int index, int frameStart, int frameEnd, int peerGroupStart, int peerGroupEnd) {
+  public void transform(
+      Column[] partition,
+      ColumnBuilder builder,
+      int index,
+      int frameStart,
+      int frameEnd,
+      int peerGroupStart,
+      int peerGroupEnd) {
     if (frameStart < 0) {
       // Empty frame
       reset();

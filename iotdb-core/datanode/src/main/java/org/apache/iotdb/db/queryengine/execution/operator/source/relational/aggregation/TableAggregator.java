@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
-import com.google.common.primitives.Ints;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+
+import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

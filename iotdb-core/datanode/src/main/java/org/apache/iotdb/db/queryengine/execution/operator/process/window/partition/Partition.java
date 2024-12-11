@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.Frame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
@@ -9,6 +8,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RowsFrame;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -145,7 +146,10 @@ public final class Partition {
       Frame frame = frames.get(i);
       WindowFunction windowFunction = windowFunctions.get(i);
 
-      Range frameRange = windowFunction.needFrame()? frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd) : new Range(-1, -1);
+      Range frameRange =
+          windowFunction.needFrame()
+              ? frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd)
+              : new Range(-1, -1);
       windowFunction.transform(
           partition,
           builder.getColumnBuilder(count),

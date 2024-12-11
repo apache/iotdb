@@ -1,7 +1,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
-import com.google.common.primitives.Ints;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
+
+import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -19,9 +20,7 @@ public class WindowAggregator {
   private final int[] inputChannels;
 
   public WindowAggregator(
-      TableAccumulator accumulator,
-      TSDataType outputType,
-      List<Integer> inputChannels) {
+      TableAccumulator accumulator, TSDataType outputType, List<Integer> inputChannels) {
     this.accumulator = requireNonNull(accumulator, "accumulator is null");
     this.outputType = requireNonNull(outputType, "intermediateType is null");
     this.inputChannels = Ints.toArray(requireNonNull(inputChannels, "inputChannels is null"));
@@ -40,8 +39,7 @@ public class WindowAggregator {
     // Process count(*)
     int count = columns[0].getPositionCount();
     if (arguments.length == 0) {
-      arguments =
-          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
+      arguments = new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
     }
 
     accumulator.addInput(arguments);
@@ -56,8 +54,7 @@ public class WindowAggregator {
     // Process count(*)
     int count = columns[0].getPositionCount();
     if (arguments.length == 0) {
-      arguments =
-          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
+      arguments = new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
     }
 
     accumulator.removeInput(arguments);
