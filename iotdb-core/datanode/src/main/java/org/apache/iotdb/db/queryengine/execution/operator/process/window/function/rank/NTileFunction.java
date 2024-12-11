@@ -41,4 +41,14 @@ public class NTileFunction implements WindowFunction {
 
     return (index - remainderRows) / rowsPerBucket;
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

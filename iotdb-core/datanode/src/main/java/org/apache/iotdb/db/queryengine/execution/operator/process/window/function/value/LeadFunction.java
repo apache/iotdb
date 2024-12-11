@@ -59,4 +59,14 @@ public class LeadFunction implements WindowFunction {
       builder.appendNull();
     }
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

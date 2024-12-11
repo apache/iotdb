@@ -48,4 +48,9 @@ public class LastValueFunction implements WindowFunction {
       builder.write(partition[channel], frameEnd);
     }
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
 }

@@ -22,4 +22,14 @@ public class RowNumberFunction implements WindowFunction {
       int peerGroupEnd) {
     builder.writeLong(index + 1);
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

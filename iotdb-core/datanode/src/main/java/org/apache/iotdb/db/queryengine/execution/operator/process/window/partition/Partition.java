@@ -38,6 +38,8 @@ public final class Partition {
 
   private final List<Frame> frames;
 
+  private final boolean needPeerGroup;
+
   public Partition(
       TsBlock tsBlock,
       List<TSDataType> dataTypes,
@@ -118,6 +120,8 @@ public final class Partition {
       }
       frames.add(frame);
     }
+
+    needPeerGroup = windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup);
   }
 
   public boolean hasNext() {
@@ -133,22 +137,21 @@ public final class Partition {
       columnBuilder.write(column, currentPosition);
     }
 
-    if (currentPosition == peerGroupEnd) {
+    if (needPeerGroup && currentPosition == peerGroupEnd) {
       updatePeerGroup();
     }
 
     for (int i = 0; i < windowFunctions.size(); i++) {
       Frame frame = frames.get(i);
-      Range range = frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd);
-
-      // TODO: handle empty frame
       WindowFunction windowFunction = windowFunctions.get(i);
+
+      Range frameRange = windowFunction.needFrame()? frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd) : new Range(-1, -1);
       windowFunction.transform(
           partition,
           builder.getColumnBuilder(count),
           currentPosition - partitionStart,
-          range.getStart(),
-          range.getEnd(),
+          frameRange.getStart(),
+          frameRange.getEnd(),
           peerGroupStart - partitionStart,
           peerGroupEnd - partitionStart - 1);
 

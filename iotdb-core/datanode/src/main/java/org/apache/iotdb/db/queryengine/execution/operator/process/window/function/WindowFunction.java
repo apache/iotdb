@@ -14,4 +14,12 @@ public interface WindowFunction {
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd);
+
+  default boolean needPeerGroup() {
+    return true;
+  }
+
+  default boolean needFrame() {
+    return true;
+  }
 }

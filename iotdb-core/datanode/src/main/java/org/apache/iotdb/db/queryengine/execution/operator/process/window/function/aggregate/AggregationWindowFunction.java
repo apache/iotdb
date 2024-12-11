@@ -87,4 +87,9 @@ public class AggregationWindowFunction implements WindowFunction {
 
     return ret;
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
 }

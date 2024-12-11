@@ -36,4 +36,9 @@ public class CumeDistFunction implements WindowFunction {
 
     builder.writeDouble(((double) count) / partition[0].getPositionCount());
   }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

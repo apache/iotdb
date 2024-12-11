@@ -41,4 +41,9 @@ public class RankFunction implements WindowFunction {
 
     builder.writeLong(rank);
   }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

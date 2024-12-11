@@ -59,4 +59,9 @@ public class NthValueFunction implements WindowFunction {
       builder.appendNull();
     }
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
 }

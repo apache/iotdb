@@ -47,4 +47,9 @@ public class PercentRankFunction implements WindowFunction {
 
     builder.writeDouble(((double) (rank - 1)) / (total - 1));
   }
+
+  @Override
+  public boolean needFrame() {
+    return false;
+  }
 }

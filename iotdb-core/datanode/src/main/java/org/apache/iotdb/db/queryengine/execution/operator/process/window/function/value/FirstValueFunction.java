@@ -48,4 +48,9 @@ public class FirstValueFunction implements WindowFunction {
       builder.write(partition[channel], frameStart);
     }
   }
+
+  @Override
+  public boolean needPeerGroup() {
+    return false;
+  }
 }
