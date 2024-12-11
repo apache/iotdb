@@ -750,11 +750,23 @@ struct TAlterPipeReq {
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
     8: optional bool ifExistsCondition
+    9: optional string sqlDialect
+}
+
+struct TStartPipeReq {
+    1: required string pipeName
+    2: optional string sqlDialect
+}
+
+struct TStopPipeReq {
+    1: required string pipeName
+    2: optional string sqlDialect
 }
 
 struct TDropPipeReq {
     1: required string pipeName
     2: optional bool ifExistsCondition
+    3: optional string sqlDialect
 }
 
 // Deprecated, restored for compatibility
@@ -767,6 +779,7 @@ struct TPipeSinkInfo {
 struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
+  3: optional string sqlDialect
 }
 
 struct TShowPipeResp {
@@ -1664,8 +1677,14 @@ service IConfigNodeRPCService {
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
 
+  /** Start Pipe */
+  common.TSStatus startPipeExtended(TStartPipeReq req)
+
   /** Stop Pipe */
   common.TSStatus stopPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipeExtended(TStopPipeReq req)
 
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)

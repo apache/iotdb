@@ -85,6 +85,14 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.containsKey(pipeName);
   }
 
+  public boolean containsPipeMeta(String pipeName, String dialect) {
+    final PipeMeta pipeMeta = pipeNameToPipeMetaMap.get(pipeName);
+    if (Objects.isNull(pipeMeta)) {
+      return false;
+    }
+    return pipeMeta.matchDialect(dialect);
+  }
+
   public Iterable<PipeMeta> getPipeMetaList() {
     return pipeNameToPipeMetaMap.values();
   }

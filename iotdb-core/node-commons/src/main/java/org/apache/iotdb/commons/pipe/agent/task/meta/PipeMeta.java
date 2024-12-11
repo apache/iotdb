@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+
 import org.apache.tsfile.utils.PublicBAOS;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -59,6 +62,14 @@ public class PipeMeta {
 
   public PipeTemporaryMeta getTemporaryMeta() {
     return temporaryMeta;
+  }
+
+  public boolean matchDialect(@NonNull final String dialect) {
+    return dialect.equalsIgnoreCase(
+        getStaticMeta()
+            .getExtractorParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
   public ByteBuffer serialize() throws IOException {
