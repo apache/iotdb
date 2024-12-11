@@ -296,6 +296,18 @@ public class Role {
     }
   }
 
+  public void setAnyScopePrivilegeSetWithMask(int privMask) {
+    final int PRI_COUNT = PrivilegeType.getPrivilegeCount(PrivilegeModelType.RELATIONAL);
+    for (int i = 0; i < PRI_COUNT; i++) {
+      if ((privMask & (1 << i)) != 0) {
+        anyScopePrivilegeSet.add(AuthUtils.posToObjPri(i));
+        if ((privMask & (1 << (i + 16))) != 0) {
+          anyScopePrivileGrantOptSet.add(AuthUtils.posToObjPri(i));
+        }
+      }
+    }
+  }
+
   public void setSysPriGrantOpt(Set<PrivilegeType> grantOpt) {
     this.sysPriGrantOpt = grantOpt;
   }
@@ -434,6 +446,17 @@ public class Role {
     }
     for (PrivilegeType sysGrantOpt : sysPriGrantOpt) {
       privs |= 1 << (AuthUtils.sysPriTopos(sysGrantOpt) + 16);
+    }
+    return privs;
+  }
+
+  public int getAnyScopePrivileges() {
+    int privs = 0;
+    for (PrivilegeType anyScope : anyScopePrivilegeSet) {
+      privs |= 1 << AuthUtils.objPriToPos(anyScope);
+    }
+    for (PrivilegeType anyScopeGrantOpt : anyScopePrivileGrantOptSet) {
+      privs |= 1 << (AuthUtils.objPriToPos(anyScopeGrantOpt) + 16);
     }
     return privs;
   }

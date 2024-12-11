@@ -136,6 +136,8 @@ statement
     | revokeUserRole
     | listUserPrivileges
     | listRolePrivileges
+    | listUser
+    | listRole
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -590,6 +592,14 @@ listUserPrivileges
 
 listRolePrivileges
     : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+listUser
+    : LIST USER
+    ;
+
+listRole
+    : LIST ROLE
     ;
 
 
