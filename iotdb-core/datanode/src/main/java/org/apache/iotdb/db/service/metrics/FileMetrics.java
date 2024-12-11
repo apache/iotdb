@@ -109,4 +109,9 @@ public class FileMetrics implements IMetricSet {
   public long getFileCount(boolean seq) {
     return TS_FILE_METRICS.getFileCount(seq);
   }
+
+  @TestOnly
+  public int getModFileNum() {
+    return MODS_FILE_METRICS.getModFileNum();
+  }
 }

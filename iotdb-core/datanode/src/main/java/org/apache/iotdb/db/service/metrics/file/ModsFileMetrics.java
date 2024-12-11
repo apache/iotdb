@@ -60,7 +60,7 @@ public class ModsFileMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), MODS);
   }
 
-  private int getModFileNum() {
+  public int getModFileNum() {
     return modFileNum.get();
   }
 
