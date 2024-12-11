@@ -62,14 +62,10 @@ public class MergeSortTvListIterator implements IPointReader {
     selectedTVListIndex = -1;
     for (int i = 0; i < tvListIterators.size(); i++) {
       TVList.TVListIterator iterator = tvListIterators.get(i);
-      TimeValuePair currTvPair = null;
-      if (iterator.hasNext()) {
-        currTvPair = iterator.current();
-      }
-
+      boolean hasNext = iterator.hasNext();
       // update minimum time and remember selected TVList
-      if (currTvPair != null && currTvPair.getTimestamp() <= time) {
-        time = currTvPair.getTimestamp();
+      if (hasNext && iterator.currentTime() <= time) {
+        time = iterator.currentTime();
         selectedTVListIndex = i;
       }
     }
@@ -93,9 +89,12 @@ public class MergeSortTvListIterator implements IPointReader {
 
     // call next to skip identical timestamp in other iterators
     for (int i = 0; i < tvListIterators.size(); i++) {
-      TimeValuePair tvPair = tvListIterators.get(i).current();
-      if (tvPair != null && tvPair.getTimestamp() == currentTvPair.getTimestamp()) {
-        tvListIterators.get(i).next();
+      if (selectedTVListIndex == i) {
+        continue;
+      }
+      TVList.TVListIterator iterator = tvListIterators.get(i);
+      if (iterator.hasCurrent() && iterator.currentTime() == currentTvPair.getTimestamp()) {
+        tvListIterators.get(i).step();
         tvListOffsets[i] = tvListIterators.get(i).getIndex();
       }
     }
