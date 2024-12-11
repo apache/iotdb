@@ -112,10 +112,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // If check sum failed, it indicates that the length we read may not be correct.
       // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
       // attempts to read from that.
-      // We directly clear all the bytes we already received here. Note that TCP does not guarantee
-      // the rim of the data, thus we wait for some time to clear sender's potential un-transferred
-      // data. This will eventually succeed, though we do not guarantee how long it takes.
-      if (!checkSum(data)) {
+      // We directly close the socket here.
+      if (checkSum(data)) {
         LOGGER.warn("Checksum failed, will close the socket. Air gap receiverId: {}", receiverId);
         fail();
         socket.close();
