@@ -588,7 +588,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             throw new UnsupportedOperationException(FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN);
           }
           joinFilterBuilder.add(conjunct);
-          hasFilter = true;
         }
       }
 
@@ -617,13 +616,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         equiJoinClauses.clear();
       }
 
-      //      if (!equiJoinClauses.isEmpty() && hasFilter) {
-      //        equiJoinClauses.forEach(
-      //                equiJoinClause -> joinFilterBuilder.add(equiJoinClause.toExpression()));
-      //        equiJoinClauses.clear();
-      //        //joinFilterBuilder.add(lastEquiJoinConjunct);
-      //      }
-
       List<Expression> joinFilter = joinFilterBuilder.build();
       Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
       if (TRUE_LITERAL.equals(newJoinFilter.get())) {
@@ -641,8 +633,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       boolean filtersEquivalent =
-          newJoinFilter.isPresent() == node.getFilter().isPresent() && (!newJoinFilter.isPresent());
-      // areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
+          newJoinFilter.isPresent() == node.getFilter().isPresent()
+              && (!newJoinFilter.isPresent()
+              // || areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
+              );
 
       PlanNode output = node;
       if (leftSource != node.getLeftChild()
