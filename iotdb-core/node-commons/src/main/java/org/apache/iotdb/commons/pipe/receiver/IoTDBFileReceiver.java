@@ -379,8 +379,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         writingFile.getPath());
   }
 
-  private boolean isFileExistedAndNameCorrect(String fileName) {
-    return writingFile != null && writingFile.getName().equals(fileName);
+  private boolean isFileExistedAndNameCorrect(final String fileName) {
+    return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
   }
 
   private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
@@ -395,7 +395,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverId.get(),
             writingFile == null ? "null" : writingFile.getPath(),
             writingFile == null ? 0 : writingFile.length());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to close current writing file writer {}, because {}.",
             receiverId.get(),
@@ -424,7 +424,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  private void deleteFile(File file) {
+  private void deleteFile(final File file) {
     if (file.exists()) {
       try {
         FileUtils.delete(file);
@@ -514,7 +514,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status.getMessage());
       }
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.",
           receiverId.get(),
@@ -599,7 +599,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status);
       }
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.", receiverId.get(), files, req, e);
       return new TPipeTransferResp(
