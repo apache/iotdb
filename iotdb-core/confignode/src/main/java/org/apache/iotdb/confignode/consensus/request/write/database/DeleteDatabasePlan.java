@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+@Deprecated
 public class DeleteDatabasePlan extends ConfigPhysicalPlan {
 
   private String name;
@@ -36,7 +37,7 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.DeleteDatabase);
   }
 
-  public DeleteDatabasePlan(String name) {
+  public DeleteDatabasePlan(final String name) {
     this();
     this.name = name;
   }
@@ -46,7 +47,7 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     BasicStructureSerDeUtil.write(name, stream);
   }
@@ -57,7 +58,7 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }

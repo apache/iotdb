@@ -29,7 +29,7 @@ import java.util.Map;
 public enum PipeSchemaSerializableEventType {
   SCHEMA_WRITE_PLAN((byte) 1),
   SCHEMA_SNAPSHOT((byte) 2),
-  ;
+  SCHEMA_SNAPSHOT_V2((byte) 3);
 
   private static final Map<Byte, PipeSchemaSerializableEventType> TYPE_MAP = new HashMap<>();
 
@@ -41,7 +41,7 @@ public enum PipeSchemaSerializableEventType {
 
   private final byte type;
 
-  PipeSchemaSerializableEventType(byte type) {
+  PipeSchemaSerializableEventType(final byte type) {
     this.type = type;
   }
 
@@ -49,16 +49,16 @@ public enum PipeSchemaSerializableEventType {
     return type;
   }
 
-  public static PipeSchemaSerializableEventType deserialize(byte type) {
+  public static PipeSchemaSerializableEventType deserialize(final byte type) {
     return TYPE_MAP.get(type);
   }
 
-  public static SerializableEvent deserialize(ByteBuffer buffer) throws IOException {
+  public static SerializableEvent deserialize(final ByteBuffer buffer) throws IOException {
     final byte eventType = buffer.get();
     return deserialize(buffer, eventType);
   }
 
-  public static SerializableEvent deserialize(ByteBuffer buffer, byte eventType)
+  public static SerializableEvent deserialize(final ByteBuffer buffer, final byte eventType)
       throws IOException {
     final SerializableEvent event;
     switch (eventType) {
@@ -66,7 +66,10 @@ public enum PipeSchemaSerializableEventType {
         event = new PipeSchemaRegionWritePlanEvent();
         break;
       case 2:
-        event = new PipeSchemaRegionSnapshotEvent();
+        event = new PipeSchemaRegionSnapshotEvent(1);
+        break;
+      case 3:
+        event = new PipeSchemaRegionSnapshotEvent(2);
         break;
       default:
         throw new IllegalArgumentException("Invalid event type: " + eventType);

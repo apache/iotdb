@@ -35,9 +35,9 @@ import java.util.Objects;
 
 public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
-  private transient PlanNode planNode;
+  protected transient PlanNode planNode;
 
-  private PipeTransferPlanNodeReq() {
+  protected PipeTransferPlanNodeReq() {
     // Do nothing
   }
 
@@ -47,7 +47,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferPlanNodeReq toTPipeTransferReq(PlanNode planNode) {
+  public static PipeTransferPlanNodeReq toTPipeTransferReq(final PlanNode planNode) {
     final PipeTransferPlanNodeReq req = new PipeTransferPlanNodeReq();
 
     req.planNode = planNode;
@@ -59,7 +59,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferPlanNodeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferPlanNodeReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferPlanNodeReq planNodeReq = new PipeTransferPlanNodeReq();
 
     planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
@@ -73,7 +73,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(PlanNode planNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(final PlanNode planNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -86,14 +86,14 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
+    final PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
     return planNode.equals(that.planNode)
         && version == that.version
         && type == that.type

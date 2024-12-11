@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -38,11 +39,18 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
@@ -60,9 +68,17 @@ import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysi
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -80,6 +96,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -116,8 +133,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   .setMessage(
                       "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
         }
-        TPipeTransferResp resp;
-        long startTime = System.nanoTime();
+        final TPipeTransferResp resp;
+        final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
             resp =
@@ -222,6 +239,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
+    final String queryId;
     switch (plan.getType()) {
       case CreateDatabase:
         // Here we only reserve database name and substitute the sender's local information
@@ -251,6 +269,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
                 .setIsGeneratedByPipe(true));
+      case DeleteDatabaseV2:
+        return configManager.deleteDatabases(
+            new TDeleteDatabasesReq(
+                    Collections.singletonList(((DatabaseSchemaPlan) plan).getSchema().getName()))
+                .setIsGeneratedByPipe(true)
+                .setIsTableModel(((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
@@ -299,6 +323,126 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
+      case PipeCreateTable:
+        TSStatus result =
+            configManager
+                .getProcedureManager()
+                .executeWithoutDuplicate(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    generatePseudoQueryId(),
+                    ProcedureType.CREATE_TABLE_PROCEDURE,
+                    new CreateTableProcedure(
+                        ((PipeCreateTablePlan) plan).getDatabase(),
+                        ((PipeCreateTablePlan) plan).getTable(),
+                        true));
+        if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+          // If the table already exists, we shall add the sender table's columns to the
+          // receiver's table, inner procedure guaranteeing that the columns existing at the
+          // receiver table will be trimmed
+          result =
+              executePlan(
+                  new AddTableColumnPlan(
+                      ((PipeCreateTablePlan) plan).getDatabase(),
+                      ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                      ((PipeCreateTablePlan) plan).getTable().getColumnList(),
+                      false));
+        }
+        return result;
+      case AddTableColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AddTableColumnPlan) plan).getDatabase(),
+                null,
+                ((AddTableColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
+                new AddTableColumnProcedure(
+                    ((AddTableColumnPlan) plan).getDatabase(),
+                    ((AddTableColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((AddTableColumnPlan) plan).getColumnSchemaList(),
+                    true));
+      case SetTableProperties:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetTablePropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetTablePropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
+                new SetTablePropertiesProcedure(
+                    ((SetTablePropertiesPlan) plan).getDatabase(),
+                    ((SetTablePropertiesPlan) plan).getTableName(),
+                    queryId,
+                    ((SetTablePropertiesPlan) plan).getProperties(),
+                    true));
+      case CommitDeleteColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteColumnPlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
+                new DropTableColumnProcedure(
+                    ((CommitDeleteColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((CommitDeleteColumnPlan) plan).getColumnName(),
+                    true));
+      case RenameTableColumn:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((RenameTableColumnPlan) plan).getDatabase(),
+                null,
+                ((RenameTableColumnPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
+                new RenameTableColumnProcedure(
+                    ((RenameTableColumnPlan) plan).getDatabase(),
+                    ((RenameTableColumnPlan) plan).getTableName(),
+                    queryId,
+                    ((RenameTableColumnPlan) plan).getOldName(),
+                    ((RenameTableColumnPlan) plan).getNewName(),
+                    true));
+      case CommitDeleteTable:
+        queryId = generatePseudoQueryId();
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((CommitDeleteTablePlan) plan).getDatabase(),
+                null,
+                ((CommitDeleteTablePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.DROP_TABLE_PROCEDURE,
+                new DropTableProcedure(
+                    ((CommitDeleteTablePlan) plan).getDatabase(),
+                    ((CommitDeleteTablePlan) plan).getTableName(),
+                    queryId,
+                    true));
+      case PipeDeleteDevices:
+        return configManager
+            .getProcedureManager()
+            .deleteDevices(
+                new TDeleteTableDeviceReq(
+                    ((PipeDeleteDevicesPlan) plan).getDatabase(),
+                    ((PipeDeleteDevicesPlan) plan).getTableName(),
+                    generatePseudoQueryId(),
+                    ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getPatternBytes()),
+                    ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getFilterBytes()),
+                    ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
+                true)
+            .getStatus();
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -370,13 +514,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern pattern =
-        new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final IoTDBTreePattern treePattern =
+        new IoTDBTreePattern(
+            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final TablePattern tablePattern =
+        new TablePattern(
+            parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
+            parameters.get(PipeTransferFileSealReqV2.DATABASE_PATTERN),
+            parameters.get(ColumnHeaderConstant.TABLE_NAME));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
-          .process(generator.next(), pattern)
-          .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
+      IoTDBConfigRegionExtractor.parseConfigPlan(generator.next(), treePattern, tablePattern)
+          .filter(
+              configPhysicalPlan ->
+                  IoTDBConfigRegionExtractor.isTypeListened(
+                      configPhysicalPlan, executionTypes, treePattern, tablePattern))
           .ifPresent(
               configPhysicalPlan ->
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
