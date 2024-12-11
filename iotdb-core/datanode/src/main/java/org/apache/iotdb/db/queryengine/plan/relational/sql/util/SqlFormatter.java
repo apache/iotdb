@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
@@ -1166,6 +1167,40 @@ public final class SqlFormatter {
         builder.append("SHOW TOPIC ").append(node.getTopicName());
       }
 
+      return null;
+    }
+
+    @Override
+    protected Void visitRelationalAuthorPlan(RelationalAuthorStatement node, Integer context) {
+      switch (node.getAuthorType()) {
+        case GRANT_USER_ANY:
+        case GRANT_USER_DB:
+        case GRANT_USER_SYS:
+        case GRANT_USER_TB:
+          builder.append("GRANT USER PRIVILEGES");
+          break;
+        case GRANT_ROLE_ANY:
+        case GRANT_ROLE_DB:
+        case GRANT_ROLE_SYS:
+        case GRANT_ROLE_TB:
+          builder.append("GRANT ROLE PRIVILEGES");
+          break;
+        case GRANT_USER_ROLE:
+          builder.append("GRANT USER ROLE");
+          break;
+        case LIST_ROLE:
+          builder.append("LIST ROLE");
+          break;
+        case LIST_USER:
+          builder.append("LIST USER");
+          break;
+        case LIST_ROLE_PRIV:
+          builder.append("LIST ROLE PRIVILEGES");
+          break;
+        case LIST_USER_PRIV:
+          builder.append("LIST USER PRIVILEGES");
+          break;
+      }
       return null;
     }
 

@@ -130,16 +130,17 @@ statement
     // auth Statement
     | grantStatement
     | revokeStatement
-    | createUser
-    | createRole
-    | dropUser
-    | dropRole
-    | grantUserRole
-    | revokeUserRole
-    | listUserPrivileges
-    | listRolePrivileges
-    | listUser
-    | listRole
+    | createUserStatement
+    | createRoleStatement
+    | dropUserStatement
+    | dropRoleStatement
+    | grantUserRoleStatement
+    | revokeUserRoleStatement
+    | alterUserStatement
+    | listUserPrivilegeStatement
+    | listRolePrivilegeStatement
+    | listUserStatement
+    | listRoleStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -561,113 +562,101 @@ showCurrentTimestampStatement
 
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
-createUser
+createUserStatement
     : CREATE USER userName=identifier password=string
     ;
 
-createRole
+createRoleStatement
     : CREATE ROLE roleName=identifier
     ;
 
-dropUser
+dropUserStatement
     : DROP USER userName=identifier
     ;
 
-dropRole
+dropRoleStatement
     : DROP ROLE roleName=identifier
     ;
 
-alterUser
+alterUserStatement
     : ALTER USER userName=identifier SET PASSWORD password=identifier
     ;
 
-grantUserRole
+grantUserRoleStatement
     : GRANT ROLE roleName=identifier TO USER userName=identifier
     ;
 
-revokeUserRole
+revokeUserRoleStatement
     : REVOKE ROLE roleName=identifier FROM USER userName=identifier
     ;
 
 
 grantStatement
-    : GRANT grantPrivilegeObject TO HolderType roleName=identifier (GrantOpt)?
+    : GRANT privilegeObjectScope TO holderType holderName=identifier (grantOpt)?
     ;
 
-listUserPrivileges
+listUserPrivilegeStatement
     : LIST PRIVILEGES OF USER userName=identifier
     ;
 
-listRolePrivileges
+listRolePrivilegeStatement
     : LIST PRIVILEGES OF ROLE roleName=identifier
     ;
 
-listUser
+listUserStatement
     : LIST USER
     ;
 
-listRole
+listRoleStatement
     : LIST ROLE
     ;
 
 
 revokeStatement
-    : REVOKE revokePrivilegeObject FROM HolderType  roleName=identifier
+    : REVOKE (revokeGrantOpt)? privilegeObjectScope FROM holderType holderName=identifier
     ;
 
-
-grantPrivilegeObject
-    : SYSTEM_PRIVILEGE
-    | ObjectPrivilege ON ObjectType objectName=identifier
-    | ObjectPrivilege ON objectScope
-    | ObjectPrivilege ON ANY
+privilegeObjectScope
+    : systemPrivilege
+    | objectPrivilege ON objectType objectName=identifier
+    | objectPrivilege ON objectScope
+    | objectPrivilege ON ANY
     ;
 
 objectScope
     : dbname=identifier '.' tbname=identifier;
 
-SYSTEM_PRIVILEGE
+systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
     | MAINTAIN
     ;
 
-ObjectPrivilege
+objectPrivilege
     : CREATE
     | DROP
     | ALTER
     | SELECT
-    | UPDATE
     | INSERT
     | DELETE
     ;
 
-ObjectType
+objectType
     : TABLE
     | DATABASE
     ;
 
-HolderType
+holderType
     : USER
     | ROLE
     ;
 
-GrantOpt
+grantOpt
     : WITH GRANT OPTION
     ;
 
-RevokeGrantOpt
+revokeGrantOpt
     : GRANT OPTION FOR
-    ;
-
-revokePrivilegeObject
-    : SYSTEM_PRIVILEGE
-    | ObjectPrivilege ON ObjectType objectName=identifier
-    | ObjectPrivilege ON ANY
-    | ObjectPrivilege ON objectScope
-    | RevokeGrantOpt ObjectPrivilege ON ObjectType objectName=identifier
-    | RevokeGrantOpt SYSTEM_PRIVILEGE
-    | RevokeGrantOpt ObjectPrivilege ON ANY
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -1477,15 +1466,9 @@ CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
 
-MANAGE_DATABASE: 'MANAGE_DATABASE';
 MANAGE_USER: 'MANAGE_USER';
 MANAGE_ROLE: 'MANAGE_ROLE';
-USE_TRIGGER: 'USE_TRIGGER';
-USE_UDF: 'USE_UDF';
-USE_PIPE: 'USE_PIPE';
-EXTEND_TEMPLATE: 'EXTEND_TEMPLATE';
 MAINTAIN: 'MAINTAIN';
-USE_MODEL: 'USE_MODEL';
 
 
 
