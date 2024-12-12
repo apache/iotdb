@@ -257,6 +257,12 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WRITE_WAL_BUFFER_COST_NS);
+    walQueueMaxMemSizeGauge =
+        metricService.getOrCreateGauge(
+            Metric.WAL_QUEUE_MEM_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_QUEUE_MAX_MEM_COST);
     SystemInfo systemInfo = SystemInfo.getInstance();
     metricService.createAutoGauge(
         Metric.WAL_QUEUE_MEM_COST.toString(),
@@ -265,12 +271,6 @@ public class WritingMetrics implements IMetricSet {
         SystemInfo::getCurrentWalQueueMemoryCost,
         Tag.NAME.toString(),
         WAL_QUEUE_CURRENT_MEM_COST);
-    walQueueMaxMemSizeGauge =
-        metricService.getOrCreateGauge(
-            Metric.WAL_QUEUE_MEM_COST.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            WAL_QUEUE_MAX_MEM_COST);
   }
 
   private void unbindWALMetrics(AbstractMetricService metricService) {
