@@ -56,28 +56,34 @@ public class IoTDBSetConfigurationTableIT {
 
   @Test
   public void testSetConfigurationWithUndefinedConfigKey() {
+    String expectedExceptionMsg =
+        "301: ignored config items: [a] because they are immutable or undefined.";
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      executeAndExpectException(statement, "set configuration \"a\"='false'");
+      executeAndExpectException(statement, "set configuration \"a\"='false'", expectedExceptionMsg);
       int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
       int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
 
       for (int i = 0; i < configNodeNum; i++) {
-        executeAndExpectException(statement, "set configuration a=\'false\' on " + i);
+        executeAndExpectException(
+            statement, "set configuration a=\'false\' on " + i, expectedExceptionMsg);
       }
       for (int i = 0; i < dataNodeNum; i++) {
         int dnId = configNodeNum + i;
-        executeAndExpectException(statement, "set configuration \"a\"='false' on " + dnId);
+        executeAndExpectException(
+            statement, "set configuration \"a\"='false' on " + dnId, expectedExceptionMsg);
       }
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
   }
 
-  private void executeAndExpectException(Statement statement, String sql) {
+  private void executeAndExpectException(
+      Statement statement, String sql, String expectedContentInExceptionMsg) {
     try {
       statement.execute(sql);
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(expectedContentInExceptionMsg));
       return;
     }
     Assert.fail();
