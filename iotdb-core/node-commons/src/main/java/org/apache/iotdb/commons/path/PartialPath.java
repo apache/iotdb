@@ -66,7 +66,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath() {}
 
-  public PartialPath(IDeviceID device) throws IllegalPathException {
+  public PartialPath(final IDeviceID device) throws IllegalPathException {
     // the first segment is the table name, which may contain multiple levels
     String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
     nodes = new String[device.segmentNum() - 1 + tableNameSegments.length];

@@ -129,14 +129,15 @@ public class SchemaRegionSnapshotParserTest {
     FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
   }
 
-  public SchemaRegionSnapshotParserTest(SchemaRegionSnapshotParserTestParams params) {
+  public SchemaRegionSnapshotParserTest(final SchemaRegionSnapshotParserTestParams params) {
     this.testParams = params;
   }
 
-  public ISchemaRegion getSchemaRegion(String database, int schemaRegionId) throws Exception {
-    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+  public ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
+      throws Exception {
+    final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
-      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+      SchemaEngine.getInstance().createSchemaRegion(database, regionId);
     }
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }

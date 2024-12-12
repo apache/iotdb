@@ -216,7 +216,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
