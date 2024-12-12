@@ -131,6 +131,37 @@ public class TableModeAccumulator implements TableAccumulator {
   }
 
   @Override
+  public void removeInput(Column[] arguments) {
+    switch (seriesDataType) {
+      case BOOLEAN:
+        removeBooleanInput(arguments[0]);
+        break;
+      case INT32:
+      case DATE:
+        removeIntInput(arguments[0]);
+        break;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        removeLongInput(arguments[0]);
+        break;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        removeBinaryInput(arguments[0]);
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
+    }
+  }
+
+  @Override
   public void addIntermediate(Column argument) {
     checkArgument(
         argument instanceof BinaryColumn
@@ -280,6 +311,11 @@ public class TableModeAccumulator implements TableAccumulator {
       binaryCountMap.clear();
     }
     nullCount = 0;
+  }
+
+  @Override
+  public boolean removable() {
+    return true;
   }
 
   // haveNull | nullCount (optional) | countMap
@@ -540,6 +576,72 @@ public class TableModeAccumulator implements TableAccumulator {
         checkMapSize(binaryCountMap.size());
       } else {
         nullCount++;
+      }
+    }
+  }
+
+  private void removeBooleanInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        boolean key = column.getBoolean(i);
+        booleanCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeIntInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        int key = column.getInt(i);
+        intCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeFloatInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        float key = column.getFloat(i);
+        floatCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeLongInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        long key = column.getLong(i);
+        longCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeDoubleInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        double key = column.getDouble(i);
+        doubleCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeBinaryInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        Binary key = column.getBinary(i);
+        binaryCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
       }
     }
   }
