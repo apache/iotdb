@@ -64,6 +64,9 @@ public class PipeMeta {
   }
 
   public boolean matchSqlDialect(final String sqlDialect) {
+    if (Objects.isNull(sqlDialect)) {
+      return true;
+    }
     return sqlDialect.equalsIgnoreCase(
         getStaticMeta()
             .getExtractorParameters()

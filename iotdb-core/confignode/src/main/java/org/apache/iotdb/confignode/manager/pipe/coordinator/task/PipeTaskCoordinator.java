@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -119,7 +118,7 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status = null;
+    final TSStatus status;
     if (req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().createConsensusPipe(req);
     } else {
@@ -134,8 +133,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
     final String pipeName = req.getPipeName();
-    final String sqlDialect =
-        req.isSetSqlDialect() ? req.getSqlDialect() : SystemConstant.SQL_DIALECT_TREE_VALUE;
+    final String sqlDialect = req.getSqlDialect();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
     if (!pipeTaskInfo.isPipeExisted(pipeName, sqlDialect)) {
@@ -155,7 +153,7 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
-    TSStatus status = null;
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().startConsensusPipe(pipeName);
     } else {
@@ -170,8 +168,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(TStartPipeReq req) {
     final String pipeName = req.getPipeName();
-    final String sqlDialect =
-        req.isSetSqlDialect() ? req.getSqlDialect() : SystemConstant.SQL_DIALECT_TREE_VALUE;
+    final String sqlDialect = req.getSqlDialect();
     if (!pipeTaskInfo.isPipeExisted(pipeName, sqlDialect)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
@@ -184,7 +181,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
-    TSStatus status = null;
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().stopConsensusPipe(pipeName);
     } else {
@@ -209,8 +206,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(TStopPipeReq req) {
     final String pipeName = req.getPipeName();
-    final String sqlDialect =
-        req.isSetSqlDialect() ? req.getSqlDialect() : SystemConstant.SQL_DIALECT_TREE_VALUE;
+    final String sqlDialect = req.getSqlDialect();
     if (!pipeTaskInfo.isPipeExisted(pipeName, sqlDialect)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
@@ -223,10 +219,18 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(TDropPipeReq req) {
     final String pipeName = req.getPipeName();
-    final String sqlDialect =
-        req.isSetSqlDialect() ? req.getSqlDialect() : SystemConstant.SQL_DIALECT_TREE_VALUE;
-    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName, sqlDialect);
-    TSStatus status = null;
+    final String sqlDialect = req.getSqlDialect();
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    if (!pipeTaskInfo.isPipeExisted(pipeName, sqlDialect)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.PIPE_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().dropConsensusPipe(pipeName);
     } else {
@@ -235,23 +239,12 @@ public class PipeTaskCoordinator {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
-
-    final boolean isSetIfExistsCondition =
-        req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    // If the `IF EXISTS` condition is not set and the pipe does not exist before the delete
-    // operation, return an error status indicating that the pipe does not exist.
-    return isPipeExistedBeforeDrop || isSetIfExistsCondition
-        ? status
-        : RpcUtils.getStatus(
-            TSStatusCode.PIPE_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    return status;
   }
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
-      final String sqlDialect =
-          req.isSetSqlDialect() ? req.getSqlDialect() : SystemConstant.SQL_DIALECT_TREE_VALUE;
+      final String sqlDialect = req.getSqlDialect();
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .filter(req.whereClause, req.pipeName, sqlDialect)
           .convertToTShowPipeResp();
