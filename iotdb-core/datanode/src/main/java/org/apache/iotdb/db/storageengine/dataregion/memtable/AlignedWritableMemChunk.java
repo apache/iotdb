@@ -554,4 +554,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public List<IMeasurementSchema> getSchemaList() {
     return schemaList;
   }
+
+  public boolean isAllDeleted() {
+    return list.isAllDeleted();
+  }
 }

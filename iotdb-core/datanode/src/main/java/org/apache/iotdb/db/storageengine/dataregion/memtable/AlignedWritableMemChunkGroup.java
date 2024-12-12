@@ -99,6 +99,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public boolean isEmpty() {
+    return memChunk.isEmpty() || memChunk.isAllDeleted();
+  }
+
+  @Override
   public long delete(ModEntry modEntry) {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
@@ -124,7 +129,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   public long deleteTime(ModEntry modEntry) {
-    return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
+    int pointNumDeleted = memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
+    return pointNumDeleted;
   }
 
   @Override

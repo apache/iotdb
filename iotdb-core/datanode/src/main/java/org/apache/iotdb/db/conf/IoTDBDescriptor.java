@@ -2870,6 +2870,14 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(
+              Optional.ofNullable(
+                      properties.getProperty(
+                          "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert())))
+                  .map(String::trim)
+                  .orElse(String.valueOf(conf.isEnablePartialInsert()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

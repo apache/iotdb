@@ -192,7 +192,7 @@ public abstract class InsertBaseStatement extends Statement {
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {}
 
   /** Check whether data types are matched with measurement schemas */
-  protected void selfCheckDataTypes(int index)
+  public void selfCheckDataTypes(int index)
       throws DataTypeMismatchException, PathNotExistException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
