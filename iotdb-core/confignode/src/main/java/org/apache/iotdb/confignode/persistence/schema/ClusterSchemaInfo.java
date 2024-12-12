@@ -299,11 +299,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @throws MetadataException if other exceptions happen
    */
   public void checkDatabaseLimit() throws MetadataException {
-    int limit = COMMON_CONFIG.getDatabaseLimitThreshold();
+    final int limit = COMMON_CONFIG.getDatabaseLimitThreshold();
     if (limit > 0) {
       databaseReadWriteLock.readLock().lock();
       try {
-        int count =
+        final int count =
             treeModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false)
                 - treeModelMTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false)
                 + tableModelMTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false);

@@ -622,8 +622,8 @@ public class PartitionInfo implements SnapshotProcessor {
    *     partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterUnassignedSchemaPartitionSlots(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    Map<String, List<TSeriesPartitionSlot>> result = new ConcurrentHashMap<>();
+      final Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    final Map<String, List<TSeriesPartitionSlot>> result = new ConcurrentHashMap<>();
 
     partitionSlotsMap.forEach(
         (database, partitionSlots) -> {

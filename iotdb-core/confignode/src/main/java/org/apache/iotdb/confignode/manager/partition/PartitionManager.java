@@ -491,10 +491,10 @@ public class PartitionManager {
    *     are not enough DataNodes; STORAGE_GROUP_NOT_EXIST when some StorageGroups don't exist
    */
   private TSStatus extendRegionGroupIfNecessary(
-      Map<String, Integer> unassignedPartitionSlotsCountMap,
-      TConsensusGroupType consensusGroupType) {
+      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+      final TConsensusGroupType consensusGroupType) {
 
-    TSStatus result = new TSStatus();
+    final TSStatus result = new TSStatus();
 
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
@@ -532,17 +532,18 @@ public class PartitionManager {
   }
 
   private TSStatus customExtendRegionGroupIfNecessary(
-      Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+      final TConsensusGroupType consensusGroupType)
       throws DatabaseNotExistsException, NotEnoughDataNodeException {
 
     // Map<Database, Region allotment>
-    Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
+    final Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
-    for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
+    for (final Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
       final String database = entry.getKey();
-      int minRegionGroupNum =
+      final int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
-      int allocatedRegionGroupCount =
+      final int allocatedRegionGroupCount =
           partitionInfo.getRegionGroupCount(database, consensusGroupType);
 
       // Extend RegionGroups until allocatedRegionGroupCount == minRegionGroupNum
@@ -623,10 +624,10 @@ public class PartitionManager {
   }
 
   private TSStatus generateAndAllocateRegionGroups(
-      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
     if (!allotmentMap.isEmpty()) {
-      CreateRegionGroupsPlan createRegionGroupsPlan =
+      final CreateRegionGroupsPlan createRegionGroupsPlan =
           getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
       LOGGER.info("[CreateRegionGroups] Starting to create the following RegionGroups:");
       createRegionGroupsPlan.planLog(LOGGER);

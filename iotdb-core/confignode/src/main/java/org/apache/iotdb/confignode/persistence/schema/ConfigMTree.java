@@ -200,24 +200,24 @@ public class ConfigMTree {
    * @return a list contains all database names under given path pattern
    */
   public List<PartialPath> getMatchedDatabases(
-      PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
+      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
       throws MetadataException {
     return collectDatabases(pathPattern, scope, isPrefixMatch, false);
   }
 
   private List<PartialPath> collectDatabases(
-      PartialPath pathPattern,
-      PathPatternTree scope,
-      boolean isPrefixMatch,
-      boolean collectInternal)
+      final PartialPath pathPattern,
+      final PathPatternTree scope,
+      final boolean isPrefixMatch,
+      final boolean collectInternal)
       throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    try (DatabaseCollector<?, ?> collector =
+    final List<PartialPath> result = new LinkedList<>();
+    try (final DatabaseCollector<?, ?> collector =
         new DatabaseCollector<List<PartialPath>, IConfigMNode>(
             root, pathPattern, store, isPrefixMatch, scope) {
 
           @Override
-          protected void collectDatabase(IDatabaseMNode<IConfigMNode> node) {
+          protected void collectDatabase(final IDatabaseMNode<IConfigMNode> node) {
             result.add(node.getPartialPath());
           }
         }) {
