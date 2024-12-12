@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -1121,26 +1120,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Node visitFlushStatement(final RelationalSqlParser.FlushStatementContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.booleanValue() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
     }
     flushStatement.setOnCluster(
         ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     if (ctx.identifier() != null) {
-      storageGroups = new ArrayList<>();
-      List<Identifier> identifiers = getIdentifiers(ctx.identifier());
-      for (Identifier identifier : identifiers) {
-        try {
-          storageGroups.add(new PartialPath(PathUtils.qualifyDatabaseName(identifier.getValue())));
-        } catch (IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      storageGroups =
+          getIdentifiers(ctx.identifier()).stream().map(Identifier::getValue).collect(toList());
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return new Flush(flushStatement, null);
   }
 

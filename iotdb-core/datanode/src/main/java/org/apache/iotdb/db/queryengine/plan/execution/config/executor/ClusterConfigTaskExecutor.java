@@ -1083,22 +1083,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> flush(
+      final TFlushReq tFlushReq, final boolean onCluster) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
         tsStatus = client.flush(tFlushReq);
-      } catch (ClientManagerException | TException e) {
+      } catch (final ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
       try {
         StorageEngine.getInstance().operateFlush(tFlushReq);
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }

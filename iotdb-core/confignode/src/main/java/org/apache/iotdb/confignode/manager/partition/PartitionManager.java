@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -851,17 +850,12 @@ public class PartitionManager {
    * @param databases the Databases to check
    * @return List of PartialPath the Databases that not exist
    */
-  public List<PartialPath> filterUnExistDatabases(final List<PartialPath> databases) {
-    final List<PartialPath> unExistDatabases = new ArrayList<>();
-    if (databases == null) {
-      return unExistDatabases;
-    }
-    for (final PartialPath database : databases) {
-      if (!isDatabaseExist(database.getFullPath())) {
-        unExistDatabases.add(database);
-      }
-    }
-    return unExistDatabases;
+  public List<String> filterUnExistDatabases(final List<String> databases) {
+    return Objects.isNull(databases)
+        ? Collections.emptyList()
+        : databases.stream()
+            .filter(database -> !isDatabaseExist(database))
+            .collect(Collectors.toList());
   }
 
   /**

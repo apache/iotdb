@@ -625,7 +625,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitFlush(Flush node, MPPQueryContext context) {
+  protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
