@@ -1170,6 +1170,7 @@ public class TsFileProcessor {
    * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup Tips: I am
    * trying to solve this issue by checking whether the table exist before wait()
    */
+  @TestOnly
   public void syncFlush() throws IOException {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();

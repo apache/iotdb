@@ -119,7 +119,8 @@ jobs:
         run: |
           cd iotdb-client 
           git clone https://github.com/apache/iotdb-client-go.git 
-          cd iotdb-client-go 
+          cd iotdb-client-go
+          git checkout rc/1.3.3
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
