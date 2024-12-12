@@ -313,7 +313,7 @@ public class Util {
     if (timestampPrecision.equals("ms")) {
       if (s.endsWith("ns") || s.endsWith("us")) {
         throw new IllegalArgumentException(
-            "The provided time precision is lower than the system's minimum precision (ms). Please check your input.");
+            "The provided time precision is higher than the system's time precision (ms). Please check your input.");
       } else if (s.endsWith("ms")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);
@@ -333,7 +333,7 @@ public class Util {
     } else if (timestampPrecision.equals("us")) {
       if (s.endsWith("ns")) {
         throw new IllegalArgumentException(
-            "The provided time precision is lower than the system's minimum precision (ms). Please check your input.");
+            "The provided time precision is higher than the system's time precision (us). Please check your input.");
       } else if (s.endsWith("us")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);
