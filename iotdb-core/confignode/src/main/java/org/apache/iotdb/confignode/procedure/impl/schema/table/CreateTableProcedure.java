@@ -48,7 +48,6 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableProcedure
@@ -119,9 +118,7 @@ public class CreateTableProcedure
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format(
-                        "Table '%s.%s' already exists.",
-                        database.substring(ROOT.length() + 1), table.getTableName()),
+                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
                     TABLE_ALREADY_EXISTS.getStatusCode())));
       } else {
         final TDatabaseSchema schema =
