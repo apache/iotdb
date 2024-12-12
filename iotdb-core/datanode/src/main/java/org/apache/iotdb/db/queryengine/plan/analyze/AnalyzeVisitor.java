@@ -328,7 +328,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
-          deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
+          deviceList =
+              pushDownLimitOffsetInGroupByTimeForDevice(
+                  deviceList, queryStatement, context.getZoneId());
         }
 
         outputExpressions =

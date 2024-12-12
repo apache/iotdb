@@ -410,14 +410,14 @@ public class WALNode implements IWALNode {
                               .getName()),
                       StringUtils.join(successfullyDeleted, ","),
                       fileIndexAfterFilterSafelyDeleteIndex,
-                      System.getProperty("line.separator")));
+                      System.lineSeparator()));
 
           if (!pinnedMemTableIds.isEmpty()) {
             summary
                 .append("- MemTable has been flushed but pinned by PIPE, the MemTableId list is : ")
                 .append(StringUtils.join(pinnedMemTableIds, ","))
                 .append(".")
-                .append(System.getProperty("line.separator"));
+                .append(System.lineSeparator());
           }
           if (fileIndexAfterFilterSafelyDeleteIndex < sortedWalFilesExcludingLast.length) {
             summary.append(
