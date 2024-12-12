@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -2246,6 +2247,12 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
+    if (node.getDatabaseName() != null
+        && !PathUtils.qualifyDatabaseName(node.getDatabaseName()).equals(databaseName)) {
+      // not targeted on this database, return
+      return;
+    }
+
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");

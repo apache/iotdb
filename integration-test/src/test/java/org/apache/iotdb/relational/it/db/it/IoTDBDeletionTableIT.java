@@ -20,14 +20,21 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -1448,6 +1455,74 @@ public class IoTDBDeletionTableIT {
       }
     }
     return ranges;
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void deleteTableOfTheSameNameTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 24;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db3");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE db2.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE db3.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db3.table" + testNum + " (time, id1, m1) VALUES (3, 'd3', 3)");
+
+      session.executeNonQueryStatement("USE db2");
+      session.executeNonQueryStatement("DELETE FROM table" + testNum);
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.table" + testNum + " order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(1, rec.getFields().get(0).getLongV());
+      assertEquals("d1", rec.getFields().get(1).toString());
+      assertEquals(1, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      dataSet =
+          session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
+      assertFalse(dataSet.hasNext());
+
+      dataSet =
+          session.executeQueryStatement("select * from db3.table" + testNum + " order by time");
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db3.table" + testNum);
+
+      dataSet =
+          session.executeQueryStatement("select * from db1.table" + testNum + " order by time");
+      rec = dataSet.next();
+      assertEquals(1, rec.getFields().get(0).getLongV());
+      assertEquals("d1", rec.getFields().get(1).toString());
+      assertEquals(1, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      dataSet =
+          session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
+      assertFalse(dataSet.hasNext());
+
+      dataSet =
+          session.executeQueryStatement("select * from db3.table" + testNum + " order by time");
+      assertFalse(dataSet.hasNext());
+    }
   }
 
   @Ignore("performance")
