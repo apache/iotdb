@@ -925,7 +925,7 @@ public class IoTDBDeletionTableIT {
     int testNum = 20;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("create database db1");
+      statement.execute("create database if not exists db1");
       statement.execute("use db1");
       statement.execute(
           "create table t"
