@@ -909,7 +909,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               ZoneId.systemDefault().toString(),
               SessionManager.CURRENT_RPC_VERSION,
               IoTDBConstant.ClientVersion.V_1_0);
-      return RpcUtils.getStatus(openSessionResp.code, openSessionResp.message);
+      return openSessionResp;
     }
     return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

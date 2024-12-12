@@ -255,7 +255,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
-      return new TPipeTransferResp(status);
+      return new TPipeTransferResp(RpcUtils.getStatus(status.code, status.message));
     }
 
     final String shouldConvertDataTypeOnTypeMismatchString =
