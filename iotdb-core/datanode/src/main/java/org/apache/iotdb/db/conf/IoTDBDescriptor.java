@@ -334,6 +334,15 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(Double.toString(conf.getRejectProportion())));
 
+    final double walBufferQueueProportion =
+        Double.parseDouble(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "wal_buffer_queue_proportion",
+                        Double.toString(conf.getWalBufferQueueProportion())))
+                .map(String::trim)
+                .orElse(Double.toString(conf.getWalBufferQueueProportion())));
+
     final double devicePathCacheProportion =
         Double.parseDouble(
             Optional.ofNullable(
@@ -343,11 +352,12 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(Double.toString(conf.getDevicePathCacheProportion())));
 
-    if (rejectProportion + devicePathCacheProportion >= 1) {
+    if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
       LOGGER.warn(
-          "The sum of write_memory_proportion and device_path_cache_proportion is too large, use default values 0.8 and 0.05.");
+          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
     } else {
       conf.setRejectProportion(rejectProportion);
+      conf.setWalBufferQueueProportion(walBufferQueueProportion);
       conf.setDevicePathCacheProportion(devicePathCacheProportion);
     }
 
@@ -1687,16 +1697,16 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferQueueCapacity =
+    int pageCacheDeletionBufferQueueCapacity =
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
-                        "wal_buffer_queue_capacity",
-                        Integer.toString(conf.getWalBufferQueueCapacity())))
+                        "page_cache_deletion_buffer_queue_capacity",
+                        Integer.toString(conf.getPageCacheDeletionBufferQueueCapacity())))
                 .map(String::trim)
-                .orElse(Integer.toString(conf.getWalBufferQueueCapacity())));
-    if (walBufferQueueCapacity > 0) {
-      conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
+                .orElse(Integer.toString(conf.getPageCacheDeletionBufferQueueCapacity())));
+    if (pageCacheDeletionBufferQueueCapacity > 0) {
+      conf.setPageCacheDeletionBufferQueueCapacity(pageCacheDeletionBufferQueueCapacity);
     }
 
     boolean WALInsertNodeCacheShrinkClearEnabled =
