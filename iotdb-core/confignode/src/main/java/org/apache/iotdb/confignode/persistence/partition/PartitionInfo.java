@@ -38,7 +38,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
@@ -310,11 +309,11 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Thread-safely delete database.
    *
-   * @param plan DeleteDatabasePlan
+   * @param databaseName databaseName
    */
-  public void deleteDatabase(DeleteDatabasePlan plan) {
-    // Clean the databaseTable cache
-    databasePartitionTables.remove(plan.getName());
+  public void deleteDatabase(final String databaseName) {
+    // Clean the StorageGroupTable cache
+    databasePartitionTables.remove(databaseName);
   }
 
   /**
