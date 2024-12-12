@@ -237,11 +237,13 @@ public class SubcolumnTSDIFFTest {
 
     @Test
     public void testBOS() throws IOException {
-        String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        // String parent_dir = "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
+        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
-        String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
+        // String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         // String output_parent_dir =
         // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources";
+        String output_parent_dir = "D:/compress-subcolumn/";
         // String input_parent_dir = parent_dir + "ElfData_Short/";
         String input_parent_dir = parent_dir + "dataset/";
         // String input_parent_dir = parent_dir + "testdata/";
@@ -412,7 +414,7 @@ public class SubcolumnTSDIFFTest {
 
                 String[] record = {
                         datasetName,
-                        "TS2DIFF+SubcolumnBeta",
+                        "TS2DIFF+Subcolumn",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),

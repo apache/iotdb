@@ -109,8 +109,17 @@ public class SubcolumnTest {
         }
     }
 
+    public static void bitPacking(int[] values, byte[] array, int startBitPosition, int bitWidth, int numValues) {
+        if (bitWidth == 0) {
+            return;
+        }
+        for (int i = 0; i < numValues; i++) {
+            writeBits(array, startBitPosition + i * bitWidth, bitWidth, values[i]);
+        }
+    }
+
     /**
-     * 从 byte array 的 startBitPosition 比特位置开始，读取 bitWidth 位宽的 int 值，存入数组
+     * 从 byte array 的 startBitPosition 比特位置开始，读取 numValues 个 bitWidth 位宽的 int 值，存入数组
      * 
      * @param array
      * @param startBitPosition
@@ -405,11 +414,18 @@ public class SubcolumnTest {
     public static int subcolumnBeta(int[] x, int m) {
         int x_length = x.length;
         
-        int betaBest = 0;
+        int betaBest = 1;
 
         int cMin = Integer.MAX_VALUE;
 
-        for (int beta = 1; beta <= 31; beta++) {
+        int[] primes = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
+
+        for (int beta : primes) {
+            if (beta > m) {
+                break;
+            }
+            // System.out.println("beta: " + beta);
+
             int l = (m + beta - 1) / beta;
 
             int[] bitWidthList = new int[l];
@@ -418,8 +434,8 @@ public class SubcolumnTest {
 
             int cost = 0;
 
-            // TODO cost 的计算方式
-            cost += 8 * l;
+            // cost 的计算方式
+            // cost += 8 * l;
             
             for (int i = 0; i < l; i++) {
                 int maxValuePart = 0;
@@ -431,6 +447,20 @@ public class SubcolumnTest {
                 }
                 bitWidthList[i] = bitWidthNew(maxValuePart);
             }
+
+            // System.out.print("bitWidthList: ");
+            // for (int i = 0; i < l; i++) {
+            //     System.out.print(bitWidthList[i] + " ");
+            // }
+            // System.out.println();
+
+            // System.out.println("bpListList: ");
+            // for (int i = 0; i < l; i++) {
+            //     for (int j = 0; j < x_length; j++) {
+            //         System.out.print(bpListList[i][j] + " ");
+            //     }
+            //     System.out.println();
+            // }
 
             for (int i = 0; i < l; i++) {
                 int bpCost = bitWidthList[i] * x_length;
@@ -466,9 +496,13 @@ public class SubcolumnTest {
                 run_length[index] = count;
                 index++;
 
-                rleCost = 16 + 8 * index + bitWidthList[i] * index;
-                // TODO rleCost 的计算方式
-                // rleCost = 8 * index + bitWidthList[i] * index;
+                // System.out.println("index: " + index);
+
+                // rleCost = 16 + 8 * index + bitWidthList[i] * index;
+                // rleCost 的计算方式
+                rleCost = 8 * index + bitWidthList[i] * index;
+
+                // System.out.println("bpCost: " + bpCost + " rleCost: " + rleCost);
 
                 if (bpCost <= rleCost) {
                     cost += bpCost;
@@ -477,13 +511,17 @@ public class SubcolumnTest {
                 }
             }
 
+            // System.out.println("cost: " + cost);
+
             if (cost < cMin) {
                 cMin = cost;
                 betaBest = beta;
             }
         }
 
-        System.out.println("betaBest: " + betaBest);
+        // System.out.println("betaBest: " + betaBest);
+
+        numBeta[betaBest]++;
 
         return betaBest;
     }
@@ -506,7 +544,7 @@ public class SubcolumnTest {
         writeBits(encoded_result, startBitPosition, 8, m);
         startBitPosition += 8;
 
-        System.out.println("m: " + m);
+        // System.out.println("m: " + m);
 
         writeBits(encoded_result, startBitPosition, 8, beta);
         startBitPosition += 8;
@@ -1244,6 +1282,10 @@ public class SubcolumnTest {
         int data_length = data.length;
         int startBitPosition = 0;
 
+        for (int i = 0; i < numBeta.length; i++) {
+            numBeta[i] = 0;
+        }
+
         writeBits(encoded_result, startBitPosition, 32, data_length);
         startBitPosition += 32;
 
@@ -1259,7 +1301,7 @@ public class SubcolumnTest {
         // System.out.println("num_blocks: " + num_blocks);
 
         for (int i = 0; i < num_blocks; i++) {
-            System.out.println("i: " + i);
+            // System.out.println("i: " + i);
             startBitPosition = BOSBlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result);
         }
 
@@ -1274,6 +1316,10 @@ public class SubcolumnTest {
             startBitPosition = BOSBlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
                     encoded_result);
         }
+
+        // for (int i = 0; i < numBeta.length; i++) {
+        //     System.out.println("numBeta[" + i + "]: " + numBeta[i]);
+        // }
 
         return startBitPosition;
     }
@@ -1462,21 +1508,24 @@ public class SubcolumnTest {
         list[6] = 0b11000001; // 193
         list[7] = 0b11001011; // 203
 
+        int betaBest = 0;
+        betaBest = subcolumnBeta(list, 8);
+
         byte[] encoded_result = new byte[8 * 4];
         int startBitPosition = 0;
         // startBitPosition = SubcolumnLBPEncoder(list, startBitPosition, encoded_result);
         // startBitPosition = SubcolumnBetaEncoder(list, startBitPosition, encoded_result);
-        startBitPosition = BPEncoder(list, startBitPosition, encoded_result);
+        // startBitPosition = BPEncoder(list, startBitPosition, encoded_result);
 
         int[] decoded_list = new int[8];
         // startBitPosition = SubcolumnLBPDecoder(encoded_result, 0, decoded_list);
         // startBitPosition = SubcolumnBetaDecoder(encoded_result, 0, decoded_list);
-        startBitPosition = BPDecoder(encoded_result, 0, decoded_list);
+        // startBitPosition = BPDecoder(encoded_result, 0, decoded_list);
 
-        for (int i = 0; i < 8; i++) {
-            System.out.println(decoded_list[i]);
-            assert list[i] == decoded_list[i];
-        }
+        // for (int i = 0; i < 8; i++) {
+        //     System.out.println(decoded_list[i]);
+        //     assert list[i] == decoded_list[i];
+        // }
     }
 
     public static int getDecimalPrecision(String str) {
@@ -1509,11 +1558,14 @@ public class SubcolumnTest {
         return fileName.substring(0, dotIndex);
     }
 
+    public static int[] numBeta = new int[32];
+
     @Test
     public void testBOS() throws IOException {
         String parent_dir =
         // "/Users/allen/Documents/github/xjz17/subcolumn/elf_resources/";
         "D:/github/xjz17/subcolumn/elf_resources/";
+        // "D:/compress-subcolumn/";
         // String parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         // String output_parent_dir = "/Users/allen/Documents/compress-subcolumn/";
         String output_parent_dir = "D:/compress-subcolumn/";
@@ -1544,7 +1596,7 @@ public class SubcolumnTest {
         // output_path_list.add(output_parent_dir + "compress_ratio.csv");
         // output_path_list.add(output_parent_dir + "subcolumn.csv");
         // output_path_list.add(output_parent_dir + "bp.csv");
-        output_path_list.add(output_parent_dir + "test0.csv");
+        output_path_list.add(output_parent_dir + "result_notime.csv");
         // output_path_list.add(output_parent_dir + "subcolumn_beta.csv");
 
         // for (String value : dataset_name) {
@@ -1579,7 +1631,7 @@ public class SubcolumnTest {
 
         int repeatTime2 = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
-        repeatTime2 = 1;
+        // repeatTime2 = 1;
 
         // for (int file_i = 1; file_i < 2; file_i++) {
 
