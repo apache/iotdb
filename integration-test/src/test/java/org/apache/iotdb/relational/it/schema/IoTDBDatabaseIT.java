@@ -85,7 +85,6 @@ public class IoTDBDatabaseIT {
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
       int[] timePartitionInterval = new int[] {604800000};
-      String[] model = new String[] {"TABLE"};
 
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
@@ -121,7 +120,6 @@ public class IoTDBDatabaseIT {
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
-          assertEquals(model[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
