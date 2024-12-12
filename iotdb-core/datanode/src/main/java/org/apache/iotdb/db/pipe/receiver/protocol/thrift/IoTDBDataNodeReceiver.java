@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -730,28 +731,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     // Permission check
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (clientSession == null || !clientSession.isLogin()) {
-      final BasicOpenSessionResp openSessionResp =
-          SESSION_MANAGER.login(
-              SESSION_MANAGER.getCurrSession(),
-              username,
-              password,
-              ZoneId.systemDefault().toString(),
-              SessionManager.CURRENT_RPC_VERSION,
-              IoTDBConstant.ClientVersion.V_1_0);
-      if (openSessionResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to open session, username = {}, response = {}.",
-            receiverId.get(),
-            username,
-            openSessionResp);
-        return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-      }
-      clientSession = SESSION_MANAGER.getCurrSession();
+    TSStatus permissionCheckStatus = loginIfNecessary();
+    if (permissionCheckStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Receiver id = {}: Failed to open session, username = {}, response = {}.",
+          receiverId.get(),
+          username,
+          permissionCheckStatus);
+      return RpcUtils.getStatus(
+          permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
     }
-    final TSStatus permissionCheckStatus =
-        AuthorityChecker.checkAuthority(statement, clientSession);
+
+    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    permissionCheckStatus = AuthorityChecker.checkAuthority(statement, clientSession);
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
@@ -903,5 +895,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     super.handleExit();
+  }
+
+  @Override
+  protected TSStatus loginIfNecessary() {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (clientSession == null || !clientSession.isLogin()) {
+      final BasicOpenSessionResp openSessionResp =
+          SESSION_MANAGER.login(
+              SESSION_MANAGER.getCurrSession(),
+              username,
+              password,
+              ZoneId.systemDefault().toString(),
+              SessionManager.CURRENT_RPC_VERSION,
+              IoTDBConstant.ClientVersion.V_1_0);
+      return RpcUtils.getStatus(openSessionResp.code, openSessionResp.message);
+    }
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }
