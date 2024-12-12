@@ -517,22 +517,23 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  // This database is without "root"
   public void invalidate(final @Nonnull String database) {
-    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      dualKeyCache.invalidate(
-          tableId ->
-              tableId.belongTo(database)
-                  || Objects.isNull(tableId.getDatabase())
-                      && tableId.getTableName().startsWith(qualifiedDatabase),
-          deviceID -> true);
-      dualKeyCache.invalidate(
-          tableId ->
-              Objects.isNull(tableId.getDatabase())
-                  && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase));
+      if (PathUtils.isTableModelDatabase(database)) {
+        dualKeyCache.invalidate(tableId -> tableId.belongTo(database), deviceID -> true);
+      } else {
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && tableId.getTableName().startsWith(database),
+            deviceID -> true);
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && database.startsWith(tableId.getTableName()),
+            deviceID -> deviceID.matchDatabaseName(database));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
