@@ -556,11 +556,12 @@ public class PartitionManager {
   }
 
   private TSStatus autoExtendRegionGroupIfNecessary(
-      Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> unassignedPartitionSlotsCountMap,
+      final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Map<Database, Region allotment>
-    Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
+    final Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
       final String database = entry.getKey();
@@ -578,7 +579,7 @@ public class PartitionManager {
 
       /* RegionGroup extension is required in the following cases */
       // 1. The number of current RegionGroup of the Database is less than the minimum number
-      int minRegionGroupNum =
+      final int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
       if (allocatedRegionGroupCount < minRegionGroupNum
           // Ensure the number of RegionGroups is enough
@@ -601,7 +602,7 @@ public class PartitionManager {
 
         // The delta is equal to the smallest integer solution that satisfies the inequality:
         // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupNum
-        int delta =
+        final int delta =
             Math.min(
                 (int) (maxRegionGroupNum - allocatedRegionGroupCount),
                 Math.max(
@@ -900,12 +901,12 @@ public class PartitionManager {
       final String database, final TConsensusGroupType type)
       throws NoAvailableRegionGroupException {
     // Collect static data
-    List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
+    final List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
         partitionInfo.getRegionGroupSlotsCounter(database, type);
 
     // Filter RegionGroups that have Disabled status
-    List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
-    for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
+    final List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
+    for (final Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
       final RegionGroupStatus status =
           getLoadManager().getRegionGroupStatus(slotsCounter.getRight());
       if (!RegionGroupStatus.Disabled.equals(status)) {
@@ -917,7 +918,7 @@ public class PartitionManager {
       throw new NoAvailableRegionGroupException(type);
     }
 
-    Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =
+    final Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =
         getLoadManager()
             .getRegionGroupStatus(result.stream().map(Pair::getRight).collect(Collectors.toList()));
     result.sort(

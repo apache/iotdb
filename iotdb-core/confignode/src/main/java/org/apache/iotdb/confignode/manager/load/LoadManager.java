@@ -111,7 +111,7 @@ public class LoadManager {
    * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }

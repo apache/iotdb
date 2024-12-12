@@ -607,7 +607,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final TDatabaseSchema storageGroupSchema =
-          treeModelMTree
+          (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
               .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
               .getAsMNode()
               .getDatabaseSchema();
@@ -638,7 +638,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       final TDatabaseSchema storageGroupSchema =
-          treeModelMTree
+          (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
               .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
               .getAsMNode()
               .getDatabaseSchema();
