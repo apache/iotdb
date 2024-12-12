@@ -3155,8 +3155,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } else {
           future.setException(
               new IoTDBException(
-                  String.format(
-                      "Database %s already exists", databaseSchema.getName().substring(5)),
+                  String.format("Database %s already exists", databaseSchema.getName()),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
       } else {

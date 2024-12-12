@@ -618,7 +618,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final TDatabaseSchema storageGroupSchema =
           (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
-              .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
+              .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
               .getAsMNode()
               .getDatabaseSchema();
       switch (consensusGroupType) {
