@@ -55,6 +55,35 @@ public class IoTDBSetConfigurationTableIT {
   }
 
   @Test
+  public void testSetConfigurationWithUndefinedConfigKey() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      executeAndExpectException(statement, "set configuration \"a\"='false'");
+      int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+      int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
+
+      for (int i = 0; i < configNodeNum; i++) {
+        executeAndExpectException(statement, "set configuration a=\'false\' on " + i);
+      }
+      for (int i = 0; i < dataNodeNum; i++) {
+        int dnId = configNodeNum + i;
+        executeAndExpectException(statement, "set configuration \"a\"='false' on " + dnId);
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  private void executeAndExpectException(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (Exception ignored) {
+      return;
+    }
+    Assert.fail();
+  }
+
+  @Test
   public void testSetConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -69,7 +98,7 @@ public class IoTDBSetConfigurationTableIT {
         int dnId = configNodeNum + i;
         statement.execute("set configuration \"enable_cross_space_compaction\"='false' on " + dnId);
         statement.execute(
-            "set configuration max_inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on "
+            "set configuration inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on "
                 + dnId);
       }
     } catch (Exception e) {
@@ -91,7 +120,7 @@ public class IoTDBSetConfigurationTableIT {
                         nodeWrapper,
                         "enable_seq_space_compaction=false",
                         "enable_cross_space_compaction=false",
-                        "max_inner_compaction_candidate_file_num=1",
+                        "inner_compaction_candidate_file_num=1",
                         "max_cross_compaction_candidate_file_num=1")));
   }
 
