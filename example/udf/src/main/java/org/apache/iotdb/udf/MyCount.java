@@ -9,8 +9,6 @@ import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
-import org.apache.tsfile.block.column.Column;
-
 import java.nio.ByteBuffer;
 
 public class MyCount implements AggregateFunction {
@@ -53,19 +51,6 @@ public class MyCount implements AggregateFunction {
   @Override
   public State createState() {
     return new CountState();
-  }
-
-  @Override
-  public void addInput(State state, Column[] columns) {
-    CountState countState = (CountState) state;
-    for (int i = 0; i < columns[0].getPositionCount(); i++) {
-      for (Column column : columns) {
-        if (!column.isNull(i)) {
-          countState.count++;
-          break;
-        }
-      }
-    }
   }
 
   @Override

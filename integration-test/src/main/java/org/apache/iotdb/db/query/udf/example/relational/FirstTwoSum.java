@@ -98,9 +98,6 @@ public class FirstTwoSum implements AggregateFunction {
   }
 
   @Override
-  public void addInput(State state, Column[] columns) {}
-
-  @Override
   public void addInput(State state, Record input) {
     FirstTwoSumState firstTwoSumState = (FirstTwoSumState) state;
     long time = input.getLong(2);

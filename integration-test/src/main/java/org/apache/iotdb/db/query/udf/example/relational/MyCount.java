@@ -75,11 +75,6 @@ public class MyCount implements AggregateFunction {
   }
 
   @Override
-  public void addInput(State state, Column[] columns) {
-
-  }
-
-  @Override
   public void addInput(State state, Record input) {
     CountState countState = (CountState) state;
     for (int i = 0; i < input.size(); i++) {

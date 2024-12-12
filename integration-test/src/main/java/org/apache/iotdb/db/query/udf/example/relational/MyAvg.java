@@ -85,9 +85,6 @@ public class MyAvg implements AggregateFunction {
   }
 
   @Override
-  public void addInput(State state, Column[] columns) {}
-
-  @Override
   public void addInput(State state, Record input) {
     if (!input.isNull(0)) {
       AvgState avgState = (AvgState) state;

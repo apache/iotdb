@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.udf.api.customizer.config;
 
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.type.Type;
 
 public class AggregateFunctionConfig extends UDFConfigurations {
+
+  private boolean isRemovable = false;
 
   /**
    * Set the output data type of the scalar function.
@@ -32,5 +35,19 @@ public class AggregateFunctionConfig extends UDFConfigurations {
   public AggregateFunctionConfig setOutputDataType(Type outputDataType) {
     this.outputDataType = outputDataType;
     return this;
+  }
+
+  /**
+   * If aggregate function is removable, {@linkplain AggregateFunction#remove} should be
+   * implemented.
+   *
+   * @param removable whether the aggregate function is removable
+   */
+  public void setRemovable(boolean removable) {
+    isRemovable = removable;
+  }
+
+  public boolean isRemovable() {
+    return isRemovable;
   }
 }

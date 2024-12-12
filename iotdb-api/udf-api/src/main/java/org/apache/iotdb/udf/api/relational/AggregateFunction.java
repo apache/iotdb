@@ -26,8 +26,6 @@ import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
-import org.apache.tsfile.block.column.Column;
-
 public interface AggregateFunction extends SQLFunction {
 
   /**
@@ -61,21 +59,10 @@ public interface AggregateFunction extends SQLFunction {
 
   /**
    * Batch update state with data columns. You shall iterate columns and update state with raw
-   * values TODO:should delete this interface
-   *
-   * @param state state to be updated
-   * @param columns input columns from IoTDB TsBlock, time column is always the last column, the
-   *     remaining columns are their parameter value columns
-   */
-  void addInput(State state, Column[] columns);
-
-  /**
-   * Batch update state with data columns. You shall iterate columns and update state with raw
    * values
    *
    * @param state state to be updated
-   * @param input input columns from IoTDB TsBlock, time column is always the last column, the
-   *     remaining columns are their parameter value columns
+   * @param input original input data row
    */
   void addInput(State state, Record input);
 
@@ -86,6 +73,18 @@ public interface AggregateFunction extends SQLFunction {
    * @param rhs right-hand-side state to be merged
    */
   void combineState(State state, State rhs);
+
+  /**
+   * Remove input data from state. This method is used to remove the data points that have been
+   * added to the state. Once it is implemented, {@linkplain AggregateFunctionConfig#setRemovable}
+   * should be set to true.
+   *
+   * @param state state to be updated
+   * @param input row to be removed
+   */
+  default void remove(State state, Record input) {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Calculate output value from final state

@@ -29,8 +29,6 @@ import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
-import org.apache.tsfile.block.column.Column;
-
 import java.nio.ByteBuffer;
 
 /**
@@ -94,16 +92,6 @@ public class AggregateFunctionExample implements AggregateFunction {
   @Override
   public State createState() {
     return new CountState();
-  }
-
-  @Override
-  public void addInput(State state, Column[] columns) {
-    CountState countState = (CountState) state;
-    for (int i = 0; i < columns[0].getPositionCount(); i++) {
-      if (!columns[0].isNull(i)) {
-        countState.count++;
-      }
-    }
   }
 
   @Override
