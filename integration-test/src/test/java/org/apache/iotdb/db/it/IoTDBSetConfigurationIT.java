@@ -56,6 +56,35 @@ public class IoTDBSetConfigurationIT {
   }
 
   @Test
+  public void testSetConfigurationWithUndefinedConfigKey() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeAndExpectException(statement, "set configuration \"a\"=\"false\"");
+      int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+      int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
+
+      for (int i = 0; i < configNodeNum; i++) {
+        executeAndExpectException(statement, "set configuration \"a\"=\"false\" on " + i);
+      }
+      for (int i = 0; i < dataNodeNum; i++) {
+        int dnId = configNodeNum + i;
+        executeAndExpectException(statement, "set configuration \"a\"=\"false\" on " + dnId);
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  private void executeAndExpectException(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (Exception ignored) {
+      return;
+    }
+    Assert.fail();
+  }
+
+  @Test
   public void testSetConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
