@@ -41,7 +41,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
   private ProgressIndex progressIndex;
-  private transient String database;
+  private final transient String database;
 
   public PipeDeleteDataNodeEvent() {
     // Used for deserialization

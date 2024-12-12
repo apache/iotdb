@@ -160,7 +160,8 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getTreePattern(),
                     deleteDataEvent.getTablePattern(),
-                    deleteDataEvent.isGeneratedByPipe()))
+                    deleteDataEvent.isGeneratedByPipe(),
+                    deleteDataEvent.getDatabase()))
         .ifPresent(
             event -> {
               hasNoGeneratedEvent = false;
