@@ -51,7 +51,6 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -125,10 +124,6 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   TEndPoint getEndPoint() {
     return endPoint;
-  }
-
-  SubscriptionSessionConnection getSessionConnection() {
-    return (SubscriptionSessionConnection) defaultSessionConnection;
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -306,7 +301,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             timeoutMs,
-            thriftMaxFrameSize));
+            getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollFile(
@@ -317,7 +312,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
             timeoutMs,
-            thriftMaxFrameSize));
+            getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollTablets(
@@ -328,7 +323,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
             timeoutMs,
-            thriftMaxFrameSize));
+            getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

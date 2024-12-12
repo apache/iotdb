@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.model;
+package org.apache.iotdb.isession.subscription.model;
 
 public class Subscription {
 
@@ -25,7 +25,8 @@ public class Subscription {
   private final String consumerGroupId;
   private final String consumerIds;
 
-  public Subscription(String topicName, String consumerGroupId, String consumerIds) {
+  public Subscription(
+      final String topicName, final String consumerGroupId, final String consumerIds) {
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;

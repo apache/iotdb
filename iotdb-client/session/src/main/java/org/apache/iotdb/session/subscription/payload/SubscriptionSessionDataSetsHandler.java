@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 
 import org.apache.tsfile.write.record.Tablet;
@@ -28,7 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class SubscriptionSessionDataSetsHandler
-    implements Iterable<ISessionDataSet>, SubscriptionMessageHandler {
+    implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessageHandler {
 
   private final List<Tablet> tablets;
 
@@ -37,8 +36,8 @@ public class SubscriptionSessionDataSetsHandler
   }
 
   @Override
-  public Iterator<ISessionDataSet> iterator() {
-    return new Iterator<ISessionDataSet>() {
+  public Iterator<SubscriptionSessionDataSet> iterator() {
+    return new Iterator<SubscriptionSessionDataSet>() {
       final Iterator<Tablet> tabletsIterator = tablets.iterator();
 
       @Override
@@ -47,7 +46,7 @@ public class SubscriptionSessionDataSetsHandler
       }
 
       @Override
-      public ISessionDataSet next() {
+      public SubscriptionSessionDataSet next() {
         return new SubscriptionSessionDataSet(tabletsIterator.next());
       }
     };

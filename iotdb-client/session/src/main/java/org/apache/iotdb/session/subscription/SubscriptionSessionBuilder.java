@@ -1,23 +1,64 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.session.subscription;
 
-import java.util.Collections;
-import org.apache.iotdb.isession.ITableSession;
-import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.isession.subscription.ISubscriptionSession;
 import org.apache.iotdb.session.AbstractSessionBuilder;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.TableSession;
 
 public class SubscriptionSessionBuilder extends AbstractSessionBuilder {
 
-  public ITableSession build() throws IoTDBConnectionException {
-    if (nodeUrls == null) {
-      this.nodeUrls =
-          Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
-    }
-    this.sqlDialect = "table";
-    Session newSession = new Session(this);
-    newSession.open(enableCompression, connectionTimeoutInMs);
-    return new TableSession(newSession);
+  public SubscriptionSessionBuilder() {
+    // use tree model
+    super.sqlDialect = "tree";
+    // disable auto fetch
+    super.enableAutoFetch = false;
+    // disable redirection
+    super.enableRedirection = false;
+  }
+
+  public SubscriptionSessionBuilder host(final String host) {
+    super.host = host;
+    return this;
+  }
+
+  public SubscriptionSessionBuilder port(final int port) {
+    super.rpcPort = port;
+    return this;
+  }
+
+  public SubscriptionSessionBuilder username(final String username) {
+    super.username = username;
+    return this;
+  }
+
+  public SubscriptionSessionBuilder password(final String password) {
+    super.pw = password;
+    return this;
+  }
+
+  public SubscriptionSessionBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+    super.thriftMaxFrameSize = thriftMaxFrameSize;
+    return this;
+  }
+
+  public ISubscriptionSession build() {
+    return new SubscriptionSession(this);
   }
 }

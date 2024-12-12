@@ -17,28 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.model;
+package org.apache.iotdb.session.subscription;
 
-public class Topic {
-
-  private final String topicName;
-  private final String topicAttributes;
-
-  public Topic(String topicName, String topicAttributes) {
-    this.topicName = topicName;
-    this.topicAttributes = topicAttributes;
-  }
-
-  public String getTopicName() {
-    return topicName;
-  }
-
-  public String getTopicAttributes() {
-    return topicAttributes;
-  }
-
-  @Override
-  public String toString() {
-    return "Topic{topicName=" + topicName + ", topicAttributes=" + topicAttributes + "}";
-  }
-}
+public class SubscriptionTableSession {}
