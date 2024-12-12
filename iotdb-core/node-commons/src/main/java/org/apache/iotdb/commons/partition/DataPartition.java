@@ -203,23 +203,25 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
-      IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList, String databaseName) {
+      final IDeviceID deviceID,
+      final List<TTimePartitionSlot> timePartitionSlotList,
+      String databaseName) {
     if (databaseName == null) {
       databaseName = getDatabaseNameByDevice(deviceID);
     }
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
-    List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-        dataBasePartitionMap = dataPartitionMap.get(PathUtils.qualifyDatabaseName(databaseName));
-    Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
+    final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
-    for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
-      List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
+    for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+      final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
             String.format(
