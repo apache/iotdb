@@ -121,6 +121,10 @@ public class TsFileMetrics implements IMetricSet {
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
     Arrays.asList(seqFileSizeMap, unseqFileSizeMap)
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
+    Arrays.asList(SEQUENCE, UNSEQUENCE)
+        .forEach(orderStr -> deleteGlobalTsFileCountGauge(orderStr, database, regionId));
+    Arrays.asList(SEQUENCE, UNSEQUENCE)
+        .forEach(orderStr -> deleteGlobalTsFileSizeGauge(orderStr, database, regionId));
   }
 
   private <T> void deleteRegionFromMap(
