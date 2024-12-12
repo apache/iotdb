@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -471,8 +470,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   k,
                   new TTimeSlotList(
                       new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
-      partitionSlotsMap.put(
-          PathUtils.qualifyDatabaseName(entry.getKey()), deviceToTimePartitionMap);
+      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
   }

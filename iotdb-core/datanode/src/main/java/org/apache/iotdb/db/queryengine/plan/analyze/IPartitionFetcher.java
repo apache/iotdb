@@ -75,7 +75,7 @@ public interface IPartitionFetcher {
    * @param userName
    */
   DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
