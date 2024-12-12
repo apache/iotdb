@@ -85,7 +85,7 @@ public class SchemaRegionListeningFilter {
 
       // Table model
       OPTION_PLAN_MAP.put(
-          new PartialPath("schema.table.devices.update"),
+          new PartialPath("schema.table.alter"),
           Collections.unmodifiableList(
               Arrays.asList(
                   PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE,
