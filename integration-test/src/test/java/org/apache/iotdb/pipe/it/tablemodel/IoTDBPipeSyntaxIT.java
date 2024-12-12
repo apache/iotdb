@@ -611,7 +611,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         statement.execute(
             String.format(
                 "create pipe p2"
-                    + " with extractor ('__system.inclusion'='schema, auth.role', '__system.inclusion.exclusion'='all')"
+                    + " with extractor ('extractor.inclusion'='schema, auth.role', 'extractor.inclusion.exclusion'='all')"
                     + " with processor ()"
                     + " with connector ("
                     + "'connector'='iotdb-thrift-connector',"
@@ -629,7 +629,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         statement.execute(
             String.format(
                 "create pipe p3"
-                    + " with extractor ('__system.inclusion'='wrong')"
+                    + " with extractor ('extractor.inclusion'='wrong')"
                     + " with processor ()"
                     + " with connector ("
                     + "'connector'='iotdb-thrift-connector',"
@@ -647,7 +647,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('__system.inclusion.exclusion'='wrong')"
+                    + " with extractor ('extractor.inclusion.exclusion'='wrong')"
                     + " with processor ()"
                     + " with connector ("
                     + "'connector'='iotdb-thrift-connector',"
@@ -665,7 +665,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         statement.execute(
             String.format(
                 "create pipe p4"
-                    + " with extractor ('__system.inclusion'='all', '__system.inclusion.exclusion'='schema, auth')"
+                    + " with extractor ('extractor.inclusion'='all', 'extractor.inclusion.exclusion'='schema, auth')"
                     + " with processor ()"
                     + " with connector ("
                     + "'connector'='iotdb-thrift-connector',"
