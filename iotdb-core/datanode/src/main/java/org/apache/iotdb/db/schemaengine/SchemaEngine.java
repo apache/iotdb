@@ -149,15 +149,7 @@ public class SchemaEngine {
         continue;
       }
 
-      final PartialPath database;
-      try {
-        database = PartialPath.getDatabasePath(file.getName());
-      } catch (IllegalPathException illegalPathException) {
-        // not a legal sg dir
-        continue;
-      }
-
-      final File sgDir = new File(config.getSchemaDir(), database.getFullPath());
+      final File sgDir = new File(config.getSchemaDir(), file.getName());
 
       if (!sgDir.exists()) {
         continue;
@@ -178,7 +170,7 @@ public class SchemaEngine {
         }
         schemaRegionIds.add(schemaRegionId);
       }
-      localSchemaPartitionTable.put(database.getFullPath(), schemaRegionIds);
+      localSchemaPartitionTable.put(file.getName(), schemaRegionIds);
     }
     return localSchemaPartitionTable;
   }
@@ -257,7 +249,7 @@ public class SchemaEngine {
     ClusterTemplateManager.getInstance().clear();
   }
 
-  public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
+  public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {
     return schemaRegionMap.get(regionId);
   }
 
@@ -288,7 +280,7 @@ public class SchemaEngine {
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
-      String storageGroup, SchemaRegionId schemaRegionId) {
+          final String storageGroup, final SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
@@ -302,7 +294,7 @@ public class SchemaEngine {
             storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.error(
             String.format(
                 "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
