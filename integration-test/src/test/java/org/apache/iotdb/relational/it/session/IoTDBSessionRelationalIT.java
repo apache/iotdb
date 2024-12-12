@@ -411,11 +411,9 @@ public class IoTDBSessionRelationalIT {
             session.insert(tablet);
           } catch (StatementExecutionException e) {
             // a partial insertion should be reported
-            if (!e.getMessage()
-                .equals(
-                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
-              throw e;
-            }
+            assertEquals(
+                "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]",
+                e.getMessage());
           }
           tablet.reset();
         }
@@ -485,7 +483,7 @@ public class IoTDBSessionRelationalIT {
       assertEquals(30, cnt);
 
       // partial insert is disabled
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"false\"");
+      session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
       int rowIndex = 0;
       tablet.addTimestamp(rowIndex, timestamp + rowIndex);
       tablet.addValue("id1", rowIndex, "id:" + rowIndex);
@@ -496,7 +494,7 @@ public class IoTDBSessionRelationalIT {
         session.insert(tablet);
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("616: Missing columns [m2].", e.getMessage());
       }
 
     } finally {
@@ -1145,9 +1143,9 @@ public class IoTDBSessionRelationalIT {
               + to.toString()
               + " measurement)");
       if (partialInsert) {
-        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true' ON 1");
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
       } else {
-        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false' ON 1");
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
       }
 
       // insert a tablet with type of "from"
@@ -1279,7 +1277,7 @@ public class IoTDBSessionRelationalIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\" ON 1");
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
     }
   }
 
