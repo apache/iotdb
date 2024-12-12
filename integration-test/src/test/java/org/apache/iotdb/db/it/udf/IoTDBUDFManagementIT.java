@@ -262,6 +262,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateFunctionWithInvalidURI() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"trusted_uri_pattern\"='.*'");
       try {
         statement.execute(
             String.format(
