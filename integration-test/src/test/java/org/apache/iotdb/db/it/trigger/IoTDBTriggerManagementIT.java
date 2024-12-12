@@ -109,6 +109,7 @@ public class IoTDBTriggerManagementIT {
           "CREATE TIMESERIES root.test.stateful.b with datatype=INT32,encoding=PLAIN");
       statement.execute(
           "CREATE TIMESERIES root.test.stateful.c with datatype=INT32,encoding=PLAIN");
+      statement.execute("set configuration \"trusted_uri_pattern\"='.*'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
