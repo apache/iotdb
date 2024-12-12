@@ -765,9 +765,9 @@ public class ConfigPlanExecutor {
     return schemaNodeManagementResp;
   }
 
-  private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
+  private DataSet getRegionInfoList(final ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
-    TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
+    final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
       final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =

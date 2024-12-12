@@ -458,18 +458,18 @@ public class ClusterSchemaManager {
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all DatabaseSchemas
     // TODO
-    Map<String, TDatabaseSchema> databaseSchemaMap =
-        getMatchedDatabaseSchemasByName(getDatabaseNames(null), false);
+    final Map<String, TDatabaseSchema> databaseSchemaMap =
+        getMatchedDatabaseSchemasByName(getDatabaseNames(null), null);
     if (databaseSchemaMap.isEmpty()) {
       // Skip when there are no Databases
       return;
     }
 
-    int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
-    int totalCpuCoreNum = getNodeManager().getDataNodeCpuCoreCount();
+    final int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
+    final int totalCpuCoreNum = getNodeManager().getDataNodeCpuCoreCount();
     int databaseNum = databaseSchemaMap.size();
 
-    for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
+    for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
           || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the pre deleted database and the system database
@@ -477,8 +477,9 @@ public class ClusterSchemaManager {
       }
     }
 
-    AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
-    for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
+    final AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan =
+        new AdjustMaxRegionGroupNumPlan();
+    for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the system database
         continue;
@@ -488,17 +489,17 @@ public class ClusterSchemaManager {
         // Adjust maxSchemaRegionGroupNum for each Database.
         // All Databases share the DataNodes equally.
         // The allocated SchemaRegionGroups will not be shrunk.
-        int allocatedSchemaRegionGroupCount;
+        final int allocatedSchemaRegionGroupCount;
         try {
           allocatedSchemaRegionGroupCount =
               getPartitionManager()
                   .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
-        } catch (DatabaseNotExistsException e) {
+        } catch (final DatabaseNotExistsException e) {
           // ignore the pre deleted database
           continue;
         }
 
-        int maxSchemaRegionGroupNum =
+        final int maxSchemaRegionGroupNum =
             calcMaxRegionGroupNum(
                 databaseSchema.getMinSchemaRegionGroupNum(),
                 SCHEMA_REGION_PER_DATA_NODE,
@@ -514,10 +515,10 @@ public class ClusterSchemaManager {
         // Adjust maxDataRegionGroupNum for each Database.
         // All Databases share the DataNodes equally.
         // The allocated DataRegionGroups will not be shrunk.
-        int allocatedDataRegionGroupCount =
+        final int allocatedDataRegionGroupCount =
             getPartitionManager()
                 .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
-        int maxDataRegionGroupNum =
+        final int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
                 databaseSchema.getMinDataRegionGroupNum(),
                 DATA_REGION_PER_DATA_NODE == 0
@@ -534,13 +535,13 @@ public class ClusterSchemaManager {
 
         adjustMaxRegionGroupNumPlan.putEntry(
             databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
-      } catch (DatabaseNotExistsException e) {
+      } catch (final DatabaseNotExistsException e) {
         LOGGER.warn("Adjust maxRegionGroupNum failed because Database doesn't exist", e);
       }
     }
     try {
       getConsensusManager().write(adjustMaxRegionGroupNumPlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
   }
@@ -631,7 +632,7 @@ public class ClusterSchemaManager {
    * @return the matched DatabaseSchemas
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
-      final List<String> rawPathList, final boolean isTableModel) {
+      final List<String> rawPathList, final Boolean isTableModel) {
     final Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
     clusterSchemaInfo
         .getMatchedDatabaseSchemasByName(rawPathList, isTableModel)

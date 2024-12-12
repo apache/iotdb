@@ -161,8 +161,8 @@ public class ConfigMTree {
   }
 
   /** Delete a database */
-  public void deleteDatabase(PartialPath path) throws MetadataException {
-    IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
+  public void deleteDatabase(final PartialPath path) throws MetadataException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
     IConfigMNode cur = databaseMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the database node sg1

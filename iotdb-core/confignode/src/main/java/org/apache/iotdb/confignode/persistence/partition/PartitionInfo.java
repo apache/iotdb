@@ -169,9 +169,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the new DatabasePartitionTable is created
    *     successfully.
    */
-  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
-    String databaseName = plan.getSchema().getName();
-    DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
+  public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
+    final String databaseName = plan.getSchema().getName();
+    final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
     databasePartitionTables.put(databaseName, databasePartitionTable);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

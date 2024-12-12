@@ -174,9 +174,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
@@ -225,7 +223,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     accessControl.checkCanCreateDatabase(context.getSession().getUserName(), dbName);
 
-    schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
+    schema.setName(dbName);
 
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);

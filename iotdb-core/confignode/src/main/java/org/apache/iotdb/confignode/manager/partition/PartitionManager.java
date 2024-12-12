@@ -172,12 +172,12 @@ public class PartitionManager {
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public SchemaPartitionResp getSchemaPartition(GetSchemaPartitionPlan req) {
+  public SchemaPartitionResp getSchemaPartition(final GetSchemaPartitionPlan req) {
     try {
       return (SchemaPartitionResp) getConsensusManager().read(req);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new SchemaPartitionResp(res, false, Collections.emptyMap());
     }
@@ -190,12 +190,12 @@ public class PartitionManager {
    *     TTimeSlotList>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataPartitionResp getDataPartition(GetDataPartitionPlan req) {
+  public DataPartitionResp getDataPartition(final GetDataPartitionPlan req) {
     try {
       return (DataPartitionResp) getConsensusManager().read(req);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new DataPartitionResp(res, false, Collections.emptyMap());
     }
@@ -209,9 +209,9 @@ public class PartitionManager {
    *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
-  public SchemaPartitionResp getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
+  public SchemaPartitionResp getOrCreateSchemaPartition(final GetOrCreateSchemaPartitionPlan req) {
     // Check if the related Databases exist
-    for (String database : req.getPartitionSlotsMap().keySet()) {
+    for (final String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
         return new SchemaPartitionResp(
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -245,14 +245,14 @@ public class PartitionManager {
       }
 
       // Filter unassigned SchemaPartitionSlots
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
 
       // Here we ensure that each StorageGroup has at least one SchemaRegion.
       // And if some StorageGroups own too many slots, extend SchemaRegion for them.
 
       // Map<StorageGroup, unassigned SeriesPartitionSlot count>
-      Map<String, Integer> unassignedSchemaPartitionSlotsCountMap = new ConcurrentHashMap<>();
+      final Map<String, Integer> unassignedSchemaPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedSchemaPartitionSlotsMap.forEach(
           (storageGroup, unassignedSchemaPartitionSlots) ->
               unassignedSchemaPartitionSlotsCountMap.put(
@@ -266,11 +266,11 @@ public class PartitionManager {
         return resp;
       }
 
-      Map<String, SchemaPartitionTable> assignedSchemaPartition;
+      final Map<String, SchemaPartitionTable> assignedSchemaPartition;
       try {
         assignedSchemaPartition =
             getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
-      } catch (NoAvailableRegionGroupException e) {
+      } catch (final NoAvailableRegionGroupException e) {
         status = getConsensusManager().confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
@@ -286,7 +286,7 @@ public class PartitionManager {
       }
 
       // Cache allocating result only if the current ConfigNode still holds its leadership
-      CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
+      final CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
       createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
 
       status = consensusWritePartitionResult(createPlan);
@@ -300,18 +300,18 @@ public class PartitionManager {
     resp = getSchemaPartition(req);
     if (!resp.isAllPartitionsExist()) {
       // Count the fail rate
-      AtomicInteger totalSlotNum = new AtomicInteger();
+      final AtomicInteger totalSlotNum = new AtomicInteger();
       req.getPartitionSlotsMap()
           .forEach((database, partitionSlots) -> totalSlotNum.addAndGet(partitionSlots.size()));
 
-      AtomicInteger unassignedSlotNum = new AtomicInteger();
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
+      final AtomicInteger unassignedSlotNum = new AtomicInteger();
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
       unassignedSchemaPartitionSlotsMap.forEach(
           (database, unassignedSchemaPartitionSlots) ->
               unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size()));
 
-      String errMsg =
+      final String errMsg =
           String.format(
               "Lacked %d/%d SchemaPartition allocation result in the response of getOrCreateSchemaPartition method",
               unassignedSlotNum.get(), totalSlotNum.get());

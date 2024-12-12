@@ -536,20 +536,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return All DatabaseSchemas that matches to the specific Database patterns
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
-      final List<String> rawPathList, final boolean isTableModel) {
+      final List<String> rawPathList, final Boolean isTableModel) {
     final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      final ConfigMTree mTree = isTableModel ? tableModelMTree : treeModelMTree;
-      for (final String rawPath : rawPathList) {
-        final PartialPath patternPath = getQualifiedDatabasePartialPath(rawPath);
-        final List<PartialPath> matchedPaths =
-            mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
-        for (final PartialPath path : matchedPaths) {
-          schemaMap.put(
-              path.getFullPath(),
-              mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
-        }
+      if (!Boolean.FALSE.equals(isTableModel)) {
+        enrichSchemaMap(rawPathList, tableModelMTree, schemaMap);
+      }
+      if (!Boolean.TRUE.equals(isTableModel)) {
+        enrichSchemaMap(rawPathList, treeModelMTree, schemaMap);
       }
     } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
@@ -559,24 +554,40 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return schemaMap;
   }
 
+  private void enrichSchemaMap(
+      final List<String> rawPathList,
+      final ConfigMTree mTree,
+      final Map<String, TDatabaseSchema> schemaMap)
+      throws MetadataException {
+    for (final String rawPath : rawPathList) {
+      final PartialPath patternPath = getQualifiedDatabasePartialPath(rawPath);
+      final List<PartialPath> matchedPaths =
+          mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
+      for (final PartialPath path : matchedPaths) {
+        schemaMap.put(
+            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+      }
+    }
+  }
+
   /**
    * Only leader use this interface. Get the matched DatabaseSchemas.
    *
    * @param prefix prefix path such as root.a
    * @return All DatabaseSchemas that matches to the prefix path such as root.a.db1, root.a.db2
    */
-  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(PartialPath prefix) {
-    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(final PartialPath prefix) {
+    final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     databaseReadWriteLock.readLock().lock();
     try {
-      List<PartialPath> matchedPaths =
+      final List<PartialPath> matchedPaths =
           treeModelMTree.getMatchedDatabases(prefix, ALL_MATCH_SCOPE, true);
-      for (PartialPath path : matchedPaths) {
+      for (final PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
             treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
