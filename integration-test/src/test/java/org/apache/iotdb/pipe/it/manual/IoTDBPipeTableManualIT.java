@@ -57,9 +57,8 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("__system.inclusion", "all");
-      extractorAttributes.put("__system.inclusion.exclusion", "data");
-      extractorAttributes.put("__system.sql-dialect", "table");
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "data");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.database-name", "test");
