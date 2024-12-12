@@ -354,29 +354,32 @@ public class IoTConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
-    if (!impl.getConfiguration().contains(peer)) {
-      throw new PeerNotInConsensusGroupException(groupId, peer.toString());
+    synchronized (impl) {
+      if (!impl.getConfiguration().contains(peer)) {
+        throw new PeerNotInConsensusGroupException(groupId, peer.toString());
+      }
+
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
+
+      // let other peers remove the sync channel with target peer
+      impl.notifyPeersToRemoveSyncLogChannel(peer);
+      KillPoint.setKillPoint(
+          IoTConsensusRemovePeerCoordinatorKillPoints
+              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
+
+      try {
+        // let target peer reject new write
+        impl.inactivePeer(peer, true);
+        KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
+        // wait its SyncLog to complete
+        impl.waitTargetPeerUntilSyncLogCompleted(peer);
+        // wait its region related resource to release
+        impl.waitReleaseAllRegionRelatedResource(peer);
+      } catch (ConsensusGroupModifyPeerException e) {
+        throw new ConsensusException(e.getMessage());
+      }
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
     }
-
-    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
-
-    // let other peers remove the sync channel with target peer
-    impl.notifyPeersToRemoveSyncLogChannel(peer);
-    KillPoint.setKillPoint(
-        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
-
-    try {
-      // let target peer reject new write
-      impl.inactivePeer(peer, true);
-      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
-      // wait its SyncLog to complete
-      impl.waitTargetPeerUntilSyncLogCompleted(peer);
-      // wait its region related resource to release
-      impl.waitReleaseAllRegionRelatedResource(peer);
-    } catch (ConsensusGroupModifyPeerException e) {
-      throw new ConsensusException(e.getMessage());
-    }
-    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
   }
 
   @Override
@@ -487,6 +490,7 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
     if (!correctPeers.contains(localPeer)) {
       logger.info(
@@ -495,25 +499,28 @@ public class IoTConsensus implements IConsensus {
       deleteLocalPeer(groupId);
       return;
     }
-    ImmutableList<Peer> currentMembers = ImmutableList.copyOf(impl.getConfiguration());
-    String previousPeerListStr = currentMembers.toString();
-    for (Peer peer : currentMembers) {
-      if (!correctPeers.contains(peer)) {
-        if (!impl.removeSyncLogChannel(peer)) {
-          logger.error(
-              "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
-              peer,
-              groupId);
+
+    synchronized (impl) {
+      ImmutableList<Peer> currentMembers = ImmutableList.copyOf(impl.getConfiguration());
+      String previousPeerListStr = currentMembers.toString();
+      for (Peer peer : currentMembers) {
+        if (!correctPeers.contains(peer)) {
+          if (!impl.removeSyncLogChannel(peer)) {
+            logger.error(
+                "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
+                peer,
+                groupId);
+          }
         }
       }
-    }
-    logger.info(
-        "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
-        previousPeerListStr,
-        impl.getConfiguration());
-    for (Peer peer : correctPeers) {
-      if (!impl.getConfiguration().contains(peer)) {
-        logger.warn("[RESET PEER LIST] \"Correct peer\" {} is not in local peer list", peer);
+      logger.info(
+          "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
+          previousPeerListStr,
+          impl.getConfiguration());
+      for (Peer peer : correctPeers) {
+        if (!impl.getConfiguration().contains(peer)) {
+          logger.warn("[RESET PEER LIST] \"Correct peer\" {} is not in local peer list", peer);
+        }
       }
     }
   }
