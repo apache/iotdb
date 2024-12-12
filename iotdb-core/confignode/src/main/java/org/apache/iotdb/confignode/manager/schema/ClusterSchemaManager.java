@@ -269,7 +269,8 @@ public class ClusterSchemaManager {
   }
 
   /** Delete DatabaseSchema. */
-  public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan, boolean isGeneratedByPipe) {
+  public TSStatus deleteDatabase(
+      final DeleteDatabasePlan deleteDatabasePlan, final boolean isGeneratedByPipe) {
     TSStatus result;
     try {
       result =
@@ -278,7 +279,7 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(deleteDatabasePlan)
                       : deleteDatabasePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
@@ -296,14 +297,14 @@ public class ClusterSchemaManager {
    *
    * @return CountDatabaseResp
    */
-  public CountDatabaseResp countMatchedDatabases(CountDatabasePlan countDatabasePlan) {
+  public CountDatabaseResp countMatchedDatabases(final CountDatabasePlan countDatabasePlan) {
     try {
       return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
-      CountDatabaseResp response = new CountDatabaseResp();
+      final CountDatabaseResp response = new CountDatabaseResp();
       response.setStatus(res);
       return response;
     }

@@ -137,8 +137,8 @@ public class ConfigNodeProcedureEnv {
    * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
-    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
+  public TSStatus deleteDatabaseConfig(final String name, final boolean isGeneratedByPipe) {
+    final DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
     return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
   }
 
@@ -149,7 +149,7 @@ public class ConfigNodeProcedureEnv {
    * @param deleteSgName database name
    */
   public void preDeleteDatabase(
-      PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
+      final PreDeleteDatabasePlan.PreDeleteType preDeleteType, final String deleteSgName) {
     getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
@@ -159,7 +159,7 @@ public class ConfigNodeProcedureEnv {
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
-  public boolean invalidateCache(String storageGroupName) throws IOException, TException {
+  public boolean invalidateCache(final String storageGroupName) throws IOException, TException {
     List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
