@@ -745,13 +745,20 @@ public class ConfigManager implements IManager {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       final List<String> deletedPaths = tDeleteReq.getPrefixPathList();
+
       // remove wild
+      final Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
+          getClusterSchemaManager()
+              .getMatchedDatabaseSchemasByName(
+                  deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel());
+      if (deleteDatabaseSchemaMap.isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+      }
+
       return procedureManager.deleteDatabases(
-          new ArrayList<>(
-              getClusterSchemaManager()
-                  .getMatchedDatabaseSchemasByName(
-                      deletedPaths, tDeleteReq.isSetIsTableModel() && tDeleteReq.isIsTableModel())
-                  .values()),
+          new ArrayList<>(deleteDatabaseSchemaMap.values()),
           tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe());
     } else {
       return status;
