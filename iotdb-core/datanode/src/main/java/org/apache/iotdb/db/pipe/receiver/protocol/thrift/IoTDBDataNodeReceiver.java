@@ -344,7 +344,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
               }
             }
-          case TRANSFER_SCHEMA_PLAN:
+          case TRANSFER_PLAN_NODE:
             {
               try {
                 return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));

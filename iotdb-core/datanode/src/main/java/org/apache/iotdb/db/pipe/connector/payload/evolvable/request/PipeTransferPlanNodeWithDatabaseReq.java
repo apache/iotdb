@@ -25,12 +25,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferPlanNodeWithDatabaseReq extends PipeTransferPlanNodeReq {
@@ -42,22 +42,34 @@ public class PipeTransferPlanNodeWithDatabaseReq extends PipeTransferPlanNodeReq
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferPlanNodeReq toTPipeTransferReq(final PlanNode planNode) {
-    final PipeTransferPlanNodeReq req = new PipeTransferPlanNodeReq();
+  public static PipeTransferPlanNodeWithDatabaseReq toTPipeTransferReq(
+      final PlanNode planNode, final String databaseName) {
+    final PipeTransferPlanNodeWithDatabaseReq req = new PipeTransferPlanNodeWithDatabaseReq();
 
     req.planNode = planNode;
+    req.databaseName = databaseName;
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_SCHEMA_PLAN.getType();
-    req.body = planNode.serializeToByteBuffer();
+    req.type = PipeRequestType.TRANSFER_PLAN_NODE_WITH_DATABASE.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      planNode.serialize(outputStream);
+      ReadWriteIOUtils.write(req.databaseName, outputStream);
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
 
     return req;
   }
 
-  public static PipeTransferPlanNodeReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferPlanNodeReq planNodeReq = new PipeTransferPlanNodeReq();
+  public static PipeTransferPlanNodeWithDatabaseReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
+    final PipeTransferPlanNodeWithDatabaseReq planNodeReq =
+        new PipeTransferPlanNodeWithDatabaseReq();
 
     planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
+    planNodeReq.databaseName = ReadWriteIOUtils.readString(transferReq.body);
 
     planNodeReq.version = transferReq.version;
     planNodeReq.type = transferReq.type;
@@ -68,13 +80,16 @@ public class PipeTransferPlanNodeWithDatabaseReq extends PipeTransferPlanNodeReq
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(final PlanNode planNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(final PlanNode planNode, final String database)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SCHEMA_PLAN.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), planNode.serializeToByteBuffer().array());
+      ReadWriteIOUtils.write(
+          PipeRequestType.TRANSFER_PLAN_NODE_WITH_DATABASE.getType(), outputStream);
+      planNode.serialize(outputStream);
+      ReadWriteIOUtils.write(database, outputStream);
+      return byteArrayOutputStream.toByteArray();
     }
   }
 

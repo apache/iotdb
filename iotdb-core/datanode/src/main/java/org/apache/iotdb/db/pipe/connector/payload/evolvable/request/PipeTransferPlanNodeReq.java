@@ -53,7 +53,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
     req.planNode = planNode;
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_SCHEMA_PLAN.getType();
+    req.type = PipeRequestType.TRANSFER_PLAN_NODE.getType();
     req.body = planNode.serializeToByteBuffer();
 
     return req;
@@ -77,7 +77,7 @@ public class PipeTransferPlanNodeReq extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SCHEMA_PLAN.getType(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_PLAN_NODE.getType(), outputStream);
       return BytesUtils.concatByteArray(
           byteArrayOutputStream.toByteArray(), planNode.serializeToByteBuffer().array());
     }
