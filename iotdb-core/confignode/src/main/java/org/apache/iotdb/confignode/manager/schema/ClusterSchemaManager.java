@@ -603,7 +603,7 @@ public class ClusterSchemaManager {
    * @return The specific DatabaseSchema
    * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
-  public TDatabaseSchema getDatabaseSchemaByName(String database)
+  public TDatabaseSchema getDatabaseSchemaByName(final String database)
       throws DatabaseNotExistsException {
     if (!isDatabaseExist(database)) {
       throw new DatabaseNotExistsException(database);

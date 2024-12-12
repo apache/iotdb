@@ -518,7 +518,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throws DatabaseNotExistsException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return treeModelMTree
+      return (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
           .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
           .getAsMNode()
           .getDatabaseSchema();
