@@ -465,12 +465,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);
-        final String treeModelDatabase =
-            "root." + tableScanNode.getQualifiedObjectName().getDatabaseName();
 
         startTime = System.nanoTime();
         final DataPartition dataPartition =
-            fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
+            fetchDataPartitionByDevices(
+                tableScanNode.getQualifiedObjectName().getDatabaseName(),
+                deviceEntries,
+                timeFilter);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
