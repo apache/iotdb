@@ -139,9 +139,9 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      IDeviceID deviceId, Filter timeFilter) {
-    String storageGroup = getDatabaseNameByDevice(deviceId);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
+      final IDeviceID deviceId, final Filter timeFilter) {
+    final String storageGroup = getDatabaseNameByDevice(deviceId);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
     if (!dataPartitionMap.containsKey(storageGroup)
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -179,20 +179,21 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSet(
-      IDeviceID deviceID, TTimePartitionSlot tTimePartitionSlot) {
-    String storageGroup = getDatabaseNameByDevice(deviceID);
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbMap =
+      final IDeviceID deviceID, final TTimePartitionSlot tTimePartitionSlot) {
+    final String storageGroup = getDatabaseNameByDevice(deviceID);
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbMap =
         dataPartitionMap.get(storageGroup);
     if (dbMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    Map<TTimePartitionSlot, List<TRegionReplicaSet>> seriesSlotMap = dbMap.get(seriesPartitionSlot);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final Map<TTimePartitionSlot, List<TRegionReplicaSet>> seriesSlotMap =
+        dbMap.get(seriesPartitionSlot);
     if (seriesSlotMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
 
-    List<TRegionReplicaSet> regionReplicaSets = seriesSlotMap.get(tTimePartitionSlot);
+    final List<TRegionReplicaSet> regionReplicaSets = seriesSlotMap.get(tTimePartitionSlot);
 
     if (regionReplicaSets == null) {
       return Collections.singletonList(NOT_ASSIGNED);
