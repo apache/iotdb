@@ -45,6 +45,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeWithDatabaseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -351,6 +353,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
+              }
+            }
+          case TRANSFER_PLAN_NODE_WITH_DATABASE:
+            {
+              try {
+                return handleTransferPlanNodeWithDatabase(
+                    PipeTransferPlanNodeWithDatabaseReq.fromTPipeTransferReq(req));
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferPlanNodeWithDatabaseTimer(System.nanoTime() - startTime);
               }
             }
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
@@ -655,6 +667,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             executeTableStatement(
                 (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) statement,
                 null));
+  }
+
+  private TPipeTransferResp handleTransferPlanNodeWithDatabase(
+      final PipeTransferPlanNodeWithDatabaseReq req) {
+    final Delete statement = (Delete) PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null);
+    statement.setDatabaseName(req.getDatabaseName());
+    return new TPipeTransferResp(executeTableStatement(statement, null));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
