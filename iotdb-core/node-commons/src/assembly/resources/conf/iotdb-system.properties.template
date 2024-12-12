@@ -1619,6 +1619,7 @@ author_cache_expire_time=30
 # A regex pattern representing trusted uri by system
 # effectiveMode: hot_reload
 # Datatype: regex
+# If you want to allow all URIs, you can specify it as .*
 trusted_uri_pattern=file:.*
 
 ####################
