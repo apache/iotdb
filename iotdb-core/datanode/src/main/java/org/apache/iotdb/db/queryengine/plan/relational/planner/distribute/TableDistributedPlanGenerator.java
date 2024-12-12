@@ -970,7 +970,7 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitTableDeviceFetch(
       final TableDeviceFetchNode node, final PlanContext context) {
-    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final String database = node.getDatabase();
     final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     final SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
     final Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =

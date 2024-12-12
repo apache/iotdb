@@ -467,8 +467,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitInsertStatement(RelationalSqlParser.InsertStatementContext ctx) {
-    QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
+  public Node visitInsertStatement(final RelationalSqlParser.InsertStatementContext ctx) {
+    final QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
     String tableName = qualifiedName.getSuffix();
     String databaseName =
         qualifiedName
@@ -481,9 +481,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     tableName = tableName.toLowerCase();
     databaseName = databaseName.toLowerCase();
 
-    Query query = (Query) visit(ctx.query());
+    final Query query = (Query) visit(ctx.query());
     if (ctx.columnAliases() != null) {
-      List<Identifier> identifiers = visit(ctx.columnAliases().identifier(), Identifier.class);
+      final List<Identifier> identifiers =
+          visit(ctx.columnAliases().identifier(), Identifier.class);
       if (query.getQueryBody() instanceof Values) {
         return visitInsertValues(
             databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
@@ -492,7 +493,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     } else {
       if (query.getQueryBody() instanceof Values) {
-        TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+        final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
         if (table == null) {
           throw new SemanticException(new NoTableException(tableName));
         }
@@ -503,9 +504,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
   }
 
-  private Node visitInsertValues(String databaseName, TsTable table, Values queryBody) {
-    List<Expression> rows = queryBody.getRows();
-    List<InsertRowStatement> rowStatements =
+  private Node visitInsertValues(
+      final String databaseName, final TsTable table, final Values queryBody) {
+    final List<Expression> rows = queryBody.getRows();
+    final List<InsertRowStatement> rowStatements =
         rows.stream()
             .map(
                 r -> {
@@ -528,8 +530,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private Node visitInsertValues(
-      String databaseName, String tableName, List<Identifier> identifiers, Values queryBody) {
-    List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
+      final String databaseName,
+      final String tableName,
+      final List<Identifier> identifiers,
+      final Values queryBody) {
+    final List<String> columnNames =
+        identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
       if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
