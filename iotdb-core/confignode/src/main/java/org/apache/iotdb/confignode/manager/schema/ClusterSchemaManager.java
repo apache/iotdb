@@ -639,7 +639,7 @@ public class ClusterSchemaManager {
         .getMatchedDatabaseSchemasByName(rawPathList, isTableModel)
         .forEach(
             (database, databaseSchema) -> {
-              if (isDatabaseExist(database)) {
+              if (isDatabaseExist(databaseSchema.getName())) {
                 result.put(database, databaseSchema);
               }
             });
