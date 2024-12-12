@@ -42,15 +42,12 @@ public class UDTFIFFT implements UDTF {
   private final DoubleArrayList real = new DoubleArrayList();
   private final DoubleArrayList imag = new DoubleArrayList();
   private final IntArrayList time = new IntArrayList();
-  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
-  public static final String MS_PRECISION = "ms";
+
   private long start;
   private long interval;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    String timestampPrecision =
-        validator.getParameters().getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
     validator
         .validateInputSeriesNumber(2)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
@@ -59,7 +56,7 @@ public class UDTFIFFT implements UDTF {
             "interval should be a time period whose unit is ms, s, m, h, d.",
             Util.parseTime(
                 validator.getParameters().getStringOrDefault("interval", "1s"),
-                timestampPrecision));
+                validator.getParameters()));
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
@@ -73,10 +70,7 @@ public class UDTFIFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    String timestampPrecision =
-        parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
-    this.interval =
-        Util.parseTime(parameters.getStringOrDefault("interval", "1s"), timestampPrecision);
+    this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"), parameters);
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
     if (parameters.hasAttribute(START_PARAM)) {

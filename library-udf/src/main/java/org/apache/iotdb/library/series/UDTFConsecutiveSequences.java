@@ -35,27 +35,21 @@ import org.apache.commons.lang3.tuple.Pair;
 /** This function searches for all longest consecutive subsequences of input sereis. */
 public class UDTFConsecutiveSequences implements UDTF {
   private ConsecutiveUtil consUtil;
-  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
-  public static final String MS_PRECISION = "ms";
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    String timestampPrecision =
-        validator.getParameters().getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
     validator.validate(
         x -> (long) x > 0,
         "gap should be a time period whose unit is ms, s, m, h.",
         Util.parseTime(
-            validator.getParameters().getStringOrDefault("gap", "1ms"), timestampPrecision));
+            validator.getParameters().getStringOrDefault("gap", "1ms"), validator.getParameters()));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
-    String timestampPrecision =
-        parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
-    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"), timestampPrecision);
+    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"), parameters);
     consUtil = new ConsecutiveUtil(-gap, -gap, gap);
   }
 

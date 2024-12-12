@@ -37,8 +37,6 @@ import java.util.logging.Logger;
 
 /** This function calculates consistency of input series. */
 public class UDTFConsistency implements UDTF {
-  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
-  public static final String MS_PRECISION = "ms";
 
   @Override
   public void beforeStart(UDFParameters udfp, UDTFConfigurations udtfc) throws Exception {
@@ -46,8 +44,7 @@ public class UDTFConsistency implements UDTF {
     long window = Integer.MAX_VALUE;
     if (udfp.hasAttribute("window")) {
       String s = udfp.getString("window");
-      String timestampPrecision = udfp.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
-      window = Util.parseTime(s, timestampPrecision);
+      window = Util.parseTime(s, udfp);
       if (window > 0) {
         isTime = true;
       } else {
