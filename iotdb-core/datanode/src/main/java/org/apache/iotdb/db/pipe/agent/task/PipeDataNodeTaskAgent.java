@@ -485,6 +485,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     // Restart all stuck pipes
+    // Note that parallelStream cannot be used here. The restartStuckPipe function also uses
+    // parallelStream. If parallelStream is used here, the subtasks generated inside
+    // restartStuckPipe may not be scheduled by the Worker thread of ForkJoinPool, thus causing a
+    // deadlock.
     stuckPipes.forEach(this::restartStuckPipe);
   }
 
