@@ -1027,7 +1027,7 @@ merge_threshold_of_explain_analyze=10
 # negative number means no limit, all queries will be recorded.
 # effectiveMode: hot_reload
 # Datatype: int, Unit: bytes
-query_sample_throughput_bytes_per_sec=16
+query_sample_throughput_bytes_per_sec=160
 
 ####################
 ### TTL Configuration

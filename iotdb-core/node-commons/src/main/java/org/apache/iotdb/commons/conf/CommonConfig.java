@@ -344,7 +344,7 @@ public class CommonConfig {
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
-  private final RateLimiter querySamplingRateLimiter = RateLimiter.create(16);
+  private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
   // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
   // the queries
   private volatile boolean querySamplingHasRateLimit = true;
