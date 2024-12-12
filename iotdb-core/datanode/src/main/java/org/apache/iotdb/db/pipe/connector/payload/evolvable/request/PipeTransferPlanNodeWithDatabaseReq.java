@@ -40,6 +40,10 @@ public class PipeTransferPlanNodeWithDatabaseReq extends PipeTransferPlanNodeReq
     super();
   }
 
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferPlanNodeWithDatabaseReq toTPipeTransferReq(
