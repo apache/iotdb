@@ -1291,13 +1291,17 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE db1");
 
-      session.executeNonQueryStatement("CREATE TABLE table" + testNum + " (id1 string id, m1 int32 measurement)");
-      session.executeNonQueryStatement("INSERT INTO table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
 
       session.executeNonQueryStatement("DROP TABLE table" + testNum);
 
-      session.executeNonQueryStatement("CREATE TABLE table" + testNum + " (id1 string id, m1 double measurement)");
-      session.executeNonQueryStatement("INSERT INTO table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from table" + testNum + " order by time");
@@ -1317,11 +1321,15 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE db1");
 
-      session.executeNonQueryStatement("CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
-      session.executeNonQueryStatement("INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
 
-      session.executeNonQueryStatement("CREATE TABLE db2.table" + testNum + " (id1 string id, m1 double measurement)");
-      session.executeNonQueryStatement("INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE db2.table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
 
       session.executeNonQueryStatement("DROP TABLE db2.table" + testNum);
 
@@ -1334,7 +1342,7 @@ public class IoTDBSessionRelationalIT {
       assertFalse(dataSet.hasNext());
 
       try {
-            session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
+        session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
         fail("expected exception");
       } catch (StatementExecutionException e) {
         assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
