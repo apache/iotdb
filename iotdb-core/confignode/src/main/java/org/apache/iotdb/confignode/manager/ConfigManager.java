@@ -1696,9 +1696,11 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
     }
-    return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.setConfiguration(req))
-        : tsStatus;
+    List<TSStatus> statusListOfOtherNodes = nodeManager.setConfiguration(req);
+    List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
+    statusList.add(tsStatus);
+    statusList.addAll(statusListOfOtherNodes);
+    return RpcUtils.squashResponseStatusList(statusList);
   }
 
   @Override
