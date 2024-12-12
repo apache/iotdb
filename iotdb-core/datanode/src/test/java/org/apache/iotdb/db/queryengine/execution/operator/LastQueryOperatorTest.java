@@ -53,6 +53,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -144,7 +145,7 @@ public class LastQueryOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -170,7 +171,7 @@ public class LastQueryOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -273,7 +274,7 @@ public class LastQueryOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -298,7 +299,7 @@ public class LastQueryOperatorTest {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
