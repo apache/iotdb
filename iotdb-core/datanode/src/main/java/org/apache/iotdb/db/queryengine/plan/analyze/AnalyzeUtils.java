@@ -290,12 +290,12 @@ public class AnalyzeUtils {
 
   /** get analysis according to statement and params */
   public static void analyzeDataPartition(
-      IAnalysis analysis,
-      List<DataPartitionQueryParam> dataPartitionQueryParams,
-      String userName,
-      DataPartitionQueryFunc partitionQueryFunc) {
+      final IAnalysis analysis,
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final DataPartitionQueryFunc partitionQueryFunc) {
 
-    DataPartition dataPartition =
+    final DataPartition dataPartition =
         partitionQueryFunc.queryDataPartition(dataPartitionQueryParams, userName);
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -308,20 +308,20 @@ public class AnalyzeUtils {
     analysis.setDataPartitionInfo(dataPartition);
   }
 
-  public static void analyzeDelete(Delete node, MPPQueryContext queryContext) {
+  public static void analyzeDelete(final Delete node, final MPPQueryContext queryContext) {
     queryContext.setQueryType(QueryType.WRITE);
     validateSchema(node, queryContext);
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
       // TODO: may use time and db/table to filter
-      TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
-      Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+      final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
+      final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
       latestRegionRouteMap.getRegionRouteMap().entrySet().stream()
           .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion)
           .forEach(e -> replicaSets.add(e.getValue()));
       node.setReplicaSets(replicaSets);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
     }
   }

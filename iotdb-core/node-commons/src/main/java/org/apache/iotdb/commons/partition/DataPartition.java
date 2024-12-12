@@ -163,10 +163,8 @@ public class DataPartition extends Partition {
    * <p>The device id shall be [table, seg1, ....]
    */
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceId, Filter timeFilter) {
-    // TODO perfect this interface, @Potato
-    database = PathUtils.qualifyDatabaseName(database);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
+      final String database, final IDeviceID deviceId, final Filter timeFilter) {
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
     if (!dataPartitionMap.containsKey(database)
         || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
