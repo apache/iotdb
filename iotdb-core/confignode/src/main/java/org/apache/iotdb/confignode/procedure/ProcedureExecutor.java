@@ -964,30 +964,6 @@ public class ProcedureExecutor<Env> {
     return abort(procId, true);
   }
 
-  public Procedure<Env> getResult(long procId) {
-    CompletedProcedureContainer retainer = completed.get(procId);
-    if (retainer == null) {
-      return null;
-    } else {
-      return retainer.getProcedure();
-    }
-  }
-
-  /**
-   * Query a procedure result.
-   *
-   * @param procId procedure id
-   * @return procedure or retainer
-   */
-  public Procedure<Env> getResultOrProcedure(long procId) {
-    CompletedProcedureContainer retainer = completed.get(procId);
-    if (retainer == null) {
-      return procedures.get(procId);
-    } else {
-      return retainer.getProcedure();
-    }
-  }
-
   public ProcedureScheduler getScheduler() {
     return scheduler;
   }

@@ -30,6 +30,10 @@ public interface TableAccumulator {
 
   void addInput(Column[] arguments);
 
+  default void removeInput(Column[] arguments) {
+    throw new UnsupportedOperationException("This Accumulator does not support removing inputs!");
+  }
+
   void addIntermediate(Column argument);
 
   void evaluateIntermediate(ColumnBuilder columnBuilder);
@@ -49,4 +53,8 @@ public interface TableAccumulator {
   void addStatistics(Statistics[] statistics);
 
   void reset();
+
+  default boolean removable() {
+    return false;
+  }
 }

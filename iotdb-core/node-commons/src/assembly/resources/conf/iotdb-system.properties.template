@@ -725,25 +725,30 @@ primitive_array_size=64
 # Datatype: double
 chunk_metadata_size_proportion=0.1
 
-# Ratio of write memory for invoking flush disk, 0.4 by default
+# Ratio of memtable memory for invoking flush disk, 0.4 by default
 # If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2
 # effectiveMode: restart
 # Datatype: double
 flush_proportion=0.4
 
-# Ratio of write memory allocated for buffered arrays, 0.6 by default
+# Ratio of memtable memory allocated for buffered arrays, 0.6 by default
 # effectiveMode: restart
 # Datatype: double
 buffered_arrays_memory_proportion=0.6
 
-# Ratio of write memory for rejecting insertion, 0.8 by default
+# Ratio of memtable memory for rejecting insertion, 0.8 by default
 # If you have extremely high write load (like batch=1000) and the physical memory size is large enough,
 # it can be set higher than the default value like 0.9
 # effectiveMode: restart
 # Datatype: double
 reject_proportion=0.8
 
-# Ratio of memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
+# Ratio of memtable memory for controlling the max memory size of WAL buffer queues, 0.1 by default
+# effectiveMode: restart
+# Datatype: double
+wal_buffer_queue_proportion=0.1
+
+# Ratio of memtable memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
 # effectiveMode: restart
 # Datatype: double
 device_path_cache_proportion=0.05
@@ -1403,11 +1408,6 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Blocking queue capacity of each wal buffer, restricts maximum number of WALEdits cached in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-wal_buffer_queue_capacity=500
-
 # Size threshold of each wal file
 # When a wal file's size exceeds this, the wal file will be closed and a new wal file will be created.
 # If it's a value smaller than 0, use the default value 30 * 1024 * 1024 (30MB).
@@ -1463,6 +1463,11 @@ iot_consensus_cache_window_time_in_ms=-1
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_wal_compression=true
+
+# Blocking queue capacity of each PageCacheDeletionBuffer, restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+page_cache_deletion_buffer_queue_capacity=500
 
 ####################
 ### IoTConsensus Configuration
@@ -1616,6 +1621,12 @@ author_cache_size=1000
 # effectiveMode: restart
 # Datatype: int
 author_cache_expire_time=30
+
+# A regex pattern representing trusted uri by system
+# effectiveMode: hot_reload
+# Datatype: regex
+# If you want to allow all URIs, you can specify it as .*
+trusted_uri_pattern=file:.*
 
 ####################
 ### UDF Configuration

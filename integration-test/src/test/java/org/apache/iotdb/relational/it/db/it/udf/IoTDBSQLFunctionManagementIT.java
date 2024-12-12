@@ -22,12 +22,12 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -44,7 +44,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSQLFunctionManagementIT {
 
   private static final int BUILTIN_SCALAR_FUNCTIONS_COUNT =
@@ -62,12 +62,12 @@ public class IoTDBSQLFunctionManagementIT {
 
   private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
-  @Before
+  @BeforeClass
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
+  @AfterClass
   public void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
@@ -220,7 +220,7 @@ public class IoTDBSQLFunctionManagementIT {
                 ""));
         fail();
       } catch (Exception e) {
-        assertTrue(e.getMessage().contains("URI"));
+        assertTrue(e.getMessage().contains("701: Untrusted uri "));
       }
 
       try {
