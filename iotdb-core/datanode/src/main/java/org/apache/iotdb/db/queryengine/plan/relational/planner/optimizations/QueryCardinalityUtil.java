@@ -210,7 +210,7 @@ public final class QueryCardinalityUtil {
 
     @Override
     public Range<Long> visitAggregationTableScan(AggregationTableScanNode node, Void context) {
-      return Range.atLeast((long) node.getDeviceEntries().size());
+      return Range.atMost((long) node.getDeviceEntries().size());
     }
 
     private Range<Long> applyLimit(PlanNode source, long limit) {
