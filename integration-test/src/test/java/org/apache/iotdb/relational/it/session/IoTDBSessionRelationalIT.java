@@ -71,6 +71,7 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db3");
     }
   }
 
@@ -78,6 +79,8 @@ public class IoTDBSessionRelationalIT {
   public void tearDown() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db3");
     }
   }
 
@@ -1302,6 +1305,40 @@ public class IoTDBSessionRelationalIT {
       assertEquals(2, rec.getFields().get(0).getLongV());
       assertEquals("d2", rec.getFields().get(1).toString());
       assertEquals(2.0, rec.getFields().get(2).getDoubleV(), 0.1);
+      assertFalse(dataSet.hasNext());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void dropTableOfTheSameNameTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 16;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+
+      session.executeNonQueryStatement("CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement("INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+
+      session.executeNonQueryStatement("CREATE TABLE db2.table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement("INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+
+      session.executeNonQueryStatement("DROP TABLE db2.table" + testNum);
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.table" + testNum + " order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(1, rec.getFields().get(0).getLongV());
+      assertEquals("d1", rec.getFields().get(1).toString());
+      assertEquals(1, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      try {
+            session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
+        fail("expected exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
+      }
     }
   }
 }
