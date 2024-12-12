@@ -1167,7 +1167,6 @@ public class IoTDBSessionRelationalIT {
       tablet.addValue(1, 0, "d1");
       // the measurement in the first row is null
       tablet.addValue("m1", 1, genValue(from, 1));
-      System.out.println("from=" + from + ", to=" + to);
       if (to.isCompatible(from)) {
         // can cast, insert and check the result
         session.insert(tablet);
@@ -1175,12 +1174,10 @@ public class IoTDBSessionRelationalIT {
         SessionDataSet dataSet =
             session.executeQueryStatement("select * from table" + testNum + " order by time");
         RowRecord rec = dataSet.next();
-        System.out.println(rec);
         assertEquals(0, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
         assertNull(rec.getFields().get(2).getDataType());
         rec = dataSet.next();
-        System.out.println(rec);
         assertEquals(1, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
         if (to == TSDataType.BLOB) {
@@ -1210,12 +1207,10 @@ public class IoTDBSessionRelationalIT {
           SessionDataSet dataSet =
               session.executeQueryStatement("select * from table" + testNum + " order by time");
           RowRecord rec = dataSet.next();
-          System.out.println(rec);
           assertEquals(0, rec.getFields().get(0).getLongV());
           assertEquals("d1", rec.getFields().get(1).toString());
           assertNull(rec.getFields().get(2).getDataType());
           rec = dataSet.next();
-          System.out.println(rec);
           assertEquals(1, rec.getFields().get(0).getLongV());
           assertEquals("d1", rec.getFields().get(1).toString());
           assertNull(rec.getFields().get(2).getDataType());
@@ -1282,6 +1277,31 @@ public class IoTDBSessionRelationalIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\" ON 1");
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void deleteTableAndWriteDifferentTypeTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 15;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+
+      session.executeNonQueryStatement("CREATE TABLE table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement("INSERT INTO table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+
+      session.executeNonQueryStatement("DROP TABLE table" + testNum);
+
+      session.executeNonQueryStatement("CREATE TABLE table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement("INSERT INTO table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table" + testNum + " order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals("d2", rec.getFields().get(1).toString());
+      assertEquals(2.0, rec.getFields().get(2).getDoubleV(), 0.1);
     }
   }
 }
