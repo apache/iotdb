@@ -72,8 +72,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
-  private final String qualifiedDatabaseName;
-  private final String unQualifiedDatabaseName;
+  private final String databaseName;
   private final String placeHolder;
 
   OpcUaNameSpace(
@@ -85,8 +84,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
-    this.qualifiedDatabaseName = qualifiedDatabaseName;
-    this.unQualifiedDatabaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
+    this.databaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
     this.placeHolder = placeHolder;
 
     subscriptionModel = new SubscriptionModel(server, this);
@@ -153,11 +151,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
-        folderSegments[0] = "root";
-        folderSegments[1] = unQualifiedDatabaseName;
+        folderSegments[0] = databaseName;
 
         for (int j = 0; j < segments.length; ++j) {
-          folderSegments[j + 2] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
+          folderSegments[j + 1] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
         }
 
         final int finalI = i;
@@ -329,7 +326,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
+        final StringBuilder idBuilder = new StringBuilder(databaseName);
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)

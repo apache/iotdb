@@ -123,8 +123,8 @@ public class ClusterSchemaManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final double DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
+  private static final int SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
+  private static final int DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -207,7 +207,7 @@ public class ClusterSchemaManager {
   public TSStatus alterDatabase(
       final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
-    TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
+    final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
     if (!isDatabaseExist(databaseSchema.getName())) {
       // Reject if Database doesn't exist
@@ -219,7 +219,7 @@ public class ClusterSchemaManager {
 
     if (databaseSchema.isSetMinSchemaRegionGroupNum()) {
       // Validate alter SchemaRegionGroupNum
-      int minSchemaRegionGroupNum =
+      final int minSchemaRegionGroupNum =
           getMinRegionGroupNum(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
       if (databaseSchema.getMinSchemaRegionGroupNum() <= minSchemaRegionGroupNum) {
         result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
@@ -466,6 +466,7 @@ public class ClusterSchemaManager {
     }
 
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
+    int totalCpuCoreNum = getNodeManager().getDataNodeCpuCoreCount();
     int databaseNum = databaseSchemaMap.size();
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
@@ -519,8 +520,10 @@ public class ClusterSchemaManager {
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
                 databaseSchema.getMinDataRegionGroupNum(),
-                DATA_REGION_PER_DATA_NODE,
-                dataNodeNum,
+                DATA_REGION_PER_DATA_NODE == 0
+                    ? CONF.getDataRegionPerDataNodeProportion()
+                    : DATA_REGION_PER_DATA_NODE,
+                DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
                 databaseNum,
                 databaseSchema.getDataReplicationFactor(),
                 allocatedDataRegionGroupCount);

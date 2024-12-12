@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInferenceWindow;
@@ -1336,7 +1336,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
     createModelStatement.setModelName(parseIdentifier(modelName));
-    createModelStatement.setUri(ctx.modelUri.getText());
+    createModelStatement.setUri(ctx.uriClause().uri().getText());
     return createModelStatement;
   }
 
@@ -1490,7 +1490,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
         }
         if (canPushDownLimitOffsetToGroupByTime(queryStatement)) {
-          pushDownLimitOffsetToTimeParameter(queryStatement);
+          pushDownLimitOffsetToTimeParameter(queryStatement, zoneId);
         }
       }
     }

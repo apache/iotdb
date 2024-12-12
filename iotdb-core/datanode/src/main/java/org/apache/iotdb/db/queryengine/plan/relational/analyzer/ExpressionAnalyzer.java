@@ -137,6 +137,8 @@ public class ExpressionAnalyzer {
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
 
   private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
+  private final Map<NodeRef<Expression>, Analysis.PredicateCoercions> predicateCoercions =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Expression>, ResolvedField> columnReferences = new LinkedHashMap<>();
   private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
@@ -234,6 +236,10 @@ public class ExpressionAnalyzer {
 
   public Set<NodeRef<InPredicate>> getSubqueryInPredicates() {
     return unmodifiableSet(subqueryInPredicates);
+  }
+
+  public Map<NodeRef<Expression>, Analysis.PredicateCoercions> getPredicateCoercions() {
+    return unmodifiableMap(predicateCoercions);
   }
 
   public Map<NodeRef<Expression>, ResolvedField> getColumnReferences() {
@@ -1005,6 +1011,20 @@ public class ExpressionAnalyzer {
                 valueRowType, subqueryType));
       }
 
+      Optional<Type> valueCoercion = Optional.empty();
+      //      if (!valueRowType.equals(commonType.get())) {
+      //        valueCoercion = commonType;
+      //      }
+
+      Optional<Type> subQueryCoercion = Optional.empty();
+      //      if (!subqueryType.equals(commonType.get())) {
+      //        subQueryCoercion = commonType;
+      //      }
+
+      predicateCoercions.put(
+          NodeRef.of(node),
+          new Analysis.PredicateCoercions(valueRowType, valueCoercion, subQueryCoercion));
+
       return subqueryType;
     }
 
@@ -1466,6 +1486,7 @@ public class ExpressionAnalyzer {
     analysis.addColumnReferences(analyzer.getColumnReferences());
     analysis.addTableColumnReferences(
         accessControl, session.getIdentity(), analyzer.getTableColumnReferences());
+    analysis.addPredicateCoercions(analyzer.getPredicateCoercions());
   }
 
   public static ExpressionAnalyzer createConstantAnalyzer(

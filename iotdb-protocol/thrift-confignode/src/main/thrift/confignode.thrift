@@ -394,8 +394,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -444,6 +444,7 @@ struct TCreateFunctionReq {
   5: optional binary jarFile
   6: optional string jarMD5
   7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {

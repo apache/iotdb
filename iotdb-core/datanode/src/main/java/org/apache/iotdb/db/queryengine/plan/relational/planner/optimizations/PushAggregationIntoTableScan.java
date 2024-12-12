@@ -1,19 +1,25 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -23,12 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
@@ -44,7 +49,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 /**
  * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>The Aggregation may be pushed down to the TableScanNode, so that we can make use of
+ * <p>The Aggregation may be pushed down to the DeviceTableScanNode, so that we can make use of
  * statistics.
  *
  * <p>Attention: This optimizer depends on {@link UnaliasSymbolReferences}.
@@ -82,19 +87,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, context);
       node = (AggregationNode) node.clone();
       node.setChild(child);
-      TableScanNode tableScanNode = null;
+      DeviceTableScanNode tableScanNode = null;
       ProjectNode projectNode = null;
-      if (child instanceof TableScanNode) {
-        tableScanNode = (TableScanNode) child;
+      if (child instanceof DeviceTableScanNode) {
+        tableScanNode = (DeviceTableScanNode) child;
       }
       if (child instanceof ProjectNode) {
         projectNode = (ProjectNode) child;
-        if (projectNode.getChild() instanceof TableScanNode) {
-          tableScanNode = (TableScanNode) projectNode.getChild();
+        if (projectNode.getChild() instanceof DeviceTableScanNode) {
+          tableScanNode = (DeviceTableScanNode) projectNode.getChild();
         }
       }
 
-      // only optimize AggregationNode with raw TableScanNode
+      // only optimize AggregationNode with raw DeviceTableScanNode
       if (tableScanNode == null
           || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
@@ -129,7 +134,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         Collection<AggregationNode.Aggregation> values,
         List<Symbol> groupingKeys,
         ProjectNode projectNode,
-        TableScanNode tableScanNode,
+        DeviceTableScanNode tableScanNode,
         SessionInfo session,
         Metadata metadata) {
       boolean hasProject = projectNode != null;
@@ -193,7 +198,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     private boolean isDateBinFunctionOfTime(
         Expression expression,
         List<FunctionCall> dateBinFunctionsOfTime,
-        TableScanNode tableScanNode) {
+        DeviceTableScanNode tableScanNode) {
       if (expression instanceof FunctionCall) {
         FunctionCall function = (FunctionCall) expression;
         if (TableBuiltinScalarFunction.DATE_BIN

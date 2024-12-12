@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -22,8 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -31,7 +41,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -48,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -109,11 +119,22 @@ public final class PlanMatchPattern {
                       Optional.empty(),
                       Optional.empty()));
   }*/
+  public static PlanMatchPattern infoSchemaTableScan(
+      String expectedTableName, Optional<Integer> dataNodeId) {
+    return node(InformationSchemaTableScanNode.class)
+        .with(
+            new InformationSchemaTableScanMatcher(
+                expectedTableName,
+                Optional.empty(),
+                Collections.emptyList(),
+                Collections.emptySet(),
+                dataNodeId));
+  }
 
   public static PlanMatchPattern tableScan(String expectedTableName) {
-    return node(TableScanNode.class)
+    return node(DeviceTableScanNode.class)
         .with(
-            new TableScanMatcher(
+            new DeviceTableScanMatcher(
                 expectedTableName,
                 Optional.empty(),
                 Collections.emptyList(),
@@ -123,9 +144,9 @@ public final class PlanMatchPattern {
   public static PlanMatchPattern tableScan(
       String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
     PlanMatchPattern pattern =
-        node(TableScanNode.class)
+        node(DeviceTableScanNode.class)
             .with(
-                new TableScanMatcher(
+                new DeviceTableScanMatcher(
                     expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
     outputSymbols.forEach(
         symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
@@ -268,7 +289,7 @@ public final class PlanMatchPattern {
     PlanMatchPattern result = node(AggregationTableScanNode.class);
 
     result.with(
-        new AggregationTableScanMatcher(
+        new AggregationDeviceTableScanMatcher(
             groupingSets,
             preGroupedSymbols,
             ImmutableList.of(),
@@ -351,14 +372,14 @@ public final class PlanMatchPattern {
       PatternRecognitionMatcher.Builder builder = new PatternRecognitionMatcher.Builder(source);
       handler.accept(builder);
       return builder.build();
-  }
-
-  public static PlanMatchPattern join(JoinType type, Consumer<JoinMatcher.Builder> handler)
-  {
-      JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
-      handler.accept(builder);
-      return builder.build();
   }*/
+
+  public static PlanMatchPattern join(
+      JoinNode.JoinType type, Consumer<JoinMatcher.Builder> handler) {
+    JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
+    handler.accept(builder);
+    return builder.build();
+  }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {
     return node(SortNode.class, source);
@@ -428,10 +449,10 @@ public final class PlanMatchPattern {
     return node(ExchangeNode.class, sources);
   }
 
-  /*public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(String left, String right)
-  {
-      return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
-  }*/
+  public static ExpectedValueProvider<JoinNode.EquiJoinClause> equiJoinClause(
+      String left, String right) {
+    return new EquiJoinClauseProvider(new SymbolAlias(left), new SymbolAlias(right));
+  }
 
   public static SymbolAlias symbol(String alias) {
     return new SymbolAlias(alias);
@@ -557,6 +578,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern exchange() {
     return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
+  }
+
+  public static PlanMatchPattern enforceSingleRow(PlanMatchPattern source) {
+    return node(EnforceSingleRowNode.class, source);
   }
 
   public PlanMatchPattern(List<PlanMatchPattern> sourcePatterns) {

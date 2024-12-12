@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -320,6 +321,16 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
+  private boolean enableBinaryAllocator = true;
+
+  private int arenaNum = 4;
+
+  private int minAllocateSize = 4096;
+
+  private int maxAllocateSize = 1024 * 1024;
+
+  private int log2SizeClassGroup = 3;
+
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
@@ -332,6 +343,8 @@ public class CommonConfig {
   private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
+
+  private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   CommonConfig() {
     // Empty constructor
@@ -1478,5 +1491,53 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
+  }
+
+  public int getArenaNum() {
+    return arenaNum;
+  }
+
+  public void setArenaNum(int arenaNum) {
+    this.arenaNum = arenaNum;
+  }
+
+  public int getMinAllocateSize() {
+    return minAllocateSize;
+  }
+
+  public void setMinAllocateSize(int minAllocateSize) {
+    this.minAllocateSize = minAllocateSize;
+  }
+
+  public int getMaxAllocateSize() {
+    return maxAllocateSize;
+  }
+
+  public void setMaxAllocateSize(int maxAllocateSize) {
+    this.maxAllocateSize = maxAllocateSize;
+  }
+
+  public boolean isEnableBinaryAllocator() {
+    return enableBinaryAllocator;
+  }
+
+  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
+    this.enableBinaryAllocator = enableBinaryAllocator;
+  }
+
+  public int getLog2SizeClassGroup() {
+    return log2SizeClassGroup;
+  }
+
+  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
+    this.log2SizeClassGroup = log2SizeClassGroup;
+  }
+
+  public Pattern getTrustedUriPattern() {
+    return trustedUriPattern;
+  }
+
+  public void setTrustedUriPattern(Pattern trustedUriPattern) {
+    this.trustedUriPattern = trustedUriPattern;
   }
 }

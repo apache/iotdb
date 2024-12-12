@@ -39,9 +39,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -299,10 +299,15 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      // Will not affect the manual "6600000"
+      statement.execute("alter database test2 set properties ttl=6600000");
+      statement.execute("alter database test2 set properties ttl=DEFAULT");
+
       statement.execute("alter table table3 set properties ttl=1000000");
       statement.execute("alter table table3 set properties ttl=DEFAULT");
 
-      // The table3's ttl shall be also 3000000
+      ttls = new String[] {"INF", "6600000"};
+      // The table3's ttl shall be "INF"
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();

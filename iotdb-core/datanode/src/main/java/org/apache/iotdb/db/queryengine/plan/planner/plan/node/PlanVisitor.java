@@ -121,7 +121,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -642,8 +644,33 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitApply(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode node, C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
+  public R visitEnforceSingleRow(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitCorrelatedJoin(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode node,
+      C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
   public R visitTableScan(TableScanNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitDeviceTableScan(DeviceTableScanNode node, C context) {
+    return visitTableScan(node, context);
+  }
+
+  public R visitInformationSchemaTableScan(InformationSchemaTableScanNode node, C context) {
+    return visitTableScan(node, context);
   }
 
   public R visitProject(
@@ -741,6 +768,6 @@ public abstract class PlanVisitor<R, C> {
   public R visitAggregationTableScan(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
       C context) {
-    return visitTableScan(node, context);
+    return visitDeviceTableScan(node, context);
   }
 }

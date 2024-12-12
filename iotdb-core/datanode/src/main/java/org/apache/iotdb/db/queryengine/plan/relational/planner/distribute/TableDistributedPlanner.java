@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -34,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -57,20 +64,23 @@ public class TableDistributedPlanner {
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
   private final Metadata metadata;
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   @TestOnly
   public TableDistributedPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       LogicalQueryPlan logicalQueryPlan,
-      Metadata metadata) {
+      Metadata metadata,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this(
         analysis,
         symbolAllocator,
         logicalQueryPlan,
         metadata,
         new DistributedOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
-            .getPlanOptimizers());
+            .getPlanOptimizers(),
+        dataNodeLocationSupplier);
   }
 
   public TableDistributedPlanner(
@@ -78,13 +88,15 @@ public class TableDistributedPlanner {
       SymbolAllocator symbolAllocator,
       LogicalQueryPlan logicalQueryPlan,
       Metadata metadata,
-      List<PlanOptimizer> distributedOptimizers) {
+      List<PlanOptimizer> distributedOptimizers,
+      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.analysis = analysis;
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.logicalQueryPlan = logicalQueryPlan;
     this.mppQueryContext = logicalQueryPlan.getContext();
     this.optimizers = distributedOptimizers;
     this.metadata = metadata;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   public DistributedQueryPlan plan() {
@@ -114,7 +126,8 @@ public class TableDistributedPlanner {
     // generate table model distributed plan
 
     List<PlanNode> distributedPlanResult =
-        new TableDistributedPlanGenerator(mppQueryContext, analysis, symbolAllocator)
+        new TableDistributedPlanGenerator(
+                mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
             .genResult(logicalQueryPlan.getRootNode(), planContext);
     checkArgument(distributedPlanResult.size() == 1, "Root node must return only one");
 

@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -131,7 +132,6 @@ public class TableModelUtils {
               tableName, values[0], values[1], values[2], values[3], values[4], values[5],
               values[6], values[7], values[8], i));
     }
-    list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
       return false;
@@ -171,6 +171,7 @@ public class TableModelUtils {
         baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT)) {
       return false;
     }
+
     return true;
   }
 
@@ -199,7 +200,6 @@ public class TableModelUtils {
     List<String> list = new ArrayList<>(end - start + 1);
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
-    list.add("flush");
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
       fail();
@@ -299,6 +299,22 @@ public class TableModelUtils {
         database);
   }
 
+  public static void assertData(
+      String database,
+      String table,
+      int start,
+      int end,
+      BaseEnv baseEnv,
+      Consumer<String> handleFailure) {
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        TableModelUtils.getQuerySql(table),
+        TableModelUtils.generateHeaderResults(),
+        TableModelUtils.generateExpectedResults(start, end),
+        database,
+        handleFailure);
+  }
+
   public static void assertData(String database, String table, Tablet tablet, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
@@ -316,6 +332,18 @@ public class TableModelUtils {
   public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
+  }
+
+  public static void assertCountData(
+      String database, String table, int count, BaseEnv baseEnv, Consumer<String> handleFailure) {
+    TestUtils.executeNonQueryWithRetry(baseEnv, "flush");
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        getQueryCountSql(table),
+        "_col0,",
+        Collections.singleton(count + ","),
+        database,
+        handleFailure);
   }
 
   public static String getDateStr(int value) {

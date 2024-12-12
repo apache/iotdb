@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -174,6 +175,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 
 import org.apache.tsfile.exception.NotImplementedException;
 
+import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
+
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
   @Override
@@ -319,7 +322,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, MPPQueryContext context) {
-    return new CreateFunctionTask(createFunctionStatement);
+    if (createFunctionStatement.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateFunctionTask(createFunctionStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException("Untrusted uri " + createFunctionStatement.getUriString().get());
+    }
   }
 
   @Override
@@ -337,7 +347,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateTrigger(
       CreateTriggerStatement createTriggerStatement, MPPQueryContext context) {
-    return new CreateTriggerTask(createTriggerStatement);
+    if (createTriggerStatement.isUsingURI()
+        && createTriggerStatement.getUriString() != null
+        && isUriTrusted(createTriggerStatement.getUriString())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateTriggerTask(createTriggerStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException("Untrusted uri " + createTriggerStatement.getUriString());
+    }
   }
 
   @Override
@@ -355,7 +374,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipePlugin(
       CreatePipePluginStatement createPipePluginStatement, MPPQueryContext context) {
-    return new CreatePipePluginTask(createPipePluginStatement);
+    if (createPipePluginStatement.getUriString() != null
+        && isUriTrusted(createPipePluginStatement.getUriString())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreatePipePluginTask(createPipePluginStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException("Untrusted uri " + createPipePluginStatement.getUriString());
+    }
   }
 
   @Override
@@ -644,7 +671,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateModel(
       CreateModelStatement createModelStatement, MPPQueryContext context) {
-    return new CreateModelTask(createModelStatement, context);
+    if (createModelStatement.getUri() != null && isUriTrusted(createModelStatement.getUri())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateModelTask(createModelStatement, context);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException("Untrusted uri " + createModelStatement.getUri());
+    }
   }
 
   @Override
