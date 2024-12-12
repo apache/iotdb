@@ -19,4 +19,96 @@
 
 package org.apache.iotdb.session.subscription;
 
-public class SubscriptionTableSession {}
+import org.apache.iotdb.isession.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.isession.subscription.model.Subscription;
+import org.apache.iotdb.isession.subscription.model.Topic;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.AbstractSessionBuilder;
+
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+
+public class SubscriptionTableSession extends AbstractSubscriptionSession
+    implements ISubscriptionTableSession {
+
+  public SubscriptionTableSession(final AbstractSessionBuilder builder) {
+    super(new SubscriptionSessionWrapper(builder));
+  }
+
+  /////////////////////////////// open & close ///////////////////////////////
+
+  @Override
+  public void open() throws IoTDBConnectionException {
+    super.open();
+  }
+
+  @Override
+  public void close() throws IoTDBConnectionException {
+    super.close();
+  }
+
+  /////////////////////////////// topic ///////////////////////////////
+
+  @Override
+  public void createTopic(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.createTopic(topicName);
+  }
+
+  @Override
+  public void createTopicIfNotExists(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.createTopicIfNotExists(topicName);
+  }
+
+  @Override
+  public void createTopic(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.createTopic(topicName, properties);
+  }
+
+  @Override
+  public void createTopicIfNotExists(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.createTopicIfNotExists(topicName, properties);
+  }
+
+  @Override
+  public void dropTopic(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropTopic(topicName);
+  }
+
+  @Override
+  public void dropTopicIfExists(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.dropTopicIfExists(topicName);
+  }
+
+  @Override
+  public Set<Topic> getTopics() throws IoTDBConnectionException, StatementExecutionException {
+    return super.getTopics();
+  }
+
+  @Override
+  public Optional<Topic> getTopic(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    return super.getTopic(topicName);
+  }
+
+  /////////////////////////////// subscription ///////////////////////////////
+
+  @Override
+  public Set<Subscription> getSubscriptions()
+      throws IoTDBConnectionException, StatementExecutionException {
+    return super.getSubscriptions();
+  }
+
+  @Override
+  public Set<Subscription> getSubscriptions(final String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    return super.getSubscriptions(topicName);
+  }
+}

@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.subscription.ISubscriptionSession;
+import org.apache.iotdb.isession.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 
 public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
@@ -58,7 +59,9 @@ public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
-  public ISubscriptionSession build() {
-    return new SubscriptionSession(this);
+  public ISubscriptionTableSession build() throws IoTDBConnectionException {
+    final ISubscriptionTableSession session = new SubscriptionTableSession(this);
+    session.open();
+    return session;
   }
 }
