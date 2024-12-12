@@ -1476,7 +1476,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final ShowRegionStatement showRegionStatement, final boolean isTableModel) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowRegionResp showRegionResp = new TShowRegionResp();
-    final TShowRegionReq showRegionReq = new TShowRegionReq();
+    final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
     if (showRegionStatement.getStorageGroups() == null) {
       showRegionReq.setDatabases(null);

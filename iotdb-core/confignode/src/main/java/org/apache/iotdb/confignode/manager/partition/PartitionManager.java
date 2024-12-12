@@ -897,7 +897,8 @@ public class PartitionManager {
    *     are unavailable currently
    */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
-      String database, TConsensusGroupType type) throws NoAvailableRegionGroupException {
+      final String database, final TConsensusGroupType type)
+      throws NoAvailableRegionGroupException {
     // Collect static data
     List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
         partitionInfo.getRegionGroupSlotsCounter(database, type);
@@ -905,7 +906,8 @@ public class PartitionManager {
     // Filter RegionGroups that have Disabled status
     List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
     for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
-      RegionGroupStatus status = getLoadManager().getRegionGroupStatus(slotsCounter.getRight());
+      final RegionGroupStatus status =
+          getLoadManager().getRegionGroupStatus(slotsCounter.getRight());
       if (!RegionGroupStatus.Disabled.equals(status)) {
         result.add(slotsCounter);
       }

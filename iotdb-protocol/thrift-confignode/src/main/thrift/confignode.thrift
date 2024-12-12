@@ -623,6 +623,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {

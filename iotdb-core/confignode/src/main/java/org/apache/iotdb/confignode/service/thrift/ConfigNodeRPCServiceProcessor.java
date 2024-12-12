@@ -990,11 +990,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) {
-    // TODO: Model
-    GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
-    RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
-    TShowRegionResp showRegionResp = new TShowRegionResp();
+  public TShowRegionResp showRegion(final TShowRegionReq showRegionReq) {
+    final GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
+    final RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
+    final TShowRegionResp showRegionResp = new TShowRegionResp();
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;

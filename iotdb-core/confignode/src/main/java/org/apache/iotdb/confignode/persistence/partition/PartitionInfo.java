@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
@@ -527,19 +528,25 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get Region information. */
-  public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
-    RegionInfoListResp regionResp = new RegionInfoListResp();
-    List<TRegionInfo> regionInfoList = new Vector<>();
+  public DataSet getRegionInfoList(final GetRegionInfoListPlan regionsInfoPlan) {
+    final RegionInfoListResp regionResp = new RegionInfoListResp();
+    final List<TRegionInfo> regionInfoList = new Vector<>();
     if (databasePartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       regionResp.setRegionInfoList(new ArrayList<>());
       return regionResp;
     }
-    TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+    final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
     final List<String> databases = showRegionReq != null ? showRegionReq.getDatabases() : null;
+    final Boolean isTableModel =
+        showRegionReq != null
+            ? showRegionReq.isSetIsTableModel() && showRegionReq.isIsTableModel()
+            : null;
     databasePartitionTables.forEach(
         (database, databasePartitionTable) -> {
-          if (databases != null && !databases.contains(database)) {
+          if (databases != null && !databases.contains(database)
+              || Boolean.TRUE.equals(isTableModel) && !PathUtils.isTableModelDatabase(database)
+              || Boolean.FALSE.equals(isTableModel) && PathUtils.isTableModelDatabase(database)) {
             return;
           }
           regionInfoList.addAll(databasePartitionTable.getRegionInfoList(regionsInfoPlan));
