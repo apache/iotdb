@@ -460,7 +460,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param database The specified Database
    * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
    */
-  public boolean isDatabaseExisted(String database) {
+  public boolean isDatabaseExisted(final String database) {
     final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     return databasePartitionTable != null && databasePartitionTable.isNotPreDeleted();
   }

@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -941,12 +940,11 @@ public class TableDistributedPlanGenerator
 
   private List<PlanNode> visitAbstractTableDeviceQuery(
       final AbstractTableDeviceQueryNode node, final PlanContext context) {
-    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
-        .get(database)
+        .get(node.getDatabase())
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 

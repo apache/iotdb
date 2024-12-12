@@ -614,21 +614,23 @@ public class PartitionCache {
    * @param databaseToDeviceMap database to devices map
    * @return SchemaPartition of databaseToDeviceMap
    */
-  public SchemaPartition getSchemaPartition(Map<String, List<IDeviceID>> databaseToDeviceMap) {
+  public SchemaPartition getSchemaPartition(
+      final Map<String, List<IDeviceID>> databaseToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
       if (databaseToDeviceMap.isEmpty()) {
         cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
       }
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+      final Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
       // check cache for each database
-      for (Map.Entry<String, List<IDeviceID>> entry : databaseToDeviceMap.entrySet()) {
-        String databaseName = entry.getKey();
-        Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
+      for (final Map.Entry<String, List<IDeviceID>> entry : databaseToDeviceMap.entrySet()) {
+        final String databaseName = entry.getKey();
+        final Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
             schemaPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
-        SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(databaseName);
+        final SchemaPartitionTable schemaPartitionTable =
+            schemaPartitionCache.getIfPresent(databaseName);
         if (null == schemaPartitionTable) {
           // if database not find, then return cache miss.
           logger.debug(
@@ -638,11 +640,11 @@ public class PartitionCache {
           cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
-        Map<TSeriesPartitionSlot, TConsensusGroupId> map =
+        final Map<TSeriesPartitionSlot, TConsensusGroupId> map =
             schemaPartitionTable.getSchemaPartitionMap();
         // check cache for each device
-        for (IDeviceID device : entry.getValue()) {
-          TSeriesPartitionSlot seriesPartitionSlot =
+        for (final IDeviceID device : entry.getValue()) {
+          final TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(device);
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
@@ -653,8 +655,8 @@ public class PartitionCache {
             cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
-          TConsensusGroupId consensusGroupId = map.get(seriesPartitionSlot);
-          TRegionReplicaSet regionReplicaSet = getRegionReplicaSet(consensusGroupId);
+          final TConsensusGroupId consensusGroupId = map.get(seriesPartitionSlot);
+          final TRegionReplicaSet regionReplicaSet = getRegionReplicaSet(consensusGroupId);
           regionReplicaSetMap.put(seriesPartitionSlot, regionReplicaSet);
         }
       }
@@ -711,18 +713,18 @@ public class PartitionCache {
    * @param schemaPartitionTable database to SeriesPartitionSlot to ConsensusGroupId map
    */
   public void updateSchemaPartitionCache(
-      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
+      final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
     schemaPartitionCacheLock.writeLock().lock();
     try {
-      for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
+      for (final Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
           schemaPartitionTable.entrySet()) {
-        String databaseName = entry1.getKey();
+        final String databaseName = entry1.getKey();
         SchemaPartitionTable result = schemaPartitionCache.getIfPresent(databaseName);
         if (null == result) {
           result = new SchemaPartitionTable();
           schemaPartitionCache.put(databaseName, result);
         }
-        Map<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionSlotTConsensusGroupIdMap =
+        final Map<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionSlotTConsensusGroupIdMap =
             result.getSchemaPartitionMap();
         seriesPartitionSlotTConsensusGroupIdMap.putAll(entry1.getValue());
       }

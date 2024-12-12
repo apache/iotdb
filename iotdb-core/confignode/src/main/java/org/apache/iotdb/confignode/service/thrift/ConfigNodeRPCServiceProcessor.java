@@ -629,13 +629,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     return configManager.getSchemaPartition(dbSlotMap);
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
-    PathPatternTree patternTree =
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(final TSchemaPartitionReq req) {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getOrCreateSchemaPartition(
         patternTree, req.isSetIsTableModel() && req.isIsTableModel());

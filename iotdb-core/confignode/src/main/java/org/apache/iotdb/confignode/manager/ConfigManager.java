@@ -800,7 +800,7 @@ public class ConfigManager implements IManager {
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
       try {
-        allDatabasePaths.add(PartialPath.getDatabasePath(database));
+        allDatabasePaths.add(PartialPath.getQualifiedDatabasePartialPath(database));
       } catch (final IllegalPathException e) {
         throw new RuntimeException(e);
       }
@@ -852,20 +852,20 @@ public class ConfigManager implements IManager {
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartition(
       final PathPatternTree patternTree, final boolean isTableModel) {
-    TSStatus status = confirmLeader();
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Construct empty response
-      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
+      final TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
-    List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
+    final List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
+    final List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
 
     // Build GetOrCreateSchemaPartitionPlan
-    Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    for (IDeviceID deviceID : devicePaths) {
-      for (String database : databases) {
+    final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    for (final IDeviceID deviceID : devicePaths) {
+      for (final String database : databases) {
         if (PathUtils.isStartWith(deviceID, database)) {
           partitionSlotsMap
               .computeIfAbsent(database, key -> new HashSet<>())
@@ -875,14 +875,14 @@ public class ConfigManager implements IManager {
       }
     }
 
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotListMap = new HashMap<>();
+    final Map<String, List<TSeriesPartitionSlot>> partitionSlotListMap = new HashMap<>();
     partitionSlotsMap.forEach((db, slots) -> partitionSlotListMap.put(db, new ArrayList<>(slots)));
     return getOrCreateSchemaPartition(partitionSlotListMap);
   }
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
 
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

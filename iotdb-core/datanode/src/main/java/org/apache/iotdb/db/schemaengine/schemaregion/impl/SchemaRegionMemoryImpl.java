@@ -268,7 +268,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              PartialPath.getDatabasePath(storageGroupFullPath),
+              PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,

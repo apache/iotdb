@@ -396,17 +396,17 @@ public class ClusterSchemaManager {
   }
 
   public Map<String, Long> getTTLInfoForUpgrading() {
-    List<String> databases = getDatabaseNames(null);
-    Map<String, Long> infoMap = new ConcurrentHashMap<>();
-    for (String database : databases) {
+    final List<String> databases = getDatabaseNames(false);
+    final Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    for (final String database : databases) {
       try {
         final TDatabaseSchema databaseSchema = getDatabaseSchemaByName(database);
-        long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
+        final long ttl = databaseSchema.isSetTTL() ? databaseSchema.getTTL() : -1;
         if (ttl < 0 || ttl == Long.MAX_VALUE) {
           continue;
         }
         infoMap.put(database, ttl);
-      } catch (DatabaseNotExistsException e) {
+      } catch (final DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);
       }
     }
@@ -579,7 +579,7 @@ public class ClusterSchemaManager {
    * @param database The specified Database
    * @return True if the DatabaseSchema exists and the Database is not pre-deleted
    */
-  public boolean isDatabaseExist(String database) {
+  public boolean isDatabaseExist(final String database) {
     return getPartitionManager().isDatabaseExist(database);
   }
 

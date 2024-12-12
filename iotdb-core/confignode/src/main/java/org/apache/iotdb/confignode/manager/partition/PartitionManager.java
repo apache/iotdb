@@ -841,7 +841,7 @@ public class PartitionManager {
    * @param database The specified Database
    * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
    */
-  public boolean isDatabaseExist(String database) {
+  public boolean isDatabaseExist(final String database) {
     return partitionInfo.isDatabaseExisted(database);
   }
 
@@ -851,12 +851,12 @@ public class PartitionManager {
    * @param databases the Databases to check
    * @return List of PartialPath the Databases that not exist
    */
-  public List<PartialPath> filterUnExistDatabases(List<PartialPath> databases) {
-    List<PartialPath> unExistDatabases = new ArrayList<>();
+  public List<PartialPath> filterUnExistDatabases(final List<PartialPath> databases) {
+    final List<PartialPath> unExistDatabases = new ArrayList<>();
     if (databases == null) {
       return unExistDatabases;
     }
-    for (PartialPath database : databases) {
+    for (final PartialPath database : databases) {
       if (!isDatabaseExist(database.getFullPath())) {
         unExistDatabases.add(database);
       }

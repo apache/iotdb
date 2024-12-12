@@ -234,17 +234,15 @@ public class DataPartition extends Partition {
   }
 
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
-      IDeviceID deviceID, TTimePartitionSlot timePartitionSlot, String databaseName) {
+      final IDeviceID deviceID, final TTimePartitionSlot timePartitionSlot, String databaseName) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    if (databaseName != null) {
-      databaseName = PathUtils.qualifyDatabaseName(databaseName);
-    } else {
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    if (databaseName == null) {
       databaseName = getDatabaseNameByDevice(deviceID);
     }
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
@@ -252,7 +250,7 @@ public class DataPartition extends Partition {
               + databaseName
               + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
-    List<TRegionReplicaSet> regions =
+    final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
     // are more than 1 Regions for one timeSlot

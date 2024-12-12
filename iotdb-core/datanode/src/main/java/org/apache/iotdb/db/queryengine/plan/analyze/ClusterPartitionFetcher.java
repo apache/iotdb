@@ -405,7 +405,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       final PathPatternTree patternTree, final boolean isTableModel) {
     try {
       return new TSchemaPartitionReq(patternTree.serialize()).setIsTableModel(isTableModel);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
   }
@@ -422,7 +422,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         schemaNodeManagementReq.setLevel(level);
       }
       return schemaNodeManagementReq;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
   }

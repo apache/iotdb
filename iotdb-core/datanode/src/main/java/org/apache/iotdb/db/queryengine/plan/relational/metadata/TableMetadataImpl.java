@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -734,7 +735,7 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public SchemaPartition getSchemaPartition(final String database) {
-    return partitionFetcher.getSchemaPartition(database);
+    return partitionFetcher.getSchemaPartition(PathUtils.qualifyDatabaseName(database));
   }
 
   @Override

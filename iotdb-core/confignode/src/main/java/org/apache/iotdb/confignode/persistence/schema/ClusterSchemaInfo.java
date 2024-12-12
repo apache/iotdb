@@ -111,6 +111,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.path.PartialPath.getQualifiedDatabasePartialPath;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
@@ -483,9 +484,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public List<String> getDatabaseNames(final Boolean isTableModel) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return treeModelMTree.getAllDatabasePaths(isTableModel).stream()
-          .map(PartialPath::getFullPath)
-          .collect(Collectors.toList());
+      final List<String> results = new ArrayList<>();
+      if (!Boolean.TRUE.equals(isTableModel)) {
+        treeModelMTree.getAllDatabasePaths(isTableModel).stream()
+            .map(PartialPath::getFullPath)
+            .forEach(results::add);
+      }
+      if (!Boolean.FALSE.equals(isTableModel)) {
+        tableModelMTree.getAllDatabasePaths(isTableModel).stream()
+            .map(path -> path.getNodes()[1])
+            .forEach(results::add);
+      }
+      return results;
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1340,11 +1350,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
-  }
-
-  private PartialPath getQualifiedDatabasePartialPath(final String database)
-      throws IllegalPathException {
-    return PartialPath.getDatabasePath(PathUtils.qualifyDatabaseName(database));
   }
 
   // endregion
