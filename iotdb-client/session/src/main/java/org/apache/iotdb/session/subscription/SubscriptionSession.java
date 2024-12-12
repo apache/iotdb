@@ -303,4 +303,48 @@ public class SubscriptionSession implements ISubscriptionSession {
     }
     return subscriptions;
   }
+
+  /////////////////////////////// builder ///////////////////////////////
+
+  // for forward compatibility
+  public static class Builder extends AbstractSessionBuilder {
+
+    public Builder() {
+      // use tree model
+      super.sqlDialect = "tree";
+      // disable auto fetch
+      super.enableAutoFetch = false;
+      // disable redirection
+      super.enableRedirection = false;
+    }
+
+    public Builder host(final String host) {
+      super.host = host;
+      return this;
+    }
+
+    public Builder port(final int port) {
+      super.rpcPort = port;
+      return this;
+    }
+
+    public Builder username(final String username) {
+      super.username = username;
+      return this;
+    }
+
+    public Builder password(final String password) {
+      super.pw = password;
+      return this;
+    }
+
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      super.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    public ISubscriptionSession build() {
+      return new SubscriptionSession(this);
+    }
+  }
 }
