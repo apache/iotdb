@@ -220,4 +220,8 @@ public class PathUtils {
     }
     return databaseName;
   }
+
+  public static boolean isTableModelDatabase(final String databaseName) {
+    return !databaseName.startsWith("root.");
+  }
 }

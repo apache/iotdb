@@ -185,7 +185,8 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all databases related to given path
    */
-  public List<PartialPath> getBelongedDatabases(PartialPath pathPattern) throws MetadataException {
+  public List<PartialPath> getBelongedDatabases(final PartialPath pathPattern)
+      throws MetadataException {
     return collectDatabases(pathPattern, ALL_MATCH_SCOPE, false, true);
   }
 

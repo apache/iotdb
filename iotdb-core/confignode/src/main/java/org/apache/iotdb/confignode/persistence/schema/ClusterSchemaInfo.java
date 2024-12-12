@@ -835,102 +835,104 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // Before execute this method, checkTemplateSettable method should be invoked first and the whole
   // process must be synchronized
-  public synchronized TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
-    PartialPath path;
+  public synchronized TSStatus setSchemaTemplate(
+      final SetSchemaTemplatePlan setSchemaTemplatePlan) {
+    final PartialPath path;
     try {
       path = new PartialPath(setSchemaTemplatePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
 
     try {
-      int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
+      final int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
       treeModelMTree.setTemplate(templateId, path);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
   public synchronized TSStatus preSetSchemaTemplate(
-      PreSetSchemaTemplatePlan preSetSchemaTemplatePlan) {
-    PartialPath path;
+      final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan) {
+    final PartialPath path;
     try {
       path = new PartialPath(preSetSchemaTemplatePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
 
     try {
-      int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
+      final int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
       if (preSetSchemaTemplatePlan.isRollback()) {
         rollbackPreSetSchemaTemplate(templateId, path);
       } else {
         preSetSchemaTemplate(templateId, path);
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
-  private void preSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+  private void preSetSchemaTemplate(final int templateId, final PartialPath templateSetPath)
       throws MetadataException {
     templatePreSetTable.preSetTemplate(templateId, templateSetPath);
     treeModelMTree.setTemplate(templateId, templateSetPath);
   }
 
-  private void rollbackPreSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+  private void rollbackPreSetSchemaTemplate(final int templateId, final PartialPath templateSetPath)
       throws MetadataException {
     try {
       treeModelMTree.unsetTemplate(templateId, templateSetPath);
-    } catch (MetadataException ignore) {
+    } catch (final MetadataException ignore) {
       // node not exists or not set template
     }
     templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
   }
 
   public synchronized TSStatus commitSetSchemaTemplate(
-      CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan) {
-    PartialPath path;
+      final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan) {
+    final PartialPath path;
     try {
       path = new PartialPath(commitSetSchemaTemplatePlan.getPath());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error(e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
 
     try {
-      int templateId = templateTable.getTemplate(commitSetSchemaTemplatePlan.getName()).getId();
+      final int templateId =
+          templateTable.getTemplate(commitSetSchemaTemplatePlan.getName()).getId();
       if (commitSetSchemaTemplatePlan.isRollback()) {
         rollbackCommitSetSchemaTemplate(templateId, path);
       } else {
         commitSetSchemaTemplate(templateId, path);
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
-  private void commitSetSchemaTemplate(int templateId, PartialPath templateSetPath) {
+  private void commitSetSchemaTemplate(final int templateId, final PartialPath templateSetPath) {
     templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
   }
 
-  private void rollbackCommitSetSchemaTemplate(int templateId, PartialPath templateSetPath)
-      throws MetadataException {
+  private void rollbackCommitSetSchemaTemplate(
+      final int templateId, final PartialPath templateSetPath) throws MetadataException {
     treeModelMTree.unsetTemplate(templateId, templateSetPath);
   }
 
-  public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
-    PathInfoResp pathInfoResp = new PathInfoResp();
+  public PathInfoResp getPathsSetTemplate(final GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
+    final PathInfoResp pathInfoResp = new PathInfoResp();
     TSStatus status;
     try {
-      String templateName = getPathsSetTemplatePlan.getName();
-      PathPatternTree scope = getPathsSetTemplatePlan.getScope();
-      int templateId;
+      final String templateName = getPathsSetTemplatePlan.getName();
+      final PathPatternTree scope = getPathsSetTemplatePlan.getScope();
+      final int templateId;
       if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)) {
         templateId = ALL_TEMPLATE;
       } else {
@@ -1070,26 +1072,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
-  }
-
-  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByOneName(
-      final String[] databasePathPattern) {
-    final Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
-    databaseReadWriteLock.readLock().lock();
-    try {
-      final PartialPath patternPath = new PartialPath(databasePathPattern);
-      final List<PartialPath> matchedPaths = treeModelMTree.getBelongedDatabases(patternPath);
-      for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(),
-            treeModelMTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
-      }
-    } catch (final MetadataException e) {
-      LOGGER.warn(ERROR_NAME, e);
-    } finally {
-      databaseReadWriteLock.readLock().unlock();
-    }
-    return schemaMap;
   }
 
   // region table management

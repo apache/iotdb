@@ -69,17 +69,18 @@ public class CreateRegionGroupsProcedure
   }
 
   public CreateRegionGroupsProcedure(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
   }
 
   @TestOnly
   public CreateRegionGroupsProcedure(
-      TConsensusGroupType consensusGroupType,
-      CreateRegionGroupsPlan createRegionGroupsPlan,
-      CreateRegionGroupsPlan persistPlan,
-      Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan,
+      final CreateRegionGroupsPlan persistPlan,
+      final Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
     this.persistPlan = persistPlan;
@@ -87,7 +88,8 @@ public class CreateRegionGroupsProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateRegionGroupsState state) {
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final CreateRegionGroupsState state) {
     switch (state) {
       case CREATE_REGION_GROUPS:
         failedRegionReplicaSets = env.doRegionCreation(consensusGroupType, createRegionGroupsPlan);

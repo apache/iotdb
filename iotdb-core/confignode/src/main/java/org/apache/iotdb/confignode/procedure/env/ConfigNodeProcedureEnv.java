@@ -369,7 +369,8 @@ public class ConfigNodeProcedureEnv {
    * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
 
     // Prepare clientHandler
     DataNodeAsyncRequestContext<?, TSStatus> clientHandler;
@@ -395,8 +396,8 @@ public class ConfigNodeProcedureEnv {
     Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           if (responseMap.get(requestId).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedRegions
                 .computeIfAbsent(

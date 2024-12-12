@@ -121,6 +121,8 @@ public class PartitionInfo implements SnapshotProcessor {
   private final AtomicInteger nextRegionGroupId;
 
   // Map<DatabaseName, DatabasePartitionInfo>
+  // For tree model databases: The databaseName is a partial path's full path with "root."
+  // For table model databases: The databaseName is a full name without "root."
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
   /** For Region-Maintainer. */
@@ -809,7 +811,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return Number of Regions currently owned by the specific database
    * @throws DatabaseNotExistsException When the specific database doesn't exist
    */
-  public int getRegionGroupCount(String database, TConsensusGroupType type)
+  public int getRegionGroupCount(final String database, final TConsensusGroupType type)
       throws DatabaseNotExistsException {
     if (!isDatabaseExisted(database)) {
       throw new DatabaseNotExistsException(database);
