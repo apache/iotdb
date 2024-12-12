@@ -132,7 +132,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
         appendOneRightRowWithEmptyLeft();
       } else {
         // CurrentRight can only be greater than or equal to lastMatchedRight.
-        if (lessThan(
+        if (!equalsTo(
             lastMatchedRightBlock,
             lastMatchedBlockPositions,
             0,
@@ -207,7 +207,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       // if current right value is null, the right row with empty left will be appended in the join
       // result.
       if (lastMatchedRightBlock == null
-          || lessThan(
+          || !equalsTo(
               lastMatchedRightBlock,
               lastMatchedBlockPositions,
               0,

@@ -1808,7 +1808,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void innerJoinOnTwoColumns() {
+  public void innerJoinOnMultiColumns() {
     expectedHeader = new String[] {"time", "device1", "value1", "device2", "value2"};
     sql =
         "SELECT "
@@ -1864,10 +1864,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "2020-01-01T00:00:03.000Z,d1,3,30,", "2020-01-01T00:00:05.000Z,d2,5,50,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
-  }
 
-  @Test
-  public void mergeSortJoinTest() {
+    expectedHeader = new String[] {"device", "device", "num", "num", "floatnum", "floatnum"};
+    sql =
+        "select t0.device, t1.device, t0.num, t1.num, t0.floatnum, t1.floatnum from table0 t0 join table1 t1 on t0.device=t1.device AND t0.attr2=t1.attr2 AND t0.num>t1.num AND t0.floatnum>t1.floatnum ORDER BY t0.device,t1.device,t0.num,t1.num";
+    retArray =
+        new String[] {
+          "d1,d1,4,1,213.1,12.123,", "d1,d1,6,3,1231.21,231.2121,", "d1,d1,14,1,231.34,12.123,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
     expectedHeader = new String[] {"time1", "time2", "device1", "device2"};
     sql =
         "select t1.time as time1, t2.time as time2, t1.device as device1, t2.device as device2 from tablea t1 join tableb t2 "
@@ -1880,10 +1886,151 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "2020-01-01T00:00:07.000Z,2020-01-01T00:00:03.000Z,d2,d1,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"attr1", "attr2"};
+    sql =
+        "select t0.attr1,t0.attr2 from table0 t0 join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2";
+    retArray =
+        new String[] {
+          "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,",
+          "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "c,d,", "t,a,",
+          "t,a,", "t,a,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    //    expectedHeader = new String[] {"device", "device", "attr1", "attr1", "date", "date"};
+    //    sql =
+    //        "select t0.device, t1.device, t0.attr1, t1.attr1, t0.date, t1.date from table0 t0 join
+    // table1 t1 on t0.device=t1.device and t0.attr1=t1.attr1 OR t0.date=t1.date";
+    //    retArray =
+    //        new String[] {
+    //          "d1,d1,c,c,null,2023-01-01,",
+    //          "d1,d1,c,c,null,2023-01-01,",
+    //          "d1,d1,c,c,null,2023-01-01,",
+    //          "d1,d1,c,c,null,null,",
+    //          "d1,d1,c,c,null,null,",
+    //          "d1,d1,c,c,null,null,",
+    //          "d1,d1,t,t,null,null,",
+    //          "d1,d1,t,t,null,null,",
+    //          "d1,d1,t,t,null,null,",
+    //          "d2,d1,null,c,2023-01-01,2023-01-01,",
+    //        };
+    //    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
-  public void crossJoinTest() {}
+  public void fullJoinTest() {
+    expectedHeader = new String[] {"date", "date"};
+    sql =
+        "select t0.date, t1.date from table0 t0 full join table1 t1 on t0.date=t1.date order by t0.date, t1.date";
+    retArray =
+        new String[] {
+          "2022-01-01,null,",
+          "2023-01-01,2023-01-01,",
+          "null,2023-05-01,",
+          "null,2023-10-01,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+          "null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"attr1", "attr2", "attr1", "attr2"};
+    sql =
+        "select t0.attr1,t0.attr2,t1.attr1,t1.attr2 from table0 t0 full join table1 t1 on t0.attr1=t1.attr1 AND t0.attr2=t1.attr2 order by t0.attr1,t0.attr2,t1.attr1,t1.attr2";
+    retArray =
+        new String[] {
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "c,d,c,d,",
+          "d,c,null,null,",
+          "d,c,null,null,",
+          "d,c,null,null,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "t,a,t,a,",
+          "vv,null,null,null,",
+          "vv,null,null,null,",
+          "vv,null,null,null,",
+          "yy,zz,null,null,",
+          "yy,zz,null,null,",
+          "yy,zz,null,null,",
+          "null,null,y,z,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+          "null,null,null,null,",
+        };
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
 
   @Test
   public void exceptionTest() {

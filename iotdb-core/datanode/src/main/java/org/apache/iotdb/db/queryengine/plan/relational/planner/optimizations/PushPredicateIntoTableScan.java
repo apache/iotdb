@@ -559,11 +559,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       // Create new projections for the new join clauses
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
-      boolean hasFilter = false;
-      // Expression lastEquiJoinConjunct = null;
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
         if (joinEqualityExpressionOnOneColumn(conjunct, node)) {
-          // lastEquiJoinConjunct = conjunct;
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =

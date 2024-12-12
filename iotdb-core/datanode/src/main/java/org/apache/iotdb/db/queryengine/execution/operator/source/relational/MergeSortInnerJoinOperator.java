@@ -147,15 +147,7 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    for (int i = 0; i < comparators.size(); i++) {
-      if (comparators
-          .get(i)
-          .lessThan(leftBlock, leftPositions[i], lIndex, rightBlock, rightPositions[i], rIndex)
-          .orElse(false)) {
-        return true;
-      }
-    }
-    return false;
+    return examineLessThan(leftBlock, leftPositions, lIndex, rightBlock, rightPositions, rIndex);
   }
 
   @Override

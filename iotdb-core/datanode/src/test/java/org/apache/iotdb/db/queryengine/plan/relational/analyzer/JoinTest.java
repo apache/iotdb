@@ -465,8 +465,8 @@ public class JoinTest {
     /*
      *       └──OutputNode
      *           └──Project
-     *              └──Filter
-     *                └──JoinNode
+     *              └──Filter (t1.s1>t2.s1)
+     *                └──JoinNode  (t1.tag1=t2.tag1 AND t1.time=t2.time)
      *                   |──SortNode
      *                   │   └──TableScanNode
      *                   ├──SortNode
@@ -513,6 +513,35 @@ public class JoinTest {
                                         ImmutableSet.of("s1")))
                                 .right(tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1")))
                                 .ignoreEquiCriteria())))));
+  }
+
+  @Test
+  public void fullJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "SELECT t1.time FROM table1 t1 FULL JOIN table1 t2 ON t1.tag1=t2.tag1 AND t1.time=t2.time";
+    logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan1 =
+        tableScan(
+            "testdb.table1", ImmutableList.of("time", "tag1"), ImmutableSet.of("time", "tag1"));
+    PlanMatchPattern tableScan2 =
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "tag1_1", "tag1"));
+    // Verify full LogicalPlan
+    /*
+     *       └──OutputNode
+     *                └──JoinNode  (t1.tag1=t2.tag1 AND t1.time=t2.time)
+     *                   |──SortNode
+     *                   │   └──TableScanNode
+     *                   ├──SortNode
+     *                   │   └──TableScanNode
+     */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            join(
+                JoinNode.JoinType.FULL,
+                builder ->
+                    builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
   }
 
   @Ignore

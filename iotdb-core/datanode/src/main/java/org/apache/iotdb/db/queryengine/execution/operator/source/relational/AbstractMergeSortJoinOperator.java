@@ -415,14 +415,35 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
       TsBlock rightBlock,
       int[] rightPositions,
       int rIndex) {
+    return examineLessThan(leftBlock, leftPositions, lIndex, rightBlock, rightPositions, rIndex);
+  }
+
+  // examine lessThan( L: [a, b], R[a', b'])
+  // if a < a' ==> L < R
+  // else
+  //   if a == a', continue examine if b < b'
+  //   else ==> L > R
+  protected boolean examineLessThan(
+      TsBlock leftBlock,
+      int[] leftPositions,
+      int lIndex,
+      TsBlock rightBlock,
+      int[] rightPositions,
+      int rIndex) {
     for (int i = 0; i < comparators.size(); i++) {
       if (comparators
           .get(i)
           .lessThan(leftBlock, leftPositions[i], lIndex, rightBlock, rightPositions[i], rIndex)
           .orElse(false)) {
         return true;
+      } else if (!comparators
+          .get(i)
+          .equalsTo(leftBlock, leftPositions[i], lIndex, rightBlock, rightPositions[i], rIndex)
+          .orElse(false)) {
+        return false;
       }
     }
+
     return false;
   }
 
