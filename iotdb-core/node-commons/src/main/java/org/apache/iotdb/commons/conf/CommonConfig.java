@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -351,6 +352,8 @@ public class CommonConfig {
   // if querySamplingRateLimiter != 0, enableQuerySampling is true; querySamplingRateLimiter = 0,
   // enableQuerySampling is false
   private volatile boolean enableQuerySampling = true;
+
+  private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   CommonConfig() {
     // Empty constructor
@@ -1567,5 +1570,13 @@ public class CommonConfig {
 
   public boolean isEnableQuerySampling() {
     return enableQuerySampling;
+  }
+
+  public Pattern getTrustedUriPattern() {
+    return trustedUriPattern;
+  }
+
+  public void setTrustedUriPattern(Pattern trustedUriPattern) {
+    this.trustedUriPattern = trustedUriPattern;
   }
 }
