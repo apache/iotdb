@@ -303,6 +303,8 @@ public class DataRegion implements IDataRegionForQuery {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private final DataRegionMetrics metrics;
+
   /**
    * Construct a database processor.
    *
@@ -363,7 +365,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
+    this.metrics = new DataRegionMetrics(this);
+    MetricService.getInstance().addMetricSet(metrics);
   }
 
   @TestOnly
@@ -373,6 +376,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
+    this.metrics = new DataRegionMetrics(this);
   }
 
   @Override
@@ -3542,6 +3546,7 @@ public class DataRegion implements IDataRegionForQuery {
         deletedCondition.await();
       }
       FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
+      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
