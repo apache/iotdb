@@ -508,10 +508,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @throws MetadataException If the DatabaseName invalid i.e. the specified DatabaseName is
    *     already exist, or it's a prefix of another DatabaseName
    */
-  public void isDatabaseNameValid(final String databaseName) throws MetadataException {
+  public void isDatabaseNameValid(final String databaseName, final boolean isTableModel)
+      throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      treeModelMTree.checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
+      (isTableModel ? tableModelMTree : treeModelMTree)
+          .checkDatabaseAlreadySet(getQualifiedDatabasePartialPath(databaseName));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

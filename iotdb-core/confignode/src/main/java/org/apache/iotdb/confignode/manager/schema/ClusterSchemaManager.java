@@ -155,17 +155,18 @@ public class ClusterSchemaManager {
       final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
 
-    if (getPartitionManager().isDatabasePreDeleted(databaseSchemaPlan.getSchema().getName())) {
+    final TDatabaseSchema schema = databaseSchemaPlan.getSchema();
+    if (getPartitionManager().isDatabasePreDeleted(schema.getName())) {
       return RpcUtils.getStatus(
           TSStatusCode.METADATA_ERROR,
-          String.format(
-              "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
+          String.format("Some other task is deleting database %s", schema.getName()));
     }
 
     createDatabaseLock.lock();
     try {
-      clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
-      if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+      clusterSchemaInfo.isDatabaseNameValid(
+          schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
+      if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -176,16 +177,16 @@ public class ClusterSchemaManager {
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
       // set ttl
-      if (databaseSchemaPlan.getSchema().isSetTTL()) {
+      if (schema.isSetTTL()) {
         result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
       }
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
           configManager,
-          databaseSchemaPlan.getSchema().getName(),
-          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
-          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+          schema.getName(),
+          schema.getDataReplicationFactor(),
+          schema.getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (final ConsensusException e) {
