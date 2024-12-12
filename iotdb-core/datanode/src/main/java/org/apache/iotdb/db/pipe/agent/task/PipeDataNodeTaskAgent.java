@@ -485,7 +485,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     // Restart all stuck pipes
-    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+    stuckPipes.forEach(this::restartStuckPipe);
   }
 
   private Set<PipeMeta> findAllStuckPipes() {
