@@ -191,7 +191,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (dataType.isCompatible(dataTypes[columnIndex])) {
-      values[columnIndex] = dataType.castFromSingleValue(dataType, values[columnIndex]);
+      values[columnIndex] =
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }

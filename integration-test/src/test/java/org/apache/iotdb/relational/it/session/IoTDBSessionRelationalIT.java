@@ -1130,7 +1130,8 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
-  private void testOneCast(TSDataType from, TSDataType to, int testNum, boolean partialInsert)
+  private void testOneCastWithTablet(
+      TSDataType from, TSDataType to, int testNum, boolean partialInsert)
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -1232,6 +1233,96 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
+  private void testOneCastWithRow(
+      TSDataType from, TSDataType to, int testNum, boolean partialInsert)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // create a column with type of "to"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table"
+              + testNum
+              + " (id1 string id,"
+              + "m1 "
+              + to.toString()
+              + " measurement)");
+      if (partialInsert) {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
+      } else {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
+      }
+
+      // insert a tablet with type of "from"
+      String sql =
+          String.format(
+              "INSERT INTO table"
+                  + testNum
+                  + " (time, id1, m1) VALUES (0, 'd1', null),(1,'d1', %s)",
+              genValue(from, 1));
+      if (to.isCompatible(from)) {
+        // can cast, insert and check the result
+        session.executeNonQueryStatement(sql);
+        // time, id1, m1
+        SessionDataSet dataSet =
+            session.executeQueryStatement("select * from table" + testNum + " order by time");
+        RowRecord rec = dataSet.next();
+        assertEquals(0, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        assertNull(rec.getFields().get(2).getDataType());
+        rec = dataSet.next();
+        assertEquals(1, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        if (to == TSDataType.BLOB) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+        } else if (to == TSDataType.DATE) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+        } else {
+          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+        }
+        assertFalse(dataSet.hasNext());
+      } else {
+        if (partialInsert) {
+          // cannot cast, but partial insert
+          try {
+            session.executeNonQueryStatement(sql);
+            fail("Exception expected: from=" + from + ", to=" + to);
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
+                    + from
+                    + "/"
+                    + to
+                    + "]",
+                e.getMessage());
+          }
+          // time, id1, m1
+          SessionDataSet dataSet =
+              session.executeQueryStatement("select * from table" + testNum + " order by time");
+          RowRecord rec = dataSet.next();
+          assertEquals(0, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          rec = dataSet.next();
+          assertEquals(1, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          assertFalse(dataSet.hasNext());
+        } else {
+          // cannot cast, expect an exception
+          try {
+            session.executeNonQueryStatement(sql);
+            fail("Exception expected");
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "614: Incompatible data type of column m1: " + from + "/" + to, e.getMessage());
+          }
+        }
+      }
+
+      session.executeNonQueryStatement("DROP TABLE table" + testNum);
+    }
+  }
+
   @SuppressWarnings("SameParameterValue")
   private Object genValue(TSDataType dataType, int i) {
     switch (dataType) {
@@ -1271,8 +1362,10 @@ public class IoTDBSessionRelationalIT {
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {
-        testOneCast(from, to, testNum, false);
-        testOneCast(from, to, testNum, true);
+        System.out.println("from: " + from + ", to: " + to);
+        testOneCastWithTablet(from, to, testNum, false);
+        System.out.println("partial insert");
+        testOneCastWithTablet(from, to, testNum, true);
       }
     }
 
@@ -1345,6 +1438,30 @@ public class IoTDBSessionRelationalIT {
       } catch (StatementExecutionException e) {
         assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
       }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRelationalRowWithAutoCastTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 17;
+    Set<TSDataType> dataTypes = new HashSet<>();
+    Collections.addAll(dataTypes, TSDataType.values());
+    dataTypes.remove(TSDataType.VECTOR);
+    dataTypes.remove(TSDataType.UNKNOWN);
+
+    for (TSDataType from : dataTypes) {
+      for (TSDataType to : dataTypes) {
+        System.out.println("from: " + from + ", to: " + to);
+        testOneCastWithTablet(from, to, testNum, false);
+        System.out.println("partial insert");
+        testOneCastWithTablet(from, to, testNum, true);
+      }
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
     }
   }
 }
