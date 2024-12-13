@@ -257,6 +257,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
+    } else {
+      LOGGER.info("Receiver id = {}: User {} login successfully.", receiverId.get(), username);
     }
 
     final String shouldConvertDataTypeOnTypeMismatchString =
