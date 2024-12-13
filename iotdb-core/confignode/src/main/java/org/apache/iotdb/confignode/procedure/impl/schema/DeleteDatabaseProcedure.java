@@ -30,8 +30,6 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -207,10 +205,7 @@ public class DeleteDatabaseProcedure
 
           // Delete DatabasePartitionTable
           final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(
-                  new DatabaseSchemaPlan(
-                      ConfigPhysicalPlanType.DeleteDatabaseV2, deleteDatabaseSchema),
-                  isGeneratedByPipe);
+              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
 
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.info(
@@ -314,7 +309,7 @@ public class DeleteDatabaseProcedure
   @Override
   public boolean equals(final Object that) {
     if (that instanceof DeleteDatabaseProcedure) {
-      final DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
+      DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()

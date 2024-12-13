@@ -404,18 +404,9 @@ public class ConfigPlanExecutor {
             (AdjustMaxRegionGroupNumPlan) physicalPlan);
       case DeleteDatabase:
         try {
-          return clusterSchemaInfo.deleteDatabase(
-              ((DeleteDatabasePlan) physicalPlan).getName(), false);
+          return clusterSchemaInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
         } finally {
-          partitionInfo.deleteDatabase(((DeleteDatabasePlan) physicalPlan).getName());
-        }
-      case DeleteDatabaseV2:
-        try {
-          final TDatabaseSchema schema = ((DatabaseSchemaPlan) physicalPlan).getSchema();
-          return clusterSchemaInfo.deleteDatabase(
-              schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
-        } finally {
-          partitionInfo.deleteDatabase(((DatabaseSchemaPlan) physicalPlan).getSchema().getName());
+          partitionInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
         }
       case PreDeleteDatabase:
         return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);

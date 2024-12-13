@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -270,16 +271,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Delete Database.
    *
-   * @param databaseName dbName
+   * @param plan DeleteDatabasePlan
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus deleteDatabase(final String databaseName, final boolean isTableModel) {
+  public TSStatus deleteDatabase(final DeleteDatabasePlan plan) {
     final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
       // Delete Database
-      (isTableModel ? tableModelMTree : treeModelMTree)
-          .deleteDatabase(getQualifiedDatabasePartialPath(databaseName));
+      // TODO: Use TDatabaseSchema
+      treeModelMTree.deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
