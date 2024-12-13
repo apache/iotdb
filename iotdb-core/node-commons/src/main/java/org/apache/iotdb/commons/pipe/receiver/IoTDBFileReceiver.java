@@ -800,6 +800,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
 
+    // Close the session
+    closeSession();
+
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
   }
+
+  protected abstract void closeSession();
 }

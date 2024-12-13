@@ -390,4 +390,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
+
+  @Override
+  protected void closeSession() {
+    // Do nothing. The session will be closed in the data node receiver.
+  }
 }

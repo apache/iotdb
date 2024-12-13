@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -76,8 +75,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
 
-    final ClientSession session = new ClientSession(socket);
-    SessionManager.getInstance().registerSession(session);
+    SessionManager.getInstance().registerSession(new ClientSession(socket));
 
     try {
       while (!socket.isClosed()) {
@@ -96,9 +94,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           e);
       throw e;
     } finally {
+      // session will be closed and removed here
       PipeDataNodeAgent.receiver().thrift().handleClientExit();
-      SessionManager.getInstance()
-          .closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
       socket.close();
     }
   }

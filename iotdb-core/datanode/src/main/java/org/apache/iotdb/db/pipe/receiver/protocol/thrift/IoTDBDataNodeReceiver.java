@@ -920,4 +920,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     super.handleExit();
   }
+
+  @Override
+  protected void closeSession() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (session != null) {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+    }
+    SESSION_MANAGER.removeCurrSession();
+  }
 }
