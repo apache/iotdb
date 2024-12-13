@@ -1142,11 +1142,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<String> ignoredConfigItems =
-        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+        ConfigurationFileUtils.filterInvalidConfigItems(req.getConfigs());
     TSStatus warningTsStatus = null;
     if (!ignoredConfigItems.isEmpty()) {
       warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      warningTsStatus.setMessage(
+          "ignored config items: "
+              + ignoredConfigItems
+              + " because they are immutable or undefined.");
       if (req.getConfigs().isEmpty()) {
         future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
         return future;
