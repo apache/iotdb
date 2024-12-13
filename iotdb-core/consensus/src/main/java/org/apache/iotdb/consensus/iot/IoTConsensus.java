@@ -365,7 +365,7 @@ public class IoTConsensus implements IConsensus {
       impl.notifyPeersToRemoveSyncLogChannel(peer);
       KillPoint.setKillPoint(
           IoTConsensusRemovePeerCoordinatorKillPoints
-              .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
+              .AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
 
       try {
         // let target peer reject new write
