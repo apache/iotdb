@@ -457,18 +457,19 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitDeviceTableScan(DeviceTableScanNode node, PlanContext context) {
-    Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
+  public List<PlanNode> visitDeviceTableScan(
+      final DeviceTableScanNode node, final PlanContext context) {
+    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
 
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      List<TRegionReplicaSet> regionReplicaSets =
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      final List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
               node.getQualifiedObjectName().getDatabaseName(),
               deviceEntry.getDeviceID(),
               node.getTimeFilter());
 
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        DeviceTableScanNode deviceTableScanNode =
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
                 k -> {
@@ -498,12 +499,13 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
+    final List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry : tableScanNodeMap.entrySet()) {
-      TRegionReplicaSet regionReplicaSet = entry.getKey();
-      DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
+    for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
+        tableScanNodeMap.entrySet()) {
+      final TRegionReplicaSet regionReplicaSet = entry.getKey();
+      final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
       subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subDeviceTableScanNode);
@@ -741,18 +743,18 @@ public class TableDistributedPlanGenerator
   }
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
-      OrderingScheme childOrdering, List<PlanNode> childrenNodes) {
+      final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
     checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty");
 
     if (childrenNodes.size() == 1) {
       return childrenNodes.get(0);
     }
 
-    PlanNode firstChild = childrenNodes.get(0);
+    final PlanNode firstChild = childrenNodes.get(0);
 
     // children has sort property, use MergeSort to merge children
     if (childOrdering != null) {
-      MergeSortNode mergeSortNode =
+      final MergeSortNode mergeSortNode =
           new MergeSortNode(queryId.genPlanNodeId(), childOrdering, firstChild.getOutputSymbols());
       childrenNodes.forEach(mergeSortNode::addChild);
       nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), childOrdering);
@@ -760,7 +762,7 @@ public class TableDistributedPlanGenerator
     }
 
     // children has no sort property, use CollectNode to merge children
-    CollectNode collectNode =
+    final CollectNode collectNode =
         new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;

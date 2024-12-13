@@ -753,8 +753,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private DataPartition fetchDataPartitionByDevices(
-        String database, List<DeviceEntry> deviceEntries, Filter globalTimeFilter) {
-      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        final String database,
+        final List<DeviceEntry> deviceEntries,
+        final Filter globalTimeFilter) {
+      final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);
 
       // there is no satisfied time range
@@ -765,7 +767,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             CONFIG.getSeriesPartitionSlotNum());
       }
 
-      List<DataPartitionQueryParam> dataPartitionQueryParams =
+      final List<DataPartitionQueryParam> dataPartitionQueryParams =
           deviceEntries.stream()
               .map(
                   deviceEntry ->

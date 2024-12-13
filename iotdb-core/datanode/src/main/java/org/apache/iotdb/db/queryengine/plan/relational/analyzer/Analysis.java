@@ -750,7 +750,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setDataPartitionInfo(DataPartition dataPartition) {
+  public void setDataPartitionInfo(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
@@ -808,11 +808,11 @@ public class Analysis implements IAnalysis {
     return dataPartition;
   }
 
-  public void setDataPartition(DataPartition dataPartition) {
+  public void setDataPartition(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
-  public void upsertDataPartition(DataPartition targetDataPartition) {
+  public void upsertDataPartition(final DataPartition targetDataPartition) {
     if (this.dataPartition == null) {
       this.dataPartition = targetDataPartition;
     } else {
@@ -826,12 +826,12 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+  public void setRedirectNodeList(final List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }
 
   @Override
-  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(final TEndPoint endPoint) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }
@@ -839,7 +839,7 @@ public class Analysis implements IAnalysis {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceId, Filter timeFilter) {
+      final String database, final IDeviceID deviceId, final Filter timeFilter) {
     if (dataPartition == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     } else {
@@ -848,7 +848,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public TimePredicate getCovertedTimePredicate() {
+  public TimePredicate getConvertedTimePredicate() {
     return null;
   }
 
