@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -201,7 +203,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlanAndClassifyExceptions(final ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
-      result = executePlan(plan);
+      result = checkPermission(plan);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        result = executePlan(plan);
+      }
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Receiver id = {}: Failure status encountered while executing plan {}: {}",
@@ -219,6 +224,50 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       result = EXCEPTION_VISITOR.process(plan, e);
     }
     return result;
+  }
+
+  private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
+    switch (plan.getType()) {
+      case CreateDatabase:
+      case AlterDatabase:
+      case DeleteDatabase:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_DATABASE.ordinal())
+            .getStatus();
+      case ExtendSchemaTemplate:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
+            .getStatus();
+      case CommitSetSchemaTemplate:
+      case PipeUnsetTemplate:
+        return CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)
+            ? StatusUtils.OK
+            : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+                .setMessage("Only the admin user can perform this operation");
+      case PipeDeleteTimeSeries:
+      case PipeDeleteLogicalView:
+      case PipeDeactivateTemplate:
+      case UpdateTriggerStateInTable:
+      case DeleteTriggerInTable:
+      case SetTTL:
+      case DropUser:
+      case DropRole:
+      case GrantRole:
+      case GrantUser:
+      case GrantRoleToUser:
+      case RevokeUser:
+      case RevokeRole:
+      case RevokeRoleFromUser:
+      case UpdateUser:
+      case CreateSchemaTemplate:
+      case CreateUser:
+      case CreateRole:
+      case CreateUserWithRawPassword:
+      default:
+        return StatusUtils.OK;
+    }
   }
 
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
