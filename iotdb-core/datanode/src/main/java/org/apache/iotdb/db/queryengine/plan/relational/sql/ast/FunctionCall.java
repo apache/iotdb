@@ -39,16 +39,28 @@ public class FunctionCall extends Expression {
   private final List<Expression> arguments;
 
   public FunctionCall(QualifiedName name, List<Expression> arguments) {
-    this(null, name, false, Optional.empty(), arguments);
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = false;
+    this.processingMode = Optional.empty();
+    this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
   public FunctionCall(QualifiedName name, boolean distinct, List<Expression> arguments) {
-    this(null, name, distinct, Optional.empty(), arguments);
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = distinct;
+    this.processingMode = Optional.empty();
+    this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
   public FunctionCall(
       QualifiedName name, Optional<ProcessingMode> processingMode, List<Expression> arguments) {
-    this(null, name, false, processingMode, arguments);
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = false;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
+    this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
   public FunctionCall(
@@ -56,7 +68,11 @@ public class FunctionCall extends Expression {
       boolean distinct,
       Optional<ProcessingMode> processingMode,
       List<Expression> arguments) {
-    this(null, name, distinct, processingMode, arguments);
+    super(null);
+    this.name = requireNonNull(name, "name is null");
+    this.distinct = distinct;
+    this.processingMode = requireNonNull(processingMode, "processingMode is null");
+    this.arguments = requireNonNull(arguments, "arguments is null");
   }
 
   public FunctionCall(NodeLocation location, QualifiedName name, List<Expression> arguments) {

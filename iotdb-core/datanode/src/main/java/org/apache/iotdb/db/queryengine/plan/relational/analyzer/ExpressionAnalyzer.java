@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternInputAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
@@ -179,7 +179,7 @@ public class ExpressionAnalyzer {
 
   // Pattern function analysis (classifier, match_number, aggregations and prev/next/first/last) in
   // the context of the given node
-  private final Map<NodeRef<Expression>, List<PatternInputAnalysis>> patternRecognitionInputs =
+  private final Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> patternRecognitionInputs =
       new LinkedHashMap<>();
 
   private final Set<NodeRef<FunctionCall>> patternNavigationFunctions = new LinkedHashSet<>();
@@ -301,6 +301,10 @@ public class ExpressionAnalyzer {
 
   private Type analyze(Expression expression, Scope scope, Set<String> labels) {
     Visitor visitor = new Visitor(scope, warningCollector);
+
+    // TODO
+    patternRecognitionInputs.put(NodeRef.of(expression), visitor.getPatternRecognitionInputs());
+
     return visitor.process(
         expression,
         new StackableAstVisitor.StackableAstVisitorContext<>(
@@ -353,7 +357,7 @@ public class ExpressionAnalyzer {
     return subsets;
   }
 
-  public Map<NodeRef<Expression>, List<PatternInputAnalysis>> getPatternRecognitionInputs() {
+  public Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> getPatternRecognitionInputs() {
     return patternRecognitionInputs;
   }
 
@@ -366,11 +370,15 @@ public class ExpressionAnalyzer {
     private final Scope baseScope;
     private final WarningCollector warningCollector;
 
-    private final List<PatternInputAnalysis> patternRecognitionInputs = new ArrayList<>();
+    private final List<PatternFunctionAnalysis> patternRecognitionInputs = new ArrayList<>();
 
     public Visitor(Scope baseScope, WarningCollector warningCollector) {
       this.baseScope = requireNonNull(baseScope, "baseScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    }
+
+    public List<PatternFunctionAnalysis> getPatternRecognitionInputs() {
+      return patternRecognitionInputs;
     }
 
     @Override
@@ -511,7 +519,7 @@ public class ExpressionAnalyzer {
 
             labels.put(NodeRef.of(node), Optional.of(label));
             patternRecognitionInputs.add(
-                new PatternInputAnalysis(
+                new PatternFunctionAnalysis(
                     node,
                     new ScalarInputDescriptor(
                         Optional.of(label),
@@ -993,7 +1001,7 @@ public class ExpressionAnalyzer {
         throw new SemanticException("MATCH_NUMBER pattern recognition function takes no arguments");
       }
 
-      patternRecognitionInputs.add(new PatternInputAnalysis(node, new MatchNumberDescriptor()));
+      patternRecognitionInputs.add(new PatternFunctionAnalysis(node, new MatchNumberDescriptor()));
 
       return INT64;
     }
@@ -1028,7 +1036,7 @@ public class ExpressionAnalyzer {
       }
 
       patternRecognitionInputs.add(
-          new PatternInputAnalysis(
+          new PatternRecognitionAnalysis.PatternFunctionAnalysis(
               node,
               new ClassifierDescriptor(
                   label, context.getContext().getPatternRecognitionContext().getNavigation())));
