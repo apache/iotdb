@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -70,9 +72,13 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
+
+  private static final Logger SAMPLED_QUERIES_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -108,6 +114,7 @@ public class Coordinator {
       long queryId,
       SessionInfo session,
       String sql,
+      boolean userQuery,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -124,6 +131,7 @@ public class Coordinator {
               session,
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+      queryContext.setUserQuery(userQuery);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -155,7 +163,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
+        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
   }
 
   public ExecutionResult executeForTreeModel(
@@ -165,11 +173,13 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      long timeOut) {
+      long timeOut,
+      boolean userQuery) {
     return execution(
         queryId,
         session,
         sql,
+        userQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -254,13 +264,27 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
-        if (queryExecution.isQuery()) {
+        if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
+          // print slow query
           if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, {}",
                 costTime / 1_000_000,
                 getContentOfRequest(nativeApiRequest, queryExecution));
+          }
+
+          // only sample successful query
+          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+            String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
+            if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+              if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+                SAMPLED_QUERIES_LOGGER.info(queryRequest);
+              }
+            } else {
+              // no limit, always sampled
+              SAMPLED_QUERIES_LOGGER.info(queryRequest);
+            }
           }
         }
       }
