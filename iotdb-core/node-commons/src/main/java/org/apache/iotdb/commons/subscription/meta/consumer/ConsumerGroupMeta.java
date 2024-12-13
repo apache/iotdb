@@ -35,13 +35,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ConsumerGroupMeta {
 
   private String consumerGroupId;
   private long creationTime;
-  private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet = new HashMap<>();
-  private Map<String, ConsumerMeta> consumerIdToConsumerMeta = new HashMap<>();
+  private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+  private Map<String, ConsumerMeta> consumerIdToConsumerMeta = new ConcurrentHashMap<>();
 
   public ConsumerGroupMeta() {
     // Empty constructor
@@ -149,8 +150,12 @@ public class ConsumerGroupMeta {
     return topics;
   }
 
-  public Set<String> getTopicsSubscribedByConsumerGroup() {
-    return topicNameToSubscribedConsumerIdSet.keySet();
+  public boolean isTopicSubscribedByConsumerGroup(final String topic) {
+    final Set<String> subscribedConsumerIdSet = topicNameToSubscribedConsumerIdSet.get(topic);
+    if (Objects.isNull(subscribedConsumerIdSet)) {
+      return false;
+    }
+    return !subscribedConsumerIdSet.isEmpty();
   }
 
   public void addSubscription(final String consumerId, final Set<String> topics) {
