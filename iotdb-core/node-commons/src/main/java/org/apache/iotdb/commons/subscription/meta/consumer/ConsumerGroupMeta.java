@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -41,19 +40,20 @@ public class ConsumerGroupMeta {
 
   private String consumerGroupId;
   private long creationTime;
-  private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
-  private Map<String, ConsumerMeta> consumerIdToConsumerMeta = new ConcurrentHashMap<>();
+  private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet;
+  private Map<String, ConsumerMeta> consumerIdToConsumerMeta;
 
   public ConsumerGroupMeta() {
-    // Empty constructor
+    this.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    this.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
   }
 
   public ConsumerGroupMeta(
       final String consumerGroupId, final long creationTime, final ConsumerMeta firstConsumerMeta) {
+    this();
+
     this.consumerGroupId = consumerGroupId;
     this.creationTime = creationTime;
-    this.topicNameToSubscribedConsumerIdSet = new HashMap<>();
-    this.consumerIdToConsumerMeta = new HashMap<>();
 
     consumerIdToConsumerMeta.put(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
   }
@@ -62,8 +62,9 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet = new HashMap<>(topicNameToSubscribedConsumerIdSet);
-    copied.consumerIdToConsumerMeta = new HashMap<>(consumerIdToConsumerMeta);
+    copied.topicNameToSubscribedConsumerIdSet =
+        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     return copied;
   }
 
@@ -233,7 +234,7 @@ public class ConsumerGroupMeta {
     consumerGroupMeta.consumerGroupId = ReadWriteIOUtils.readString(inputStream);
     consumerGroupMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
 
-    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new HashMap<>();
+    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
@@ -247,7 +248,7 @@ public class ConsumerGroupMeta {
       consumerGroupMeta.topicNameToSubscribedConsumerIdSet.put(key, value);
     }
 
-    consumerGroupMeta.consumerIdToConsumerMeta = new HashMap<>();
+    consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
@@ -264,7 +265,7 @@ public class ConsumerGroupMeta {
     consumerGroupMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
     consumerGroupMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
-    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new HashMap<>();
+    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
@@ -278,7 +279,7 @@ public class ConsumerGroupMeta {
       consumerGroupMeta.topicNameToSubscribedConsumerIdSet.put(key, value);
     }
 
-    consumerGroupMeta.consumerIdToConsumerMeta = new HashMap<>();
+    consumerGroupMeta.consumerIdToConsumerMeta = new ConcurrentHashMap<>();
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
