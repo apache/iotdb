@@ -154,7 +154,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
@@ -197,7 +196,6 @@ import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggreg
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
@@ -1330,57 +1328,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           rightOutputSymbolIdx,
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
-          buildUpdateLastRowFunction(joinKeyTypes));
+          joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
   }
 
-  private BiFunction<Column[], Integer, TsBlock> buildUpdateLastRowFunction(
-      List<Type> joinKeyTypes) {
-    return (inputColumns, rowIndex) -> {
-      Column[] valueColumns = new Column[joinKeyTypes.size()];
-      for (int i = 0; i < joinKeyTypes.size(); i++) {
-        Type joinKeyType = joinKeyTypes.get(i);
-        switch (joinKeyType.getTypeEnum()) {
-          case INT32:
-          case DATE:
-            valueColumns[i] =
-                new IntColumn(1, Optional.empty(), new int[] {inputColumns[i].getInt(rowIndex)});
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueColumns[i] =
-                new LongColumn(1, Optional.empty(), new long[] {inputColumns[i].getLong(rowIndex)});
-            break;
-          case FLOAT:
-            valueColumns[i] =
-                new FloatColumn(
-                    1, Optional.empty(), new float[] {inputColumns[i].getFloat(rowIndex)});
-            break;
-          case DOUBLE:
-            valueColumns[i] =
-                new DoubleColumn(
-                    1, Optional.empty(), new double[] {inputColumns[i].getDouble(rowIndex)});
-            break;
-          case BOOLEAN:
-            valueColumns[i] =
-                new BooleanColumn(
-                    1, Optional.empty(), new boolean[] {inputColumns[i].getBoolean(rowIndex)});
-            break;
-          case STRING:
-          case TEXT:
-          case BLOB:
-            valueColumns[i] =
-                new BinaryColumn(
-                    1, Optional.empty(), new Binary[] {inputColumns[i].getBinary(rowIndex)});
-            break;
-          default:
-            throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
-        }
-      }
-      return new TsBlock(1, TIME_COLUMN_TEMPLATE, valueColumns);
-    };
+  private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
+    switch (joinKeyType.getTypeEnum()) {
+      case INT32:
+      case DATE:
+        return (inputColumn, rowIndex) ->
+            new IntColumn(1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)});
+      case INT64:
+      case TIMESTAMP:
+        return (inputColumn, rowIndex) ->
+            new LongColumn(1, Optional.empty(), new long[] {inputColumn.getLong(rowIndex)});
+      case FLOAT:
+        return (inputColumn, rowIndex) ->
+            new FloatColumn(1, Optional.empty(), new float[] {inputColumn.getFloat(rowIndex)});
+      case DOUBLE:
+        return (inputColumn, rowIndex) ->
+            new DoubleColumn(1, Optional.empty(), new double[] {inputColumn.getDouble(rowIndex)});
+      case BOOLEAN:
+        return (inputColumn, rowIndex) ->
+            new BooleanColumn(
+                1, Optional.empty(), new boolean[] {inputColumn.getBoolean(rowIndex)});
+      case STRING:
+      case TEXT:
+      case BLOB:
+        return (inputColumn, rowIndex) ->
+            new BinaryColumn(1, Optional.empty(), new Binary[] {inputColumn.getBinary(rowIndex)});
+      default:
+        throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
+    }
   }
 
   @Override

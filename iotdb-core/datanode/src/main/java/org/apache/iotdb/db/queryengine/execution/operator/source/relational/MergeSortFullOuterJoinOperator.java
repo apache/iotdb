@@ -33,6 +33,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.function.BiFunction;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+
 public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
@@ -40,7 +42,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
   // stores last row matched join criteria, only used in outer join
   private TsBlock lastMatchedRightBlock = null;
   private final int[] lastMatchedBlockPositions;
-  private final BiFunction<Column[], Integer, TsBlock> updateLastMatchedRowFunction;
+  private final List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
@@ -52,7 +54,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       int[] rightOutputSymbolIdx,
       List<JoinKeyComparator> joinKeyComparators,
       List<TSDataType> dataTypes,
-      BiFunction<Column[], Integer, TsBlock> updateLastMatchedRowFunction) {
+      List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions) {
     super(
         operatorContext,
         leftChild,
@@ -67,7 +69,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     for (int i = 0; i < lastMatchedBlockPositions.length; i++) {
       lastMatchedBlockPositions[i] = i;
     }
-    this.updateLastMatchedRowFunction = updateLastMatchedRowFunction;
+    this.updateLastMatchedRowFunctions = updateLastMatchedRowFunctions;
   }
 
   @Override
@@ -181,11 +183,14 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
 
   @Override
   protected void recordsWhenDataMatches() {
-    Column[] columns = new Column[leftJoinKeyPositions.length];
+    Column[] valueColumns = new Column[leftJoinKeyPositions.length];
     for (int i = 0; i < leftJoinKeyPositions.length; i++) {
-      columns[i] = leftBlock.getColumn(leftJoinKeyPositions[i]);
+      valueColumns[i] =
+          updateLastMatchedRowFunctions
+              .get(i)
+              .apply(leftBlock.getColumn(leftJoinKeyPositions[i]), leftIndex);
     }
-    lastMatchedRightBlock = updateLastMatchedRowFunction.apply(columns, leftIndex);
+    lastMatchedRightBlock = new TsBlock(1, TIME_COLUMN_TEMPLATE, valueColumns);
   }
 
   private void buildUseRemainingBlocks() {

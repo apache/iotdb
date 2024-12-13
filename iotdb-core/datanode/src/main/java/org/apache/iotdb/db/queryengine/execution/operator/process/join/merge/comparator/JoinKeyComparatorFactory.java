@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JoinKeyComparatorFactory {
+  private JoinKeyComparatorFactory() {}
 
   public static List<JoinKeyComparator> getComparators(
       List<Type> joinKeyTypes, boolean isAscending) {
@@ -35,7 +36,7 @@ public class JoinKeyComparatorFactory {
     return comparators;
   }
 
-  public static JoinKeyComparator getComparator(Type type, boolean isAscending) {
+  private static JoinKeyComparator getComparator(Type type, boolean isAscending) {
     switch (type.getTypeEnum()) {
       case INT32:
       case DATE:
