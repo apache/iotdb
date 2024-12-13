@@ -39,9 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;

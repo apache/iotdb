@@ -2890,6 +2890,28 @@ public class IoTDBDescriptor {
                   .map(String::trim)
                   .orElse(String.valueOf(conf.isEnablePartialInsert()))));
 
+      // update query_sample_throughput_bytes_per_sec
+      String querySamplingRateLimitNumber =
+          Optional.ofNullable(
+                  properties.getProperty(
+                      "query_sample_throughput_bytes_per_sec",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "query_sample_throughput_bytes_per_sec")))
+              .map(String::trim)
+              .orElse(
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "query_sample_throughput_bytes_per_sec"));
+      if (querySamplingRateLimitNumber != null) {
+        try {
+          int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
+          commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+              querySamplingRateLimitNumber);
+        }
+      }
+
       // update trusted_uri_pattern
       String trustedUriPattern =
           Optional.ofNullable(
