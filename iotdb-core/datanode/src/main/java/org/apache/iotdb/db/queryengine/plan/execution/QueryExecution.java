@@ -655,6 +655,11 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isUserQuery() {
+    return context.isUserQuery();
+  }
+
+  @Override
   public String getQueryId() {
     return context.getQueryId().getId();
   }

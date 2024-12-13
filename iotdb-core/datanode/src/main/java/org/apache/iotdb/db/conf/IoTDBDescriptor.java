@@ -2882,6 +2882,28 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      // update query_sample_throughput_bytes_per_sec
+      String querySamplingRateLimitNumber =
+          Optional.ofNullable(
+                  properties.getProperty(
+                      "query_sample_throughput_bytes_per_sec",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "query_sample_throughput_bytes_per_sec")))
+              .map(String::trim)
+              .orElse(
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "query_sample_throughput_bytes_per_sec"));
+      if (querySamplingRateLimitNumber != null) {
+        try {
+          int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
+          commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+              querySamplingRateLimitNumber);
+        }
+      }
+
       // update trusted_uri_pattern
       String trustedUriPattern =
           Optional.ofNullable(
@@ -2922,7 +2944,7 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      ConfigurationFileUtils.getConfigurationDefaultValue();
+      ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);

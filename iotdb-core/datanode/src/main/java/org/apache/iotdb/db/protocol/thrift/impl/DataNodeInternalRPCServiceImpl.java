@@ -1473,7 +1473,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               executedSQL,
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              false);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
