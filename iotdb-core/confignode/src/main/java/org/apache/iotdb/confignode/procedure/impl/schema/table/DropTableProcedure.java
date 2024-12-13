@@ -159,7 +159,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     final PartialPath path;
     try {
-      path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
+      path = new PartialPath(new String[] {ROOT, database, tableName});
       patternTree.appendPathPattern(path);
       patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
@@ -192,7 +192,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
       final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
       final PartialPath path;
       try {
-        path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
+        path = new PartialPath(new String[] {ROOT, database, tableName});
         patternTree.appendPathPattern(path);
         patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
         patternTree.serialize(dataOutputStream);
