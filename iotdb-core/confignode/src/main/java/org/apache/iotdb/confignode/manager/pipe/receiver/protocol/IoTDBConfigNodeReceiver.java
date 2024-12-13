@@ -330,7 +330,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loginIfNecessary() {
+  protected TSStatus tryLogin() {
     // Do nothing. Login check will be done in the data node receiver.
     return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
