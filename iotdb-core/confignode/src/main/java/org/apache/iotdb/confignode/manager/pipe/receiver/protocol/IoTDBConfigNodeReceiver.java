@@ -294,20 +294,28 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case GrantUser:
       case RevokeUser:
       case UpdateUser:
+        return ((AuthorPlan) plan).getUserName().equals(username)
+            ? StatusUtils.OK
+            : AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkSystemPermission(
+                    username, PrivilegeType.MANAGE_ROLE.ordinal()),
+                PrivilegeType.MANAGE_USER);
       case CreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(username, PrivilegeType.MANAGE_ROLE.ordinal()),
-            PrivilegeType.MANAGE_USER);
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+            .getStatus();
       case CreateRole:
       case DropRole:
       case RevokeRole:
       case GrantRoleToUser:
       case RevokeRoleFromUser:
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(username, PrivilegeType.MANAGE_ROLE.ordinal()),
-            PrivilegeType.MANAGE_ROLE);
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .getStatus();
       default:
         return StatusUtils.OK;
     }
