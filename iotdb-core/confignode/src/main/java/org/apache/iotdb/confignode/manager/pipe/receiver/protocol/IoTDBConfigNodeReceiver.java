@@ -206,9 +206,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     TSStatus result;
     try {
       result = checkPermission(plan);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        result = executePlan(plan);
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Permission check failed while executing plan {}: {}",
+            receiverId.get(),
+            plan,
+            result);
+        return result;
       }
+      result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Receiver id = {}: Failure status encountered while executing plan {}: {}",
