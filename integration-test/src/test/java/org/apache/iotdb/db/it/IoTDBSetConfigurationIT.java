@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -40,6 +41,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
@@ -155,24 +157,49 @@ public class IoTDBSetConfigurationIT {
     Awaitility.await()
         .atMost(10, TimeUnit.SECONDS)
         .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
+    AbstractNodeWrapper datanode = EnvFactory.getEnv().getDataNodeWrapper(0);
     Assert.assertTrue(
         checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+
+    // Modify the config file manually because the datanode can not restart
+    Properties properties = new Properties();
+    properties.put("cluster_name", "xx");
+    ConfigurationFileUtils.updateConfigurationFile(getConfigFile(datanode), properties);
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    // wait the datanode restart successfully (won't do any meaningful modification)
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              try (Connection connection = EnvFactory.getEnv().getConnection();
+                  Statement statement = connection.createStatement()) {
+                statement.execute("set configuration \"cluster_name\"=\"xx\" on 1");
+              } catch (Exception e) {
+                return false;
+              }
+              return true;
+            });
   }
 
   private static boolean checkConfigFileContains(
       AbstractNodeWrapper nodeWrapper, String... contents) {
     try {
-      String systemPropertiesPath =
-          nodeWrapper.getNodePath()
-              + File.separator
-              + "conf"
-              + File.separator
-              + CommonConfig.SYSTEM_CONFIG_NAME;
-      File f = new File(systemPropertiesPath);
-      String fileContent = new String(Files.readAllBytes(f.toPath()));
+      String fileContent = new String(Files.readAllBytes(getConfigFile(nodeWrapper).toPath()));
       return Arrays.stream(contents).allMatch(fileContent::contains);
     } catch (IOException ignore) {
       return false;
     }
+  }
+
+  private static File getConfigFile(AbstractNodeWrapper nodeWrapper) {
+    String systemPropertiesPath =
+        nodeWrapper.getNodePath()
+            + File.separator
+            + "conf"
+            + File.separator
+            + CommonConfig.SYSTEM_CONFIG_NAME;
+    return new File(systemPropertiesPath);
   }
 }
