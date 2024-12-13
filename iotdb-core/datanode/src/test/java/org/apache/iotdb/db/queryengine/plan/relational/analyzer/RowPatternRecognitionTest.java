@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -428,7 +429,7 @@ public class RowPatternRecognitionTest {
 
   public static void analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
@@ -451,6 +452,7 @@ public class RowPatternRecognitionTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
+            new StatementRewriteFactory(metadata).getStatementRewrite(),
             NOOP);
     analyzer.analyze(statement);
   }

@@ -88,11 +88,11 @@ public class PatternRecognitionAnalysis {
     return Objects.hash(allLabels, undefinedLabels, ranges);
   }
 
-  public static class PatternInputAnalysis {
+  public static class PatternFunctionAnalysis {
     private final Expression expression;
     private final Descriptor descriptor;
 
-    public PatternInputAnalysis(Expression expression, Descriptor descriptor) {
+    public PatternFunctionAnalysis(Expression expression, Descriptor descriptor) {
       this.expression = requireNonNull(expression, "expression is null");
       this.descriptor = requireNonNull(descriptor, "descriptor is null");
     }
@@ -107,7 +107,7 @@ public class PatternRecognitionAnalysis {
 
     @Override
     public String toString() {
-      return "PatternInputAnalysis{"
+      return "PatternFunctionAnalysis{"
           + "expression="
           + expression
           + ", descriptor="
@@ -119,7 +119,7 @@ public class PatternRecognitionAnalysis {
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      PatternInputAnalysis that = (PatternInputAnalysis) o;
+      PatternFunctionAnalysis that = (PatternFunctionAnalysis) o;
       return Objects.equals(expression, that.expression)
           && Objects.equals(descriptor, that.descriptor);
     }
