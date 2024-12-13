@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -72,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -241,6 +243,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .checkUserPrivileges(
                 username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
             .getStatus();
+      case CreateSchemaTemplate:
       case CommitSetSchemaTemplate:
       case PipeUnsetTemplate:
         return CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)
@@ -274,22 +277,37 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
                 PrivilegeType.WRITE_SCHEMA.ordinal())
             .getStatus();
+      case SetTTL:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                Collections.singletonList(new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
-      case SetTTL:
-      case DropUser:
-      case DropRole:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.USE_TRIGGER.ordinal())
+            .getStatus();
       case GrantRole:
       case GrantUser:
-      case GrantRoleToUser:
       case RevokeUser:
-      case RevokeRole:
-      case RevokeRoleFromUser:
       case UpdateUser:
-      case CreateSchemaTemplate:
       case CreateUser:
-      case CreateRole:
       case CreateUserWithRawPassword:
+      case DropUser:
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(username, PrivilegeType.MANAGE_ROLE.ordinal()),
+            PrivilegeType.MANAGE_USER);
+      case CreateRole:
+      case DropRole:
+      case RevokeRole:
+      case GrantRoleToUser:
+      case RevokeRoleFromUser:
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(username, PrivilegeType.MANAGE_ROLE.ordinal()),
+            PrivilegeType.MANAGE_ROLE);
       default:
         return StatusUtils.OK;
     }
