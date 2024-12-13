@@ -167,6 +167,7 @@ import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
@@ -759,7 +760,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       return new CreatePipePluginTask(node);
     } else {
       // user specified uri and that uri is not trusted
-      throw new SemanticException("Untrusted uri " + node.getUriString());
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString()));
     }
   }
 
@@ -866,7 +867,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       return new CreateFunctionTask(node);
     } else {
       // user specified uri and that uri is not trusted
-      throw new SemanticException("Untrusted uri " + node.getUriString().get());
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString().get()));
     }
   }
 
