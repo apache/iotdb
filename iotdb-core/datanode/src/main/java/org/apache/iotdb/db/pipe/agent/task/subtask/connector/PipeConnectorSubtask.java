@@ -44,9 +44,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
@@ -293,37 +290,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
         ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;
-  }
-
-  // For performance, this will not acquire lock and does not guarantee the correct
-  // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getEventCount(final String pipeName) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Exception occurred when counting event of pipe {}, root cause: {}",
-            pipeName,
-            ErrorHandlingUtils.getRootCause(e).getMessage(),
-            e);
-      }
-    }
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return count.get()
-        + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
-            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
-            : 0)
-        + (Objects.nonNull(event) && pipeName.equals(event.getPipeName()) ? 1 : 0);
   }
 
   //////////////////////////// Error report ////////////////////////////

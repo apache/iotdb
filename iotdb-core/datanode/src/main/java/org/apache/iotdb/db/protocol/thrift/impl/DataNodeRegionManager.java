@@ -179,11 +179,11 @@ public class DataNodeRegionManager {
       if (regionId instanceof DataRegionId) {
         DataRegionId dataRegionId = (DataRegionId) regionId;
         storageEngine.createDataRegion(dataRegionId, storageGroup);
-        dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
+        dataRegionLockMap.putIfAbsent(dataRegionId, new ReentrantReadWriteLock(false));
       } else {
         SchemaRegionId schemaRegionId = (SchemaRegionId) regionId;
         schemaEngine.createSchemaRegion(new PartialPath(storageGroup), schemaRegionId);
-        schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
+        schemaRegionLockMap.putIfAbsent(schemaRegionId, new ReentrantReadWriteLock(false));
       }
     } catch (Exception e) {
       LOGGER.error("create new region {} error", regionId, e);
