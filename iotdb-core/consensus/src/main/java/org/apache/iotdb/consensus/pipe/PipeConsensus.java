@@ -319,6 +319,7 @@ public class PipeConsensus implements IConsensus {
 
       final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
       consensus.clear();
+      stateMachineMap.remove(groupId);
 
       FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
       KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
