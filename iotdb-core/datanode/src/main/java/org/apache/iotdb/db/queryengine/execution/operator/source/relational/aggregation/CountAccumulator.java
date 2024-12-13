@@ -56,6 +56,21 @@ public class CountAccumulator implements TableAccumulator {
   }
 
   @Override
+  public void removeInput(Column[] arguments) {
+    checkArgument(arguments.length == 1, "argument of Count should be one column");
+    int count = arguments[0].getPositionCount();
+    if (!arguments[0].mayHaveNull()) {
+      countState -= count;
+    } else {
+      for (int i = 0; i < count; i++) {
+        if (!arguments[0].isNull(i)) {
+          countState--;
+        }
+      }
+    }
+  }
+
+  @Override
   public void addIntermediate(Column argument) {
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -92,5 +107,10 @@ public class CountAccumulator implements TableAccumulator {
   @Override
   public void reset() {
     countState = 0;
+  }
+
+  @Override
+  public boolean removable() {
+    return true;
   }
 }

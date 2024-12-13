@@ -1041,6 +1041,10 @@ public class StatementAnalyzer {
       }
       analysis.setSelectExpressions(node, selectExpressionBuilder.build());
 
+      if (node.getSelect().isDistinct()) {
+        analysis.setContainsSelectDistinct();
+      }
+
       return outputExpressionBuilder.build();
     }
 

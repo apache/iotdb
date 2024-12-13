@@ -125,6 +125,9 @@ public class IoTDBTableAggregationIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // ==================================================================
+  // ==================== Normal Aggregation Test =====================
+  // ==================================================================
   @Test
   public void countTest() {
     String[] expectedHeader = new String[] {"_col0"};
@@ -3743,6 +3746,132 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select last_by() from table1",
         "701: Aggregate functions [last_by] should only have three arguments",
+        DATABASE_NAME);
+  }
+
+  // ==================================================================
+  // ===================== Select Distinct Test =======================
+  // ==================================================================
+
+  // Select distinct is a special kind of aggregate query in actual, so we put ITs here to reuse the
+  // test data.
+
+  @Test
+  public void simpleTest() {
+    String[] expectedHeader = new String[] {"s1"};
+    String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 order by s1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"region", "s1"};
+    retArray =
+        new String[] {
+          "chaoyang,30,",
+          "chaoyang,36,",
+          "chaoyang,40,",
+          "chaoyang,41,",
+          "chaoyang,55,",
+          "chaoyang,null,",
+          "haidian,30,",
+          "haidian,36,",
+          "haidian,40,",
+          "haidian,41,",
+          "haidian,55,",
+          "haidian,null,",
+          "huangpu,30,",
+          "huangpu,36,",
+          "huangpu,40,",
+          "huangpu,41,",
+          "huangpu,55,",
+          "huangpu,null,",
+          "pudong,30,",
+          "pudong,36,",
+          "pudong,40,",
+          "pudong,41,",
+          "pudong,55,",
+          "pudong,null,"
+        };
+    tableResultSetEqualTest(
+        "select distinct region, s1 from table1 order by region, s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // show all devices
+    expectedHeader = new String[] {"province", "city", "region", "device_id"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,",
+          "beijing,beijing,chaoyang,d10,",
+          "beijing,beijing,chaoyang,d11,",
+          "beijing,beijing,chaoyang,d12,",
+          "beijing,beijing,haidian,d13,",
+          "beijing,beijing,haidian,d14,",
+          "beijing,beijing,haidian,d15,",
+          "beijing,beijing,haidian,d16,",
+          "shanghai,shanghai,huangpu,d01,",
+          "shanghai,shanghai,huangpu,d02,",
+          "shanghai,shanghai,huangpu,d03,",
+          "shanghai,shanghai,huangpu,d04,",
+          "shanghai,shanghai,pudong,d05,",
+          "shanghai,shanghai,pudong,d06,",
+          "shanghai,shanghai,pudong,d07,",
+          "shanghai,shanghai,pudong,d08,",
+        };
+    tableResultSetEqualTest(
+        "select distinct province,city,region,device_id from table1 order by province,city,region,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void withGroupByTest() {
+    String[] expectedHeader = new String[] {"s1"};
+    String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 group by s1 order by s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 group by s1,s2 order by s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"30.0,", "36.0,", "40.0,", "41.0,", "55.0,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct avg(s1) from table1 group by s1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select distinct avg(s1) from table1 group by s1,s2 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray = new String[] {"4,", "8,", "32,"};
+    tableResultSetEqualTest(
+        "select distinct count(*) from table1 group by s1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    retArray = new String[] {"4,", "8,"};
+    tableResultSetEqualTest(
+        "select distinct count(*) from table1 group by s1, s2 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void exceptionTest1() {
+    tableAssertTestFail(
+        "select distinct s1 from table1 order by s2",
+        "701: For SELECT DISTINCT, ORDER BY expressions must appear in select list",
         DATABASE_NAME);
   }
 }

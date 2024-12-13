@@ -28,8 +28,6 @@ import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
-import org.apache.tsfile.block.column.Column;
-
 import java.nio.ByteBuffer;
 
 public class MyCount implements AggregateFunction {

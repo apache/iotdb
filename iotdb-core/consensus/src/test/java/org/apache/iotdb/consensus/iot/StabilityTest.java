@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
-import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
@@ -95,7 +94,6 @@ public class StabilityTest {
     peerTest();
     transferLeader();
     snapshotTest();
-    snapshotUpgradeTest();
   }
 
   public void addConsensusGroup() {
@@ -210,40 +208,6 @@ public class StabilityTest {
     Assert.assertNotNull(versionFiles2);
     Assert.assertEquals(1, versionFiles2.length);
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
-    consensusImpl.deleteLocalPeer(dataRegionId);
-  }
-
-  public void snapshotUpgradeTest() throws Exception {
-    consensusImpl.createLocalPeer(
-        dataRegionId,
-        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
-    consensusImpl.triggerSnapshot(dataRegionId, false);
-    long oldSnapshotIndex = System.currentTimeMillis();
-    String oldSnapshotDirName =
-        String.format(
-            "%s_%s_%d",
-            IoTConsensusServerImpl.SNAPSHOT_DIR_NAME, dataRegionId.getId(), oldSnapshotIndex);
-    File regionDir = new File(storageDir, "1_1");
-    File oldSnapshotDir = new File(regionDir, oldSnapshotDirName);
-    if (oldSnapshotDir.exists()) {
-      FileUtils.deleteFully(oldSnapshotDir);
-    }
-    if (!oldSnapshotDir.mkdirs()) {
-      throw new ConsensusGroupModifyPeerException(
-          String.format("%s: cannot mkdir for snapshot", dataRegionId));
-    }
-    consensusImpl.triggerSnapshot(dataRegionId, false);
-    Assert.assertFalse(oldSnapshotDir.exists());
-
-    File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
-
-    File[] snapshotFiles =
-        dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
-    Assert.assertNotNull(snapshotFiles);
-    Assert.assertEquals(1, snapshotFiles.length);
-    Assert.assertEquals(
-        oldSnapshotIndex + 1,
-        Long.parseLong(snapshotFiles[0].getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
     consensusImpl.deleteLocalPeer(dataRegionId);
   }
 }

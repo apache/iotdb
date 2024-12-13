@@ -37,7 +37,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -590,9 +589,16 @@ public abstract class AbstractCli {
             }
             ctx.getPrinter()
                 .println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
-              if ("".equals(br.readLine())) {
+              String line;
+              if (ctx.isDisableCliHistory()) {
+                line = ctx.getLineReader().readLine();
+              } else {
+                line = br.readLine();
+              }
+              if ("".equals(line)) {
                 maxSizeList = new ArrayList<>(columnLength);
                 lists =
                     cacheResult(
@@ -601,7 +607,7 @@ public abstract class AbstractCli {
               } else {
                 break;
               }
-            } catch (IOException e) {
+            } catch (Exception e) {
               ctx.getPrinter().printException(e);
               executeStatus = CODE_ERROR;
             }
