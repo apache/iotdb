@@ -105,6 +105,8 @@ public class IoTDBDatabaseIT {
         assertEquals(databaseNames.length, cnt);
       }
 
+      final int[] schemaRegionGroupNum = new int[] {0};
+      final int[] dataRegionGroupNum = new int[] {0};
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         int cnt = 0;
@@ -120,6 +122,8 @@ public class IoTDBDatabaseIT {
           assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
+          assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -301,6 +305,51 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show devices from table0"),
           "a,b,",
           Collections.singleton("1,4,"));
+    }
+  }
+
+  @Test
+  public void testMixedDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database test");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.test");
+      statement.execute(
+          "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      statement.execute("drop database root.test");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+        assertTrue(resultSet.next());
+        assertEquals("test", resultSet.getString(1));
+        assertEquals(0, resultSet.getInt(6));
+        assertEquals(0, resultSet.getInt(7));
+        assertFalse(resultSet.next());
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.test");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop database test");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
     }
   }
 }
