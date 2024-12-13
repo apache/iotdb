@@ -1,0 +1,67 @@
+replicaCount: 1 
+image:
+  repository: apache/iotdb
+  tag: 1.1.2-confignode
+  pullPolicy: IfNotPresent
+
+service:
+  name: iotdb
+  type: ClusterIP
+  ports:
+    - name: tcp-10710
+      protocol: TCP
+      port: 10710
+      targetPort: 10710
+    - name: tcp-10720
+      protocol: TCP
+      port: 10720
+      targetPort: 10720
+    - name: tcp-10730
+      protocol: TCP
+      port: 10730
+      targetPort: 10730
+    - name: tcp-10740
+      protocol: TCP
+      port: 10740
+      targetPort: 10740
+    - name: tcp-9092
+      port: 9092
+      targetPort: 9092
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 2Gi
+  requests:
+    cpu: "1"
+    memory: 1Gi
+
+storage:
+  name: iotdb-confignode-data
+  size: 50Gi
+  storageClassName: "alicloud-disk-topology-alltype"
+
+env:
+  - name: schema_replication_factor
+    value: "3"
+  - name: data_replication_factor
+    value: "2"   
+  - name: cn_internal_port
+    value: "10710"
+  - name: cn_consensus_port
+    value: "10720"
+  - name: schema_region_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.ratis.RatisConsensus"
+  - name: config_node_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.ratis.RatisConsensus"
+  - name: data_region_consensus_protocol_class
+    value: "org.apache.iotdb.consensus.iot.IoTConsensus"
+  - name: cn_metric_reporter_list
+    value: "PROMETHEUS"
+  - name: cn_metric_level
+    value: "CORE"
+  - name: cn_metric_prometheus_reporter_port
+    value: "9092" 
+
+nameOverride: ""
+fullnameOverride: "iotdb-confignode"
