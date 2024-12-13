@@ -279,8 +279,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       // Delete Database
-      // TODO: Use TDatabaseSchema
-      treeModelMTree.deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
+      (PathUtils.isTableModelDatabase(plan.getName()) ? tableModelMTree : treeModelMTree)
+          .deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
