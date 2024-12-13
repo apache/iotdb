@@ -437,6 +437,54 @@ public class WritableMemChunk implements IWritableMemChunk {
     return out.toString();
   }
 
+  public void encodeWorkingTVList(IChunkWriter chunkWriter) {
+    ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+
+    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+      long time = list.getTime(sortedRowIndex);
+
+      TSDataType tsDataType = schema.getType();
+
+      // skip duplicated data
+      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
+        continue;
+      }
+
+      // store last point for SDT
+      if (sortedRowIndex + 1 == list.rowCount()) {
+        chunkWriterImpl.setLastPoint(true);
+      }
+
+      switch (tsDataType) {
+        case BOOLEAN:
+          chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
+          break;
+        case INT32:
+        case DATE:
+          chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
+          break;
+        case INT64:
+        case TIMESTAMP:
+          chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
+          break;
+        case FLOAT:
+          chunkWriterImpl.write(time, list.getFloat(sortedRowIndex));
+          break;
+        case DOUBLE:
+          chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
+          break;
+        default:
+          LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
+          break;
+      }
+    }
+  }
+
   private void writeData(ChunkWriterImpl chunkWriterImpl, TimeValuePair tvPair) {
     switch (schema.getType()) {
       case BOOLEAN:
@@ -469,6 +517,11 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void encode(IChunkWriter chunkWriter) {
+    if (TVLIST_SORT_THRESHOLD == 0) {
+      encodeWorkingTVList(chunkWriter);
+      return;
+    }
+
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
 
     // create MergeSortTvListIterator. It need not handle float/double precision here.
