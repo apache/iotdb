@@ -203,7 +203,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TDatabaseSchema alterSchema = plan.getSchema();
-      final PartialPath partialPathName = new PartialPath(alterSchema.getName());
+      final PartialPath partialPathName =
+          PartialPath.getQualifiedDatabasePartialPath(alterSchema.getName());
 
       final ConfigMTree mTree =
           plan.getSchema().isIsTableModel() ? tableModelMTree : treeModelMTree;
