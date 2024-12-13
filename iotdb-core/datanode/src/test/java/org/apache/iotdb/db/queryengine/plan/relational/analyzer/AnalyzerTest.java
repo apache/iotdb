@@ -974,7 +974,7 @@ public class AnalyzerTest {
     assertTrue(
         getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4)
             instanceof CollectNode);
-    CollectNode collectNode =
+    final CollectNode collectNode =
         (CollectNode)
             getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(collectNode.getChildren().get(1) instanceof DeviceTableScanNode);
@@ -1030,7 +1030,7 @@ public class AnalyzerTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    List<PlanFragment> fragments = distributedQueryPlan.getFragments();
+    final List<PlanFragment> fragments = distributedQueryPlan.getFragments();
     identitySinkNode = (IdentitySinkNode) fragments.get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 3) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 4) instanceof DeviceTableScanNode);
