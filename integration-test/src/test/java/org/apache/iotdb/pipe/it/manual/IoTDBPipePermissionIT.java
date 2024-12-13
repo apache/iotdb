@@ -145,7 +145,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "list user", "User,", new HashSet<>(Arrays.asList("root,", "user,")));
+          receiverEnv, "list user", "User,", new HashSet<>(Arrays.asList("root,", "user,", "thulab,")));
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add(
           "root.ln.wf02.wt01.temperature,null,root.ln,INT64,PLAIN,LZ4,null,null,null,null,BASE,");
