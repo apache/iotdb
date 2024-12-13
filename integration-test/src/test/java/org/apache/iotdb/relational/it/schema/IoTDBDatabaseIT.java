@@ -385,9 +385,9 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "database,STRING,ID,",
                   "ttl(ms),STRING,ATTRIBUTE,",
-                  "schemareplicationfactor,INT32,ATTRIBUTE,",
-                  "datareplicationfactor,INT32,ATTRIBUTE,",
-                  "timepartitioninterval,INT64,ATTRIBUTE,",
+                  "schema_replication_factor,INT32,ATTRIBUTE,",
+                  "data_replication_factor,INT32,ATTRIBUTE,",
+                  "time_partition_interval,INT64,ATTRIBUTE,",
                   "model,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
