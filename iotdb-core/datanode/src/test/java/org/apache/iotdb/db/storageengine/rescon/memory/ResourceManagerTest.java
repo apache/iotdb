@@ -36,6 +36,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -385,15 +386,15 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    IDeviceID device1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1");
-    IDeviceID device2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d2");
+    IDeviceID device1 = new PlainDeviceID("root.test.d1");
+    IDeviceID device2 = new PlainDeviceID("root.test.d2");
     tsFileResource.updateStartTime(device1, 1);
     tsFileResource.updateStartTime(device1, 2);
     tsFileResource.updateStartTime(device2, 1);
     tsFileResource.updateStartTime(device2, 2);
 
     assertEquals(
-        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
+        TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     long resourceRamSizeBeforeDegrade = tsFileResource.calculateRamSize();
