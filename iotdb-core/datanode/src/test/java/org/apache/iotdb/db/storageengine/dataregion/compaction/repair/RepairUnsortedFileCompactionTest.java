@@ -38,7 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
@@ -46,6 +46,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -801,8 +802,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
   @Test
   public void testResourceFileLostDevices() throws IOException {
-    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
-    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
     TsFileResource resource = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
       writer.startChunkGroup("d1");
@@ -825,7 +826,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       writer.endFile();
     }
     // lost d1
-    ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+    ITimeIndex timeIndex = new DeviceTimeIndex();
     timeIndex.updateStartTime(d2, 10);
     timeIndex.updateEndTime(d2, 40);
     resource.setTimeIndex(timeIndex);
