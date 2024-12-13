@@ -269,6 +269,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isUserQuery() {
+    return context.isUserQuery();
+  }
+
+  @Override
   public String getQueryId() {
     return context.getQueryId().getId();
   }
