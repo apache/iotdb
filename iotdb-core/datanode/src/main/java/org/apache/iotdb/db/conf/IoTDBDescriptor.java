@@ -2899,7 +2899,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadQuerySampleThroughput(Properties properties) throws IOException {
+  private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
     String querySamplingRateLimitNumber =
         Optional.ofNullable(
                 properties.getProperty(
@@ -2922,7 +2922,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadTrustedUriPattern(Properties properties) throws IOException {
+  private void loadTrustedUriPattern(TrimProperties properties) throws IOException {
     String trustedUriPattern =
         Optional.ofNullable(
                 properties.getProperty(
