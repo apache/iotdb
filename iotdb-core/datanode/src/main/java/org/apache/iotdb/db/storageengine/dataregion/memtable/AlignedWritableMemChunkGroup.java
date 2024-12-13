@@ -129,8 +129,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   public long deleteTime(ModEntry modEntry) {
-    int pointNumDeleted = memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
-    return pointNumDeleted;
+    return memChunk.deleteTime(modEntry.getStartTime(), modEntry.getEndTime());
   }
 
   @Override

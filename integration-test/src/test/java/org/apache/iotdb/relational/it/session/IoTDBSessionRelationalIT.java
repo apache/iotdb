@@ -1194,7 +1194,7 @@ public class IoTDBSessionRelationalIT {
           // cannot cast, but partial insert
           try {
             session.insert(tablet);
-            fail("Exception expected");
+            fail("Exception expected: from=" + from + ", to=" + to);
           } catch (StatementExecutionException e) {
             assertEquals(
                 "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
