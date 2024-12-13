@@ -1395,6 +1395,24 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptFlag(
+            Optional.ofNullable(properties.getProperty("encrypt_flag", "false"))
+                .map(String::trim)
+                .orElse("false"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptType(
+            Optional.ofNullable(properties.getProperty("encrypt_type", "UNENCRYPTED"))
+                .map(String::trim)
+                .orElse("UNENCRYPTED"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromPath(
+            Optional.ofNullable(properties.getProperty("encrypt_key_from_path", ""))
+                .map(String::trim)
+                .orElse(""));
 
     conf.setCoordinatorReadExecutorSize(
         Integer.parseInt(
@@ -2503,24 +2521,6 @@ public class IoTDBDescriptor {
                         ConfigurationFileUtils.getConfigurationDefaultValue("compressor")))
                 .map(String::trim)
                 .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("compressor")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptFlag(
-            properties.getProperty(
-                "encrypt_flag",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_flag")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptType(
-            properties.getProperty(
-                "encrypt_type",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_type")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptKeyFromPath(
-            properties.getProperty(
-                "encrypt_key_path",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_key_path")));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockSizeInBytes(
