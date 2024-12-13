@@ -1012,6 +1012,13 @@ sort_buffer_size_in_bytes=1048576
 # Datatype: int
 merge_threshold_of_explain_analyze=10
 
+# The limit of query sampling throughput merge can reach per second
+# 0 means no queries will be recorded
+# negative number means no limit, all queries will be recorded.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: bytes
+query_sample_throughput_bytes_per_sec=160
+
 ####################
 ### TTL Configuration
 ####################

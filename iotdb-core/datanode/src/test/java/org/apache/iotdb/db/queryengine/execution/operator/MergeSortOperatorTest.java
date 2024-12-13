@@ -1862,5 +1862,10 @@ public class MergeSortOperatorTest {
     public boolean isQuery() {
       return false;
     }
+
+    @Override
+    public boolean isUserQuery() {
+      return false;
+    }
   }
 }

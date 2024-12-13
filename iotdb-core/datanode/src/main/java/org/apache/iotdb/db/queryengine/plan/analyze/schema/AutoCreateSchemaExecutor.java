@@ -93,7 +93,8 @@ class AutoCreateSchemaExecutor {
         schemaFetcher,
         context == null || context.getQueryType().equals(QueryType.WRITE)
             ? config.getQueryTimeoutThreshold()
-            : context.getTimeOut());
+            : context.getTimeOut(),
+        false);
   }
 
   // Auto create the missing measurements and merge them into given schemaTree

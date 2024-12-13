@@ -539,7 +539,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   "",
                   partitionFetcher,
                   schemaFetcher,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         LOGGER.warn(
