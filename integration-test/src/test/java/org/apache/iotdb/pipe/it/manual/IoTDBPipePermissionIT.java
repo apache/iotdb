@@ -219,12 +219,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count databases", "count,", Collections.singleton("1,"));
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show timeseries",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.emptySet());
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "list user", "User,", Collections.singleton("root,"));
     }
   }
