@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -62,7 +63,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
     private final TEndPoint endPoint;
 
-    public AirGapSocket(String ip, int port) {
+    public AirGapSocket(final String ip, final int port) {
       this.endPoint = new TEndPoint(ip, port);
     }
 
@@ -292,7 +293,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
       throws IOException {
     if (!socket.isConnected()) {
-      return false;
+      throw new SocketException(
+          String.format("Socket %s is closed, will try to handshake", socket));
     }
 
     bytes = compressIfNeeded(bytes);
