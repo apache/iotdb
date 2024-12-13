@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.stream;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.stream;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
+import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -33,8 +34,8 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2IT
-    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
+public class IoTDBRegionMigrateClusterCrashIoTV2Stream
+    extends IoTDBRegionMigrateReliabilityITFramework {
 
   @Override
   @Before
@@ -47,12 +48,37 @@ public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2IT
   }
 
   @Test
-  public void crashBeforeDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+  public void clusterCrash1() throws Exception {
+    killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
   }
 
   @Test
-  public void crashAfterDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+  public void clusterCrash2() throws Exception {
+    killClusterTest(buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), false);
+  }
+
+  @Test
+  public void clusterCrash3() throws Exception {
+    killClusterTest(buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE), true);
+  }
+
+  @Test
+  public void clusterCrash4() throws Exception {
+    killClusterTest(buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER), true);
+  }
+
+  @Test
+  public void clusterCrash6() throws Exception {
+    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), true);
+  }
+
+  @Test
+  public void clusterCrash7() throws Exception {
+    killClusterTest(buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), true);
+  }
+
+  @Test
+  public void clusterCrash8() throws Exception {
+    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE), true);
   }
 }

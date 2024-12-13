@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateDataNodeCrashForIoTV2IT
+public class IoTDBRegionMigrateDataNodeCrashForIoTV2Batch
     extends IoTDBRegionMigrateReliabilityITFramework {
   // region Coordinator DataNode crash tests
 

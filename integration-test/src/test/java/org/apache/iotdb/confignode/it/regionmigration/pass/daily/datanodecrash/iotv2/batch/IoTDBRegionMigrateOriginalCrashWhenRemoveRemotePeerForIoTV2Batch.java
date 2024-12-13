@@ -30,7 +30,7 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2IT
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2Batch
     extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
   @Test
   public void crashBeforeInactivate() throws Exception {

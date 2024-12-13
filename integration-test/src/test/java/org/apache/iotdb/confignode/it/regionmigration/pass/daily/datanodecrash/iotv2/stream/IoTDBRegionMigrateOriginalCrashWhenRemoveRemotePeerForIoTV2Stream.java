@@ -17,40 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.batch;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.stream;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerForIoTV2IT
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2Stream
     extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
 
-  @Test
-  public void initCrash() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
   }
 
   @Test
-  public void crashAfterNotifyPeersToRemoveSyncLogChannel() throws Exception {
-    success(
-        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
+  public void crashBeforeInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
   }
 
   @Test
-  public void crashAfterInactivePeer() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
-  }
-
-  @Test
-  public void crashAfterFinish() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
+  public void crashAfterInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 }

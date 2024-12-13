@@ -17,23 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.stream;
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@Category({ClusterIT.class})
+@Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2Stream
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
 
   @Override
   @Before
@@ -46,12 +47,12 @@ public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITF
   }
 
   @Test
-  public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
+  public void crashBeforeDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
   }
 
   @Test
-  public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
+  public void crashAfterDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 }

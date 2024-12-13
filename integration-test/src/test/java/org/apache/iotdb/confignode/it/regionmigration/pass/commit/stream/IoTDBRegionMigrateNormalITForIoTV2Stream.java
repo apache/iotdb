@@ -17,24 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.stream;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
-import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
-import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@Category({DailyIT.class})
+@Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateClusterCrashIoTV2IT
+public class IoTDBRegionMigrateNormalITForIoTV2Stream
     extends IoTDBRegionMigrateReliabilityITFramework {
 
   @Override
@@ -48,37 +47,12 @@ public class IoTDBRegionMigrateClusterCrashIoTV2IT
   }
 
   @Test
-  public void clusterCrash1() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
+  public void normal1C2DTest() throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
   }
 
   @Test
-  public void clusterCrash2() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), false);
-  }
-
-  @Test
-  public void clusterCrash3() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE), true);
-  }
-
-  @Test
-  public void clusterCrash4() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER), true);
-  }
-
-  @Test
-  public void clusterCrash6() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), true);
-  }
-
-  @Test
-  public void clusterCrash7() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), true);
-  }
-
-  @Test
-  public void clusterCrash8() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE), true);
+  public void normal3C3DTest() throws Exception {
+    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
   }
 }
