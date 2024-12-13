@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
@@ -247,8 +248,32 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
                 .setMessage("Only the admin user can perform this operation");
       case PipeDeleteTimeSeries:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(
+                    PathPatternTree.deserialize(
+                            ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                        .getAllPathPatterns()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
       case PipeDeleteLogicalView:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(
+                    PathPatternTree.deserialize(
+                            ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                        .getAllPathPatterns()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
       case PipeDeactivateTemplate:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
       case SetTTL:
