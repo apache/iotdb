@@ -574,7 +574,7 @@ public class AnalyzeUtils {
   public interface DataPartitionQueryFunc {
 
     DataPartition queryDataPartition(
-        List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
+        final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
   }
 
   public interface DataPartitionQueryParamComputation {

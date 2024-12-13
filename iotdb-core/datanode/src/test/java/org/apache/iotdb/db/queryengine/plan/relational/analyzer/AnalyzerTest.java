@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -1112,9 +1111,8 @@ public class AnalyzerTest {
             dataPartitionMap = new HashMap<>();
 
         for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-          String databaseName = dataPartitionQueryParam.getDatabaseName();
+          final String databaseName = dataPartitionQueryParam.getDatabaseName();
           assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
-          databaseName = PathUtils.qualifyDatabaseName(databaseName);
 
           final String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
           assertEquals(StatementTestUtils.tableName(), tableName);
@@ -1159,7 +1157,7 @@ public class AnalyzerTest {
             analysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(3, partitionSlotMapMap.size());
 
     SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -1192,9 +1190,9 @@ public class AnalyzerTest {
 
   @Test
   public void analyzeInsertRow() {
-    Metadata mockMetadata = mockMetadataForInsertion();
+    final Metadata mockMetadata = mockMetadataForInsertion();
 
-    InsertRowStatement insertStatement = StatementTestUtils.genInsertRowStatement(true);
+    final InsertRowStatement insertStatement = StatementTestUtils.genInsertRowStatement(true);
     context = new MPPQueryContext("", queryId, sessionInfo, null, null);
     analysis =
         analyzeStatement(
@@ -1204,26 +1202,28 @@ public class AnalyzerTest {
             new SqlParser(),
             sessionInfo);
     assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+    assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
             analysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(1, partitionSlotMapMap.size());
 
-    SymbolAllocator symbolAllocator = new SymbolAllocator();
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
         new TableLogicalPlanner(
                 context, mockMetadata, sessionInfo, symbolAllocator, WarningCollector.NOOP)
             .plan(analysis);
-    RelationalInsertRowNode insertNode = (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
+    final RelationalInsertRowNode insertNode =
+        (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
-    Object[] columns = StatementTestUtils.genValues(0);
+    final Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
-            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
+            new String[] {StatementTestUtils.tableName(), columns[0].toString()}),
         insertNode.getDeviceID());
 
     assertArrayEquals(columns, insertNode.getValues());
