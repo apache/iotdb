@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternInputAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -146,7 +146,7 @@ public class Analysis implements IAnalysis {
 
   // Pattern function analysis (classifier, match_number, aggregations and prev/next/first/last) in
   // the context of the given node
-  private final Map<NodeRef<Expression>, List<PatternInputAnalysis>> patternInputsAnalysis =
+  private final Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> patternFunctionAnalysis =
       new LinkedHashMap<>();
 
   // FunctionCall nodes corresponding to any of the special pattern recognition functions
@@ -693,20 +693,20 @@ public class Analysis implements IAnalysis {
   }
 
   public void addPatternRecognitionInputs(
-      Map<NodeRef<Expression>, List<PatternInputAnalysis>> functions) {
-    patternInputsAnalysis.putAll(functions);
+      Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> functions) {
+    patternFunctionAnalysis.putAll(functions);
 
     functions.values().stream()
         .flatMap(List::stream)
-        .map(PatternInputAnalysis::getExpression)
+        .map(PatternFunctionAnalysis::getExpression)
         .filter(FunctionCall.class::isInstance)
         .map(FunctionCall.class::cast)
         .map(NodeRef::of)
         .forEach(patternRecognitionFunctionCalls::add);
   }
 
-  public List<PatternInputAnalysis> getPatternInputsAnalysis(Expression expression) {
-    return patternInputsAnalysis.get(NodeRef.of(expression));
+  public List<PatternFunctionAnalysis> getPatternInputsAnalysis(Expression expression) {
+    return patternFunctionAnalysis.get(NodeRef.of(expression));
   }
 
   public void addPatternNavigationFunctions(Set<NodeRef<FunctionCall>> functions) {

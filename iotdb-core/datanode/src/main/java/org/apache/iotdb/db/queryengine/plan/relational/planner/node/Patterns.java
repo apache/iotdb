@@ -181,6 +181,10 @@ public final class Patterns {
     return typeOf(TopKNode.class);
   }
 
+  public static Pattern<PatternRecognitionNode> patternRecognition() {
+    return typeOf(PatternRecognitionNode.class);
+  }
+
   /*public static Pattern<TableWriterNode> tableWriterNode()
   {
       return typeOf(TableWriterNode.class);
@@ -209,11 +213,6 @@ public final class Patterns {
   public static Pattern<WindowNode> window()
   {
       return typeOf(WindowNode.class);
-  }
-
-  public static Pattern<PatternRecognitionNode> patternRecognition()
-  {
-      return typeOf(PatternRecognitionNode.class);
   }
   */
 
