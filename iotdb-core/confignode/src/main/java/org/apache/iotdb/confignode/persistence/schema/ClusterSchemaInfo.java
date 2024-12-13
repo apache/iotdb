@@ -1130,7 +1130,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      treeModelMTree.preDeleteTable(
+      tableModelMTree.preDeleteTable(
           getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
