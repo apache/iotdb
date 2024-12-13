@@ -203,6 +203,13 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
   public static final String SQL_DIALECT = "sql_dialect";
 
+  public static final String TABLE_NAME_TABLE_MODEL = "table_name";
+  public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
+
+  public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
+  public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
+  public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";

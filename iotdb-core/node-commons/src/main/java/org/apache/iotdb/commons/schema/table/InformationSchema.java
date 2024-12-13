@@ -65,16 +65,13 @@ public class InformationSchema {
             ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT32));
+            ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.DATA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT32));
+            ColumnHeaderConstant.DATA_REPLICATION_FACTOR_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.TIME_PARTITION_INTERVAL.toLowerCase(Locale.ENGLISH),
-            TSDataType.INT64));
+            ColumnHeaderConstant.TIME_PARTITION_INTERVAL_TABLE_MODEL, TSDataType.INT64));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -86,8 +83,7 @@ public class InformationSchema {
         new IdColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
-        new IdColumnSchema(
-            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+        new IdColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -102,11 +98,9 @@ public class InformationSchema {
         new IdColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new IdColumnSchema(
-            ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+        new IdColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     columnTable.addColumnSchema(
-        new IdColumnSchema(
-            ColumnHeaderConstant.COLUMN_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+        new IdColumnSchema(ColumnHeaderConstant.COLUMN_NAME_TABLE_MODEL, TSDataType.STRING));
     columnTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.DATATYPE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));

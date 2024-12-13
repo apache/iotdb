@@ -395,7 +395,7 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "database,STRING,ID,",
-                  "tablename,STRING,ID,",
+                  "table_name,STRING,ID,",
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
@@ -404,8 +404,8 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "database,STRING,ID,",
-                  "tablename,STRING,ID,",
-                  "columnname,STRING,ID,",
+                  "table_name,STRING,ID,",
+                  "column_name,STRING,ID,",
                   "datatype,STRING,ATTRIBUTE,",
                   "category,STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,")));
