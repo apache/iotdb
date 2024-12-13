@@ -1100,27 +1100,28 @@ public class AnalyzerTest {
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-        int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
-        String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
-        SeriesPartitionExecutor seriesPartitionExecutor =
+          final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
+        final int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
+        final String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
+        final SeriesPartitionExecutor seriesPartitionExecutor =
             SeriesPartitionExecutor.getSeriesPartitionExecutor(
                 partitionExecutorName, seriesSlotNum);
 
-        Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        final Map<
+                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
             dataPartitionMap = new HashMap<>();
 
-        for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+        for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
           String databaseName = dataPartitionQueryParam.getDatabaseName();
-          assertEquals("root." + sessionInfo.getDatabaseName().get(), databaseName);
+          assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
           databaseName = PathUtils.qualifyDatabaseName(databaseName);
 
-          String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
+          final String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
           assertEquals(StatementTestUtils.tableName(), tableName);
 
-          TSeriesPartitionSlot partitionSlot =
+          final TSeriesPartitionSlot partitionSlot =
               seriesPartitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
-          for (TTimePartitionSlot tTimePartitionSlot :
+          for (final TTimePartitionSlot tTimePartitionSlot :
               dataPartitionQueryParam.getTimePartitionSlotList()) {
             dataPartitionMap
                 .computeIfAbsent(databaseName, d -> new HashMap<>())
