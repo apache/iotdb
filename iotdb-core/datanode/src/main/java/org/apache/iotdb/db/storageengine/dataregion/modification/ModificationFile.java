@@ -67,6 +67,8 @@ public class ModificationFile implements AutoCloseable {
   private boolean hasCompacted = false;
   private boolean fileExists = false;
 
+  private Set<ModificationFile> cascadeFiles = null;
+
   public ModificationFile(String filePath) {
     this(new File(filePath));
   }
@@ -92,6 +94,12 @@ public class ModificationFile implements AutoCloseable {
       }
       size += entry.serialize(fileOutputStream);
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entry);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
@@ -116,6 +124,12 @@ public class ModificationFile implements AutoCloseable {
         size += entry.serialize(fileOutputStream);
       }
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entries);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
@@ -326,6 +340,15 @@ public class ModificationFile implements AutoCloseable {
         LOGGER.error("remove origin file or rename new mods file error.", e);
       }
       hasCompacted = true;
+    }
+  }
+
+  public void setCascadeFile(Set<ModificationFile> cascadeFiles) {
+    lock.writeLock().lock();
+    try {
+      this.cascadeFiles = cascadeFiles;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 }
