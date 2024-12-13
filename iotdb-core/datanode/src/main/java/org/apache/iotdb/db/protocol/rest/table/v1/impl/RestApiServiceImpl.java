@@ -74,8 +74,10 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     long startTime = System.nanoTime();
     try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       RequestValidationHandler.validateQuerySQL(sql);
-      statement = relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault());
+      statement =
+          relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -95,7 +97,6 @@ public class RestApiServiceImpl extends RestApiService {
       }
 
       queryId = SESSION_MANAGER.requestQueryId();
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       clientSession.setDatabaseName(sql.getDatabase());
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
@@ -194,8 +195,10 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     long startTime = System.nanoTime();
     try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       RequestValidationHandler.validateSQL(sql);
-      statement = relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault());
+      statement =
+          relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
 
       if (statement == null) {
         return Response.ok()
@@ -214,7 +217,6 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
       queryId = SESSION_MANAGER.requestQueryId();
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
       clientSession.setDatabaseName(sql.getDatabase());
       clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
