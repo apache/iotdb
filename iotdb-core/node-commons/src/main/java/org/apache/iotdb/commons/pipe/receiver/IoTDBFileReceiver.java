@@ -250,12 +250,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (passwordString != null) {
       password = passwordString;
     }
-
     final TSStatus status = loginIfNecessary();
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
-      return new TPipeTransferResp(RpcUtils.getStatus(status.code, status.message));
+          "Receiver id = {}: Handshake failed because login failed, response status = {}.",
+          receiverId.get(),
+          status);
+      return new TPipeTransferResp(status);
     }
 
     final String shouldConvertDataTypeOnTypeMismatchString =
@@ -286,9 +287,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         }.convertToTPipeTransferReq(timestampPrecision));
   }
 
-  protected abstract TSStatus loginIfNecessary();
-
   protected abstract String getClusterId();
+
+  protected abstract TSStatus loginIfNecessary();
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
