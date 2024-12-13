@@ -73,7 +73,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -293,13 +292,29 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case GrantRole:
       case GrantUser:
       case RevokeUser:
+      case RevokeRole:
+        for (final int permission : ((AuthorPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivilegeGrantOpt(
+                      username,
+                      PrivilegeType.isPathRelevant(permission)
+                          ? ((AuthorPlan) plan).getNodeNameList()
+                          : Collections.emptyList(),
+                      permission)
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
       case UpdateUser:
         return ((AuthorPlan) plan).getUserName().equals(username)
             ? StatusUtils.OK
-            : AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    username, PrivilegeType.MANAGE_ROLE.ordinal()),
-                PrivilegeType.MANAGE_USER);
+            : configManager
+                .checkUserPrivileges(
+                    username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+                .getStatus();
       case CreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
@@ -309,7 +324,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .getStatus();
       case CreateRole:
       case DropRole:
-      case RevokeRole:
       case GrantRoleToUser:
       case RevokeRoleFromUser:
         return configManager
