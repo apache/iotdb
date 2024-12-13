@@ -415,7 +415,7 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "query_id,STRING,ID,",
-                  "time,TIMESTAMP,ATTRIBUTE,",
+                  "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,",

@@ -44,7 +44,7 @@ public class InformationSchema {
         new IdColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.TIME.toLowerCase(Locale.ENGLISH), TSDataType.TIMESTAMP));
+            ColumnHeaderConstant.QUERY_ID_START_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     queriesTable.addColumnSchema(
