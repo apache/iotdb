@@ -1666,28 +1666,41 @@ public class ConfigManager implements IManager {
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int currentNodeId = CONF.getConfigNodeId();
-    if (req.getNodeId() < 0 || currentNodeId == req.getNodeId()) {
-      URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
-      if (url == null || !new File(url.getFile()).exists()) {
-        return tsStatus;
-      }
-      File file = new File(url.getFile());
-      TrimProperties properties = new TrimProperties();
-      properties.putAll(req.getConfigs());
-      try {
-        ConfigurationFileUtils.updateConfigurationFile(file, properties);
-      } catch (Exception e) {
-        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
-      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
-      if (CONF.getConfigNodeId() == req.getNodeId()) {
+    if (currentNodeId != req.getNodeId()) {
+      tsStatus = confirmLeader();
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return tsStatus;
       }
     }
-    tsStatus = confirmLeader();
-    return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.setConfiguration(req))
-        : tsStatus;
+    if (currentNodeId == req.getNodeId() || req.getNodeId() < 0) {
+      URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
+      TrimProperties properties = new TrimProperties();
+      properties.putAll(req.getConfigs());
+
+      if (configurationFileFound) {
+        File file = new File(url.getFile());
+        try {
+          ConfigurationFileUtils.updateConfigurationFile(file, properties);
+        } catch (Exception e) {
+          tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        }
+      } else {
+        String msg =
+            "Unable to find the configuration file. Some modifications are made only in memory.";
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
+        LOGGER.warn(msg);
+      }
+      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+      if (currentNodeId == req.getNodeId()) {
+        return tsStatus;
+      }
+    }
+    List<TSStatus> statusListOfOtherNodes = nodeManager.setConfiguration(req);
+    List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
+    statusList.add(tsStatus);
+    statusList.addAll(statusListOfOtherNodes);
+    return RpcUtils.squashResponseStatusList(statusList);
   }
 
   @Override

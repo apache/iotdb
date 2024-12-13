@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -167,6 +168,8 @@ import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
+import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
@@ -750,7 +753,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    return new CreatePipePluginTask(node);
+    if (node.getUriString() != null && isUriTrusted(node.getUriString())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreatePipePluginTask(node);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString()));
+    }
   }
 
   @Override
@@ -850,7 +860,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    return new CreateFunctionTask(node);
+    if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateFunctionTask(node);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString().get()));
+    }
   }
 
   @Override
