@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit.batch;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.NeverTriggeredKillPoint;

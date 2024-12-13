@@ -203,6 +203,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     cnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     dnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);

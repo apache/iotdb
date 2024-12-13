@@ -17,13 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -31,6 +34,17 @@ import org.junit.runner.RunWith;
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
+  }
+
   @Test
   public void normal1C2DTest() throws Exception {
     successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
