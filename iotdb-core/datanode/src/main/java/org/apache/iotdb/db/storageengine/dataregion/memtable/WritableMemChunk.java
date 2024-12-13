@@ -449,6 +449,10 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       TSDataType tsDataType = schema.getType();
 
+      // skip deleted data
+      if (list.isNullValue(list.getValueIndex(sortedRowIndex))) {
+        continue;
+      }
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         continue;
