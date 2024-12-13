@@ -743,9 +743,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     // Permission check
-    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
     final TSStatus permissionCheckStatus =
-        AuthorityChecker.checkAuthority(statement, clientSession);
+        AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
     if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
