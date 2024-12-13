@@ -383,43 +383,42 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,null,",
-                  "ttl(ms),STRING,null,",
-                  "schemareplicationfactor,INT32,null,",
-                  "datareplicationfactor,INT32,null,",
-                  "timepartitioninterval,INT64,null,",
-                  "model,STRING,null,")));
+                  "database,STRING,ID,",
+                  "ttl(ms),STRING,ATTRIBUTE,",
+                  "schemareplicationfactor,INT32,ATTRIBUTE,",
+                  "datareplicationfactor,INT32,ATTRIBUTE,",
+                  "timepartitioninterval,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,null,",
-                  "tablename,STRING,null,",
-                  "ttl(ms),STRING,null,",
-                  "status,STRING,null,")));
+                  "database,STRING,ID,",
+                  "tablename,STRING,ID,",
+                  "ttl(ms),STRING,ATTRIBUTE,",
+                  "status,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,null,",
-                  "tablename,STRING,null,",
-                  "columnname,STRING,null,",
-                  "datatype,STRING,null,",
-                  "category,STRING,null,",
-                  "status,STRING,null,")));
+                  "database,STRING,ID,",
+                  "tablename,STRING,ID,",
+                  "columnname,STRING,ID,",
+                  "datatype,STRING,ATTRIBUTE,",
+                  "category,STRING,ATTRIBUTE,",
+                  "status,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc queries"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "time,TIMESTAMP,null,",
-                  "query_id,STRING,null,",
-                  "datanode_id,INT32,null,",
-                  "elapsed_time,FLOAT,null,",
-                  "statement,STRING,null,",
-                  "sql_dialect,STRING,null,")));
+                  "time,TIMESTAMP,ID,",
+                  "query_id,STRING,ATTRIBUTE,",
+                  "datanode_id,INT32,ATTRIBUTE,",
+                  "elapsed_time,FLOAT,ATTRIBUTE,",
+                  "statement,STRING,ATTRIBUTE,",
+                  "sql_dialect,STRING,ATTRIBUTE,")));
     }
   }
 }

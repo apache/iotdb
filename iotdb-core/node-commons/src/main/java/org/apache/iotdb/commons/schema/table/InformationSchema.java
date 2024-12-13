@@ -20,7 +20,8 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -40,82 +41,77 @@ public class InformationSchema {
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.TIME.toLowerCase(Locale.ENGLISH), TSDataType.TIMESTAMP));
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
+        new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+        new AttributeColumnSchema(ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
-    queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.STATEMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     queriesTable.addColumnSchema(
-        new MeasurementColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
+        new AttributeColumnSchema(ColumnHeaderConstant.SQL_DIALECT, TSDataType.STRING));
     schemaTables.put(QUERIES, queriesTable);
 
     final TsTable databaseTable = new TsTable(DATABASES);
     databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
             TSDataType.INT32));
     databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REPLICATION_FACTOR.toLowerCase(Locale.ENGLISH),
             TSDataType.INT32));
     databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.TIME_PARTITION_INTERVAL.toLowerCase(Locale.ENGLISH),
             TSDataType.INT64));
-    databaseTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
     tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.TABLE_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new IdColumnSchema(
             ColumnHeaderConstant.COLUMN_NAME.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATATYPE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.COLUMN_CATEGORY.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new MeasurementColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(COLUMNS, columnTable);

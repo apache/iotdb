@@ -79,9 +79,6 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(2).appendNull();
     builder.getColumnBuilder(3).appendNull();
     builder.getColumnBuilder(4).appendNull();
-    if (details) {
-      builder.getColumnBuilder(5).writeBinary(new Binary("TABLE", TSFileConfig.STRING_CHARSET));
-    }
     builder.declarePosition();
   }
 
@@ -166,7 +163,10 @@ public class InformationSchemaUtils {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(columnSchema.getDataType().name(), TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(2).appendNull();
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(
+              new Binary(columnSchema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
       if (isDetails) {
         builder.getColumnBuilder(3).writeBinary(new Binary("USING", TSFileConfig.STRING_CHARSET));
       }
