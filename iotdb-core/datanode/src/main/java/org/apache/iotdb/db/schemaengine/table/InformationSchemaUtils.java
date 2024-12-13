@@ -79,6 +79,9 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(2).appendNull();
     builder.getColumnBuilder(3).appendNull();
     builder.getColumnBuilder(4).appendNull();
+    if (details) {
+      builder.getColumnBuilder(5).writeBinary(new Binary("TABLE", TSFileConfig.STRING_CHARSET));
+    }
     builder.declarePosition();
   }
 

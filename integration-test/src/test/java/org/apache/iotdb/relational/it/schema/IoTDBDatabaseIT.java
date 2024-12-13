@@ -387,7 +387,8 @@ public class IoTDBDatabaseIT {
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "schemareplicationfactor,INT32,ATTRIBUTE,",
                   "datareplicationfactor,INT32,ATTRIBUTE,",
-                  "timepartitioninterval,INT64,ATTRIBUTE,")));
+                  "timepartitioninterval,INT64,ATTRIBUTE,",
+                  "model,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
@@ -413,8 +414,8 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "time,TIMESTAMP,ID,",
-                  "query_id,STRING,ATTRIBUTE,",
+                  "query_id,STRING,ID,",
+                  "time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,",
