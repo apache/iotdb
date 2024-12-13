@@ -764,7 +764,7 @@ public class ConfigMTree {
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
     final List<PartialPath> databaseList = getAllDatabasePaths(true);
-    for (PartialPath databasePath : databaseList) {
+    for (final PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
       for (final IConfigMNode child : databaseNode.getChildren().values()) {

@@ -111,22 +111,22 @@ public class TableDistributedPlanGenerator
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   public TableDistributedPlanGenerator(
-      MPPQueryContext queryContext,
-      Analysis analysis,
-      SymbolAllocator symbolAllocator,
-      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+      final MPPQueryContext queryContext,
+      final Analysis analysis,
+      final SymbolAllocator symbolAllocator,
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
-  public List<PlanNode> genResult(PlanNode node, PlanContext context) {
-    List<PlanNode> res = node.accept(this, context);
+  public List<PlanNode> genResult(final PlanNode node, final PlanContext context) {
+    final List<PlanNode> res = node.accept(this, context);
     if (res.size() == 1) {
       return res;
     } else if (res.size() > 1) {
-      CollectNode collectNode =
+      final CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
@@ -137,34 +137,35 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitPlan(
-      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
+      final PlanNode node, final TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return Collections.singletonList(node);
     }
 
-    List<List<PlanNode>> children =
+    final List<List<PlanNode>> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .collect(toImmutableList());
 
-    PlanNode newNode = node.clone();
-    for (List<PlanNode> planNodes : children) {
+    final PlanNode newNode = node.clone();
+    for (final List<PlanNode> planNodes : children) {
       planNodes.forEach(newNode::addChild);
     }
     return Collections.singletonList(newNode);
   }
 
   @Override
-  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
-    List<PlanNode> children = genResult(node.getChild(), context);
+  public List<PlanNode> visitExplainAnalyze(
+      final ExplainAnalyzeNode node, final PlanContext context) {
+    final List<PlanNode> children = genResult(node.getChild(), context);
     node.setChild(children.get(0));
     return Collections.singletonList(node);
   }
 
   @Override
-  public List<PlanNode> visitOutput(OutputNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+  public List<PlanNode> visitOutput(final OutputNode node, final PlanContext context) {
+    final List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    final OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }

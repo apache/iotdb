@@ -147,9 +147,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format(
-                        "Table '%s.%s' not exists.",
-                        database.substring(ROOT.length() + 1), tableName),
+                    String.format("Table '%s.%s' not exists.", database, tableName),
                     TABLE_NOT_EXISTS.getStatusCode())));
       } else {
         setNextState(CONSTRUCT_BLACK_LIST);

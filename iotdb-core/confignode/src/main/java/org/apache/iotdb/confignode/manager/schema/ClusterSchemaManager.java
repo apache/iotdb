@@ -114,8 +114,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
-
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
 public class ClusterSchemaManager {
 
@@ -1176,9 +1174,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format(
-                  "Table '%s.%s' does not exist",
-                  database.substring(ROOT.length() + 1), tableName)),
+              String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
 
@@ -1214,9 +1210,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format(
-                  "Table '%s.%s' does not exist",
-                  database.substring(ROOT.length() + 1), tableName)),
+              String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
 
@@ -1308,9 +1302,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format(
-                  "Table '%s.%s' does not exist",
-                  database.substring(ROOT.length() + 1), tableName)),
+              String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
 
