@@ -55,6 +55,7 @@ public class AuthorRelationalWritePlan extends AuthorRelationalPlan {
   protected void deserializeImpl(ByteBuffer buffer) {
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
+    password = BasicStructureSerDeUtil.readString(buffer);
     if (buffer.get() == (byte) 1) {
       this.databaseName = BasicStructureSerDeUtil.readString(buffer);
     }

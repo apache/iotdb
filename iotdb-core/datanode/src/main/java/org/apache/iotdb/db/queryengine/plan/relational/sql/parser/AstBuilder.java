@@ -1503,7 +1503,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String username;
     fromUser = ctx.holderType().getText().equalsIgnoreCase("user");
     username = ctx.holderName.getText();
-    boolean grantOption = !ctx.revokeGrantOpt().isEmpty();
+    boolean grantOption = ctx.revokeGrantOpt() != null;
     boolean fromTable = false;
 
     // SYSTEM PRIVILEGES

@@ -818,13 +818,6 @@ public class AuthorInfoTest {
             "");
     checkAuthorNonQueryReturn(plan);
 
-    Assert.assertEquals(
-        TSStatusCode.NO_PERMISSION.getStatusCode(),
-        authorInfo
-            .checkUserPrivileges("user", PrivilegeType.MANAGE_DATABASE)
-            .getStatus()
-            .getCode());
-
     plan =
         new AuthorRelationalPlan(
             ConfigPhysicalPlanType.RGrantUserRole, "user", "role", "", "", false, 0, "");

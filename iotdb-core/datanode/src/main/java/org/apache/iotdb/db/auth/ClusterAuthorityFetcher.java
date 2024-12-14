@@ -349,7 +349,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                   statementToAuthorizerReq((RelationalAuthorStatement) plan))
               : configNodeClient.operatePermission(
                   statementToAuthorizerReq((AuthorStatement) plan));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
