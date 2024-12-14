@@ -183,7 +183,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
         return;
       }
-      
+
       TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
 
       TestUtils.assertDataEventuallyOnEnv(
