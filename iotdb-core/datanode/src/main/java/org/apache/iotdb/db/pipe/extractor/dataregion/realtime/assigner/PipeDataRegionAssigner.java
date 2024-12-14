@@ -246,10 +246,10 @@ public class PipeDataRegionAssigner implements Closeable {
   // scheduling when closing
   public synchronized void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-    matcher.clear();
 
     final long startTime = System.currentTimeMillis();
     disruptor.shutdown();
+    matcher.clear();
     LOGGER.info(
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,
