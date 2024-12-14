@@ -64,7 +64,8 @@ import static org.junit.Assert.fail;
  */
 public class TableModelUtils {
 
-  public static void createDataBaseAndTable(BaseEnv baseEnv, String table, String database) {
+  public static void createDataBaseAndTable(
+      final BaseEnv baseEnv, final String table, final String database) {
     try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("create database if not exists " + database);
@@ -72,13 +73,13 @@ public class TableModelUtils {
       statement.execute(
           "CREATE TABLE "
               + table
-              + "(s0 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
+              + "(s0 string id, s1 int64 id, s2 float id, s3 string id, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
     } catch (Exception e) {
       fail(e.getMessage());
     }
   }
 
-  public static void createDataBase(BaseEnv baseEnv, String database) {
+  public static void createDataBase(final BaseEnv baseEnv, final String database) {
     try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("create database if not exists " + database);
@@ -88,7 +89,11 @@ public class TableModelUtils {
   }
 
   public static boolean insertData(
-      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
       list.add(
@@ -105,12 +110,12 @@ public class TableModelUtils {
   }
 
   public static boolean insertData(
-      String dataBaseName,
-      String tableName,
-      int start,
-      int end,
-      BaseEnv baseEnv,
-      boolean allowNullValue) {
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv,
+      final boolean allowNullValue) {
     List<String> list = new ArrayList<>(end - start + 1);
     Object[] values = new Object[9];
     Random random = new Random();
@@ -140,7 +145,11 @@ public class TableModelUtils {
   }
 
   public static boolean insertDataNotThrowError(
-      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
       list.add(
@@ -153,12 +162,12 @@ public class TableModelUtils {
   }
 
   public static boolean insertData(
-      String dataBaseName,
-      String tableName,
-      int start,
-      int end,
-      BaseEnv baseEnv,
-      DataNodeWrapper wrapper) {
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv,
+      final DataNodeWrapper wrapper) {
     List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
       list.add(
@@ -176,13 +185,13 @@ public class TableModelUtils {
   }
 
   public static boolean insertTablet(
-      String dataBaseName,
-      String tableName,
-      int start,
-      int end,
-      BaseEnv baseEnv,
-      boolean allowNullValue) {
-    final Tablet tablet = generateTablet(tableName, start, end, allowNullValue);
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv,
+      final boolean allowNullValue) {
+    final Tablet tablet = generateTablet(tableName, start, end, allowNullValue, true);
     ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(1);
     try (final ITableSession session = tableSessionPool.getSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
@@ -195,7 +204,8 @@ public class TableModelUtils {
     }
   }
 
-  public static boolean insertTablet(String dataBaseName, Tablet tablet, BaseEnv baseEnv) {
+  public static boolean insertTablet(
+      final String dataBaseName, final Tablet tablet, final BaseEnv baseEnv) {
     ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(1);
     try (final ITableSession session = tableSessionPool.getSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
@@ -209,7 +219,11 @@ public class TableModelUtils {
   }
 
   public static void deleteData(
-      String dataBaseName, String tableName, int start, int end, BaseEnv baseEnv) {
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv) {
     List<String> list = new ArrayList<>(end - start + 1);
     list.add(
         String.format("delete from %s where time >= %s and time <= %s", tableName, start, end));
@@ -219,7 +233,7 @@ public class TableModelUtils {
     }
   }
 
-  public static Set<String> generateExpectedResults(int start, int end) {
+  public static Set<String> generateExpectedResults(final int start, final int end) {
     Set<String> expectedResSet = new HashSet<>();
     for (int i = start; i < end; ++i) {
       final String time = RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC);
@@ -231,7 +245,7 @@ public class TableModelUtils {
     return expectedResSet;
   }
 
-  public static Set<String> generateExpectedResults(Tablet tablet) {
+  public static Set<String> generateExpectedResults(final Tablet tablet) {
     Set<String> expectedResSet = new HashSet<>();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     for (int i = 0; i < tablet.getRowSize(); i++) {
@@ -294,16 +308,20 @@ public class TableModelUtils {
     return "s0,s3,s2,s1,s4,s5,s6,s7,s8,time,";
   }
 
-  public static String getQuerySql(String table) {
+  public static String getQuerySql(final String table) {
     return "select s0,s3,s2,s1,s4,s5,s6,s7,s8,time from " + table;
   }
 
-  public static String getQueryCountSql(String table) {
+  public static String getQueryCountSql(final String table) {
     return "select count(*) from " + table;
   }
 
   public static void assertData(
-      String database, String table, int start, int end, BaseEnv baseEnv) {
+      final String database,
+      final String table,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
         TableModelUtils.getQuerySql(table),
@@ -313,12 +331,12 @@ public class TableModelUtils {
   }
 
   public static void assertData(
-      String database,
-      String table,
-      int start,
-      int end,
-      BaseEnv baseEnv,
-      Consumer<String> handleFailure) {
+      final String database,
+      final String table,
+      final int start,
+      final int end,
+      final BaseEnv baseEnv,
+      final Consumer<String> handleFailure) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
         TableModelUtils.getQuerySql(table),
@@ -328,7 +346,8 @@ public class TableModelUtils {
         handleFailure);
   }
 
-  public static void assertData(String database, String table, Tablet tablet, BaseEnv baseEnv) {
+  public static void assertData(
+      final String database, final String table, final Tablet tablet, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
         TableModelUtils.getQuerySql(table),
@@ -337,18 +356,23 @@ public class TableModelUtils {
         database);
   }
 
-  public static boolean hasDataBase(String database, BaseEnv baseEnv) {
+  public static boolean hasDataBase(final String database, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(baseEnv, "", "", Collections.emptySet(), database);
     return true;
   }
 
-  public static void assertCountData(String database, String table, int count, BaseEnv baseEnv) {
+  public static void assertCountData(
+      final String database, final String table, final int count, final BaseEnv baseEnv) {
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv, getQueryCountSql(table), "_col0,", Collections.singleton(count + ","), database);
   }
 
   public static void assertCountData(
-      String database, String table, int count, BaseEnv baseEnv, Consumer<String> handleFailure) {
+      final String database,
+      final String table,
+      final int count,
+      final BaseEnv baseEnv,
+      final Consumer<String> handleFailure) {
     TestUtils.executeNonQueryWithRetry(baseEnv, "flush");
     TestUtils.assertDataEventuallyOnEnv(
         baseEnv,
@@ -359,7 +383,7 @@ public class TableModelUtils {
         handleFailure);
   }
 
-  public static String getDateStr(int value) {
+  public static String getDateStr(final int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
@@ -369,7 +393,7 @@ public class TableModelUtils {
     }
   }
 
-  public static LocalDate getDate(int value) {
+  public static LocalDate getDate(final int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
@@ -381,7 +405,11 @@ public class TableModelUtils {
   }
 
   public static Tablet generateTablet(
-      String tableName, int start, int end, boolean allowNullValue) {
+      final String tableName,
+      final int start,
+      final int end,
+      final boolean allowNullValue,
+      final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -396,9 +424,9 @@ public class TableModelUtils {
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
             Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -413,6 +441,7 @@ public class TableModelUtils {
             end - start);
     tablet.initBitMaps();
     Random random = new Random();
+    int nullDeviceIndex = allowNullDeviceColumn ? random.nextInt(4) : 4;
 
     // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
     for (long row = 0; row < end - start; row++) {
@@ -421,7 +450,7 @@ public class TableModelUtils {
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, value);
       tablet.addValue(
-          "s0", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          "s0", rowIndex, new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
       tablet.addValue("s1", rowIndex, value);
       tablet.addValue("s2", rowIndex, (value * 1.0f));
       tablet.addValue(
@@ -435,18 +464,22 @@ public class TableModelUtils {
       if (randomNumber < 9) {
         tablet.addValue("s" + randomNumber, rowIndex, null);
       }
+      if (nullDeviceIndex < 4) {
+        tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
+      }
     }
 
     return tablet;
   }
 
   public static Tablet generateTablet(
-      String tableName,
-      int deviceStartIndex,
-      int deviceEndIndex,
-      int start,
-      int end,
-      boolean allowNullValue) {
+      final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int start,
+      final int end,
+      final boolean allowNullValue,
+      final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -461,9 +494,9 @@ public class TableModelUtils {
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
             Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -478,17 +511,16 @@ public class TableModelUtils {
             (deviceEndIndex - deviceStartIndex) * (end - start));
     tablet.initBitMaps();
     final Random random = new Random();
+    int nullDeviceIndex = allowNullDeviceColumn ? random.nextInt(4) : 4;
 
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
       // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
-      for (long row = start; row < end - start; row++) {
+      for (long row = start; row < end; row++) {
         int randomNumber = allowNullValue ? random.nextInt(9) : 9;
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, row);
         tablet.addValue(
-            "s0",
-            rowIndex,
-            new Binary(String.valueOf(deviceIndex).getBytes(StandardCharsets.UTF_8)));
+            "s0", rowIndex, new Binary(String.format("t%s", row).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue("s1", rowIndex, row);
         tablet.addValue("s2", rowIndex, (row * 1.0f));
         tablet.addValue(
@@ -502,6 +534,9 @@ public class TableModelUtils {
         if (randomNumber < 9) {
           tablet.addValue("s" + randomNumber, rowIndex, null);
         }
+        if (nullDeviceIndex < 4) {
+          tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
+        }
       }
     }
 
@@ -509,11 +544,12 @@ public class TableModelUtils {
   }
 
   public static Tablet generateTablet(
-      String tableName,
-      int deviceStartIndex,
-      int deviceEndIndex,
-      int deviceDataSize,
-      boolean allowNullValue) {
+      final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int deviceDataSize,
+      final boolean allowNullValue,
+      final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -528,9 +564,9 @@ public class TableModelUtils {
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
             Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -545,6 +581,7 @@ public class TableModelUtils {
             (deviceEndIndex - deviceStartIndex) * deviceDataSize);
     tablet.initBitMaps();
     final Random random = new Random();
+    int nullDeviceIndex = allowNullDeviceColumn ? random.nextInt(4) : 4;
 
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
       // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
@@ -556,19 +593,22 @@ public class TableModelUtils {
         tablet.addValue(
             "s0",
             rowIndex,
-            new Binary(String.valueOf(deviceIndex).getBytes(StandardCharsets.UTF_8)));
+            new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue("s1", rowIndex, value);
         tablet.addValue("s2", rowIndex, (value * 1.0f));
         tablet.addValue(
             "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue("s4", rowIndex, value);
-        tablet.addValue("s5", rowIndex, value);
+        tablet.addValue("s5", rowIndex, (int) value);
         tablet.addValue("s6", rowIndex, value * 0.1);
-        tablet.addValue("s7", rowIndex, getDate(value));
+        tablet.addValue("s7", rowIndex, getDate((int) value));
         tablet.addValue(
             "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
         if (randomNumber < 9) {
           tablet.addValue("s" + randomNumber, rowIndex, null);
+        }
+        if (nullDeviceIndex < 4) {
+          tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
         }
       }
     }
