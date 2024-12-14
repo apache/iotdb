@@ -1410,7 +1410,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitListUserPrivilegeStatement(
       RelationalSqlParser.ListUserPrivilegeStatementContext ctx) {
-    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_USER);
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_USER_PRIV);
     stmt.setUserName(ctx.userName.getText());
     return stmt;
   }
@@ -1418,7 +1418,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitListRolePrivilegeStatement(
       RelationalSqlParser.ListRolePrivilegeStatementContext ctx) {
-    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_ROLE_PRIV);
     stmt.setRoleName(ctx.roleName.getText());
     return stmt;
   }
@@ -1441,7 +1441,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     username = ctx.holderName.getText();
     boolean grantOption = ctx.grantOpt() != null;
     boolean toTable = false;
-
     // SYSTEM PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
       String privilegeText = ctx.privilegeObjectScope().systemPrivilege().getText();
@@ -1454,10 +1453,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           grantOption);
     } else {
       String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         toTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
+        String databaseName;
+        if (toTable) {
+          databaseName = clientSession.getDatabaseName();
+          if (databaseName == null) {
+            throw new SemanticException("Database is set yet.");
+          }
+        }
         String obj = ctx.privilegeObjectScope().objectName.getText();
         return new RelationalAuthorStatement(
             toUser
@@ -1469,7 +1475,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser ? username : "",
             toUser ? "" : username,
             grantOption);
-      } else if (!ctx.privilegeObjectScope().objectScope().isEmpty()) {
+      } else if (ctx.privilegeObjectScope().objectScope() != null) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText();
         return new RelationalAuthorStatement(

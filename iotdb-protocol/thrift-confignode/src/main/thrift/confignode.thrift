@@ -390,7 +390,7 @@ struct TDBPrivilege {
     1: required string databasename
     2: required set<i32> privileges
     3: required set<i32> grantOpt
-    4: optional map<string, TTablePrivilege> tableinfo
+    4: required map<string, TTablePrivilege> tableinfo
 }
 
 struct TPermissionInfoResp {

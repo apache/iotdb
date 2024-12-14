@@ -610,12 +610,14 @@ public class AuthorInfo implements SnapshotProcessor {
     User user = authorizer.getUser(username);
     TUserResp tUserResp = user.getUserInfo(type);
     // Permission information for roles owned by users
-    if (user.getRoleSet() != null) {
+    if (!user.getRoleSet().isEmpty()) {
       for (String roleName : user.getRoleSet()) {
         Role role = authorizer.getRole(roleName);
         TRoleResp roleResp = role.getRoleInfo(type);
         result.putToRoleInfo(roleName, roleResp);
       }
+    } else {
+      result.setRoleInfo(new HashMap<>());
     }
     result.setUserInfo(tUserResp);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

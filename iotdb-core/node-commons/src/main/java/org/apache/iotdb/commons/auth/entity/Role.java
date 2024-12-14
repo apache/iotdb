@@ -162,6 +162,8 @@ public class Role {
           tTablePrivilege.setGrantOption(tablePrivilege.getGrantOptionIntSet());
           tdbPrivilege.putToTableinfo(tablePrivilege.getTableName(), tTablePrivilege);
         }
+      } else {
+        tdbPrivilege.setTableinfo(new HashMap<>());
       }
       privileges.add(tdbPrivilege);
     }

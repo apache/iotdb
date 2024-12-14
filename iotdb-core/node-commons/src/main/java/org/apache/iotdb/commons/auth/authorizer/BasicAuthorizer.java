@@ -261,7 +261,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToRole(String rolename, PrivilegeType priv, Boolean grantOpt)
       throws AuthException {
-    roleManager.grantPrivilegeToEntry(rolename, new PrivilegeUnion(priv, grantOpt));
+    roleManager.grantPrivilegeToEntry(
+        rolename, new PrivilegeUnion(priv, grantOpt, priv.isRelationalPrivilege()));
   }
 
   @Override
