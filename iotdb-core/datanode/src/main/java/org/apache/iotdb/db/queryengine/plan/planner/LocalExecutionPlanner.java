@@ -298,15 +298,10 @@ public class LocalExecutionPlanner {
 
     if (freeMemoryForOperators > ALLOCATE_MEMORY_FOR_OPERATORS) {
       LOGGER.error(
-          "The free memory released is more than allocated memory, free memory:{} released memory: {},allocated memory:{}",
+          "The free memory {} is more than allocated memory {}, last released memory: {}",
           freeMemoryForOperators,
-          memoryInBytes,
-          ALLOCATE_MEMORY_FOR_OPERATORS);
-
-      throw new MemoryNotEnoughException(
-          String.format(
-              "The memory released is more than allocated memory, released memory: %d, allocated memory: %d",
-              memoryInBytes, ALLOCATE_MEMORY_FOR_OPERATORS));
+          ALLOCATE_MEMORY_FOR_OPERATORS,
+          memoryInBytes);
     }
   }
 
