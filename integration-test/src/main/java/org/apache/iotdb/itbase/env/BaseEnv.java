@@ -42,6 +42,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -192,6 +193,8 @@ public interface BaseEnv {
   ITableSessionPool getTableSessionPool(int maxSize, String database);
 
   ISession getSessionConnection() throws IoTDBConnectionException;
+
+  ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException;
 
   ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 

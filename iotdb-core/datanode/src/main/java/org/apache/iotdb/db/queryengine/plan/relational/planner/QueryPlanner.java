@@ -92,6 +92,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -260,6 +262,7 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
+    builder = distinct(builder, node, outputs);
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -799,6 +802,23 @@ public class QueryPlanner {
     return subPlan.withNewRoot(
         new SortNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
+  }
+
+  private PlanBuilder distinct(
+      PlanBuilder subPlan, QuerySpecification node, List<Expression> expressions) {
+    if (node.getSelect().isDistinct()) {
+      List<Symbol> symbols =
+          expressions.stream().map(subPlan::translate).collect(Collectors.toList());
+
+      return subPlan.withNewRoot(
+          singleAggregation(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              ImmutableMap.of(),
+              singleGroupingSet(symbols)));
+    }
+
+    return subPlan;
   }
 
   private Optional<OrderingScheme> orderingScheme(

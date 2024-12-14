@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -342,6 +344,16 @@ public class CommonConfig {
   private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
+
+  private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
+  // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
+  // the queries
+  private volatile boolean querySamplingHasRateLimit = true;
+  // if querySamplingRateLimiter != 0, enableQuerySampling is true; querySamplingRateLimiter = 0,
+  // enableQuerySampling is false
+  private volatile boolean enableQuerySampling = true;
+
+  private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   CommonConfig() {
     // Empty constructor
@@ -1528,5 +1540,43 @@ public class CommonConfig {
 
   public void setLog2SizeClassGroup(int log2SizeClassGroup) {
     this.log2SizeClassGroup = log2SizeClassGroup;
+  }
+
+  /**
+   * @param querySamplingRateLimit query_sample_throughput_bytes_per_sec
+   */
+  public void setQuerySamplingRateLimit(int querySamplingRateLimit) {
+    if (querySamplingRateLimit > 0) {
+      this.querySamplingRateLimiter.setRate(querySamplingRateLimit);
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = true;
+    } else if (querySamplingRateLimit == 0) {
+      // querySamplingRateLimit = 0, means that we sample no queries
+      this.enableQuerySampling = false;
+    } else {
+      // querySamplingRateLimit < 0, means that we need to full sample all queries
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = false;
+    }
+  }
+
+  public boolean isQuerySamplingHasRateLimit() {
+    return querySamplingHasRateLimit;
+  }
+
+  public RateLimiter getQuerySamplingRateLimiter() {
+    return querySamplingRateLimiter;
+  }
+
+  public boolean isEnableQuerySampling() {
+    return enableQuerySampling;
+  }
+
+  public Pattern getTrustedUriPattern() {
+    return trustedUriPattern;
+  }
+
+  public void setTrustedUriPattern(Pattern trustedUriPattern) {
+    this.trustedUriPattern = trustedUriPattern;
   }
 }

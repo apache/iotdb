@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -329,6 +330,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected TSStatus tryLogin() {
+    // Do nothing. Login check will be done in the data node receiver.
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
   }
@@ -382,5 +389,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  @Override
+  protected void closeSession() {
+    // Do nothing. The session will be closed in the data node receiver.
   }
 }

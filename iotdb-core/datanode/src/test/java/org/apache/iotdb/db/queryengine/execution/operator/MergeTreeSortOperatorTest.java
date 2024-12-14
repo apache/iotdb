@@ -1893,5 +1893,10 @@ public class MergeTreeSortOperatorTest {
     public boolean isQuery() {
       return false;
     }
+
+    @Override
+    public boolean isUserQuery() {
+      return false;
+    }
   }
 }

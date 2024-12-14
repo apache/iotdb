@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -182,6 +183,8 @@ public class WritingMetrics implements IMetricSet {
   public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
   public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
+  public static final String WAL_QUEUE_CURRENT_MEM_COST = "wal_queue_current_mem_cost";
+  public static final String WAL_QUEUE_MAX_MEM_COST = "wal_queue_max_mem_cost";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -192,6 +195,7 @@ public class WritingMetrics implements IMetricSet {
   private Histogram readWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram readWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram writeWALBufferCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Gauge walQueueMaxMemSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
 
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -253,6 +257,20 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WRITE_WAL_BUFFER_COST_NS);
+    walQueueMaxMemSizeGauge =
+        metricService.getOrCreateGauge(
+            Metric.WAL_QUEUE_MEM_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_QUEUE_MAX_MEM_COST);
+    SystemInfo systemInfo = SystemInfo.getInstance();
+    metricService.createAutoGauge(
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        MetricLevel.IMPORTANT,
+        systemInfo,
+        SystemInfo::getCurrentWalQueueMemoryCost,
+        Tag.NAME.toString(),
+        WAL_QUEUE_CURRENT_MEM_COST);
   }
 
   private void unbindWALMetrics(AbstractMetricService metricService) {
@@ -274,6 +292,16 @@ public class WritingMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.HISTOGRAM, Metric.WAL_BUFFER.toString(), Tag.NAME.toString(), name));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        Tag.NAME.toString(),
+        WAL_QUEUE_CURRENT_MEM_COST);
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.WAL_QUEUE_MEM_COST.toString(),
+        Tag.NAME.toString(),
+        WAL_QUEUE_MAX_MEM_COST);
   }
 
   // endregion
@@ -907,6 +935,10 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWALBufferEntriesCount(long count) {
     entriesCountHistogram.update(count);
+  }
+
+  public void recordWALQueueMaxMemorySize(long size) {
+    walQueueMaxMemSizeGauge.set(size);
   }
 
   public void recordFlushThreshold(double flushThreshold) {

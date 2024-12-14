@@ -240,6 +240,27 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
+    final String usernameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
+    if (usernameString != null) {
+      username = usernameString;
+    }
+    final String passwordString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
+    if (passwordString != null) {
+      password = passwordString;
+    }
+    final TSStatus status = tryLogin();
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Receiver id = {}: Handshake failed because login failed, response status = {}.",
+          receiverId.get(),
+          status);
+      return new TPipeTransferResp(status);
+    } else {
+      LOGGER.info("Receiver id = {}: User {} login successfully.", receiverId.get(), username);
+    }
+
     final String shouldConvertDataTypeOnTypeMismatchString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH);
     if (shouldConvertDataTypeOnTypeMismatchString != null) {
@@ -256,17 +277,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               loadTsFileStrategyString));
     }
 
-    final String usernameString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
-    if (usernameString != null) {
-      username = usernameString;
-    }
-    final String passwordString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
-    if (passwordString != null) {
-      password = passwordString;
-    }
-
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
@@ -281,6 +291,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected abstract String getClusterId();
 
+  protected abstract TSStatus tryLogin();
+
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
       final boolean isRequestThroughAirGap,
@@ -288,16 +300,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     try {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
+      // If the request is through air gap, the sender will resend the file piece from the beginning
+      // of the file. So the receiver should reset the offset of the writing file to the beginning
+      // of the file.
+      if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
+        writingFileWriter.setLength(req.getStartWritingOffset());
+      }
+
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
-        if (isRequestThroughAirGap
-            || !writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-          // 1. If the request is through air gap, the sender will resend the file piece from the
-          // beginning of the file. So the receiver should reset the offset of the writing file to
-          // the beginning of the file.
-          // 2. If the file is a tsFile, then the content will not be changed for a specific
-          // filename. However, for other files (mod, snapshot, etc.) the content varies for the
-          // same name in different times, then we must rewrite the file to apply the newest
-          // version.
+        if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+          // If the file is a tsFile, then the content will not be changed for a specific filename.
+          // However, for other files (mod, snapshot, etc.) the content varies for the same name in
+          // different times, then we must rewrite the file to apply the newest version.
           writingFileWriter.setLength(0);
         }
 
@@ -317,7 +331,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.write(req.getFilePiece());
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to write file piece from req {}.", receiverId.get(), req, e);
       final TSStatus status =
@@ -377,8 +391,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         writingFile.getPath());
   }
 
-  private boolean isFileExistedAndNameCorrect(String fileName) {
-    return writingFile != null && writingFile.getName().equals(fileName);
+  private boolean isFileExistedAndNameCorrect(final String fileName) {
+    return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
   }
 
   private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
@@ -393,7 +407,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverId.get(),
             writingFile == null ? "null" : writingFile.getPath(),
             writingFile == null ? 0 : writingFile.length());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to close current writing file writer {}, because {}.",
             receiverId.get(),
@@ -414,6 +428,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void deleteCurrentWritingFile() {
     if (writingFile != null) {
       deleteFile(writingFile);
+      writingFile = null;
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -422,7 +437,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  private void deleteFile(File file) {
+  private void deleteFile(final File file) {
     if (file.exists()) {
       try {
         FileUtils.delete(file);
@@ -430,7 +445,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
             file.getPath());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to delete original writing file {}, because {}.",
             receiverId.get(),
@@ -512,7 +527,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status.getMessage());
       }
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.",
           receiverId.get(),
@@ -597,7 +612,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status);
       }
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.", receiverId.get(), files, req, e);
       return new TPipeTransferResp(
@@ -788,6 +803,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
 
+    // Close the session
+    closeSession();
+
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
   }
+
+  protected abstract void closeSession();
 }
