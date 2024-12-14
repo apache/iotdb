@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
@@ -403,7 +404,8 @@ public class Coordinator {
         || statement instanceof KillQuery
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
-        || statement instanceof ShowFunctions) {
+        || statement instanceof ShowFunctions
+        || statement instanceof RelationalAuthorStatement) {
       return new ConfigExecution(
           queryContext,
           null,
