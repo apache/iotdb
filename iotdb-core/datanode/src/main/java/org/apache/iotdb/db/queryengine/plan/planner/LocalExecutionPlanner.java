@@ -302,6 +302,7 @@ public class LocalExecutionPlanner {
           freeMemoryForOperators,
           ALLOCATE_MEMORY_FOR_OPERATORS,
           memoryInBytes);
+      freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
     }
   }
 
