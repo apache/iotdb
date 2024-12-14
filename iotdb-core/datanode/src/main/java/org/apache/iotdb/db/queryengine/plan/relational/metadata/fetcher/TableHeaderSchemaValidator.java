@@ -122,22 +122,39 @@ public class TableHeaderSchemaValidator {
       }
     } else {
       // If table with this name already exists and isStrictIdColumn is true, make sure the existing
-      // id columns are the prefix of the incoming id columns
+      // id columns are the prefix of the incoming id columns, or vice versa
       if (isStrictIdColumn) {
-        final List<TsTableColumnSchema> idColumns = table.getIdColumnSchemaList();
-        for (int indexInIncoming = 0; indexInIncoming < idColumns.size(); indexInIncoming++) {
-          final String idName = idColumns.get(indexInIncoming).getColumnName();
-          final int indexInExisting = tableSchema.getIndexAmongIdColumns(idName);
-          if (indexInExisting == -1) {
-            throw new SemanticException(
-                String.format(
-                    "Incoming id column %s not found in existing table in IoTDB", idName));
+        final List<TsTableColumnSchema> realIdColumns = table.getIdColumnSchemaList();
+        final List<ColumnSchema> incomingIdColumns = tableSchema.getIdColumns();
+        if (realIdColumns.size() <= incomingIdColumns.size()) {
+          // When incoming table has more ID columns, the existing id columns
+          // should be the prefix of the incoming id columns (or equal)
+          for (int indexReal = 0; indexReal < realIdColumns.size(); indexReal++) {
+            final String idName = realIdColumns.get(indexReal).getColumnName();
+            final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
+            if (indexIncoming != indexReal) {
+              throw new SemanticException(
+                  String.format(
+                      "Can not create table because incoming table has no less id columns than existing table, "
+                          + "and the existing id columns are not the prefix of the incoming id columns. "
+                          + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
           }
-          if (indexInExisting != indexInIncoming) {
-            throw new SemanticException(
-                String.format(
-                    "Incoming id column %s ordinal mismatch with existing table in IoTDB, expected %d, actual %d",
-                    idName, indexInIncoming, indexInExisting));
+        } else {
+          // When existing table has more ID columns, the incoming id columns
+          // should be the prefix of the existing id columns
+          for (int indexIncoming = 0; indexIncoming < incomingIdColumns.size(); indexIncoming++) {
+            final String idName = incomingIdColumns.get(indexIncoming).getName();
+            final int indexReal = table.getIdColumnOrdinal(idName);
+            if (indexReal != indexIncoming) {
+              throw new SemanticException(
+                  String.format(
+                      "Can not create table because existing table has more id columns than incoming table, "
+                          + "and the incoming id columns are not the prefix of the existing id columns. "
+                          + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
           }
         }
       }
