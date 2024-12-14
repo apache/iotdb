@@ -127,7 +127,7 @@ public class RelationalAuthorStatement extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitRelationalAuthorPlan(this, context);
   }
 
@@ -170,6 +170,8 @@ public class RelationalAuthorStatement extends Statement {
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:
+      case LIST_ROLE_PRIV:
+      case LIST_USER_PRIV:
         return QueryType.READ;
       default:
         throw new IllegalArgumentException("Unknow authorType:" + this.authorType);
