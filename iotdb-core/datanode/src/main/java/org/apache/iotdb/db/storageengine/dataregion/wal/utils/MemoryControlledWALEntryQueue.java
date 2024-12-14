@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class MemoryControlledWALEntryQueue {
 
   private final BlockingQueue<WALEntry> queue;
-  private final Object nonFullCondition = new Object();
+  private static final Object nonFullCondition = new Object();
 
   public MemoryControlledWALEntryQueue() {
     queue = new LinkedBlockingQueue<>();

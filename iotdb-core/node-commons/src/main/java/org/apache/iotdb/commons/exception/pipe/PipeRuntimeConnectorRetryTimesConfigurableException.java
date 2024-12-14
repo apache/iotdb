@@ -24,7 +24,8 @@ public class PipeRuntimeConnectorRetryTimesConfigurableException
 
   private final int retryTimes;
 
-  public PipeRuntimeConnectorRetryTimesConfigurableException(String message, int retryTimes) {
+  public PipeRuntimeConnectorRetryTimesConfigurableException(
+      final String message, final int retryTimes) {
     super(message);
     this.retryTimes = retryTimes;
   }

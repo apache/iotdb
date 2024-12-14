@@ -169,7 +169,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                         "",
                         partitionFetcher,
                         schemaFetcher,
-                        config.getQueryTimeoutThreshold());
+                        config.getQueryTimeoutThreshold(),
+                        false);
             tsStatus = result.status;
           }
         } catch (Exception e) {

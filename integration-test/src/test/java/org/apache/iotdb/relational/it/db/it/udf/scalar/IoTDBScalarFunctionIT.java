@@ -24,9 +24,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -64,13 +65,13 @@ public class IoTDBScalarFunctionIT {
         "CREATE FUNCTION date_plus as 'org.apache.iotdb.db.query.udf.example.relational.DatePlusOne'"
       };
 
-  @Before
+  @BeforeClass
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
-  @After
+  @AfterClass
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
@@ -219,6 +220,18 @@ public class IoTDBScalarFunctionIT {
 
     } catch (Exception e) {
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testUntrustedUri() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE FUNCTION test as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull' USING URI 'https://alioss.timecho.com/upload/library-udf.jar'");
+      fail("should fail");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("701: Untrusted uri "));
     }
   }
 }
