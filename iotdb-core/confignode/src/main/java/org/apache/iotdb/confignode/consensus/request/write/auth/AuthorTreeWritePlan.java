@@ -37,10 +37,10 @@ public class AuthorTreeWritePlan extends AuthorTreePlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(super.getType().getPlanType(), stream);
-    BasicStructureSerDeUtil.write(super.getUserName(), stream);
-    BasicStructureSerDeUtil.write(super.getRoleName(), stream);
-    BasicStructureSerDeUtil.write(super.getPassword(), stream);
+    ReadWriteIOUtils.write(getType().getPlanType(), stream);
+    BasicStructureSerDeUtil.write(userName, stream);
+    BasicStructureSerDeUtil.write(roleName, stream);
+    BasicStructureSerDeUtil.write(password, stream);
     if (permissions == null) {
       stream.write((byte) 0);
     } else {
@@ -59,11 +59,10 @@ public class AuthorTreeWritePlan extends AuthorTreePlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    super.setUserName(BasicStructureSerDeUtil.readString(buffer));
-    super.setRoleName(BasicStructureSerDeUtil.readString(buffer));
-    super.setPassword(BasicStructureSerDeUtil.readString(buffer));
-    final byte hasPermissions = buffer.get();
-    if (hasPermissions == (byte) 0) {
+    userName = BasicStructureSerDeUtil.readString(buffer);
+    roleName = BasicStructureSerDeUtil.readString(buffer);
+    password = BasicStructureSerDeUtil.readString(buffer);
+    if (buffer.get() == (byte) 0) {
       this.permissions = null;
     } else {
       int permissionsSize = buffer.getInt();
