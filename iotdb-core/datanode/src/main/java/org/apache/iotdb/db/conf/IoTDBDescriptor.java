@@ -1648,6 +1648,17 @@ public class IoTDBDescriptor {
                 .orElse(
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "region_migration_speed_limit_bytes_per_second"))));
+    conf.setMaxWaitingTimeForWaitBatchInMs(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "max_waiting_time_for_wait_batch_ms",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "max_waiting_time_for_wait_batch_ms")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "max_waiting_time_for_wait_batch_ms"))));
   }
 
   private void loadIoTConsensusV2Props(TrimProperties properties) throws IOException {

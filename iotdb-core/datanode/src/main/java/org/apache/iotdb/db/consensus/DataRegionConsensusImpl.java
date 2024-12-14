@@ -140,6 +140,8 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .setMaxWaitingTimeForWaitBatchInMs(
+                              CONF.getMaxWaitingTimeForWaitBatchInMs())
                           .build())
                   .build())
           .setPipeConsensusConfig(
