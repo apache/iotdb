@@ -37,16 +37,16 @@ public class TablePrivilegeTest {
     tablePrivilege.grantPrivilege(PrivilegeType.ALTER);
     tablePrivilege.grantOption(PrivilegeType.DROP);
     Assert.assertEquals(2, tablePrivilege.getPrivileges().size());
-    Assert.assertEquals(0, tablePrivilege.getGrantOption().size());
-    tablePrivilege.grantOption(PrivilegeType.SELECT);
     Assert.assertEquals(1, tablePrivilege.getGrantOption().size());
+    tablePrivilege.grantOption(PrivilegeType.SELECT);
+    Assert.assertEquals(2, tablePrivilege.getGrantOption().size());
     tablePrivilege.revokePrivilege(PrivilegeType.SELECT);
-    Assert.assertEquals(0, tablePrivilege.getGrantOption().size());
+    Assert.assertEquals(2, tablePrivilege.getGrantOption().size());
     Assert.assertEquals(1, tablePrivilege.getPrivileges().size());
     tablePrivilege.grantOption(PrivilegeType.DROP);
-    Assert.assertEquals(1, tablePrivilege.getGrantOption().size());
+    Assert.assertEquals(2, tablePrivilege.getGrantOption().size());
     tablePrivilege.revokeGrantOption(PrivilegeType.DROP);
-    Assert.assertEquals(0, tablePrivilege.getGrantOption().size());
+    Assert.assertEquals(1, tablePrivilege.getGrantOption().size());
   }
 
   @Test
