@@ -151,7 +151,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.St
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Trim2ColumnTransformer;
@@ -1008,15 +1007,12 @@ public class ColumnTransformerBuilder
           context.sessionInfo.getZoneId());
     } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
       List<ColumnTransformer> columnTransformers = new ArrayList<>();
-      for (int i = 1; i < children.size(); i++) {
+      //      String pattern = this.process(children.get(0), context).;
+      for (int i = 0; i < children.size(); i++) {
         columnTransformers.add(this.process(children.get(i), context));
       }
       return new FormatColumnTransformer(
-          STRING,
-          ((StringLiteral) children.get(0)).getValue(),
-          columnTransformers,
-          context.sessionInfo.getZoneId());
-          STRING, ((StringLiteral) children.get(0)).getValue(), columnTransformers);
+          STRING, columnTransformers, context.sessionInfo.getZoneId());
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {

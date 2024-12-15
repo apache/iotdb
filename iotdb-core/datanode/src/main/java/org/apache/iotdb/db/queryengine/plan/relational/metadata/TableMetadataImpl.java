@@ -537,11 +537,11 @@ public class TableMetadataImpl implements Metadata {
       }
       return TIMESTAMP;
     } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isCharType(argumentTypes.get(0))) {
+      if (argumentTypes.size() < 2 || !isCharType(argumentTypes.get(0))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + "first argument must be char type.");
+                + " must have at least two arguments, and first argument must be char type.");
       }
       return STRING;
     }

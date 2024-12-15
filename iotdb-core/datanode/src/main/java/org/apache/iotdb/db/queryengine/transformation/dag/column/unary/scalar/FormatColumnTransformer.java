@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -26,23 +27,20 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
+import java.util.IllegalFormatConversionException;
 import java.util.List;
+import java.util.MissingFormatArgumentException;
 
 import static java.lang.String.format;
 import static org.apache.iotdb.pipe.api.type.Binary.stringToBytes;
 
 public class FormatColumnTransformer extends MultiColumnTransformer {
 
-  private final String pattern;
   private final ZoneId zoneId;
 
   public FormatColumnTransformer(
-      Type returnType,
-      String pattern,
-      List<ColumnTransformer> columnTransformerList,
-      ZoneId zoneId) {
+      Type returnType, List<ColumnTransformer> columnTransformerList, ZoneId zoneId) {
     super(returnType, columnTransformerList);
-    this.pattern = pattern;
     this.zoneId = zoneId;
   }
 
@@ -67,18 +65,26 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
   }
 
   private void transform(List<Column> childrenColumns, ColumnBuilder builder, int i) {
-    Object[] values = new Object[childrenColumns.size()];
-    for (int j = 0; j < childrenColumns.size(); j++) {
-      Column column = childrenColumns.get(j);
-      TypeEnum type = columnTransformerList.get(j).getType().getTypeEnum();
+    List<Column> valueColumns = childrenColumns.subList(1, childrenColumns.size());
+    Object[] values = new Object[valueColumns.size()];
+    String pattern = String.valueOf(childrenColumns.get(0).getBinary(i));
+    for (int j = 0; j < valueColumns.size(); j++) {
+      Column column = valueColumns.get(j);
+      TypeEnum type = columnTransformerList.get(j + 1).getType().getTypeEnum();
       if (column.isNull(i)) {
         values[j] = null;
       } else {
         values[j] = valueConverter(type, column, i);
       }
     }
-    String formatted = format(pattern, values);
-    returnType.writeBinary(builder, new Binary(stringToBytes(formatted)));
+    try {
+      String formatted = format(pattern, values);
+      returnType.writeBinary(builder, new Binary(stringToBytes(formatted)));
+    } catch (IllegalFormatConversionException | MissingFormatArgumentException e) {
+      String message = e.toString().replaceFirst("^java\\.util\\.(\\w+)Exception", "$1");
+      throw new SemanticException(
+          String.format("Invalid format string: %s (%s)", pattern, message));
+    }
   }
 
   private Object valueConverter(TypeEnum type, Column column, int i) {

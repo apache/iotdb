@@ -24,6 +24,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 public class IoTDBFormatFunctionTableIT {
@@ -166,5 +167,24 @@ public class IoTDBFormatFunctionTableIT {
     tableResultSetEqualTest(
         "SELECT FORMAT('Value:%s', s1) FROM null_table",
         new String[] {"_col0"}, new String[] {"Value:null,"}, DATABASE_NAME);
+  }
+
+  @Test
+  public void testAnomalies() {
+    tableAssertTestFail(
+        "SELECT FORMAT('%1$tA, %1$tB %1$te, %1$tY', s1) FROM number_table",
+        "701: Invalid format string:", DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT FORMAT('%f', s1) FROM string_table", "701: Invalid format string:", DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT FORMAT('%s %d', s1) FROM string_table",
+        "701: Invalid format string:", DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT FORMAT('%s') FROM string_table",
+        "701: Scalar function format must have at least two arguments, and first argument must be char type.",
+        DATABASE_NAME);
   }
 }
