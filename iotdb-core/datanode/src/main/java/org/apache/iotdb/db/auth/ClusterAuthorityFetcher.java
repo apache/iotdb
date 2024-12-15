@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -63,6 +64,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -71,7 +73,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
-  // for test only.
   private boolean acceptCache = true;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
@@ -81,6 +82,58 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
+  }
+
+  /** -- check user privileges SYSTEM, TREE, RELATIONAL-- * */
+  private TSStatus checkPrivilege(
+      String username,
+      PrivilegeUnion union,
+      BiFunction<Role, PrivilegeUnion, Boolean> privilegeCheck,
+      TCheckUserPrivilegesReq req) {
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (privilegeCheck.apply(user, union)) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      boolean remoteCheck = false;
+      for (String rolename : user.getRoleSet()) {
+        Role role = iAuthorCache.getRoleCache(rolename);
+        if (role == null) {
+          remoteCheck = true;
+          break;
+        }
+        if (privilegeCheck.apply(role, union)) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        }
+      }
+      if (remoteCheck) {
+        return checkPrivilegeFromConfigNode(req).getStatus();
+      }
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+    }
+    return checkPrivilegeFromConfigNode(req).getStatus();
+  }
+
+  @Override
+  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permission, false),
+        (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+  }
+
+  @Override
+  public TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permission, true),
+        (role, union) -> role.checkSysPriGrantOpt(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), true));
   }
 
   @Override
@@ -120,33 +173,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public boolean checkUserPrivilegeGrantOpt(
-      String username, PrivilegeType permission, Object... targets) {
-    checkCacheAvailable();
-
-    switch (targets.length) {
-      case 0:
-        return checkUserSysPriGrantOpt(username, permission);
-      case 1:
-        if (targets[0] instanceof PartialPath) {
-          return checkUserPathPriGrantOpt(
-              username, Collections.singletonList((PartialPath) targets[0]), permission);
-        }
-        return checkUserObjectPriGrantOpt(username, (String) targets[0], "", permission);
-      case 2:
-        return checkUserObjectPriGrantOpt(
-            username, (String) targets[0], (String) targets[1], permission);
-      default:
-        throw new IllegalArgumentException("Invalid number of arguments for grantopt check");
-    }
-  }
-
-  private boolean checkUserPathPriGrantOpt(
-      String username, List<PartialPath> paths, PrivilegeType permission) {
+  public TSStatus checkUserPathPrivilegesGrantOpt(
+      String username, List<? extends PartialPath> paths, PrivilegeType permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
-        return true;
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       for (PartialPath path : paths) {
         if (!user.checkPathPrivilegeGrantOpt(path, permission)) {
@@ -154,7 +186,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           for (String roleName : user.getRoleSet()) {
             Role role = iAuthorCache.getRoleCache(roleName);
             if (role == null) {
-              return checkPathGrantOptFromConfigNode(username, paths, permission);
+              return checkPrivilegeFromConfigNode(
+                      new TCheckUserPrivilegesReq(
+                              username,
+                              PrivilegeModelType.TREE.ordinal(),
+                              permission.ordinal(),
+                              false)
+                          .setPaths(AuthUtils.serializePartialPathList(paths)))
+                  .getStatus();
             }
             if (role.checkPathPrivilegeGrantOpt(path, permission)) {
               checkFromRole = true;
@@ -162,95 +201,110 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             }
           }
           if (!checkFromRole) {
-            return false;
+            return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
           }
         }
       }
-      return true;
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return checkPathGrantOptFromConfigNode(username, paths, permission);
+      return checkPrivilegeFromConfigNode(
+              new TCheckUserPrivilegesReq(
+                      username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false)
+                  .setPaths(AuthUtils.serializePartialPathList(paths)))
+          .getStatus();
     }
   }
 
-  private boolean checkUserObjectPriGrantOpt(
+  @Override
+  public TSStatus checkUserDBPrivileges(
+      String username, String database, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, permission),
+        (role, union) -> role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+            .setDatabase(database));
+  }
+
+  @Override
+  public TSStatus checkUserDBPrivilegesGrantOpt(
+      String username, String database, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, permission, true),
+        (role, union) ->
+            role.checkObjectPrivilegeGrantOpt(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
+            .setUsername(database));
+  }
+
+  @Override
+  public TSStatus checkUserTBPrivileges(
       String username, String database, String table, PrivilegeType permission) {
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (user.isOpenIdUser()) {
-        return true;
-      }
-      if (!user.checkObjectPrivilegeGrantOpt(database, table, permission)) {
-        for (String roleName : user.getRoleSet()) {
-          Role role = iAuthorCache.getRoleCache(roleName);
-          if (role == null) {
-            return checkObjectGrantOptFromConfigNode(username, database, table, permission);
-          }
-          if (role.checkObjectPrivilegeGrantOpt(database, table, permission)) {
-            return true;
-          }
-        }
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      return checkObjectGrantOptFromConfigNode(username, database, table, permission);
-    }
-  }
-
-  private boolean checkUserSysPriGrantOpt(String username, PrivilegeType permission) {
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (user.isOpenIdUser()) {
-        return true;
-      }
-      if (!user.checkSysPriGrantOpt(permission)) {
-        for (String roleName : user.getRoleSet()) {
-          Role role = iAuthorCache.getRoleCache(roleName);
-          if (role == null) {
-            return checkSysGrantOptFromConfigNode(username, permission);
-          }
-          if (role.checkSysPriGrantOpt(permission)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      return true;
-    } else {
-      return checkSysGrantOptFromConfigNode(username, permission);
-    }
-  }
-
-  private boolean checkSysGrantOptFromConfigNode(String username, PrivilegeType priv) {
-    TCheckUserPrivilegesReq req =
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, permission),
+        (role, union) ->
+            role.checkTablePrivilege(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.SYSTEM.ordinal(), priv.ordinal(), true);
-    return checkPrivilegeFromConfigNode(req).getStatus().getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+            .setDatabase(database)
+            .setTable(table));
   }
 
-  private boolean checkPathGrantOptFromConfigNode(
-      String username, List<PartialPath> paths, PrivilegeType priv) {
-    TCheckUserPrivilegesReq req =
+  @Override
+  public TSStatus checkUserTBPrivilegesGrantOpt(
+      String username, String database, String table, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, permission, true),
+        (role, union) ->
+            role.checkObjectPrivilegeGrantOpt(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.TREE.ordinal(), priv.ordinal(), true);
-    req.setPaths(AuthUtils.serializePartialPathList(paths));
-    return checkPrivilegeFromConfigNode(req).getStatus().getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+            .setDatabase(database)
+            .setTable(table));
   }
 
-  private boolean checkObjectGrantOptFromConfigNode(
-      String username, String database, String table, PrivilegeType priv) {
-    TCheckUserPrivilegesReq req =
+  /** -- check database/table visible -- * */
+  @Override
+  public TSStatus checkDBVisible(String username, String database) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, PrivilegeType.INVALID, false),
+        (role, union) -> role.checkDBVisible(union.getDBName()),
         new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.RELATIONAL.ordinal(), priv.ordinal(), true);
-    req.setDatabase(database);
-    if (!table.isEmpty()) {
-      req.setTable(table);
-    }
-    return checkPrivilegeFromConfigNode(req).getStatus().getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+                username,
+                PrivilegeModelType.RELATIONAL.ordinal(),
+                PrivilegeType.INVALID.ordinal(),
+                false)
+            .setDatabase(database));
+  }
+
+  @Override
+  public TSStatus checkTBVisible(String username, String database, String table) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, PrivilegeType.INVALID, false),
+        (role, union) -> role.checkTBVisible(union.getDBName(), union.getTbName()),
+        new TCheckUserPrivilegesReq(
+                username,
+                PrivilegeModelType.RELATIONAL.ordinal(),
+                PrivilegeType.INVALID.ordinal(),
+                false)
+            .setDatabase(database)
+            .setTable(table));
   }
 
   @Override
@@ -305,36 +359,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } else {
       throw new AuthException(
           TSStatusCode.EXECUTE_STATEMENT_ERROR, authizedPatternTree.getStatus().getMessage());
-    }
-  }
-
-  @Override
-  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
-    checkCacheAvailable();
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (!user.isOpenIdUser() && (!user.checkSysPrivilege(permission))) {
-        if (user.getRoleSet().isEmpty()) {
-          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-        }
-        boolean status = false;
-        for (String rolename : user.getRoleSet()) {
-          Role cacheRole = iAuthorCache.getRoleCache(rolename);
-          if (cacheRole == null) {
-            return checkSysPriFromConfigNode(username, permission);
-          }
-          if (cacheRole.checkSysPrivilege(permission)) {
-            status = true;
-            break;
-          }
-        }
-        if (!status) {
-          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-        }
-      }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return checkSysPriFromConfigNode(username, permission);
     }
   }
 
@@ -508,13 +532,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
     }
     return permissionInfoResp;
-  }
-
-  private TSStatus checkSysPriFromConfigNode(String username, PrivilegeType permission) {
-    TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false);
-    return checkPrivilegeFromConfigNode(req).getStatus();
   }
 
   private List<Integer> checkPathFromConfigNode(
