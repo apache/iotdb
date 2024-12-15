@@ -33,18 +33,26 @@ import org.apache.iotdb.udf.api.type.Type;
 /** This function is used for timestamp repair. */
 public class UDTFTimestampRepair implements UDTF {
   String intervalMethod;
-  int interval;
-  int intervalMode;
+  long interval;
+  long intervalMode;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
-        .validate(
-            x -> (Integer) x >= 0,
-            "Interval should be a positive integer.",
-            validator.getParameters().getIntOrDefault("interval", 0));
+        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
+    String intervalString = validator.getParameters().getStringOrDefault("interval", null);
+    if (intervalString != null) {
+      try {
+        long parsedInterval = Util.parseTime(intervalString, validator.getParameters());
+        validator.validate(
+            x -> parsedInterval > 0,
+            "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
+      } catch (Exception e) {
+        throw new UDFException(
+            "Invalid time format for interval.");
+      }
+    }
   }
 
   @Override
@@ -54,15 +62,20 @@ public class UDTFTimestampRepair implements UDTF {
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
     intervalMethod = parameters.getStringOrDefault("method", "Median");
-    interval = parameters.getIntOrDefault("interval", 0);
+    String intervalString = parameters.getStringOrDefault("interval", null);
+    if (intervalString != null) {
+      interval = Util.parseTime(intervalString, parameters);
+    } else {
+      interval = 0;
+    }
     if (interval > 0) {
       intervalMode = interval;
     } else if ("Median".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -1;
+      intervalMode = -1L;
     } else if ("Mode".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -2;
+      intervalMode = -2L;
     } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -3;
+      intervalMode = -3L;
     } else {
       throw new UDFException("Illegal method.");
     }
