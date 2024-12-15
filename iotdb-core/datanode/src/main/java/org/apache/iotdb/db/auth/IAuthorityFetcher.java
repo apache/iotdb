@@ -41,9 +41,27 @@ public interface IAuthorityFetcher {
   List<Integer> checkUserPathPrivileges(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
+  TSStatus checkUserPathPrivilegesGrantOpt(
+      String username, List<? extends PartialPath> allPath, PrivilegeType permission);
+
   TSStatus checkUserSysPrivileges(String username, PrivilegeType permisssion);
 
-  boolean checkUserPrivilegeGrantOpt(String username, PrivilegeType permission, Object... targets);
+  TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permisssion);
+
+  TSStatus checkUserTBPrivileges(
+      String username, String database, String table, PrivilegeType permisssion);
+
+  TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permisssion);
+
+  TSStatus checkUserDBPrivilegesGrantOpt(
+      String username, String database, PrivilegeType permisssion);
+
+  TSStatus checkUserTBPrivilegesGrantOpt(
+      String username, String database, String table, PrivilegeType permisssion);
+
+  TSStatus checkDBVisible(String username, String database);
+
+  TSStatus checkTBVisible(String username, String database, String table);
 
   PathPatternTree getAuthorizedPatternTree(String username, PrivilegeType permission)
       throws AuthException;

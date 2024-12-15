@@ -423,14 +423,6 @@ struct TCheckUserPrivilegesReq {
   7: required bool grantOpt
 }
 
-struct TCheckUserRelationalPrivilegesReq {
-   1:required string username
-   2: required string database
-   3: optional string tablename
-   4: required i32 permission
-   5: optional bool grantOpt
-}
-
 // ConfigNode
 
 /* These parameters should be consist within the cluster */

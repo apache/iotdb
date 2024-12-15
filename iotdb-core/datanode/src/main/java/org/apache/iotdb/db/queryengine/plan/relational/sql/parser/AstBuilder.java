@@ -1457,7 +1457,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         toTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
-        String databaseName;
+        String databaseName = "";
         if (toTable) {
           databaseName = clientSession.getDatabaseName();
           if (databaseName == null) {
@@ -1469,7 +1469,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser
                 ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
                 : toTable ? AuthorRType.GRANT_ROLE_TB : AuthorRType.GRANT_ROLE_DB,
-            toTable ? "" : obj,
+            toTable ? databaseName : obj,
             toTable ? obj : "",
             priv,
             toUser ? username : "",
@@ -1522,12 +1522,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         fromTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
+        String databaseName = "";
+        if (fromTable) {
+          databaseName = clientSession.getDatabaseName();
+          if (databaseName == null) {
+            throw new SemanticException("Database is set yet.");
+          }
+        }
         String obj = ctx.privilegeObjectScope().objectName.getText();
         return new RelationalAuthorStatement(
             fromUser
                 ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
                 : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
-            fromTable ? "" : obj,
+            fromTable ? databaseName : obj,
             fromTable ? obj : "",
             priv,
             fromUser ? username : "",

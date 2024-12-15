@@ -343,13 +343,13 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.revokePrivilegeFromRole(roleName, database, priv);
           break;
         case RRevokeUserDBPriv:
-          authorizer.revokePrivilegeFromUser(roleName, database, priv);
+          authorizer.revokePrivilegeFromUser(userName, database, priv);
           break;
         case RRevokeRoleTBPriv:
           authorizer.revokePrivilegeFromRole(roleName, database, table, priv);
           break;
         case RRevokeUserTBPriv:
-          authorizer.revokePrivilegeFromUser(roleName, database, table, priv);
+          authorizer.revokePrivilegeFromUser(userName, database, table, priv);
           break;
         default:
           throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
