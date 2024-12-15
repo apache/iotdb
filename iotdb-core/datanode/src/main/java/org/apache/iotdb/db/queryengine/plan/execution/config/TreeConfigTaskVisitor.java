@@ -349,9 +349,9 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateTrigger(
       CreateTriggerStatement createTriggerStatement, MPPQueryContext context) {
-    if (createTriggerStatement.isUsingURI()
-        && createTriggerStatement.getUriString() != null
-        && isUriTrusted(createTriggerStatement.getUriString())) {
+    if (!createTriggerStatement.isUsingURI()
+        || (createTriggerStatement.getUriString() != null
+            && isUriTrusted(createTriggerStatement.getUriString()))) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
       return new CreateTriggerTask(createTriggerStatement);
