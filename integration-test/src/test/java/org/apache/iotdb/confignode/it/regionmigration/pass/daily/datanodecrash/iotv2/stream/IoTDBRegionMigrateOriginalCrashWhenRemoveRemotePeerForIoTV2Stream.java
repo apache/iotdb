@@ -17,28 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2;
+package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.stream;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2IT
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2Stream
     extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
-  @Test
-  public void crashBeforeDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
   }
 
   @Test
-  public void crashAfterDelete() throws Exception {
-    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+  public void crashBeforeInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
+  }
+
+  @Test
+  public void crashAfterInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 }
