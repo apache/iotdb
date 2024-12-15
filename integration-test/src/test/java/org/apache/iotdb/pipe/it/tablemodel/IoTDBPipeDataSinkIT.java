@@ -28,16 +28,21 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
@@ -294,6 +299,255 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       }
 
       TableModelUtils.assertCountData("test1", "test", 100, receiverEnv, handleFailure);
+    }
+  }
+
+  @Test
+  public void testSinkTsFileFormat2() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    Map<String, List<Tablet>> testResult = new HashMap<>();
+    Map<String, List<Tablet>> test1Result = new HashMap<>();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      for (int i = 0; i < 5; i++) {
+        TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test0");
+        TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test1");
+      }
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("extractor.database-name", "test.*");
+      extractorAttributes.put("extractor.table-name", "test.*");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.format", "tsfile");
+      connectorAttributes.put("connector.realtime-first", "true");
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("testPipe", connectorAttributes)
+                      .setExtractorAttributes(extractorAttributes)
+                      .setProcessorAttributes(processorAttributes))
+              .getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
+        return;
+      }
+
+      insertTablet(testResult, test1Result);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.vehicle.d0.s1,",
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))),
+          handleFailure);
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (4, 1)",
+              "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
+              "flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.vehicle.d0.s1,",
+          Collections.unmodifiableSet(
+              new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))),
+          handleFailure);
+    }
+
+    for (Map.Entry<String, List<Tablet>> entry : testResult.entrySet()) {
+      final Set<String> set = new HashSet<>();
+      entry
+          .getValue()
+          .forEach(
+              tablet -> {
+                set.addAll(TableModelUtils.generateExpectedResults(tablet));
+              });
+      TableModelUtils.assertData("test0", entry.getKey(), set, receiverEnv, handleFailure);
+    }
+
+    for (Map.Entry<String, List<Tablet>> entry : test1Result.entrySet()) {
+      final Set<String> set = new HashSet<>();
+      entry
+          .getValue()
+          .forEach(
+              tablet -> {
+                set.addAll(TableModelUtils.generateExpectedResults(tablet));
+              });
+      TableModelUtils.assertData("test1", entry.getKey(), set, receiverEnv, handleFailure);
+    }
+  }
+
+  private void insertTablet(
+      final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
+
+    final Random random = new Random();
+    int deviceIDStartIndex = 0;
+    int deviceIDEndIndex = 100;
+
+    for (int i = 0; i < 10; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName, deviceIDStartIndex, deviceIDEndIndex, 0, 10, false, true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+        deviceIDStartIndex += 25;
+        deviceIDEndIndex += 25;
+      }
+    }
+
+    deviceIDStartIndex = 0;
+    deviceIDEndIndex = 100;
+
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName, deviceIDStartIndex, deviceIDEndIndex, 10, false, true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+        deviceIDStartIndex += 25;
+        deviceIDEndIndex += 25;
+      }
+    }
+
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
+        deviceIDEndIndex = deviceIDStartIndex + 25;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                false,
+                true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+      }
+    }
+
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
+        deviceIDEndIndex = deviceIDStartIndex + 25;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                false,
+                true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+      }
+    }
+
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
+        deviceIDEndIndex = deviceIDStartIndex + 25;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                deviceIDStartIndex,
+                deviceIDEndIndex,
+                false,
+                true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+      }
+    }
+
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
+        deviceIDEndIndex = deviceIDStartIndex + 25;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName, deviceIDStartIndex, deviceIDEndIndex, 100, 110, false, true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+      }
+    }
+
+    deviceIDStartIndex = random.nextInt(1 << 16) - 300;
+    deviceIDEndIndex = deviceIDStartIndex + 25;
+    for (int i = 0; i < 5; i++) {
+      final String tableName = "test" + i;
+      for (int j = 0; j < 10; j++) {
+        final String dataBaseName = "test" + j % 2;
+        Tablet tablet =
+            TableModelUtils.generateTablet(
+                tableName, deviceIDStartIndex, deviceIDEndIndex, 100, 110, false, true);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+        deviceIDStartIndex += 25;
+        deviceIDEndIndex += 25;
+      }
     }
   }
 }

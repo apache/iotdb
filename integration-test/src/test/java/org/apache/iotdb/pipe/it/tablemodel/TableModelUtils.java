@@ -71,9 +71,9 @@ public class TableModelUtils {
       statement.execute("create database if not exists " + database);
       statement.execute("use " + database);
       statement.execute(
-          "CREATE TABLE "
-              + table
-              + "(s0 string id, s1 int64 id, s2 float id, s3 string id, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
+          String.format(
+              "CREATE TABLE %s(s0 string id, s1 string id, s2 string id, s3 string id,s4 int64 measurement, s5 float measurement, s6 string measurement, s7 timestamp  measurement, s8 int32  measurement, s9 double  measurement, s10 date  measurement, s11 text  measurement )",
+              table));
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -98,15 +98,12 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
-      return false;
-    }
-    return true;
+    return TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
   }
 
   public static boolean insertData(
@@ -117,31 +114,47 @@ public class TableModelUtils {
       final BaseEnv baseEnv,
       final boolean allowNullValue) {
     List<String> list = new ArrayList<>(end - start + 1);
-    Object[] values = new Object[9];
+    Object[] values = new Object[12];
     Random random = new Random();
-    // s0 string, s1 int64, s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+    // s0 string, s1 int64, s2 float, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8
+    // int32, s9 double, s10 date, s11 text
     for (int i = start; i < end; ++i) {
       Arrays.fill(values, i);
       values[0] = String.format("'t%s'", i);
-      values[2] = String.format("%s.0", i);
-      values[3] = String.format("%s", i);
-      values[6] = String.format("%s.0", i);
-      values[7] = String.format("'%s'", getDateStr(i));
-      values[8] = String.format("'%s'", i);
+      values[1] = String.format("'t%s'", i);
+      values[2] = String.format("'t%s'", i);
+      values[3] = String.format("'t%s'", i);
+      values[4] = String.format("%s", i);
+      values[5] = String.format("%s.0", i);
+      values[6] = String.format("%s", i);
+      values[7] = String.format("%s", i);
+      values[8] = String.format("%s", i);
+      values[9] = String.format("%s.0", i);
+      values[10] = String.format("'%s'", getDateStr(i));
+      values[11] = String.format("'%s'", i);
       if (allowNullValue) {
         values[random.nextInt(9)] = "null";
       }
       list.add(
           String.format(
-              "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8, time) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-              tableName, values[0], values[1], values[2], values[3], values[4], values[5],
-              values[6], values[7], values[8], i));
+              "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8,s9, s10, s11, time) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+              tableName,
+              values[0],
+              values[1],
+              values[2],
+              values[3],
+              values[4],
+              values[5],
+              values[6],
+              values[7],
+              values[8],
+              values[9],
+              values[10],
+              values[11],
+              i));
     }
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list)) {
-      return false;
-    }
-    return true;
+    return TestUtils.tryExecuteNonQueriesWithRetry(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
   }
 
   public static boolean insertDataNotThrowError(
@@ -154,8 +167,8 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
         dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list);
@@ -172,16 +185,12 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, time) values ('t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, getDateStr(i), i, i));
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
-    if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
-        baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT)) {
-      return false;
-    }
-
-    return true;
+    return TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+        baseEnv, wrapper, list, dataBaseName, BaseEnv.TABLE_SQL_DIALECT);
   }
 
   public static boolean insertTablet(
@@ -239,8 +248,8 @@ public class TableModelUtils {
       final String time = RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC);
       expectedResSet.add(
           String.format(
-              "t%d,%d,%d.0,%d,%s,%d,%d.0,%s,%s,%s,",
-              i, i, i, i, time, i, i, getDateStr(i), i, time));
+              "t%d,t%d,t%d,t%d,%d,%d.0,%d,%s,%d,%d.0,%s,%s,%s,",
+              i, i, i, i, i, i, i, time, i, i, getDateStr(i), i, time));
     }
     return expectedResSet;
   }
@@ -287,12 +296,15 @@ public class TableModelUtils {
           case FLOAT:
             stringBuffer.append(((float[]) tablet.values[j])[i]);
             stringBuffer.append(",");
+            break;
           case INT32:
             stringBuffer.append(((int[]) tablet.values[j])[i]);
             stringBuffer.append(",");
+            break;
           case INT64:
             stringBuffer.append(((long[]) tablet.values[j])[i]);
             stringBuffer.append(",");
+            break;
         }
       }
       String time = RpcUtils.formatDatetime("default", "ms", tablet.timestamps[i], ZoneOffset.UTC);
@@ -328,6 +340,21 @@ public class TableModelUtils {
         TableModelUtils.generateHeaderResults(),
         TableModelUtils.generateExpectedResults(start, end),
         database);
+  }
+
+  public static void assertData(
+      final String database,
+      final String table,
+      final Set<String> expectedResults,
+      final BaseEnv baseEnv,
+      final Consumer<String> handleFailure) {
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        TableModelUtils.getQuerySql(table),
+        TableModelUtils.generateHeaderResults(),
+        expectedResults,
+        database,
+        handleFailure);
   }
 
   public static void assertData(
@@ -412,14 +439,17 @@ public class TableModelUtils {
       final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.TIMESTAMP));
-    schemaList.add(new MeasurementSchema("s5", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s6", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
-    schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s9", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
@@ -427,6 +457,9 @@ public class TableModelUtils {
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -443,30 +476,36 @@ public class TableModelUtils {
     Random random = new Random();
     int nullDeviceIndex = allowNullDeviceColumn ? random.nextInt(4) : 4;
 
-    // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
     for (long row = 0; row < end - start; row++) {
-      int randomNumber = allowNullValue ? random.nextInt(9) : 9;
+      int randomNumber = allowNullValue ? random.nextInt(12) : 12;
       long value = start + row;
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, value);
       tablet.addValue(
           "s0", rowIndex, new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
-      tablet.addValue("s1", rowIndex, value);
-      tablet.addValue("s2", rowIndex, (value * 1.0f));
       tablet.addValue(
-          "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+          "s1", rowIndex, new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
+      tablet.addValue(
+          "s2", rowIndex, new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
+      tablet.addValue(
+          "s3", rowIndex, new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
       tablet.addValue("s4", rowIndex, value);
-      tablet.addValue("s5", rowIndex, (int) value);
-      tablet.addValue("s6", rowIndex, value * 0.1);
-      tablet.addValue("s7", rowIndex, getDate((int) value));
+      tablet.addValue("s5", rowIndex, (value * 1.0f));
       tablet.addValue(
-          "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-      if (randomNumber < 9) {
+          "s6", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+      tablet.addValue("s7", rowIndex, value);
+      tablet.addValue("s8", rowIndex, (int) value);
+      tablet.addValue("s9", rowIndex, value * 0.1);
+      tablet.addValue("s10", rowIndex, getDate((int) value));
+      tablet.addValue(
+          "s11", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+      if (randomNumber < 11) {
         tablet.addValue("s" + randomNumber, rowIndex, null);
       }
       if (nullDeviceIndex < 4) {
         tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
       }
+      tablet.setRowSize(rowIndex + 1);
     }
 
     return tablet;
@@ -482,14 +521,17 @@ public class TableModelUtils {
       final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.TIMESTAMP));
-    schemaList.add(new MeasurementSchema("s5", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s6", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
-    schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s9", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
@@ -497,6 +539,9 @@ public class TableModelUtils {
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -514,29 +559,43 @@ public class TableModelUtils {
     int nullDeviceIndex = allowNullDeviceColumn ? random.nextInt(4) : 4;
 
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
-      // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
       for (long row = start; row < end; row++) {
-        int randomNumber = allowNullValue ? random.nextInt(9) : 9;
+        int randomNumber = allowNullValue ? random.nextInt(12) : 12;
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, row);
         tablet.addValue(
-            "s0", rowIndex, new Binary(String.format("t%s", row).getBytes(StandardCharsets.UTF_8)));
-        tablet.addValue("s1", rowIndex, row);
-        tablet.addValue("s2", rowIndex, (row * 1.0f));
+            "s0",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue(
-            "s3", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+            "s1",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue(
+            "s2",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue(
+            "s3",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue("s4", rowIndex, row);
-        tablet.addValue("s5", rowIndex, (int) row);
-        tablet.addValue("s6", rowIndex, row * 0.1);
-        tablet.addValue("s7", rowIndex, getDate((int) row));
+        tablet.addValue("s5", rowIndex, (row * 1.0f));
         tablet.addValue(
-            "s8", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
-        if (randomNumber < 9) {
+            "s6", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue("s7", rowIndex, row);
+        tablet.addValue("s8", rowIndex, (int) row);
+        tablet.addValue("s9", rowIndex, row * 0.1);
+        tablet.addValue("s10", rowIndex, getDate((int) row));
+        tablet.addValue(
+            "s11", rowIndex, new Binary(String.valueOf(row).getBytes(StandardCharsets.UTF_8)));
+        if (randomNumber < 12) {
           tablet.addValue("s" + randomNumber, rowIndex, null);
         }
         if (nullDeviceIndex < 4) {
           tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
         }
+        tablet.setRowSize(rowIndex + 1);
       }
     }
 
@@ -552,14 +611,17 @@ public class TableModelUtils {
       final boolean allowNullDeviceColumn) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.TIMESTAMP));
-    schemaList.add(new MeasurementSchema("s5", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s6", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s7", TSDataType.DATE));
-    schemaList.add(new MeasurementSchema("s8", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s9", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
@@ -567,6 +629,9 @@ public class TableModelUtils {
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
             Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
             Tablet.ColumnCategory.MEASUREMENT,
@@ -586,30 +651,43 @@ public class TableModelUtils {
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
       // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
       for (long row = 0; row < deviceDataSize; row++) {
-        int randomNumber = allowNullValue ? random.nextInt(9) : 9;
+        int randomNumber = allowNullValue ? random.nextInt(12) : 12;
         int rowIndex = tablet.getRowSize();
-        int value = random.nextInt();
+        long value = random.nextInt();
         tablet.addTimestamp(rowIndex, row);
         tablet.addValue(
             "s0",
             rowIndex,
-            new Binary(String.format("t%s", value).getBytes(StandardCharsets.UTF_8)));
-        tablet.addValue("s1", rowIndex, value);
-        tablet.addValue("s2", rowIndex, (value * 1.0f));
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue(
-            "s3", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+            "s1",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue(
+            "s2",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue(
+            "s3",
+            rowIndex,
+            new Binary(String.format("t%s", deviceIndex).getBytes(StandardCharsets.UTF_8)));
         tablet.addValue("s4", rowIndex, value);
-        tablet.addValue("s5", rowIndex, (int) value);
-        tablet.addValue("s6", rowIndex, value * 0.1);
-        tablet.addValue("s7", rowIndex, getDate((int) value));
+        tablet.addValue("s5", rowIndex, (value * 1.0f));
         tablet.addValue(
-            "s8", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
-        if (randomNumber < 9) {
+            "s6", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue("s7", rowIndex, value);
+        tablet.addValue("s8", rowIndex, (int) value);
+        tablet.addValue("s9", rowIndex, value * 0.1);
+        tablet.addValue("s10", rowIndex, getDate((int) value));
+        tablet.addValue(
+            "s11", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+        if (randomNumber < 12) {
           tablet.addValue("s" + randomNumber, rowIndex, null);
         }
         if (nullDeviceIndex < 4) {
           tablet.addValue("s" + nullDeviceIndex, rowIndex, null);
         }
+        tablet.setRowSize(rowIndex + 1);
       }
     }
 
