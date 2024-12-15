@@ -407,6 +407,8 @@ public class PipeConsensus implements IConsensus {
       LOGGER.info("[{}] wait {} to release all resource...", CLASS_NAME, peer);
       impl.waitReleaseAllRegionRelatedResource(peer);
     } catch (ConsensusGroupModifyPeerException e) {
+      LOGGER.error(
+          "Remove remote peer failed, may because remote peer is down or other reasons", e);
       throw new ConsensusException(e);
     }
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);

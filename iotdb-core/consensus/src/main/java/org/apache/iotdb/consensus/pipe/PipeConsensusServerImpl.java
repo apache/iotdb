@@ -553,11 +553,20 @@ public class PipeConsensusServerImpl {
           isTransmissionCompleted = true;
           for (Peer peer : otherPeers) {
             if (!peer.equals(targetPeer)) {
-              isTransmissionCompleted &=
-                  isRemotePeerConsensusPipesTransmissionCompleted(
-                      peer,
-                      Collections.singletonList(new ConsensusPipeName(peer, targetPeer).toString()),
-                      isFirstCheckForOtherPeers);
+              try {
+                isTransmissionCompleted &=
+                    isRemotePeerConsensusPipesTransmissionCompleted(
+                        peer,
+                        Collections.singletonList(
+                            new ConsensusPipeName(peer, targetPeer).toString()),
+                        isFirstCheckForOtherPeers);
+              } catch (Exception e) {
+                LOGGER.warn(
+                    "{} failed to check remote peer{}'s transmission progress, may because this peer has down. Ignore this exception and move on",
+                    thisNode,
+                    peer,
+                    e);
+              }
             }
           }
           isFirstCheckForOtherPeers = false;
@@ -644,7 +653,7 @@ public class PipeConsensusServerImpl {
                   cachedProgressIndex.isAfter(
                       progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
     } catch (PipeException e) {
-      LOGGER.info(e.getMessage());
+      LOGGER.warn(e.getMessage(), e);
       return false;
     }
   }
