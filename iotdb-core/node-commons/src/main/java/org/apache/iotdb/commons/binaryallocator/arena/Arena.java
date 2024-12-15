@@ -68,10 +68,12 @@ public class Arena {
     regions[sizeIdx].deallocate(bytes);
   }
 
-  public void evict(double ratio) {
+  public int evict(double ratio) {
+    int evictedSize = 0;
     for (SlabRegion region : regions) {
-      region.evict(ratio);
+      evictedSize += region.evict(ratio);
     }
+    return evictedSize;
   }
 
   public void close() {
@@ -109,7 +111,7 @@ public class Arena {
     this.numRegisteredThread.decrementAndGet();
   }
 
-  public void runSampleEviction() {
+  public int runSampleEviction() {
     // update metric
     int allocateFromSlabDelta = 0;
     int allocateFromJVMDelta = 0;
@@ -121,7 +123,9 @@ public class Arena {
           region.byteArraySize * (region.allocationsFromJVM.get() - region.prevAllocationsFromJVM);
       region.prevAllocationsFromJVM = region.allocationsFromJVM.get();
     }
-    binaryAllocator.getMetrics().updateCounter(allocateFromSlabDelta, allocateFromJVMDelta);
+    binaryAllocator
+        .getMetrics()
+        .updateAllocationCounter(allocateFromSlabDelta, allocateFromJVMDelta);
 
     // Start sampling
     for (SlabRegion region : regions) {
@@ -129,13 +133,15 @@ public class Arena {
     }
 
     sampleCount++;
+    int evictedSize = 0;
     if (sampleCount == EVICT_SAMPLE_COUNT) {
       // Evict
       for (SlabRegion region : regions) {
-        region.resize();
+        evictedSize += region.resize();
       }
       sampleCount = 0;
     }
+    return evictedSize;
   }
 
   private static class SlabRegion {
@@ -182,22 +188,25 @@ public class Arena {
       average.sample(getActiveSize());
     }
 
-    private void resize() {
+    private int resize() {
       average.update();
       int needRemain = (int) Math.ceil(average.average()) - getActiveSize();
-      evict(getQueueSize() - needRemain);
+      return evict(getQueueSize() - needRemain);
     }
 
-    private void evict(double ratio) {
-      evict((int) (getQueueSize() * ratio));
+    private int evict(double ratio) {
+      return evict((int) (getQueueSize() * ratio));
     }
 
-    private void evict(int num) {
+    private int evict(int num) {
+      int evicted = 0;
       while (num > 0 && !queue.isEmpty()) {
         queue.poll();
         evictions.incrementAndGet();
         num--;
+        evicted += byteArraySize;
       }
+      return evicted;
     }
 
     private long getTotalUsedMemory() {
