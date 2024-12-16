@@ -150,6 +150,22 @@ public class AuthorityChecker {
   }
 
   public static TSStatus getTSStatus(
+      boolean hasPermission, PrivilegeType neededPrivilege, String database) {
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + "ON DB:" + database);
+  }
+
+  public static TSStatus getTSStatus(
+      boolean hasPermission, PrivilegeType neededPrivilege, String database, String table) {
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + "ON " + database + "." + table);
+  }
+
+  public static TSStatus getTSStatus(
       boolean hasPermission, PartialPath path, PrivilegeType neededPrivilege) {
     return hasPermission
         ? SUCCEED
@@ -205,13 +221,40 @@ public class AuthorityChecker {
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
+  public static boolean checkDBPermission(
+      String userName, String database, PrivilegeType permission) {
+    return authorityFetcher.get().checkUserDBPrivileges(userName, database, permission).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkTablePermission(
+      String userName, String database, String table, PrivilegeType permission) {
+    return authorityFetcher
+            .get()
+            .checkUserTBPrivileges(userName, database, table, permission)
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkDBVisible(String userName, String database) {
+    return authorityFetcher.get().checkDBVisible(userName, database).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkTableVisible(String userName, String database, String table) {
+    return authorityFetcher.get().checkTBVisible(userName, database, table).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
   public static boolean checkGrantOption(
       String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
     for (String s : privilegeList) {
-      if (!authorityFetcher
-          .get()
-          .checkUserPrivilegeGrantOpt(
-              userName, PrivilegeType.valueOf(s.toUpperCase()), nodeNameList)) {
+      if (authorityFetcher
+              .get()
+              .checkUserPathPrivilegesGrantOpt(
+                  userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()))
+              .getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return false;
       }
     }
