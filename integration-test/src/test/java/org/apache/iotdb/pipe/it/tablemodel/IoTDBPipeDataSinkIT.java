@@ -496,7 +496,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
   private void insertTablet2(
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
-
     int deviceIDStartIndex = 0;
     int deviceIDEndIndex = 30;
 
@@ -523,7 +522,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
   private void insertTablet3(
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
-
     final Random random = new Random();
     int deviceIDStartIndex = 0;
     int deviceIDEndIndex = 100;
@@ -557,7 +555,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
   private void insertTablet4(
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
-
     final Random random = new Random();
     int deviceIDStartIndex = 0;
     int deviceIDEndIndex = 100;
@@ -584,14 +581,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           throw new RuntimeException(e);
         }
         Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
-        map.computeIfAbsent(dataBaseName, k -> new ArrayList<>()).add(tablet);
+        map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
       }
     }
   }
 
   private void insertTablet5(
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
-
     final Random random = new Random();
     int deviceIDStartIndex = 0;
     int deviceIDEndIndex = 100;
