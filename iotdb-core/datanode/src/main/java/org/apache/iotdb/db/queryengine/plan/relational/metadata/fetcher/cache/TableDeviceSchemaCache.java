@@ -50,6 +50,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -335,6 +336,27 @@ public class TableDeviceSchemaCache {
         null,
         entry -> -entry.invalidateLastCache(),
         false);
+  }
+
+  /////////////////////////////// Tree view ///////////////////////////////
+
+  public void putIsAligned(final IDeviceID deviceID, final boolean isAligned) {
+    dualKeyCache.update(
+        new TableId(null, deviceID.getTableName()),
+        deviceID,
+        new TableDeviceCacheEntry(),
+        entry ->
+            entry.setDeviceSchema(
+                null, new DeviceSchemaInfo(null, isAligned, -1, Collections.emptyList())),
+        true);
+  }
+
+  public Boolean getIsAligned(final IDeviceID deviceID) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
+    return Objects.nonNull(entry)
+        ? ((TreeDeviceNormalSchema) entry.getDeviceSchema()).isAligned()
+        : null;
   }
 
   /////////////////////////////// Tree model ///////////////////////////////
