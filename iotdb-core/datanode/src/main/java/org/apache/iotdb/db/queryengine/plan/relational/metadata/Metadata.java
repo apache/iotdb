@@ -99,7 +99,8 @@ public interface Metadata {
    * partial insert
    *
    * @param isStrictIdColumn if true, when the table already exists, the id columns in the existing
-   *     table should be the prefix of those in the input tableSchema.
+   *     table should be the prefix of those in the input tableSchema, or input id columns be the
+   *     prefix of existing id columns.
    * @return If table doesn't exist and the user have no authority to create table, Optional.empty()
    *     will be returned. The returned table may not include all the columns
    *     in @param{tableSchema}, if the user have no authority to alter table.
