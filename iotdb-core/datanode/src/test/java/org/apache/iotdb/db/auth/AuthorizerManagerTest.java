@@ -157,7 +157,7 @@ public class AuthorizerManagerTest {
         authorityFetcher
             .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MANAGE_USER)
             .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.NO_PERMISSION.getStatusCode());
 
     // for path priv. we have write_schema on root.d1.** with grant option.
     // require root.d1.** with write_schema, return true
@@ -177,7 +177,7 @@ public class AuthorizerManagerTest {
                 Collections.singletonList(new PartialPath("root.**")),
                 PrivilegeType.WRITE_SCHEMA)
             .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.NO_PERMISSION.getStatusCode());
     // reuqire root.d1.d2 with write_schema, return true
     Assert.assertEquals(
         authorityFetcher
@@ -196,7 +196,7 @@ public class AuthorizerManagerTest {
                 Collections.singletonList(new PartialPath("root.d1.d2")),
                 PrivilegeType.READ_SCHEMA)
             .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.NO_PERMISSION.getStatusCode());
 
     Assert.assertEquals(
         authorityFetcher
@@ -207,7 +207,7 @@ public class AuthorizerManagerTest {
         authorityFetcher
             .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.SELECT)
             .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.NO_PERMISSION.getStatusCode());
     // role test
     Assert.assertEquals(
         authorityFetcher
@@ -230,7 +230,7 @@ public class AuthorizerManagerTest {
         authorityFetcher
             .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_TRIGGER)
             .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.NO_PERMISSION.getStatusCode());
     Assert.assertEquals(
         authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());

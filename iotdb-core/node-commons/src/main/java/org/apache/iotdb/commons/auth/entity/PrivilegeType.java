@@ -36,8 +36,8 @@ public enum PrivilegeType {
   USE_PIPE(PrivilegeModelType.SYSTEM),
   USE_MODEL(PrivilegeModelType.SYSTEM),
 
-  EXTEND_TEMPLATE(PrivilegeModelType.TREE),
-  MANAGE_DATABASE(PrivilegeModelType.TREE),
+  EXTEND_TEMPLATE(PrivilegeModelType.SYSTEM),
+  MANAGE_DATABASE(PrivilegeModelType.SYSTEM),
   MAINTAIN(PrivilegeModelType.SYSTEM),
   CREATE(PrivilegeModelType.RELATIONAL),
   DROP(PrivilegeModelType.RELATIONAL),

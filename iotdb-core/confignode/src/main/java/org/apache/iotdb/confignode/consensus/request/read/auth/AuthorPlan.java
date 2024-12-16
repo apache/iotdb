@@ -100,7 +100,7 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof AuthorPlan)) {
       return false;
     }
     AuthorPlan that = (AuthorPlan) o;

@@ -66,6 +66,8 @@ public class LocalFileUserAccessorTest {
     pathPrivilege.grantPrivilege(PrivilegeType.READ_DATA, true);
     pathPrivilege.grantPrivilege(PrivilegeType.WRITE_DATA, false);
     user.getPathPrivilegeList().add(pathPrivilege);
+    user.grantAnyScopePrivilege(PrivilegeType.SELECT, false);
+    user.grantAnyScopePrivilege(PrivilegeType.ALTER, true);
     user.grantDBPrivilege("testdb", PrivilegeType.SELECT, false);
     user.grantTBPrivilege("testdb", "testtb", PrivilegeType.ALTER, true);
     user.addRole("testRole1");
@@ -73,6 +75,8 @@ public class LocalFileUserAccessorTest {
     accessor.saveEntry(user);
     accessor.reset();
     User loadUser = accessor.loadEntry("test");
+    String d1 = user.toString();
+    String d2 = loadUser.toString();
     assertEquals(user, loadUser);
   }
 }

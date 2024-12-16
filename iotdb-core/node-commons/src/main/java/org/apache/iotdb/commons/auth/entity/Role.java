@@ -413,15 +413,15 @@ public class Role {
   }
 
   public boolean checkObjectPrivilegeGrantOpt(String dbname, String table, PrivilegeType priv) {
-    DatabasePrivilege privilege = this.objectPrivilegeMap.get(dbname);
-    if (privilege == null) {
+    DatabasePrivilege dbPriv = this.objectPrivilegeMap.get(dbname);
+    if (dbPriv == null) {
       return false;
     }
 
-    if (table.isEmpty()) {
-      return privilege.checkDBGrantOption(priv);
+    if (table == null) {
+      return dbPriv.checkDBGrantOption(priv);
     } else {
-      return privilege.checkDBGrantOption(priv) || privilege.checkTableGrantOption(table, priv);
+      return dbPriv.checkDBGrantOption(priv) || dbPriv.checkTableGrantOption(table, priv);
     }
   }
 
@@ -568,17 +568,19 @@ public class Role {
         + ", pathPrivilegeList="
         + pathPrivilegeList
         + ", systemPrivilegeSet="
-        + sysPriToString()
+        + priSetToString(sysPrivilegeSet, sysPriGrantOpt)
+        + ", AnyScopePrivilegeMap="
+        + priSetToString(anyScopePrivilegeSet, anyScopePrivileGrantOptSet)
         + ", objectPrivilegeSet="
         + objectPrivilegeMap
         + '}';
   }
 
-  private Set<String> sysPriToString() {
+  public Set<String> priSetToString(Set<PrivilegeType> privs, Set<PrivilegeType> grantOpt) {
     Set<String> priSet = new HashSet<>();
-    for (PrivilegeType priv : sysPrivilegeSet) {
+    for (PrivilegeType priv : privs) {
       StringBuilder str = new StringBuilder(String.valueOf(priv));
-      if (sysPriGrantOpt.contains(priv)) {
+      if (grantOpt.contains(priv)) {
         str.append("_with_grant_option ");
       }
       priSet.add(str.toString());

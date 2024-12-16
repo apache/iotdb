@@ -43,14 +43,16 @@ public class RoleTest {
     role.grantPathPrivilege(new PartialPath("root.ln"), PrivilegeType.READ_DATA, false);
 
     Assert.assertEquals(
-        "Role{name='role', pathPrivilegeList=[root.ln : READ_DATA"
-            + " READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], objectPrivilegeSet={}}",
+        "Role{name='role', pathPrivilegeList=[root.ln : "
+            + "READ_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], "
+            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={}}",
         role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
         "Role{name='role', pathPrivilegeList=[root.ln : "
-            + "READ_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], objectPrivilegeSet={}}",
+            + "READ_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], "
+            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={}}",
         role1.toString());
 
     Role admin = new Role("root");
@@ -75,16 +77,17 @@ public class RoleTest {
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
         "Role{name='root', pathPrivilegeList=[root.** :"
-            + " WRITE_DATA_with_grant_option READ_DATA_with_grant_option"
-            + " WRITE_SCHEMA_with_grant_option READ_SCHEMA_with_grant_option], "
-            + "systemPrivilegeSet=[MANAGE_ROLE_with_grant_option , USE_CQ_with_grant_option , "
-            + "USE_PIPE_with_grant_option , USE_UDF_with_grant_option , USE_TRIGGER_with_grant_option ,"
-            + " MANAGE_DATABASE_with_grant_option , MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option , "
+            + " READ_DATA_with_grant_option WRITE_DATA_with_grant_option "
+            + "READ_SCHEMA_with_grant_option WRITE_SCHEMA_with_grant_option], "
+            + "systemPrivilegeSet=[USE_CQ_with_grant_option , USE_PIPE_with_grant_option , "
+            + "USE_UDF_with_grant_option , MANAGE_ROLE_with_grant_option , "
+            + "USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_grant_option , "
+            + "MAINTAIN_with_grant_option , MANAGE_USER_with_grant_option , "
             + "EXTEND_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ], "
-            + "objectPrivilegeSet={testdb=Database: {testdb ALTER_with_grant_option "
-            + "SELECT_with_grant_option UPDATE_with_grant_option DROP_with_grant_option "
-            + "DELETE_with_grant_option INSERT_with_grant_option CREATE_with_grant_option "
-            + "Tables: {testtb {ALTER SELECT UPDATE DROP DELETE INSERT CREATE }}}}",
+            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={testdb=Database: "
+            + "{testdb INSERT_with_grant_option CREATE_with_grant_option "
+            + "DROP_with_grant_option ALTER_with_grant_option DELETE_with_grant_option "
+            + "SELECT_with_grant_option Tables: {testtb {INSERT CREATE DROP ALTER DELETE SELECT }}}}}",
         admin.toString());
   }
 }
