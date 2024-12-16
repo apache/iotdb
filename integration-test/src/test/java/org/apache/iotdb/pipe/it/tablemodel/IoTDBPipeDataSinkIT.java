@@ -448,7 +448,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
               tablet -> {
                 set.addAll(TableModelUtils.generateExpectedResults(tablet));
               });
-      TableModelUtils.assertCountData("test0",entry.getKey(),set.size(),receiverEnv,handleFailure);
+      TableModelUtils.assertCountData(
+          "test0", entry.getKey(), set.size(), receiverEnv, handleFailure);
       TableModelUtils.assertData("test0", entry.getKey(), set, receiverEnv, handleFailure);
     }
 
@@ -460,7 +461,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
               tablet -> {
                 set.addAll(TableModelUtils.generateExpectedResults(tablet));
               });
-      TableModelUtils.assertCountData("test1",entry.getKey(),set.size(),receiverEnv,handleFailure);
+      TableModelUtils.assertCountData(
+          "test1", entry.getKey(), set.size(), receiverEnv, handleFailure);
       TableModelUtils.assertData("test1", entry.getKey(), set, receiverEnv, handleFailure);
     }
   }

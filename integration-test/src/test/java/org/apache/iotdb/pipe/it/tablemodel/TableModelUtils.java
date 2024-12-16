@@ -652,7 +652,7 @@ public class TableModelUtils {
 
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
       // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
-      long value = random.nextInt(1<<16);
+      long value = random.nextInt(1 << 16);
       for (long row = 0; row < deviceDataSize; row++) {
         int randomNumber = allowNullValue ? random.nextInt(12) : 12;
         int rowIndex = tablet.getRowSize();
