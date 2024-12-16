@@ -626,11 +626,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (req.getPlanNode() instanceof AlterLogicalViewNode) {
       final TSStatus status =
           ((AlterLogicalViewNode) req.getPlanNode()).checkPermissionBeforeProcess(username);
-      return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          ? new TPipeTransferResp(
-              ClusterConfigTaskExecutor.getInstance()
-                  .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
-          : new TPipeTransferResp(status);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            receiverId.get(),
+            StatementType.ALTER_LOGICAL_VIEW.name(),
+            username,
+            status);
+        return new TPipeTransferResp(status);
+      }
+      return new TPipeTransferResp(
+          ClusterConfigTaskExecutor.getInstance()
+              .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
     }
     return new TPipeTransferResp(
         executeStatementAndClassifyExceptions(
