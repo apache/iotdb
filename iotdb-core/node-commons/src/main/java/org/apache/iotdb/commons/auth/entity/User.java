@@ -114,12 +114,10 @@ public class User extends Role {
   }
 
   private boolean contentEquals(User user) {
-    return Objects.equals(super.getName(), user.getName())
+    return super.equals((Role) user)
+        && Objects.equals(roleSet, user.roleSet)
         && Objects.equals(password, user.password)
-        && Objects.equals(super.getPathPrivilegeList(), user.getPathPrivilegeList())
-        && Objects.equals(super.getSysPrivilege(), user.getSysPrivilege())
-        && Objects.equals(super.getObjectPrivilegeMap(), user.getObjectPrivilegeMap())
-        && Objects.equals(roleSet, user.roleSet);
+        && Objects.equals(isOpenIdUser, user.isOpenIdUser);
   }
 
   @Override
@@ -200,11 +198,13 @@ public class User extends Role {
         + password
         + '\''
         + ", pathPrivilegeList="
-        + super.getPathPrivilegeList()
+        + pathPrivilegeList
         + ", sysPrivilegeSet="
-        + super.getSysPrivilege()
+        + priSetToString(sysPrivilegeSet, sysPriGrantOpt)
+        + ", AnyScopePrivilegeMap="
+        + priSetToString(anyScopePrivilegeSet, anyScopePrivileGrantOptSet)
         + ", objectPrivilegeMap="
-        + super.getObjectPrivilegeMap()
+        + objectPrivilegeMap
         + ", roleList="
         + roleSet
         + ", isOpenIdUser="

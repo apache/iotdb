@@ -39,14 +39,14 @@ public class UserTest {
     user.setPathPrivileges(
         new PartialPath("root.ln"), Collections.singleton(PrivilegeType.WRITE_DATA));
     Assert.assertEquals(
-        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], objectPrivilegeMap={}, roleList=[], "
-            + "isOpenIdUser=false}",
+        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], "
+            + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user.toString());
     User user1 = new User("user1", "password1");
     user1.deserialize(user.serialize());
     Assert.assertEquals(
-        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], objectPrivilegeMap={}, roleList=[], "
-            + "isOpenIdUser=false}",
+        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], "
+            + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user1.toString());
     Assert.assertTrue(user1.equals(user));
   }

@@ -1117,7 +1117,7 @@ public class IoTDBAuthIT {
     for (PrivilegeType item : PrivilegeType.values()) {
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";
       adminStmt.execute(String.format(sql, item));
-      if (item.isPathRelevant()) {
+      if (item.isPathPrivilege()) {
         adminStmt.execute(String.format("GRANT %s on root.t1.** TO USER user2", item));
       }
       sql = "GRANT %s on root.** to USER user2";

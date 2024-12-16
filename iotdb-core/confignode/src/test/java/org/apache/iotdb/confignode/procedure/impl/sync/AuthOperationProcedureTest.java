@@ -23,8 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
@@ -78,6 +80,38 @@ public class AuthOperationProcedureTest {
                     Collections.singleton(1),
                     false,
                     Collections.singletonList(new PartialPath("root.t1"))),
+                datanodes,
+                false);
+        proc.serialize(outputStream);
+        final ByteBuffer buffer =
+            ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+        final AuthOperationProcedure proc2 =
+            (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+        Assert.assertEquals(proc, proc2);
+        buffer.clear();
+        byteArrayOutputStream.reset();
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+
+    try {
+      final int begin = ConfigPhysicalPlanType.RCreateUser.ordinal();
+      final int end = ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal();
+      for (int i = begin; i <= end; i++) {
+        final AuthOperationProcedure proc =
+            new AuthOperationProcedure(
+                new AuthorRelationalPlan(
+                    ConfigPhysicalPlanType.values()[i],
+                    "user1",
+                    "role1",
+                    "database",
+                    "table",
+                    false,
+                    PrivilegeType.CREATE.ordinal(),
+                    "password"),
                 datanodes,
                 false);
         proc.serialize(outputStream);

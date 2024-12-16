@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.confignode.consensus.request.write.auth;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -28,27 +46,39 @@ public class AuthorRelationalWritePlan extends AuthorRelationalPlan {
     super(authorType, userName, roleName, databaseName, tableName, grantOpt, permission, password);
   }
 
+  public AuthorRelationalWritePlan(AuthorRelationalPlan authorRelationalPlan) {
+    super(
+        authorRelationalPlan.getAuthorType(),
+        authorRelationalPlan.getUserName(),
+        authorRelationalPlan.getRoleName(),
+        authorRelationalPlan.getDatabaseName(),
+        authorRelationalPlan.getTableName(),
+        authorRelationalPlan.getGrantOpt(),
+        authorRelationalPlan.getPermission(),
+        authorRelationalPlan.getPassword());
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(super.getType().ordinal(), stream);
+    ReadWriteIOUtils.write(getType().getPlanType(), stream);
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
     if (super.getDatabaseName() == null) {
-      BasicStructureSerDeUtil.write((byte) 0, stream);
+      stream.write((byte) 0);
     } else {
-      BasicStructureSerDeUtil.write((byte) 1, stream);
+      stream.write((byte) 1);
       BasicStructureSerDeUtil.write(databaseName, stream);
     }
 
     if (this.tableName == null) {
-      BasicStructureSerDeUtil.write((byte) 0, stream);
+      stream.write((byte) 0);
     } else {
-      BasicStructureSerDeUtil.write((byte) 1, stream);
+      stream.write((byte) 1);
       BasicStructureSerDeUtil.write(tableName, stream);
     }
     BasicStructureSerDeUtil.write(this.permission, stream);
-    BasicStructureSerDeUtil.write(grantOpt ? (byte) 1 : (byte) 0, stream);
+    stream.write(grantOpt ? (byte) 1 : (byte) 0);
   }
 
   @Override
