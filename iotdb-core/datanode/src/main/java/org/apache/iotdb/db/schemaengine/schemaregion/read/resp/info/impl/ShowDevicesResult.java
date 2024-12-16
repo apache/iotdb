@@ -81,7 +81,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   }
 
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
-          final AlignedDeviceEntry entry, final List<String> attributeColumns) {
+      final AlignedDeviceEntry entry, final List<String> attributeColumns) {
     final ShowDevicesResult result =
         new ShowDevicesResult(
             entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
