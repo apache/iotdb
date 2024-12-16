@@ -1,8 +1,70 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ITableAuthCheckerImpl extends ITableAuthChecker {
+public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
-  void checkDatabaseVisibility(String userName, String databaseName) throws AuthException {}
+  @Override
+  public void checkDatabaseVisibility(String userName, String databaseName) {
+    if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
+      throw new RuntimeException(
+          new IoTDBException("NO PERMISSION", TSStatusCode.NO_PERMISSION.getStatusCode()));
+    }
+  }
+
+  @Override
+  public void checkDatabasePrivilege(
+      String userName, String databaseName, TableModelPrivilege privilege) {
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkDBPermission(
+                userName, databaseName, privilege.getPrivilegeType()),
+            privilege.getPrivilegeType(),
+            databaseName);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+    }
+  }
+
+  @Override
+  public void checkTablePrivilege(
+      String userName, QualifiedObjectName tableName, TableModelPrivilege privilege) {
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkTablePermission(
+                userName,
+                tableName.getDatabaseName(),
+                tableName.getObjectName(),
+                privilege.getPrivilegeType()),
+            privilege.getPrivilegeType(),
+            tableName.getDatabaseName(),
+            tableName.getObjectName());
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+    }
+  }
+
+  @Override
+  public void checkTableVisibility(String userName, QualifiedObjectName tableName) {
+    if (!AuthorityChecker.checkTableVisible(
+        userName, tableName.getDatabaseName(), tableName.getObjectName())) {
+      throw new RuntimeException(
+          new IoTDBException("NO PERMISSION", TSStatusCode.NO_PERMISSION.getStatusCode()));
+    }
+  }
+
+  @Override
+  public void checkGlobalPrivilege(String userName, TableModelPrivilege privilege) {
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
+            privilege.getPrivilegeType());
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+    }
+  }
 }
