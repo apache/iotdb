@@ -207,10 +207,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    transformToTableDeviceTsBlockColumns(
+        schemaInfo, builder, database, tableName, columnHeaderList, 3);
   }
 
-  public static void transformToTsBlockColumns(
+  public static void transformToTableDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final String database,
@@ -243,6 +244,34 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       }
       resultIndex++;
     }
+    builder.declarePosition();
+  }
+
+  public static void transformToTreeDeviceTsBlockColumns(
+      final IDeviceSchemaInfo schemaInfo,
+      final TsBlockBuilder builder,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    int resultIndex = 0;
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    TsTableColumnSchema columnSchema;
+    for (final ColumnHeader columnHeader : columnHeaderList) {
+      columnSchema = table.getColumnSchema(columnHeader.getColumnName());
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (pathNodes.length <= resultIndex + 2 || pathNodes[resultIndex + 2] == null) {
+          builder.getColumnBuilder(resultIndex).appendNull();
+        } else {
+          builder
+              .getColumnBuilder(resultIndex)
+              .writeBinary(new Binary(pathNodes[resultIndex + 2], TSFileConfig.STRING_CHARSET));
+        }
+        resultIndex++;
+      }
+    }
+    builder.getColumnBuilder(resultIndex).writeBoolean(schemaInfo.isAligned());
     builder.declarePosition();
   }
 
