@@ -94,24 +94,6 @@ public class TsFileResourceUtils {
       for (IDeviceID device : devices) {
         long startTime = timeIndex.getStartTime(device);
         long endTime = timeIndex.getEndTime(device);
-        if (startTime == Long.MAX_VALUE) {
-          logger.error(
-              "{} {} the start time of {} is {}",
-              resource.getTsFilePath(),
-              VALIDATE_FAILED,
-              device,
-              Long.MAX_VALUE);
-          return false;
-        }
-        if (endTime == Long.MIN_VALUE) {
-          logger.error(
-              "{} {} the end time of {} is {}",
-              resource.getTsFilePath(),
-              VALIDATE_FAILED,
-              device,
-              Long.MIN_VALUE);
-          return false;
-        }
         if (startTime > endTime) {
           logger.error(
               "{} {} the start time of {} is greater than end time",

@@ -319,7 +319,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public void updateStartTime(IDeviceID deviceId, long time) {
     long startTime = getStartTime(deviceId);
-    if (time < startTime) {
+    if (time <= startTime) {
       int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
@@ -329,7 +329,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public void updateEndTime(IDeviceID deviceId, long time) {
     long endTime = getEndTime(deviceId);
-    if (time > endTime) {
+    if (time >= endTime) {
       int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
