@@ -126,7 +126,11 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
               ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
               req.targetPeerNodeId,
               req.targetPeerEndPoint),
-          false);
+          new Peer(
+              ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
+              req.coordinatorPeerNodeId,
+              req.coordinatorPeerEndPoint),
+          true);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
@@ -41,15 +42,18 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_CONSENSUS_PIPE_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
 
 public class ConsensusPipeManager {
   // Extract data.insert and data.delete to support deletion.
   private static final String CONSENSUS_EXTRACTOR_INCLUSION_VALUE = "data";
+  private static final Map<ConsensusPipeName, Boolean> processorFilterSwitchMap = new HashMap<>();
   private final PipeConsensusConfig.Pipe config;
   private final ReplicateMode replicateMode;
   private final ConsensusPipeDispatcher dispatcher;
@@ -65,10 +69,11 @@ public class ConsensusPipeManager {
   /** This method is used except region migration. */
   public void createConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
+    processorFilterSwitchMap.put(consensusPipeName, true);
     // The third parameter is only used when region migration. Since this method is not called by
     // region migration, just pass senderPeer in to get the correct result.
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-        params = buildPipeParams(senderPeer, receiverPeer);
+        params = buildPipeParams(senderPeer, receiverPeer, senderPeer);
     dispatcher.createPipe(
         consensusPipeName.toString(),
         params.getLeft(),
@@ -78,11 +83,18 @@ public class ConsensusPipeManager {
   }
 
   /** This method is used when executing region migration */
-  public void createConsensusPipe(Peer senderPeer, Peer receiverPeer, boolean needManuallyStart)
+  public void createConsensusPipe(
+      Peer senderPeer,
+      Peer receiverPeer,
+      Peer regionMigrationCoordinatorPeer,
+      boolean needManuallyStart)
       throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
+    // coordinator which doesn't need manually start turns off the filter switch
+    processorFilterSwitchMap.put(consensusPipeName, needManuallyStart);
+
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-        params = buildPipeParams(senderPeer, receiverPeer);
+        params = buildPipeParams(senderPeer, receiverPeer, regionMigrationCoordinatorPeer);
     dispatcher.createPipe(
         consensusPipeName.toString(),
         params.getLeft(),
@@ -93,9 +105,10 @@ public class ConsensusPipeManager {
 
   public Triple<
           ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-      buildPipeParams(Peer senderPeer, Peer receiverPeer) {
+      buildPipeParams(Peer senderPeer, Peer receiverPeer, Peer coordinatorPeer) {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
-    return new ImmutableTriple<>(
+
+    ImmutableMap<String, String> basicExtractorParams =
         ImmutableMap.<String, String>builder()
             .put(EXTRACTOR_KEY, config.getExtractorPluginName())
             .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
@@ -111,9 +124,24 @@ public class ConsensusPipeManager {
             .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
             .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
             .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
-            .build(),
+            .build();
+    ImmutableMap<String, String> extractorParams;
+    if (senderPeer.equals(coordinatorPeer)) {
+      extractorParams = basicExtractorParams;
+    } else {
+      extractorParams =
+          ImmutableMap.<String, String>builder()
+              .putAll(basicExtractorParams)
+              .put(
+                  EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
+                  String.valueOf(new ConsensusPipeName(senderPeer, coordinatorPeer)))
+              .build();
+    }
+    return new ImmutableTriple<>(
+        extractorParams,
         ImmutableMap.<String, String>builder()
             .put(PROCESSOR_KEY, config.getProcessorPluginName())
+            .put(PROCESSOR_CONSENSUS_PIPE_NAME_KEY, consensusPipeName.toString())
             .build(),
         ImmutableMap.<String, String>builder()
             .put(CONNECTOR_KEY, config.getConnectorPluginName())
@@ -131,6 +159,7 @@ public class ConsensusPipeManager {
   public void dropConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.dropPipe(consensusPipeName);
+    processorFilterSwitchMap.remove(consensusPipeName);
   }
 
   public void updateConsensusPipe(ConsensusPipeName consensusPipeName, PipeStatus pipeStatus)
@@ -141,6 +170,7 @@ public class ConsensusPipeManager {
       dispatcher.stopPipe(consensusPipeName.toString());
     } else if (PipeStatus.DROPPED.equals(pipeStatus)) {
       dispatcher.dropPipe(consensusPipeName);
+      processorFilterSwitchMap.remove(consensusPipeName);
     } else {
       throw new IllegalArgumentException("Unsupported pipe status: " + pipeStatus);
     }
@@ -148,5 +178,9 @@ public class ConsensusPipeManager {
 
   public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
     return selector.getAllConsensusPipe();
+  }
+
+  public static Map<ConsensusPipeName, Boolean> getProcessorFilterSwitch() {
+    return processorFilterSwitchMap;
   }
 }

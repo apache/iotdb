@@ -347,16 +347,28 @@ public class PipeConsensus implements IConsensus {
       impl.setRemotePeerActive(peer, false, false);
 
       // step 2: notify all the other Peers to create consensus pipes to newPeer
-      // NOTE: For this step, all the other peers will try to transfer its user write data to target
+      // NOTE: For this step, coordinator(thisNode) will transfer its full data snapshot to target
+      // while other peers record the coordinator's progress.
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
-      impl.notifyPeersToCreateConsensusPipes(peer);
+      impl.notifyPeersToCreateConsensusPipes(peer, impl.getThisNodePeer());
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
-      // step 3: wait until all other Peers finish transferring
-      LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
-      impl.waitPeersToTargetPeerTransmissionCompleted(peer);
+      // step 3: wait until the coordinator Peer finishes transferring snapshot
+      LOGGER.info(
+          "[{}] wait until the coordinator Peer finishes transferring snapshot...", CLASS_NAME);
+      impl.waitPeersToTargetPeerTransmissionCompleted(peer, true);
 
-      // step 4: active new Peer to let new Peer receive client requests
+      // step 4. start other peers' consensus pipe to target peer to transfer remaining data
+      // NOTE: For this step, other peers will start to transmit data(may contain both historical
+      // and realtime data) after the snapshot progress to target.
+      LOGGER.info("[{}] start transfer remaining data from other peers", CLASS_NAME);
+      impl.startOtherConsensusPipesToTargetPeer(peer);
+
+      // step 5: wait until all other Peers finish transferring
+      LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
+      impl.waitPeersToTargetPeerTransmissionCompleted(peer, false);
+
+      // step 6: active new Peer to let new Peer receive client requests
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
       impl.setRemotePeerActive(peer, true, false);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
@@ -407,6 +419,7 @@ public class PipeConsensus implements IConsensus {
       LOGGER.info("[{}] wait {} to release all resource...", CLASS_NAME, peer);
       impl.waitReleaseAllRegionRelatedResource(peer);
     } catch (ConsensusGroupModifyPeerException e) {
+      LOGGER.warn("Remove remote peer failed, may because remote peer is down or other reasons", e);
       throw new ConsensusException(e);
     }
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -36,18 +38,22 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_CONSENSUS_PIPE_NAME_KEY;
 
 public class PipeConsensusProcessor implements PipeProcessor {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private final AtomicBoolean filterSwitch = new AtomicBoolean(true);
+  private ConsensusPipeName consensusPipeName;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
-      throws Exception {}
+      throws Exception {
+    consensusPipeName =
+        new ConsensusPipeName(parameters.getString(PROCESSOR_CONSENSUS_PIPE_NAME_KEY));
+  }
 
   private boolean isContainLocalData(EnrichedEvent enrichedEvent) {
     final ProgressIndex progressIndex = enrichedEvent.getProgressIndex();
@@ -72,12 +78,16 @@ public class PipeConsensusProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    // Only user-generated TsFileInsertionEvent can be replicated. Any tsFile synchronized from a
-    // replica should not be replicated again
-    if (tsFileInsertionEvent instanceof EnrichedEvent
-        && !((PipeTsFileInsertionEvent) tsFileInsertionEvent).isGeneratedByPipeConsensus()) {
+    if (tsFileInsertionEvent instanceof EnrichedEvent) {
+      if (!needFilter()) {
+        eventCollector.collect(tsFileInsertionEvent);
+        return;
+      }
+      // Only user-generated TsFileInsertionEvent can be replicated. Any tsFile synchronized from a
+      // replica should not be replicated again
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tsFileInsertionEvent;
-      if (isContainLocalData(enrichedEvent)) {
+      if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).isGeneratedByPipeConsensus()
+          && isContainLocalData(enrichedEvent)) {
         eventCollector.collect(tsFileInsertionEvent);
       }
     }
@@ -86,8 +96,12 @@ public class PipeConsensusProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    // Only user-generated TabletInsertionEvent can be replicated.
     if (tabletInsertionEvent instanceof EnrichedEvent) {
+      if (!needFilter()) {
+        eventCollector.collect(tabletInsertionEvent);
+        return;
+      }
+      // Only user-generated TabletInsertionEvent can be replicated.
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
       if (isContainLocalData(enrichedEvent)) {
         eventCollector.collect(tabletInsertionEvent);
@@ -98,6 +112,11 @@ public class PipeConsensusProcessor implements PipeProcessor {
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
     if (event instanceof EnrichedEvent) {
+      if (!needFilter()) {
+        eventCollector.collect(event);
+        return;
+      }
+
       final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
       if (isContainLocalData(enrichedEvent)) {
         eventCollector.collect(event);
@@ -107,4 +126,9 @@ public class PipeConsensusProcessor implements PipeProcessor {
 
   @Override
   public void close() throws Exception {}
+
+  private boolean needFilter() {
+    return ConsensusPipeManager.getProcessorFilterSwitch()
+        .getOrDefault(this.consensusPipeName, true);
+  }
 }
