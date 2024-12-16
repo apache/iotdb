@@ -67,17 +67,13 @@ public class AlterLogicalViewNode extends PlanNode {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     final List<PartialPath> targetPathList = new ArrayList<>(viewPathToSourceMap.keySet());
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathListPermission(
-              userName, targetPathList, PrivilegeType.WRITE_SCHEMA.ordinal()),
-          targetPathList,
-          PrivilegeType.WRITE_SCHEMA);
-    }
-    return status;
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, targetPathList, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        targetPathList,
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   // region Interfaces in WritePlanNode or PlanNode
