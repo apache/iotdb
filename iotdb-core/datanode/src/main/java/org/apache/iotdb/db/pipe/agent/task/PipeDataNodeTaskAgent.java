@@ -598,15 +598,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     }
 
-    // Update the last restart time for all stuck pipes.
-    final long currentTime = System.currentTimeMillis();
-    stuckPipes.forEach(
-        pipeMeta ->
-            PIPE_NAME_TO_LAST_RESTART_TIME_MAP
-                .computeIfAbsent(
-                    pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(currentTime))
-                .set(currentTime));
-
     return stuckPipes;
   }
 
@@ -652,10 +643,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
       handleSinglePipeMetaChanges(originalPipeMeta);
+
+      final long currentTime = System.currentTimeMillis();
+      PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+          .computeIfAbsent(pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(currentTime))
+          .set(currentTime);
       LOGGER.warn(
           "Pipe {} was restarted because of stuck, time cost: {} ms.",
           originalPipeMeta.getStaticMeta(),
-          System.currentTimeMillis() - startTime);
+          currentTime - startTime);
     } catch (final Exception e) {
       LOGGER.warn("Failed to restart stuck pipe {}.", pipeMeta.getStaticMeta(), e);
     } finally {
