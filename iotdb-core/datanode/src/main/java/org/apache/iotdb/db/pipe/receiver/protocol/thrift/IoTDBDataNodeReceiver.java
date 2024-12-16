@@ -623,13 +623,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
-    return req.getPlanNode() instanceof AlterLogicalViewNode
-        ? new TPipeTransferResp(
-            ClusterConfigTaskExecutor.getInstance()
-                .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
-        : new TPipeTransferResp(
-            executeStatementAndClassifyExceptions(
-                PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
+    if (req.getPlanNode() instanceof AlterLogicalViewNode) {
+      ((AlterLogicalViewNode) req.getPlanNode()).checkPermissionBeforeProcess(username);
+      return new TPipeTransferResp(
+          ClusterConfigTaskExecutor.getInstance()
+              .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
+    }
+    return new TPipeTransferResp(
+        executeStatementAndClassifyExceptions(
+            PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
