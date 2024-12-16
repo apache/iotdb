@@ -62,6 +62,7 @@ public class AlterLogicalViewNode extends PlanNode {
   }
 
   // For pipe
+  // TODO: Add auth check for source paths
   public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
