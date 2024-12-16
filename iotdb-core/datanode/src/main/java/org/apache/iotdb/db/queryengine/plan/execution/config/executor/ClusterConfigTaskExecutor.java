@@ -3574,7 +3574,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final TDeleteTableDeviceReq req =
           new TDeleteTableDeviceReq(
-              PathUtils.qualifyDatabaseName(deleteDevice.getDatabase()),
+              deleteDevice.getDatabase(),
               deleteDevice.getTableName(),
               queryId,
               ByteBuffer.wrap(patternStream.toByteArray()),
