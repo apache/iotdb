@@ -33,7 +33,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<TPipeTransferResp> {
+public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
@@ -54,11 +53,11 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   private final TPipeTransferReq req;
   private final double reqCompressionRatio;
 
-  private final IoTDBDataRegionAsyncConnector connector;
-
   public PipeTransferTabletBatchEventHandler(
       final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncConnector connector)
       throws IOException {
+    super(connector);
+
     // Deep copy to keep events' reference
     events = batch.deepCopyEvents();
     pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
@@ -70,8 +69,6 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
                 uncompressedReq, connector.getCompressors())
             : uncompressedReq;
     reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
-
-    this.connector = connector;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
@@ -83,15 +80,15 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
           (long) (entry.getValue() * reqCompressionRatio));
     }
 
-    client.pipeTransfer(req, this);
+    tryTransfer(client, req);
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
-      return;
+      return false;
     }
 
     try {
@@ -114,11 +111,14 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
                   PipeTransferTabletBatchEventHandler.class.getName(), true));
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return true;
   }
 
   @Override
-  public void onError(final Exception exception) {
+  protected void onErrorInternal(final Exception exception) {
     try {
       LOGGER.warn(
           "Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
@@ -128,5 +128,18 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     } finally {
       connector.addFailureEventsToRetryQueue(events);
     }
+  }
+
+  @Override
+  protected void doTransfer(
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
+      throws TException {
+    client.pipeTransfer(req, this);
+  }
+
+  @Override
+  public void clearEventsReferenceCount() {
+    events.forEach(
+        event -> event.clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName()));
   }
 }
