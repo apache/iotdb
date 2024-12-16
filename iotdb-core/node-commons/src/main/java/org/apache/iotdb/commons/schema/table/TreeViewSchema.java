@@ -23,6 +23,16 @@ public class TreeViewSchema {
   public static final String TREE_VIEW_DATABASE = "tree_view_db";
   public static final String DEVICE_VIEW_SUFFIX = "device_view";
 
+  // db -> db
+  // tree_view_db."root.db1.device_view" -> root.db1
+  public static String mayGetDatabase(final String database, final String table) {
+    if (!TREE_VIEW_DATABASE.equals(database)) {
+      return database;
+    } else {
+      return table.substring(0, table.length() - 12);
+    }
+  }
+
   private TreeViewSchema() {
     // Private constructor
   }
