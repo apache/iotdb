@@ -148,16 +148,8 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    // has right values equal to current left, append to join result, inc leftIndex
-    if (hasMatchedRightValueToProbeLeft()) {
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        return true;
-      }
-    }
-
-    return false;
+    // has right value equals to current left, append to join result, inc leftIndex
+    return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
   }
 
   @Override
