@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.drepair;
 
 import org.apache.iotdb.library.drepair.util.TimestampRepair;
+import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
