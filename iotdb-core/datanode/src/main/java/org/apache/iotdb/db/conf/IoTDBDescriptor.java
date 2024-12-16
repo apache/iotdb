@@ -2334,9 +2334,20 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
     conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
         Long.parseLong(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_memory_size_in_bytes",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_tsfile_analyze_schema_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadChunkMetadataMemorySizeInBytes(
+            Long.parseLong(
+                    Optional.ofNullable(
+                                    properties.getProperty(
+                                            "load_chunk_metadata_memory_size_in_bytes",
+                                            String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                            .map(String::trim)
+                            .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
