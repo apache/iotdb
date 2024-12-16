@@ -489,6 +489,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       releaseWriteLock();
     }
 
+    // If the pipe has been restarted recently, skip it.
+    stuckPipes.removeIf(
+        pipeMeta -> {
+          final AtomicLong lastRestartTime =
+              PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeMeta.getStaticMeta().getPipeName());
+          return lastRestartTime != null
+              && System.currentTimeMillis() - lastRestartTime.get()
+                  < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs();
+        });
+
     // Restart all stuck pipes.
     // Note that parallelStream cannot be used here. The method PipeTaskAgent#dropPipe also uses
     // parallelStream. If parallelStream is used here, the subtasks generated inside the dropPipe
@@ -544,15 +554,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
-
-      // If the pipe has been restarted recently, skip it.
-      final AtomicLong lastRestartTime = PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName);
-      if (lastRestartTime != null
-          && System.currentTimeMillis() - lastRestartTime.get()
-              < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
-        continue;
-      }
-
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()
               .filter(e -> e.getPipeName().equals(pipeName) && e.shouldExtractInsertion())
@@ -642,16 +643,17 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final long startTime = System.currentTimeMillis();
       final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
+
+      final long restartTime = System.currentTimeMillis();
+      PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+          .computeIfAbsent(pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(restartTime))
+          .set(restartTime);
       handleSinglePipeMetaChanges(originalPipeMeta);
 
-      final long currentTime = System.currentTimeMillis();
-      PIPE_NAME_TO_LAST_RESTART_TIME_MAP
-          .computeIfAbsent(pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(currentTime))
-          .set(currentTime);
       LOGGER.warn(
           "Pipe {} was restarted because of stuck, time cost: {} ms.",
           originalPipeMeta.getStaticMeta(),
-          currentTime - startTime);
+          System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.warn("Failed to restart stuck pipe {}.", pipeMeta.getStaticMeta(), e);
     } finally {
