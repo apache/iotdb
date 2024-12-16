@@ -661,6 +661,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
+  public boolean isPipeTaskCurrentlyRestarted(final String pipeName) {
+    return PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName);
+  }
+
   ///////////////////////// Terminate Logic /////////////////////////
 
   public void markCompleted(final String pipeName, final int regionId) {
