@@ -104,7 +104,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     final TableSchema incomingSchema = getTableSchema();
     final TableSchema realSchema =
         metadata
-            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+            .validateTableHeaderSchema(databaseName, incomingSchema, context, true, false)
             .orElse(null);
     if (realSchema == null) {
       throw new SemanticException(
