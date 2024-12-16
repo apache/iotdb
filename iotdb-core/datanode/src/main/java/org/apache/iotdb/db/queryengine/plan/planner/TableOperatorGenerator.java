@@ -1396,10 +1396,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         filteringSourceJoinKeyPosition,
         "FilteringSource of SemiJoinNode doesn't contain filteringSourceJoinSymbol.");
 
-    Type sourceJoinKeyType = getJoinKeyType(context, node.getSourceJoinSymbol());
+    Type sourceJoinKeyType =
+        context.getTypeProvider().getTableModelType(node.getSourceJoinSymbol());
 
     checkArgument(
-        sourceJoinKeyType == getJoinKeyType(context, node.getFilteringSourceJoinSymbol()),
+        sourceJoinKeyType
+            == context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()),
         "Join key type mismatch.");
     OperatorContext operatorContext =
         context
@@ -1417,10 +1419,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         filteringSourceJoinKeyPosition,
         JoinKeyComparatorFactory.getComparator(sourceJoinKeyType, true),
         dataTypes);
-  }
-
-  private Type getJoinKeyType(LocalExecutionPlanContext context, Symbol symbol) {
-    return context.getTypeProvider().getTableModelType(symbol);
   }
 
   @Override
