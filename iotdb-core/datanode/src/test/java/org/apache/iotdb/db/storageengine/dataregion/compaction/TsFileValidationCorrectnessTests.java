@@ -182,8 +182,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 3);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -200,8 +200,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 100);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 100);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -218,8 +218,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 110);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 110);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -289,8 +289,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 3);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -317,8 +317,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 3);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), 3);
     tsFileResource.serialize();
     tsFileResource.remove();
     Assert.assertTrue(TsFileValidator.getInstance().validateTsFile(tsFileResource));
