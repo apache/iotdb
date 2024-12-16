@@ -661,7 +661,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               return isTableModel
                   ? (tablePattern.isTableModelDataAllowedToBeCaptured()
                       // The database name in resource is prefixed with "root."
-                      && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
+                      && tablePattern.matchesDatabase(resource.getDatabaseName())
                       && tablePattern.matchesTable(deviceID.getTableName()))
                   : (treePattern.isTreeModelDataAllowedToBeCaptured()
                       && treePattern.mayOverlapWithDevice(deviceID));
