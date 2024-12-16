@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTrackableHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -67,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -87,14 +89,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
 
-  private IoTDBDataNodeAsyncClientManager clientManager;
-
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
+  private IoTDBDataNodeAsyncClientManager clientManager;
+
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
+  // use these variables to prevent reference count leaks under some corner cases when closing
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
+      new ConcurrentHashMap<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -536,10 +541,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     isClosed.set(true);
 
     retryConnector.close();
-    clearRetryEventsReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
+    }
+
+    // ensure all on-the-fly handlers have been cleared
+    if (hasPendingHandlers()) {
+      pendingHandlers.forEach((handler, _handler) -> handler.clearEventsReferenceCount());
+      pendingHandlers.clear();
     }
 
     try {
@@ -550,10 +560,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       LOGGER.warn("Failed to close client manager.", e);
     }
 
+    // clear reference count of events in retry queue after closing async client
+    clearRetryEventsReferenceCount();
+
     super.close();
   }
 
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
+  //////////////////////// APIs provided for metric framework ////////////////////////
 
   public int getRetryEventQueueSize() {
     return retryEventQueue.size();
@@ -578,5 +591,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
       return count.get();
     }
+  }
+
+  //////////////////////// APIs provided for PipeTransferTrackableHandler ////////////////////////
+
+  public boolean isClosed() {
+    return isClosed.get();
+  }
+
+  public void trackHandler(final PipeTransferTrackableHandler handler) {
+    pendingHandlers.put(handler, handler);
+  }
+
+  public void eliminateHandler(final PipeTransferTrackableHandler handler) {
+    pendingHandlers.remove(handler);
+  }
+
+  public boolean hasPendingHandlers() {
+    return !pendingHandlers.isEmpty();
   }
 }
