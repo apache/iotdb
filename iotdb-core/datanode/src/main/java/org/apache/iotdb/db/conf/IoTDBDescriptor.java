@@ -3257,6 +3257,14 @@ public class IoTDBDescriptor {
                         String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex())))
                 .map(String::trim)
                 .orElse(String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
+    conf.setLoadChunkMetadataMemorySizeInBytes(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_chunk_metadata_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             Optional.ofNullable(

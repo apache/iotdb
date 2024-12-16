@@ -240,6 +240,27 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
+    final String usernameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
+    if (usernameString != null) {
+      username = usernameString;
+    }
+    final String passwordString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
+    if (passwordString != null) {
+      password = passwordString;
+    }
+    final TSStatus status = tryLogin();
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Receiver id = {}: Handshake failed because login failed, response status = {}.",
+          receiverId.get(),
+          status);
+      return new TPipeTransferResp(status);
+    } else {
+      LOGGER.info("Receiver id = {}: User {} login successfully.", receiverId.get(), username);
+    }
+
     final String shouldConvertDataTypeOnTypeMismatchString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH);
     if (shouldConvertDataTypeOnTypeMismatchString != null) {
@@ -256,17 +277,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               loadTsFileStrategyString));
     }
 
-    final String usernameString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
-    if (usernameString != null) {
-      username = usernameString;
-    }
-    final String passwordString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
-    if (passwordString != null) {
-      password = passwordString;
-    }
-
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
@@ -280,6 +290,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected abstract String getClusterId();
+
+  protected abstract TSStatus tryLogin();
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
@@ -791,6 +803,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
 
+    // Close the session
+    closeSession();
+
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
   }
+
+  protected abstract void closeSession();
 }

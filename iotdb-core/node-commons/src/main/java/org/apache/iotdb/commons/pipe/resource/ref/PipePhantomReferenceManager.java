@@ -155,7 +155,7 @@ public abstract class PipePhantomReferenceManager {
       }
 
       if (referenceCount.get() >= 1) {
-        LOGGER.error("PIPE EVENT RESOURCE LEAK DETECTED: {}", holderMessage);
+        LOGGER.error("PIPE EVENT RESOURCE LEAK DETECTED ({}): {}", referenceCount, holderMessage);
         finalizeResource();
       }
 

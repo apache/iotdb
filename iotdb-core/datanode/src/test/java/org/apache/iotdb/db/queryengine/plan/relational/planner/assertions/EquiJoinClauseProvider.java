@@ -23,11 +23,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 
 import static java.util.Objects.requireNonNull;
 
-class EquiJoinClauseProvider implements ExpectedValueProvider<JoinNode.EquiJoinClause> {
+public class EquiJoinClauseProvider implements ExpectedValueProvider<JoinNode.EquiJoinClause> {
   private final SymbolAlias left;
   private final SymbolAlias right;
 
-  EquiJoinClauseProvider(SymbolAlias left, SymbolAlias right) {
+  public EquiJoinClauseProvider(SymbolAlias left, SymbolAlias right) {
     this.left = requireNonNull(left, "left is null");
     this.right = requireNonNull(right, "right is null");
   }
