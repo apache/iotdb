@@ -537,9 +537,8 @@ public class ExportData extends AbstractDataTool {
       targetDirectory += File.separator;
     }
     final File file = new File(targetDirectory);
-    if (!file.isDirectory()) {
-      ioTPrinter.println(
-          String.format("Source file or directory %s does not exist", targetDirectory));
+    if (!file.isDirectory() && !file.mkdirs()) {
+      ioTPrinter.println(String.format("Failed to create directories %s", targetDirectory));
       System.exit(CODE_ERROR);
     }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {

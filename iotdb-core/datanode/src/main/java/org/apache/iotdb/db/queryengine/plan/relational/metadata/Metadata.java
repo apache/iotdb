@@ -98,6 +98,9 @@ public interface Metadata {
    * <p>The caller need to recheck the dataType of measurement columns to decide whether to do
    * partial insert
    *
+   * @param isStrictIdColumn if true, when the table already exists, the id columns in the existing
+   *     table should be the prefix of those in the input tableSchema, or input id columns be the
+   *     prefix of existing id columns.
    * @return If table doesn't exist and the user have no authority to create table, Optional.empty()
    *     will be returned. The returned table may not include all the columns
    *     in @param{tableSchema}, if the user have no authority to alter table.
@@ -108,7 +111,8 @@ public interface Metadata {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable);
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn);
 
   /**
    * This method is used for table device validation and should be invoked after column validation.
