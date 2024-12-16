@@ -55,6 +55,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private volatile Iterator<EnrichedEvent> enrichedEventsIterator;
   private volatile Iterator<TabletInsertionEvent> currentTabletInsertionEventsIterator;
+  private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
 
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
@@ -100,6 +101,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     enrichedEventsIterator = null;
     currentTabletInsertionEventsIterator = null;
+    currentTsFileInsertionEvent = null;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -157,13 +159,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L));
-      iteratedEnrichedEvents.add((EnrichedEvent) tabletInsertionEvent);
       return tablets;
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       updateEstimatedRawTabletInsertionEventSize(
           PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
-      iteratedEnrichedEvents.add((EnrichedEvent) tabletInsertionEvent);
       return Collections.singletonList(tablet);
     }
 
@@ -206,6 +206,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       } else {
         // reset
         currentTabletInsertionEventsIterator = null;
+        currentTsFileInsertionEvent = null;
         return false;
       }
     }
@@ -227,9 +228,15 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   public List<Tablet> next() {
     if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
       if (currentTabletInsertionEventsIterator.hasNext()) {
-        return convertToTablets(currentTabletInsertionEventsIterator.next());
+        final TabletInsertionEvent tabletInsertionEvent =
+            currentTabletInsertionEventsIterator.next();
+        if (!currentTabletInsertionEventsIterator.hasNext()) {
+          iteratedEnrichedEvents.add((EnrichedEvent) currentTsFileInsertionEvent);
+        }
+        return convertToTablets(tabletInsertionEvent);
       } else {
         currentTabletInsertionEventsIterator = null;
+        currentTsFileInsertionEvent = null;
       }
     }
 
@@ -248,12 +255,16 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             "SubscriptionPipeTabletEventBatch {} override non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
             this);
       }
+      final PipeTsFileInsertionEvent tsFileInsertionEvent =
+          (PipeTsFileInsertionEvent) enrichedEvent;
+      currentTsFileInsertionEvent = tsFileInsertionEvent;
       currentTabletInsertionEventsIterator =
-          ((PipeTsFileInsertionEvent) enrichedEvent)
+          tsFileInsertionEvent
               .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())
               .iterator();
       return next();
     } else if (enrichedEvent instanceof TabletInsertionEvent) {
+      iteratedEnrichedEvents.add(enrichedEvent);
       return convertToTablets((TabletInsertionEvent) enrichedEvent);
     } else {
       LOGGER.warn(
