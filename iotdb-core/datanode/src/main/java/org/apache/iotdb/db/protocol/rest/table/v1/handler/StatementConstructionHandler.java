@@ -179,7 +179,7 @@ public class StatementConstructionHandler {
     for (int i = 0; i < columnCategories.length; i++) {
       columnCategories[i] =
           TsTableColumnCategory.fromTsFileColumnType(
-              Tablet.ColumnType.valueOf(insertTabletReq.getColumnTypes().get(i)));
+              Tablet.ColumnCategory.valueOf(insertTabletReq.getColumnTypes().get(i)));
     }
     insertStatement.setColumnCategories(columnCategories);
 
