@@ -23,8 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -45,7 +45,7 @@ import java.util.Optional;
 
 public class DeviceTableScanNode extends TableScanNode {
 
-  protected List<DeviceEntry> deviceEntries;
+  protected List<TableDeviceEntry> deviceEntries;
 
   // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
@@ -89,7 +89,7 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      List<DeviceEntry> deviceEntries,
+      List<TableDeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
@@ -157,7 +157,7 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
-    for (DeviceEntry entry : deviceEntries) {
+    for (TableDeviceEntry entry : deviceEntries) {
       entry.serialize(byteBuffer);
     }
 
@@ -211,7 +211,7 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
-    for (DeviceEntry entry : deviceEntries) {
+    for (TableDeviceEntry entry : deviceEntries) {
       entry.serialize(stream);
     }
 
@@ -264,9 +264,9 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<DeviceEntry> deviceEntries = new ArrayList<>(size);
+    List<TableDeviceEntry> deviceEntries = new ArrayList<>(size);
     while (size-- > 0) {
-      deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
+      deviceEntries.add(TableDeviceEntry.deserialize(byteBuffer));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
@@ -311,7 +311,7 @@ public class DeviceTableScanNode extends TableScanNode {
         pushLimitToEachDevice);
   }
 
-  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+  public void setDeviceEntries(List<TableDeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
   }
 
@@ -327,11 +327,11 @@ public class DeviceTableScanNode extends TableScanNode {
     return this.scanOrder;
   }
 
-  public List<DeviceEntry> getDeviceEntries() {
+  public List<TableDeviceEntry> getDeviceEntries() {
     return deviceEntries;
   }
 
-  public void appendDeviceEntry(DeviceEntry deviceEntry) {
+  public void appendDeviceEntry(TableDeviceEntry deviceEntry) {
     this.deviceEntries.add(deviceEntry);
   }
 

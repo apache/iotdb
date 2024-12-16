@@ -36,8 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Conver
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -436,7 +436,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      List<DeviceEntry> deviceEntries =
+      List<TableDeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -752,7 +752,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private DataPartition fetchDataPartitionByDevices(
-        String database, List<DeviceEntry> deviceEntries, Filter globalTimeFilter) {
+        String database, List<TableDeviceEntry> deviceEntries, Filter globalTimeFilter) {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);
 

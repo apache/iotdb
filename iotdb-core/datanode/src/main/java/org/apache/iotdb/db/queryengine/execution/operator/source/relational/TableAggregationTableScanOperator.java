@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -89,7 +89,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
 
   private final int[] columnsIndexArray;
 
-  private final List<DeviceEntry> deviceEntries;
+  private final List<TableDeviceEntry> deviceEntries;
 
   private final int deviceCount;
 
@@ -122,7 +122,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       OperatorContext context,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      List<DeviceEntry> deviceEntries,
+      List<TableDeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
@@ -267,11 +267,11 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   private void constructAlignedSeriesScanUtil() {
-    DeviceEntry deviceEntry;
+    TableDeviceEntry deviceEntry;
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
       // for device which is not exist
-      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+      deviceEntry = new TableDeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     }

@@ -19,43 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
-import static org.apache.tsfile.utils.ReadWriteIOUtils.readInt;
-import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
+public abstract class DeviceEntry implements Accountable {
 
-/**
- * The {@link DeviceEntry} shall have {@code null} suffix in its {@link IDeviceID}, e.g. "a.b.null".
- * However, in other places related to {@link TableDeviceSchemaCache} or {@link ISchemaRegion}, the
- * {@code null}s are trimmed thus will not appear in the {@link IDeviceID}, and it will be like
- * "a.b".
- */
-public class DeviceEntry implements Accountable {
+  protected final IDeviceID deviceID;
 
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
-
-  private final IDeviceID deviceID;
-  private final List<Binary> attributeColumnValues;
-
-  public DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
+  protected DeviceEntry(final IDeviceID deviceID) {
     this.deviceID = deviceID;
-    this.attributeColumnValues = attributeColumnValues;
   }
 
   public IDeviceID getDeviceID() {
@@ -68,77 +45,17 @@ public class DeviceEntry implements Accountable {
     return segmentIndex < deviceID.segmentNum() ? deviceID.segment(segmentIndex) : null;
   }
 
-  public List<Binary> getAttributeColumnValues() {
-    return attributeColumnValues;
-  }
-
   public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
-    write(attributeColumnValues.size(), byteBuffer);
-    for (final Binary value : attributeColumnValues) {
-      serializeBinary(byteBuffer, value);
-    }
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
-    write(attributeColumnValues.size(), stream);
-    for (final Binary value : attributeColumnValues) {
-      serializeBinary(stream, value);
-    }
-  }
-
-  public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
-    final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
-    int size = readInt(byteBuffer);
-    final List<Binary> attributeColumnValues = new ArrayList<>(size);
-    while (size-- > 0) {
-      attributeColumnValues.add(deserializeBinary(byteBuffer));
-    }
-    return new DeviceEntry(iDeviceID, attributeColumnValues);
-  }
-
-  public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {
-    if (binary == null) {
-      write(-1, byteBuffer);
-      return;
-    }
-    write(binary, byteBuffer);
-  }
-
-  public static void serializeBinary(final DataOutputStream outputStream, final Binary binary)
-      throws IOException {
-    if (binary == null) {
-      write(-1, outputStream);
-      return;
-    }
-    write(binary, outputStream);
-  }
-
-  public static Binary deserializeBinary(final ByteBuffer byteBuffer) {
-    int length = readInt(byteBuffer);
-    if (length <= 0) {
-      return null;
-    }
-    byte[] bytes = readBytes(byteBuffer, length);
-    return new Binary(bytes);
-  }
-
-  @Override
-  public String toString() {
-    return "DeviceEntry{"
-        + "deviceID="
-        + deviceID
-        + ", attributeColumnValues="
-        + attributeColumnValues
-        + '}';
   }
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + deviceID.ramBytesUsed()
-        + RamUsageEstimator.sizeOfCollection(attributeColumnValues);
+    return deviceID.ramBytesUsed();
   }
 
   @Override
@@ -150,12 +67,11 @@ public class DeviceEntry implements Accountable {
       return false;
     }
     final DeviceEntry that = (DeviceEntry) obj;
-    return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
+    return Objects.equals(deviceID, that.deviceID);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(deviceID, attributeColumnValues);
+    return Objects.hash(deviceID);
   }
 }

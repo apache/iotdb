@@ -689,7 +689,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public List<DeviceEntry> indexScan(
+  public List<TableDeviceEntry> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,

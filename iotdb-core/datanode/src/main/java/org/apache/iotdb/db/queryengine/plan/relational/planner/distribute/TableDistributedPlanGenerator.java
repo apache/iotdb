@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -460,7 +460,7 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitDeviceTableScan(DeviceTableScanNode node, PlanContext context) {
     Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
 
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
+    for (TableDeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
               node.getQualifiedObjectName().getDatabaseName(),
@@ -600,7 +600,7 @@ public class TableDistributedPlanGenerator
       AggregationTableScanNode node, PlanContext context) {
     boolean needSplit = false;
     List<List<TRegionReplicaSet>> regionReplicaSetsList = new ArrayList<>();
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
+    for (TableDeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
               node.getQualifiedObjectName().getDatabaseName(),
@@ -799,7 +799,7 @@ public class TableDistributedPlanGenerator
       return;
     }
 
-    final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
+    final List<Function<TableDeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
       final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
       if (idx == null) {
@@ -821,7 +821,7 @@ public class TableDistributedPlanGenerator
                         .getStringValue(TSFileConfig.STRING_CHARSET));
       }
     }
-    Comparator<DeviceEntry> comparator = null;
+    Comparator<TableDeviceEntry> comparator = null;
 
     if (!orderingRules.isEmpty()) {
       if (newSortOrders.get(0).isNullsFirst()) {
@@ -842,7 +842,7 @@ public class TableDistributedPlanGenerator
                     .reversed();
       }
       for (int i = 1; i < orderingRules.size(); i++) {
-        final Comparator<DeviceEntry> thenComparator;
+        final Comparator<TableDeviceEntry> thenComparator;
         if (newSortOrders.get(i).isNullsFirst()) {
           thenComparator =
               newSortOrders.get(i).isAscending()
