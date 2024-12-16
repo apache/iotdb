@@ -37,6 +37,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -58,6 +59,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
 
+  private final List<EnrichedEvent> iteratedEnrichedEvents = new ArrayList<>();
+
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
       final SubscriptionPrefetchingTabletQueue prefetchingQueue,
@@ -75,13 +78,20 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized void ack() {
-    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+    // only decrease the reference count of iterated events
+    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
       enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
     }
+    iteratedEnrichedEvents.clear();
   }
 
   @Override
   public synchronized void cleanUp() {
+    // do nothing if it has next
+    if (hasNext()) {
+      return;
+    }
+
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.clearReferenceCount(this.getClass().getName());
@@ -119,13 +129,17 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     // update buffer size
     // TODO: more precise computation
+    // NOTE: Considering the possibility of large tsfile, the final generated response size may be
+    // larger than totalBufferSize, therefore limit control is also required in
+    // SubscriptionEventTabletResponse.
     totalBufferSize += ((PipeTsFileInsertionEvent) event).getTsFile().length();
   }
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
+    resetIterator();
     return Collections.singletonList(
-        new SubscriptionEvent(this, prefetchingQueue.generateSubscriptionCommitContext()));
+        new SubscriptionEvent(this, prefetchingQueue::generateSubscriptionCommitContext));
   }
 
   @Override
@@ -143,11 +157,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L));
+      iteratedEnrichedEvents.add((EnrichedEvent) tabletInsertionEvent);
       return tablets;
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       updateEstimatedRawTabletInsertionEventSize(
           PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+      iteratedEnrichedEvents.add((EnrichedEvent) tabletInsertionEvent);
       return Collections.singletonList(tablet);
     }
 
