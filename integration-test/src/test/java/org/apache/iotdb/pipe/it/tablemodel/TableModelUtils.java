@@ -116,7 +116,7 @@ public class TableModelUtils {
     List<String> list = new ArrayList<>(end - start + 1);
     Object[] values = new Object[12];
     Random random = new Random();
-    // s0 string, s1 int64, s2 float, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8
+    // s0 string, s1 string, s2 string, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8
     // int32, s9 double, s10 date, s11 text
     for (int i = start; i < end; ++i) {
       Arrays.fill(values, i);
@@ -242,13 +242,15 @@ public class TableModelUtils {
     }
   }
 
+  // s0 string, s1 string, s2 string, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8
+  // int32, s9 double, s10 date, s11 text
   public static Set<String> generateExpectedResults(final int start, final int end) {
     Set<String> expectedResSet = new HashSet<>();
     for (int i = start; i < end; ++i) {
       final String time = RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC);
       expectedResSet.add(
           String.format(
-              "t%d,t%d,t%d,t%d,%d,%d.0,%d,%s,%d,%d.0,%s,%s,%s,",
+              "t%s,t%s,t%s,t%s,%s,%s.0,%s,%s,%d,%d.0,%s,%s,%s",
               i, i, i, i, i, i, i, time, i, i, getDateStr(i), i, time));
     }
     return expectedResSet;
@@ -317,11 +319,11 @@ public class TableModelUtils {
   }
 
   public static String generateHeaderResults() {
-    return "s0,s3,s2,s1,s4,s5,s6,s7,s8,time,";
+    return "s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time,";
   }
 
   public static String getQuerySql(final String table) {
-    return "select s0,s3,s2,s1,s4,s5,s6,s7,s8,time from " + table;
+    return "select s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,time from " + table;
   }
 
   public static String getQueryCountSql(final String table) {
@@ -650,11 +652,12 @@ public class TableModelUtils {
 
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
       // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+      long value = random.nextInt(1<<16);
       for (long row = 0; row < deviceDataSize; row++) {
         int randomNumber = allowNullValue ? random.nextInt(12) : 12;
         int rowIndex = tablet.getRowSize();
-        long value = random.nextInt();
-        tablet.addTimestamp(rowIndex, row);
+        value += random.nextInt(100);
+        tablet.addTimestamp(rowIndex, value);
         tablet.addValue(
             "s0",
             rowIndex,
