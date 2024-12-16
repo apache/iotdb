@@ -2341,13 +2341,13 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
     conf.setLoadChunkMetadataMemorySizeInBytes(
-            Long.parseLong(
-                    Optional.ofNullable(
-                                    properties.getProperty(
-                                            "load_chunk_metadata_memory_size_in_bytes",
-                                            String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
-                            .map(String::trim)
-                            .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_chunk_metadata_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(

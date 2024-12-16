@@ -54,6 +54,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -359,7 +360,7 @@ public class LoadTsFileManager {
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
-    private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
+    private Map<DataPartitionInfo, String> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
 
