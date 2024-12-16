@@ -28,7 +28,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -192,7 +195,9 @@ public class PathPrivilege {
   public String toString() {
     StringBuilder builder = new StringBuilder(path.getFullPath());
     builder.append(" :");
-    for (PrivilegeType privilege : privileges) {
+    List<PrivilegeType> sortedPrivileges = new ArrayList<>(privileges);
+    Collections.sort(sortedPrivileges);
+    for (PrivilegeType privilege : sortedPrivileges) {
       builder.append(" ").append(privilege);
       if (grantOpts.contains(privilege)) {
         builder.append("_").append("with_grant_option");
