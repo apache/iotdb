@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -47,6 +48,7 @@ import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -369,5 +371,42 @@ public class ResourceManagerTest {
           TimeIndexLevel.FILE_TIME_INDEX,
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     }
+  }
+
+  @Test
+  public void testForceDegradeTimeIndex() {
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource tsFileResource = new TsFileResource(file);
+    IDeviceID device1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1");
+    IDeviceID device2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d2");
+    tsFileResource.updateStartTime(device1, 1);
+    tsFileResource.updateStartTime(device1, 2);
+    tsFileResource.updateStartTime(device2, 1);
+    tsFileResource.updateStartTime(device2, 2);
+
+    assertEquals(
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
+        TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+    long resourceRamSizeBeforeDegrade = tsFileResource.calculateRamSize();
+    Assert.assertEquals(
+        resourceRamSizeBeforeDegrade, tsFileResourceManager.getTotalTimeIndexMemCost());
+    TsFileResourceManager.getInstance().forceDegradeTsFileResource(tsFileResource);
+    Assert.assertEquals(
+        tsFileResource.calculateRamSize(), tsFileResourceManager.getTotalTimeIndexMemCost());
+    Assert.assertTrue(
+        resourceRamSizeBeforeDegrade > tsFileResourceManager.getTotalTimeIndexMemCost());
+    Assert.assertTrue(tsFileResource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE);
+    Assert.assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
   }
 }

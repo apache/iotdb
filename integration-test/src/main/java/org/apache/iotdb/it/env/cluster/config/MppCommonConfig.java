@@ -204,6 +204,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     setProperty("schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
     return this;

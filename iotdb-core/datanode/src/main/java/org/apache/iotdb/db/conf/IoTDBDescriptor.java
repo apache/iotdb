@@ -1579,6 +1579,11 @@ public class IoTDBDescriptor {
 
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
+
+    // update query_sample_throughput_bytes_per_sec
+    loadQuerySampleThroughput(properties);
+    // update trusted_uri_pattern
+    loadTrustedUriPattern(properties);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2883,54 +2888,60 @@ public class IoTDBDescriptor {
       }
 
       // update query_sample_throughput_bytes_per_sec
-      String querySamplingRateLimitNumber =
-          Optional.ofNullable(
-                  properties.getProperty(
-                      "query_sample_throughput_bytes_per_sec",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "query_sample_throughput_bytes_per_sec")))
-              .map(String::trim)
-              .orElse(
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "query_sample_throughput_bytes_per_sec"));
-      if (querySamplingRateLimitNumber != null) {
-        try {
-          int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
-          commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
-              querySamplingRateLimitNumber);
-        }
-      }
-
+      loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
-      String trustedUriPattern =
-          Optional.ofNullable(
-                  properties.getProperty(
-                      "trusted_uri_pattern",
-                      ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern")))
-              .map(String::trim)
-              .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern"));
-      Pattern pattern;
-      if (trustedUriPattern != null) {
-        try {
-          pattern = Pattern.compile(trustedUriPattern);
-        } catch (Exception e) {
-          LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
-          pattern = commonDescriptor.getConfig().getTrustedUriPattern();
-        }
-      } else {
-        pattern = commonDescriptor.getConfig().getTrustedUriPattern();
-      }
-      commonDescriptor.getConfig().setTrustedUriPattern(pattern);
-
+      loadTrustedUriPattern(properties);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
+  }
+
+  private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
+    String querySamplingRateLimitNumber =
+        Optional.ofNullable(
+                properties.getProperty(
+                    "query_sample_throughput_bytes_per_sec",
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "query_sample_throughput_bytes_per_sec")))
+            .map(String::trim)
+            .orElse(
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "query_sample_throughput_bytes_per_sec"));
+    if (querySamplingRateLimitNumber != null) {
+      try {
+        int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
+        commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+            querySamplingRateLimitNumber);
+      }
+    }
+  }
+
+  private void loadTrustedUriPattern(TrimProperties properties) throws IOException {
+    String trustedUriPattern =
+        Optional.ofNullable(
+                properties.getProperty(
+                    "trusted_uri_pattern",
+                    ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern")))
+            .map(String::trim)
+            .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern"));
+    Pattern pattern;
+    if (trustedUriPattern != null) {
+      try {
+        pattern = Pattern.compile(trustedUriPattern);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+        pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+      }
+    } else {
+      pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+    }
+    commonDescriptor.getConfig().setTrustedUriPattern(pattern);
   }
 
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
