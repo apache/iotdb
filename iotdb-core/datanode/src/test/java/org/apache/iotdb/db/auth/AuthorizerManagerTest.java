@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -148,44 +150,89 @@ public class AuthorizerManagerTest {
     authorityFetcher.getAuthorCache().putRoleCache("role1", role);
 
     // for system priv. we have USE_PIPE grant option.
-    Assert.assertTrue(authorityFetcher.checkUserPrivilegeGrantOpt("user1", PrivilegeType.USE_PIPE));
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt("user1", PrivilegeType.MANAGE_USER));
+    Assert.assertEquals(
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_PIPE).getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MANAGE_USER)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     // for path priv. we have write_schema on root.d1.** with grant option.
     // require root.d1.** with write_schema, return true
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.WRITE_SCHEMA, new PartialPath("root.d1.**")));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.**")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
     // require root.** with write_schema, return false
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.WRITE_SCHEMA, new PartialPath("root.**")));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.**")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
     // reuqire root.d1.d2 with write_schema, return true
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.WRITE_SCHEMA, new PartialPath("root.d1.d1.**")));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.d1.**")),
+                PrivilegeType.WRITE_SCHEMA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     // require root.d1.d2 with read_schema, return false
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.READ_SCHEMA, new PartialPath("root.d1.d2")));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.d1.d2")),
+                PrivilegeType.READ_SCHEMA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt("user1", PrivilegeType.ALTER, "database"));
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.SELECT, "database", "table"));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserDBPrivilegesGrantOpt("user1", "database", PrivilegeType.ALTER)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.SELECT)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
     // role test
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.READ_DATA, new PartialPath("root.t.**")));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.t.**")),
+                PrivilegeType.READ_DATA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    Assert.assertTrue(
-        authorityFetcher.checkUserPrivilegeGrantOpt(
-            "user1", PrivilegeType.READ_DATA, new PartialPath("root.t.t1")));
-    Assert.assertFalse(
-        authorityFetcher.checkUserPrivilegeGrantOpt("user1", PrivilegeType.USE_TRIGGER));
-    Assert.assertTrue(authorityFetcher.checkUserPrivilegeGrantOpt("user1", PrivilegeType.USE_CQ));
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserPathPrivilegesGrantOpt(
+                "user1",
+                Collections.singletonList(new PartialPath("root.t.t1")),
+                PrivilegeType.READ_DATA)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Assert.assertEquals(
+        authorityFetcher
+            .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_TRIGGER)
+            .getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Assert.assertEquals(
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }
