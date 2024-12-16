@@ -25,21 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.StandardTypes.ROW;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.namedTypeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.numericParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.typeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.typeVariable;
@@ -61,28 +56,8 @@ public class TypeSignatureTranslator {
     if (type instanceof GenericDataType) {
       return toTypeSignature((GenericDataType) type, typeVariables);
     }
-    if (type instanceof RowDataType) {
-      return toTypeSignature((RowDataType) type, typeVariables);
-    }
 
     throw new UnsupportedOperationException("Unsupported DataType: " + type.getClass().getName());
-  }
-
-  private static TypeSignature toTypeSignature(RowDataType type, Set<String> typeVariables) {
-    List<TypeSignatureParameter> parameters =
-        type.getFields().stream()
-            .map(
-                field ->
-                    namedTypeParameter(
-                        new NamedTypeSignature(
-                            field
-                                .getName()
-                                .map(TypeSignatureTranslator::canonicalize)
-                                .map(RowFieldName::new),
-                            toTypeSignature(field.getType(), typeVariables))))
-            .collect(toImmutableList());
-
-    return new TypeSignature(ROW, parameters);
   }
 
   private static TypeSignature toTypeSignature(GenericDataType type, Set<String> typeVariables) {

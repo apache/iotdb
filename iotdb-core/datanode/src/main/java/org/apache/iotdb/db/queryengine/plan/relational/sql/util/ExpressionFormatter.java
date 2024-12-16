@@ -64,7 +64,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
@@ -529,25 +528,6 @@ public final class ExpressionFormatter {
         result.append(
             node.getArguments().stream().map(this::process).collect(joining(", ", "(", ")")));
       }
-
-      return result.toString();
-    }
-
-    @Override
-    protected String visitRowDataType(RowDataType node, Void context) {
-      return node.getFields().stream().map(this::process).collect(joining(", ", "ROW(", ")"));
-    }
-
-    @Override
-    protected String visitRowField(RowDataType.Field node, Void context) {
-      StringBuilder result = new StringBuilder();
-
-      if (node.getName().isPresent()) {
-        result.append(process(node.getName().get(), context));
-        result.append(" ");
-      }
-
-      result.append(process(node.getType(), context));
 
       return result.toString();
     }
