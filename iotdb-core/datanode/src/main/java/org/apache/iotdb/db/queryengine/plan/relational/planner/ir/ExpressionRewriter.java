@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -230,11 +229,6 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteGenericDataType(
       GenericDataType node, C context, ExpressionTreeRewriter<C> treeRewriter) {
-    return rewriteExpression(node, context, treeRewriter);
-  }
-
-  public Expression rewriteRowDataType(
-      RowDataType node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 }

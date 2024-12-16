@@ -108,6 +108,8 @@ public class SubqueryDataSetUtils {
         "CREATE TABLE table3(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT, s7 STRING MEASUREMENT, s8 BLOB MEASUREMENT, s9 TIMESTAMP MEASUREMENT, s10 DATE MEASUREMENT)",
         "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'d01',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
         "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d01',40,40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
+        "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'d_null',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
+        "INSERT INTO table3(time,device_id,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d_null',40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };

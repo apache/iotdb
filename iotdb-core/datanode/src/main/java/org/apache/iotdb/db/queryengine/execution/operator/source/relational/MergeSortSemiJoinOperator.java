@@ -120,8 +120,9 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
-    // skip all NULL values in left, because NULL value will not match the left value
+    // if current left is null, append null to result
     while (currentLeftHasNullValue()) {
+      appendNullValueToResult();
       if (leftFinishedWithIncIndex()) {
         return true;
       }
@@ -182,6 +183,17 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
   private void appendSemiJoinOutput(boolean value) {
     ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
     columnBuilder.writeBoolean(value);
+  }
+
+  private void appendNullValueToResult() {
+    appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
+    appendNullToSemiJoinOutput();
+    resultBuilder.declarePosition();
+  }
+
+  private void appendNullToSemiJoinOutput() {
+    ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
+    columnBuilder.appendNull();
   }
 
   private void appendAllLeftBlock() {

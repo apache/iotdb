@@ -150,6 +150,12 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
           retArray,
           DATABASE_NAME);
     }
+
+    // Test case: where s in (subquery), s contains null value
+    sql = "SELECT s1 FROM table3 WHERE device_id = 'd_null' and s1 in (SELECT (s1) from table3)";
+    expectedHeader = new String[] {"s1"};
+    retArray = new String[] {"30,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -245,6 +251,13 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
       tableResultSetEqualTest(
           String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
+
+    // Test case: select s in (subquery), s contains null value. The result should also be null when
+    // s is null.
+    sql = "SELECT s1 in (SELECT s1 from table3) from table3 where device_id = 'd_null'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"true,", "null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
