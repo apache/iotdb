@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,7 +40,7 @@ public class TableSchema {
 
   private final List<ColumnSchema> columns;
 
-  public TableSchema(String tableName, List<ColumnSchema> columns) {
+  public TableSchema(final String tableName, final List<ColumnSchema> columns) {
     this.tableName = tableName;
     this.columns = columns;
   }
@@ -55,22 +54,23 @@ public class TableSchema {
   }
 
   /** Get the column with the specified name and category, return null if not found. */
-  public ColumnSchema getColumn(String columnName, TsTableColumnCategory columnCategory) {
-    for (final ColumnSchema column : columns) {
-      if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
-        return column;
-      }
-    }
-    return null;
+  public ColumnSchema getColumn(
+      final String columnName, final TsTableColumnCategory columnCategory) {
+    return columns.stream()
+        .filter(
+            column ->
+                column.getName().equals(columnName) && column.getColumnCategory() == columnCategory)
+        .findAny()
+        .orElse(null);
   }
 
   /**
    * Given the name of an ID column, return the index of this column among all ID columns, return -1
    * if not found.
    */
-  public int getIndexAmongIdColumns(String idColumnName) {
+  public int getIndexAmongIdColumns(final String idColumnName) {
     int index = 0;
-    for (ColumnSchema column : getIdColumns()) {
+    for (final ColumnSchema column : getIdColumns()) {
       if (column.getName().equals(idColumnName)) {
         return index;
       }
@@ -79,21 +79,20 @@ public class TableSchema {
     return -1;
   }
 
-  public static TableSchema of(TsTable tsTable) {
-    String tableName = tsTable.getTableName();
-    List<ColumnSchema> columns = new ArrayList<>();
-    for (TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
-      columns.add(ColumnSchema.ofTsColumnSchema(tsTableColumnSchema));
-    }
-    return new TableSchema(tableName, columns);
+  public static TableSchema of(final TsTable tsTable) {
+    return new TableSchema(
+        tsTable.getTableName(),
+        tsTable.getColumnList().stream()
+            .map(ColumnSchema::ofTsColumnSchema)
+            .collect(Collectors.toList()));
   }
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchema() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
         continue;
       }
@@ -108,10 +107,10 @@ public class TableSchema {
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchemaNoAttribute() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME
           || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
         continue;
@@ -128,9 +127,9 @@ public class TableSchema {
   private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TableSchema.class);
 
   public static TableSchema fromTsFileTableSchema(
-      String tableName, org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
+      final String tableName, final org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
     try {
-      List<ColumnSchema> columns = new ArrayList<>();
+      final List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
         final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementName();
         if (columnName == null || columnName.isEmpty()) {
@@ -156,7 +155,7 @@ public class TableSchema {
                 TsTableColumnCategory.fromTsFileColumnType(columnType)));
       }
       return new TableSchema(tableName, columns);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Cannot convert tsfile table schema to iotdb table schema, table name: {}, tsfile table schema: {}",
           tableName,
@@ -167,14 +166,14 @@ public class TableSchema {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TableSchema that = (TableSchema) o;
+    final TableSchema that = (TableSchema) o;
     return Objects.equals(tableName, that.tableName) && Objects.equals(columns, that.columns);
   }
 
