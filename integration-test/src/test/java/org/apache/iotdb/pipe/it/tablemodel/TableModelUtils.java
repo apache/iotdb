@@ -696,4 +696,80 @@ public class TableModelUtils {
 
     return tablet;
   }
+
+  public static Tablet generateTabletDeviceIDAllIsNull(
+      final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int deviceDataSize,
+      final boolean allowNullValue) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s0", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s8", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s9", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s10", TSDataType.DATE));
+    schemaList.add(new MeasurementSchema("s11", TSDataType.TEXT));
+
+    final List<Tablet.ColumnCategory> columnTypes =
+        Arrays.asList(
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT,
+            Tablet.ColumnCategory.MEASUREMENT);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypes,
+            (deviceEndIndex - deviceStartIndex) * deviceDataSize);
+    tablet.initBitMaps();
+    final Random random = new Random();
+
+    for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; deviceIndex++) {
+      // s2 float, s3 string, s4 timestamp, s5 int32, s6 double, s7 date, s8 text
+      long value = random.nextInt(1 << 16);
+      for (long row = 0; row < deviceDataSize; row++) {
+        int randomNumber = allowNullValue ? random.nextInt(12) : 12;
+        int rowIndex = tablet.getRowSize();
+        value += random.nextInt(100);
+        tablet.addTimestamp(rowIndex, value);
+        tablet.addValue("s0", rowIndex, null);
+        tablet.addValue("s1", rowIndex, null);
+        tablet.addValue("s2", rowIndex, null);
+        tablet.addValue("s3", rowIndex, null);
+        tablet.addValue("s4", rowIndex, value);
+        tablet.addValue("s5", rowIndex, (value * 1.0f));
+        tablet.addValue(
+            "s6", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+        tablet.addValue("s7", rowIndex, value);
+        tablet.addValue("s8", rowIndex, (int) value);
+        tablet.addValue("s9", rowIndex, value * 0.1);
+        tablet.addValue("s10", rowIndex, getDate((int) value));
+        tablet.addValue(
+            "s11", rowIndex, new Binary(String.valueOf(value).getBytes(StandardCharsets.UTF_8)));
+        if (randomNumber < 12) {
+          tablet.addValue("s" + randomNumber, rowIndex, null);
+        }
+        tablet.setRowSize(rowIndex + 1);
+      }
+    }
+
+    return tablet;
+  }
 }

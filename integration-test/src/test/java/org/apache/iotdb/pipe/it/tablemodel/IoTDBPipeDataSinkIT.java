@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,7 +50,6 @@ import java.util.function.Consumer;
 @Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
-  @Ignore
   @Test
   public void testThriftConnectorWithRealtimeFirstDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -120,19 +118,16 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testSinkTabletFormat() throws Exception {
     testSinkFormat("tablet");
   }
 
-  @Ignore
   @Test
   public void testSinkTsFileFormat() throws Exception {
     testSinkFormat("tsfile");
   }
 
-  @Ignore
   @Test
   public void testSinkHybridFormat() throws Exception {
     testSinkFormat("hybrid");
@@ -245,7 +240,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testWriteBackSink() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -348,6 +342,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testSinkTsFileFormat9() throws Exception {
     doTest(this::insertTablet8);
+  }
+
+  @Test
+  public void testSinkTsFileFormat10() throws Exception {
+    doTest(this::insertTablet9);
   }
 
   private void doTest(BiConsumer<Map<String, List<Tablet>>, Map<String, List<Tablet>>> consumer)
@@ -691,6 +690,27 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       }
       deviceIDStartIndex += 25;
       deviceIDEndIndex += 25;
+    }
+  }
+
+  private void insertTablet9(
+      final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
+    final Random random = new Random();
+    for (int j = 0; j < 25; j++) {
+      final String dataBaseName = "test" + j % 2;
+      for (int i = 0; i < 5; i++) {
+        final String tableName = "test" + i;
+        Tablet tablet =
+            TableModelUtils.generateTabletDeviceIDAllIsNull(tableName, 100, 125, 25, false);
+        TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+        Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
+        map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
+      }
     }
   }
 }
