@@ -103,7 +103,7 @@ public class ReadPointCompactionPerformer
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
-    QueryDataSource queryDataSource = new QueryDataSource(seqFiles, unseqFiles);
+    QueryDataSource queryDataSource = initQueryDataSource();
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
@@ -140,6 +140,10 @@ public class ReadPointCompactionPerformer
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
     }
+  }
+
+  protected QueryDataSource initQueryDataSource() {
+    return new QueryDataSource(seqFiles, unseqFiles);
   }
 
   @Override

@@ -449,6 +449,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected TSStatus tryLogin() {
+    // Do nothing. Login check will be done in the data node receiver.
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
   }
@@ -502,5 +508,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  @Override
+  protected void closeSession() {
+    // Do nothing. The session will be closed in the data node receiver.
   }
 }

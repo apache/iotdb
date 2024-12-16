@@ -146,6 +146,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     return this;
   }

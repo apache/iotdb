@@ -21,9 +21,22 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.co
 
 import org.apache.tsfile.read.common.type.Type;
 
-public class JoinKeyComparatorFactory {
+import java.util.ArrayList;
+import java.util.List;
 
-  public static JoinKeyComparator getComparator(Type type, boolean isAscending) {
+public class JoinKeyComparatorFactory {
+  private JoinKeyComparatorFactory() {}
+
+  public static List<JoinKeyComparator> getComparators(
+      List<Type> joinKeyTypes, boolean isAscending) {
+    List<JoinKeyComparator> comparators = new ArrayList<>(joinKeyTypes.size());
+    for (Type joinKeyType : joinKeyTypes) {
+      comparators.add(getComparator(joinKeyType, isAscending));
+    }
+    return comparators;
+  }
+
+  private static JoinKeyComparator getComparator(Type type, boolean isAscending) {
     switch (type.getTypeEnum()) {
       case INT32:
       case DATE:
