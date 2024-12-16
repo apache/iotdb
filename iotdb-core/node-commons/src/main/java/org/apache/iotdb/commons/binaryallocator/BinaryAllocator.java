@@ -155,8 +155,8 @@ public class BinaryAllocator {
     return metrics;
   }
 
-  private int evict(double ratio) {
-    int evictedSize = 0;
+  private long evict(double ratio) {
+    long evictedSize = 0;
     for (Arena arena : heapArenas) {
       evictedSize += arena.evict(ratio);
     }
@@ -233,7 +233,7 @@ public class BinaryAllocator {
       return;
     }
 
-    int evictedSize = 0;
+    long evictedSize = 0;
     if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
       LOGGER.info(
           "Binary allocator is shutting down because of high GC time percentage {}%.",
@@ -256,7 +256,7 @@ public class BinaryAllocator {
 
     @Override
     public void run() {
-      int evictedSize = 0;
+      long evictedSize = 0;
       for (Arena arena : heapArenas) {
         evictedSize += arena.runSampleEviction();
       }

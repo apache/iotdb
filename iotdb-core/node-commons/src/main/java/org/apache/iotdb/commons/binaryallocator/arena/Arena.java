@@ -68,8 +68,8 @@ public class Arena {
     regions[sizeIdx].deallocate(bytes);
   }
 
-  public int evict(double ratio) {
-    int evictedSize = 0;
+  public long evict(double ratio) {
+    long evictedSize = 0;
     for (SlabRegion region : regions) {
       evictedSize += region.evict(ratio);
     }
@@ -111,16 +111,18 @@ public class Arena {
     this.numRegisteredThread.decrementAndGet();
   }
 
-  public int runSampleEviction() {
+  public long runSampleEviction() {
     // update metric
-    int allocateFromSlabDelta = 0;
-    int allocateFromJVMDelta = 0;
+    long allocateFromSlabDelta = 0;
+    long allocateFromJVMDelta = 0;
     for (SlabRegion region : regions) {
       allocateFromSlabDelta +=
-          region.byteArraySize * (region.allocationsFromAllocator.get() - region.prevAllocations);
+          (long) region.byteArraySize
+              * (region.allocationsFromAllocator.get() - region.prevAllocations);
       region.prevAllocations = region.allocationsFromAllocator.get();
       allocateFromJVMDelta +=
-          region.byteArraySize * (region.allocationsFromJVM.get() - region.prevAllocationsFromJVM);
+          (long) region.byteArraySize
+              * (region.allocationsFromJVM.get() - region.prevAllocationsFromJVM);
       region.prevAllocationsFromJVM = region.allocationsFromJVM.get();
     }
     binaryAllocator
@@ -133,7 +135,7 @@ public class Arena {
     }
 
     sampleCount++;
-    int evictedSize = 0;
+    long evictedSize = 0;
     if (sampleCount == EVICT_SAMPLE_COUNT) {
       // Evict
       for (SlabRegion region : regions) {
@@ -188,17 +190,17 @@ public class Arena {
       average.sample(getActiveSize());
     }
 
-    private int resize() {
+    private long resize() {
       average.update();
       int needRemain = (int) Math.ceil(average.average()) - getActiveSize();
       return evict(getQueueSize() - needRemain);
     }
 
-    private int evict(double ratio) {
+    private long evict(double ratio) {
       return evict((int) (getQueueSize() * ratio));
     }
 
-    private int evict(int num) {
+    private long evict(int num) {
       int evicted = 0;
       while (num > 0 && !queue.isEmpty()) {
         queue.poll();

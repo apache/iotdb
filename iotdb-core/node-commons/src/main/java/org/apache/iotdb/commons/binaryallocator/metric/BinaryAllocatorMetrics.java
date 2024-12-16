@@ -123,16 +123,16 @@ public class BinaryAllocatorMetrics implements IMetricSet {
         EVICTED_BY_GC_EVICTION);
   }
 
-  public void updateAllocationCounter(int allocateFromSlabDelta, int allocateFromJVMDelta) {
+  public void updateAllocationCounter(long allocateFromSlabDelta, long allocateFromJVMDelta) {
     allocateFromSlab.inc(allocateFromSlabDelta);
     allocateFromJVM.inc(allocateFromJVMDelta);
   }
 
-  public void updateGcEvictionCounter(int evictedByGcEvictionDelta) {
+  public void updateGcEvictionCounter(long evictedByGcEvictionDelta) {
     evictedByGcEviction.inc(evictedByGcEvictionDelta);
   }
 
-  public void updateSampleEvictionCounter(int evictedBySampleEvictionDelta) {
+  public void updateSampleEvictionCounter(long evictedBySampleEvictionDelta) {
     evictedBySampleEviction.inc(evictedBySampleEvictionDelta);
   }
 }
