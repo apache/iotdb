@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -432,6 +433,27 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   // endregion
+
+  public Map<Integer, Long> getRegionSizeMap() {
+    Map<Integer, Long> regionSizeMap = new HashMap<>();
+    for (Map<String, Pair<Long, Gauge>> map : seqFileSizeMap.values()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
+        Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
+        regionSizeMap.put(regionId, regionSizeEntry.getValue().getLeft());
+      }
+    }
+    for (Map<String, Pair<Long, Gauge>> map : unseqFileSizeMap.values()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
+        Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
+        if (regionSizeMap.containsKey(regionId)) {
+          regionSizeMap.compute(regionId, (k, v) -> v + regionSizeEntry.getValue().getLeft());
+        } else {
+          regionSizeMap.put(regionId, regionSizeEntry.getValue().getLeft());
+        }
+      }
+    }
+    return regionSizeMap;
+  }
 
   @TestOnly
   public long getFileCount(boolean seq) {

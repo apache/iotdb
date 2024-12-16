@@ -637,6 +637,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsfileSize
 }
 
 struct TShowRegionResp {
