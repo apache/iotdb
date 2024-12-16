@@ -332,11 +332,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               continue;
             }
           } catch (IllegalPathException e) {
-            LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
-                device,
-                timeseriesMetadata.getMeasurementId(),
-                e);
+            // In aligned devices, there may be empty measurements which will cause
+            // IllegalPathException.
+            if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+              LOGGER.warn(
+                  "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                  device,
+                  timeseriesMetadata.getMeasurementId(),
+                  e);
+            }
           }
 
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
