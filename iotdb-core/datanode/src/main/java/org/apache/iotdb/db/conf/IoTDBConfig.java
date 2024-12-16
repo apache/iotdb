@@ -1145,7 +1145,7 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
-  private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
+  private long maxWaitingTimeForWaitBatchInMs = 10L;
 
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
