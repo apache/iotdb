@@ -85,7 +85,7 @@ public class ShowQueriesTest {
   @Test
   public void testSort() {
     LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan("show queries order by time, query_id");
+        planTester.createPlan("show queries order by start_time, query_id");
     assertPlan(
         logicalQueryPlan,
         output(sort(infoSchemaTableScan("information_schema.queries", Optional.empty()))));
