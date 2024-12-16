@@ -39,7 +39,7 @@ public abstract class Statement extends StatementNode {
 
   protected Statement() {}
 
-  public void setType(StatementType statementType) {
+  public void setType(final StatementType statementType) {
     this.statementType = statementType;
   }
 
@@ -51,7 +51,7 @@ public abstract class Statement extends StatementNode {
     return isDebug;
   }
 
-  public void setDebug(boolean debug) {
+  public void setDebug(final boolean debug) {
     isDebug = debug;
   }
 
@@ -61,7 +61,7 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<PartialPath> getPaths();
 
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.SUPER_USER.equals(userName),
         "Only the admin user can perform this operation");
