@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -102,6 +103,7 @@ public abstract class ResourceByPathUtils {
 }
 
 class AlignedResourceByPathUtils extends ResourceByPathUtils {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlignedResourceByPathUtils.class);
 
   AlignedFullPath alignedFullPath;
 
@@ -155,6 +157,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
+        memChunk.sortTvLists();
+        memChunk.initChunkMetaFromTvLists();
         AlignedChunkMetadata alignedChunkMetadata =
             (AlignedChunkMetadata) memChunk.getChunkMetaData();
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
@@ -181,6 +185,73 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+  }
+
+  private Map<AlignedTVList, Integer> prepareAlignedTvListMapForQuery(
+      QueryContext context,
+      AlignedWritableMemChunk alignedMemChunk,
+      boolean isWorkMemTable,
+      Filter globalTimeFilter) {
+    Map<AlignedTVList, Integer> alignedTvListQueryMap = new LinkedHashMap<>();
+    // immutable aligned TVList
+    for (AlignedTVList alignedTvList : alignedMemChunk.getSortedList()) {
+      if (globalTimeFilter != null
+          && !globalTimeFilter.satisfyStartEndTime(
+              alignedTvList.getMinTime(), alignedTvList.getMaxTime())) {
+        continue;
+      }
+      alignedTvList.lockQueryList();
+      try {
+        LOGGER.debug(
+            "Flushing/Working MemTable - add current query context to immutable AlignedTVList's query list");
+        alignedTvList.getQueryContextList().add(context);
+        alignedTvListQueryMap.put(alignedTvList, alignedTvList.rowCount());
+      } finally {
+        alignedTvList.unlockQueryList();
+      }
+    }
+
+    // mutable aligned TVList
+    AlignedTVList list = alignedMemChunk.getWorkingTVList();
+    list.lockQueryList();
+    try {
+      if (!isWorkMemTable) {
+        if (globalTimeFilter == null
+            || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+          LOGGER.debug(
+              "Flushing MemTable - add current query context to mutable AlignedTVList's query list");
+          list.getQueryContextList().add(context);
+          alignedTvListQueryMap.put(list, list.rowCount());
+        }
+      } else {
+        if (list.isSorted() || list.getQueryContextList().isEmpty()) {
+          LOGGER.debug(
+              "Working MemTable - add current query context to mutable AlignedTVList's query list when it's sorted or no other query on it");
+          list.getQueryContextList().add(context);
+          alignedTvListQueryMap.put(list, list.rowCount());
+        } else {
+          LOGGER.debug(
+              "Working MemTable - clone mutable AlignedTVList and replace old AlignedTVList in working MemTable");
+          QueryContext firstQuery = list.getQueryContextList().get(0);
+          // reserve query memory
+          if (firstQuery instanceof FragmentInstanceContext) {
+            MemoryReservationManager memoryReservationManager =
+                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+            memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
+          }
+          list.setOwnerQuery(firstQuery);
+
+          // clone TVList
+          AlignedTVList cloneList = list.clone();
+          cloneList.getQueryContextList().add(context);
+          alignedTvListQueryMap.put(cloneList, cloneList.rowCount());
+          alignedMemChunk.setWorkingTVList(cloneList);
+        }
+      }
+    } finally {
+      list.unlockQueryList();
+    }
+    return alignedTvListQueryMap;
   }
 
   @Override
@@ -214,10 +285,16 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       }
     }
 
-    // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList alignedTvListCopy =
-        alignedMemChunk.getSortedTvListForQuery(
-            alignedFullPath.getSchemaList(), context.isIgnoreAllNullRows());
+    // prepare AlignedTVList for query. It should clone and sort TVList if necessary.
+    // Also, the map keeps AlignedTVList length at this moment.
+    Map<AlignedTVList, Integer> alignedTvListQueryMap =
+        prepareAlignedTvListMapForQuery(
+            context, alignedMemChunk, modsToMemtable == null, globalTimeFilter);
+
+    // column index list for the query
+    List<Integer> columnIndexList =
+        alignedMemChunk.getColumnIndexList(alignedFullPath.getSchemaList());
+
     List<TimeRange> timeColumnDeletion = null;
     List<List<TimeRange>> valueColumnsDeletionList = null;
     if (modsToMemtable != null) {
@@ -239,8 +316,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     return new AlignedReadOnlyMemChunk(
         context,
+        columnIndexList,
         getMeasurementSchema(),
-        alignedTvListCopy,
+        alignedTvListQueryMap,
         timeColumnDeletion,
         valueColumnsDeletionList);
   }

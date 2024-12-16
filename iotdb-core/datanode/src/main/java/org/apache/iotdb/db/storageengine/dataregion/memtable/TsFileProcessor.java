@@ -655,7 +655,7 @@ public class TsFileProcessor {
         memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
       } else {
         // here currentChunkPointNum >= 1
-        long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
+        long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(dataTypes[i])
@@ -700,7 +700,7 @@ public class TsFileProcessor {
               .putIfAbsent(measurements[i], 1);
         } else {
           // here currentChunkPointNum >= 1
-          long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
+          long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
           int addingPointNum =
               increasingMemTableInfo
                   .computeIfAbsent(deviceId, k -> new HashMap<>())
@@ -966,7 +966,7 @@ public class TsFileProcessor {
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
+      long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)

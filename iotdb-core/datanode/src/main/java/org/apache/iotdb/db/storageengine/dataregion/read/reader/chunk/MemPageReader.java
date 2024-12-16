@@ -261,14 +261,14 @@ public class MemPageReader implements IPageReader {
   // We do the initialization if it is not set, especially in test cases.
   private void initPageStatistics() {
     Statistics statistics = Statistics.getStatsByType(tsDataType);
-    updatePageStatisticsFromTsBlock(statistics, tsDataType);
+    updatePageStatisticsFromTsBlock(statistics);
     statistics.setEmpty(tsBlock.isEmpty());
     pageMetadata.setStatistics(statistics);
   }
 
-  private void updatePageStatisticsFromTsBlock(Statistics statistics, TSDataType dataType) {
+  private void updatePageStatisticsFromTsBlock(Statistics statistics) {
     if (!tsBlock.isEmpty()) {
-      switch (dataType) {
+      switch (tsDataType) {
         case BOOLEAN:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
@@ -305,7 +305,7 @@ public class MemPageReader implements IPageReader {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+              String.format("Data type %s is not supported.", tsDataType));
       }
     }
   }

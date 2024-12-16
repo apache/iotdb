@@ -535,11 +535,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     // create MergeSortTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
     tvLists.add(list);
-    MergeSortTvListIterator iterator = new MergeSortTvListIterator(schema.getType(), tvLists);
+    MergeSortTvListIterator timeValuePairIterator = new MergeSortTvListIterator(tvLists);
 
     TimeValuePair prevTvPair = null;
-    while (iterator.hasNextTimeValuePair()) {
-      TimeValuePair currTvPair = iterator.nextTimeValuePair();
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair currTvPair = timeValuePairIterator.nextTimeValuePair();
       if (prevTvPair == null) {
         prevTvPair = currTvPair;
         continue;

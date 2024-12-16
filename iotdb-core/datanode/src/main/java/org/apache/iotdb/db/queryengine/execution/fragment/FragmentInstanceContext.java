@@ -699,7 +699,7 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
-    // release TVList owned by current query
+    // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
 
     dataRegion = null;

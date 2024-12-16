@@ -171,7 +171,7 @@ public interface IMemTable extends WALEntryValue {
   boolean chunkNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getCurrentTVListSize(IDeviceID deviceId, String measurement);
+  long getMeasurementSize(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

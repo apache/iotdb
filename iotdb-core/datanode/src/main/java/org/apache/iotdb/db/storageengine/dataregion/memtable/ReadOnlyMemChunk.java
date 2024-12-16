@@ -68,8 +68,6 @@ public class ReadOnlyMemChunk {
 
   protected IChunkMetadata cachedMetaData;
 
-  protected TsBlock tsBlock;
-
   private int floatPrecision;
   private TSEncoding encoding;
   private List<TimeRange> deletionList;
@@ -77,12 +75,14 @@ public class ReadOnlyMemChunk {
   // Read only chunk is now regarded as multiple pages. Apart from chunk statistics,
   // we need to collect page statistic and MergeSortTvListIterator offset for each page.
   private List<Statistics> pageStatisticsList;
-  private List<int[]> pageOffsetsList;
+
+  // page offsets
+  protected List<int[]> pageOffsetsList;
 
   // tvlist rowCount during query
-  protected Map<TVList, Integer> tvListQueryMap;
+  private Map<TVList, Integer> tvListQueryMap;
 
-  public static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+  protected static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   protected ReadOnlyMemChunk(QueryContext context) {
@@ -144,7 +144,7 @@ public class ReadOnlyMemChunk {
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(dataType, encoding, floatPrecision, tvLists);
+        new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
@@ -188,12 +188,10 @@ public class ReadOnlyMemChunk {
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", dataType));
         }
-        pageStatistics.setEmpty(false);
       }
       cnt++;
     }
     pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
-    chunkStatistics.setEmpty(cnt == 0);
 
     // chunk meta
     IChunkMetadata metaData =
@@ -208,10 +206,7 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() {
-    if (tsBlock == null) {
-      return count() == 0;
-    }
-    return tsBlock.isEmpty();
+    return count() == 0;
   }
 
   public IChunkMetadata getChunkMetaData() {
@@ -246,7 +241,7 @@ public class ReadOnlyMemChunk {
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     IPointReader timeValuePairIterator =
-        new MergeSortTvListIterator(dataType, encoding, floatPrecision, tvLists);
+        new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -293,15 +288,11 @@ public class ReadOnlyMemChunk {
     }
   }
 
-  public TsBlock getTsBlock() {
-    return tsBlock;
-  }
-
   public Map<TVList, Integer> getTvListQueryMap() {
     return tvListQueryMap;
   }
 
-  public int count() {
+  private int count() {
     int count = 0;
     for (TVList list : tvListQueryMap.keySet()) {
       count += list.count();
@@ -327,5 +318,14 @@ public class ReadOnlyMemChunk {
 
   public List<int[]> getPageOffsetsList() {
     return pageOffsetsList;
+  }
+
+  public QueryContext getContext() {
+    return context;
+  }
+
+  @TestOnly
+  public TsBlock getTsBlock() {
+    return null;
   }
 }

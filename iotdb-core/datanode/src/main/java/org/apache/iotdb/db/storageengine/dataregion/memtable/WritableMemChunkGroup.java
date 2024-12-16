@@ -147,7 +147,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
+  public long getMeasurementSize(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
       return 0;
     }

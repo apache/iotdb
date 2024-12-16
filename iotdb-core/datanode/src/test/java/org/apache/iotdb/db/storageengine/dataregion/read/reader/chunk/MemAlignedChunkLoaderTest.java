@@ -21,24 +21,28 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 import static org.junit.Assert.assertEquals;
@@ -54,9 +58,9 @@ public class MemAlignedChunkLoaderTest {
   public void testMemAlignedChunkLoader() throws IOException {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    QueryContext ctx = new QueryContext();
+    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(ctx, chunk);
 
-    MemAlignedChunkLoader memAlignedChunkLoader =
-        new MemAlignedChunkLoader(new QueryContext(), chunk);
     try {
       memAlignedChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -64,29 +68,53 @@ public class MemAlignedChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    AlignedChunkMetadata chunkMetadata1 = Mockito.mock(AlignedChunkMetadata.class);
-
-    Mockito.when(chunk.getTsBlock()).thenReturn(buildTsBlock());
-    Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
-    Statistics statistics1 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics1.hasNullValue(2)).thenReturn(true);
-    Statistics statistics2 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics2.hasNullValue(2)).thenReturn(true);
-    Statistics statistics3 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics3.hasNullValue(2)).thenReturn(true);
-    Statistics statistics4 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics4.hasNullValue(2)).thenReturn(true);
-    Statistics statistics5 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics5.hasNullValue(2)).thenReturn(true);
-    Statistics statistics6 = Mockito.mock(Statistics.class);
-    Mockito.when(statistics6.hasNullValue(2)).thenReturn(true);
-
+    // Mock getTimeStatisticsList & getValuesStatisticsList
+    List<Statistics<? extends Serializable>> timeStatitsticsList = new ArrayList<>();
     Statistics timeStatistics = Mockito.mock(Statistics.class);
     Mockito.when(timeStatistics.getCount()).thenReturn(2L);
+    timeStatitsticsList.add(timeStatistics);
+    Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(timeStatistics);
-    Mockito.when(chunkMetadata1.getTimeStatistics()).thenReturn(timeStatistics);
-    Mockito.when(chunkMetadata1.getMeasurementStatistics(0)).thenReturn(Optional.of(statistics1));
+    List<List<Statistics<? extends Serializable>>> valuesStatitsticsList = new ArrayList<>();
+    List<Statistics<? extends Serializable>> valuesStatistics = new ArrayList<>();
+    Statistics<? extends Serializable> statistics1 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics1.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics1);
+    Statistics<? extends Serializable> statistics2 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics2.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics2);
+    Statistics<? extends Serializable> statistics3 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics3.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics3);
+    Statistics<? extends Serializable> statistics4 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics4.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics4);
+    Statistics<? extends Serializable> statistics5 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics5.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics5);
+    Statistics<? extends Serializable> statistics6 = Mockito.mock(Statistics.class);
+    Mockito.when(statistics6.hasNullValue(2)).thenReturn(true);
+    valuesStatistics.add(statistics6);
+    valuesStatitsticsList.add(valuesStatistics);
+    Mockito.when(chunk.getValuesStatisticsList()).thenReturn(valuesStatitsticsList);
+
+    // Mock AlignedReadOnlyMemChunk Getter
+    List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
+    Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
+
+    List<TSEncoding> encodingList =
+        Arrays.asList(new TSEncoding[] {null, null, null, null, null, null});
+
+    Mockito.when(chunk.getEncodingList()).thenReturn(encodingList);
+    Mockito.when(chunk.getDataTypes()).thenReturn(buildTsDataTypes());
+    Mockito.when(chunk.getColumnIndexList()).thenReturn(null);
+    Mockito.when(chunk.getTimeColumnDeletion()).thenReturn(null);
+    Mockito.when(chunk.getValueColumnsDeletionList()).thenReturn(null);
+    Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(buildAlignedTvListMap());
+    Mockito.when(chunk.getContext()).thenReturn(ctx);
+
+    AlignedChunkMetadata chunkMetadata1 = Mockito.mock(AlignedChunkMetadata.class);
+    Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
 
     MemAlignedChunkReader chunkReader =
         (MemAlignedChunkReader) memAlignedChunkLoader.getChunkReader(chunkMetadata1, null);
@@ -110,14 +138,7 @@ public class MemAlignedChunkLoaderTest {
 
     MemAlignedPageReader pageReader = (MemAlignedPageReader) pageReaderList.get(0);
 
-    pageReader.initTsBlockBuilder(
-        Arrays.asList(
-            TSDataType.BOOLEAN,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT));
+    pageReader.initTsBlockBuilder(buildTsDataTypes());
 
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     assertEquals(2, batchData.length());
@@ -145,32 +166,35 @@ public class MemAlignedChunkLoaderTest {
     memAlignedChunkLoader.close();
   }
 
-  private TsBlock buildTsBlock() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(
-            Arrays.asList(
-                TSDataType.BOOLEAN,
-                TSDataType.INT32,
-                TSDataType.INT64,
-                TSDataType.FLOAT,
-                TSDataType.DOUBLE,
-                TSDataType.TEXT));
-    builder.getTimeColumnBuilder().writeLong(1L);
-    builder.getColumnBuilder(0).writeBoolean(true);
-    builder.getColumnBuilder(1).writeInt(1);
-    builder.getColumnBuilder(2).writeLong(1L);
-    builder.getColumnBuilder(3).writeFloat(1.1f);
-    builder.getColumnBuilder(4).appendNull();
-    builder.getColumnBuilder(5).writeBinary(new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
-    builder.declarePosition();
-    builder.getTimeColumnBuilder().writeLong(2L);
-    builder.getColumnBuilder(0).appendNull();
-    builder.getColumnBuilder(1).appendNull();
-    builder.getColumnBuilder(2).appendNull();
-    builder.getColumnBuilder(3).appendNull();
-    builder.getColumnBuilder(4).writeDouble(3.14d);
-    builder.getColumnBuilder(5).appendNull();
-    builder.declarePosition();
-    return builder.build();
+  private List<TSDataType> buildTsDataTypes() {
+    return Arrays.asList(
+        TSDataType.BOOLEAN,
+        TSDataType.INT32,
+        TSDataType.INT64,
+        TSDataType.FLOAT,
+        TSDataType.DOUBLE,
+        TSDataType.TEXT);
+  }
+
+  private Map<AlignedTVList, Integer> buildAlignedTvListMap() {
+    List<TSDataType> dataTypes = buildTsDataTypes();
+    AlignedTVList tvList1 = AlignedTVList.newAlignedList(dataTypes);
+    tvList1.putAlignedValue(
+        1L,
+        new Object[] {
+          true, 1, 2L, 1.2f, null, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET)
+        });
+    tvList1.putAlignedValue(2L, new Object[] {null, null, null, null, 3.14d, null});
+    AlignedTVList tvList2 = AlignedTVList.newAlignedList(dataTypes);
+    tvList2.putAlignedValue(
+        1L,
+        new Object[] {
+          true, 1, 1L, 1.1f, null, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET)
+        });
+
+    Map<AlignedTVList, Integer> tvListMap = new LinkedHashMap<>();
+    tvListMap.put(tvList1, 2);
+    tvListMap.put(tvList2, 1);
+    return tvListMap;
   }
 }

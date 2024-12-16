@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
@@ -34,9 +35,13 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
 
@@ -94,15 +99,41 @@ public class AlignedMemPageReaderTest {
   }
 
   private MemAlignedPageReader generateAlignedPageReader() {
+    Supplier<TsBlock> tsBlockSupplier = () -> tsBlock1;
+    List<Statistics<? extends Serializable>> valueStatistcsList =
+        chunkMetadata1.getValueChunkMetadataList().stream()
+            .map(IMetadata::getStatistics)
+            .collect(Collectors.toList());
     MemAlignedPageReader alignedPageReader =
-        new MemAlignedPageReader(tsBlock1, chunkMetadata1, null);
+        new MemAlignedPageReader(
+            tsBlockSupplier,
+            null,
+            null,
+            null,
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+            chunkMetadata1.getTimeStatistics(),
+            valueStatistcsList,
+            null);
     alignedPageReader.initTsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     return alignedPageReader;
   }
 
   private MemAlignedPageReader generateSingleColumnAlignedPageReader() {
+    Supplier<TsBlock> tsBlockSupplier = () -> tsBlock2;
+    List<Statistics<? extends Serializable>> valueStatistcsList =
+        chunkMetadata2.getValueChunkMetadataList().stream()
+            .map(IMetadata::getStatistics)
+            .collect(Collectors.toList());
     MemAlignedPageReader alignedPageReader =
-        new MemAlignedPageReader(tsBlock2, chunkMetadata2, null);
+        new MemAlignedPageReader(
+            tsBlockSupplier,
+            null,
+            null,
+            null,
+            Arrays.asList(TSDataType.INT32),
+            chunkMetadata2.getTimeStatistics(),
+            valueStatistcsList,
+            null);
     alignedPageReader.initTsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     return alignedPageReader;
   }

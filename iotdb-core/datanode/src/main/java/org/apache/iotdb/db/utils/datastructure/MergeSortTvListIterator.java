@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.utils.MathUtils;
-
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -32,29 +29,27 @@ import java.util.List;
 
 public class MergeSortTvListIterator implements IPointReader {
   private final List<TVList.TVListIterator> tvListIterators;
-  private final TSDataType tsDataType;
-  private TSEncoding encoding;
-  private int floatPrecision = -1;
 
   private int selectedTVListIndex = -1;
   private TimeValuePair currentTvPair;
 
   private final int[] tvListOffsets;
 
-  public MergeSortTvListIterator(TSDataType tsDataType, List<TVList> tvLists) {
-    this.tsDataType = tsDataType;
+  public MergeSortTvListIterator(List<TVList> tvLists) {
     tvListIterators = new ArrayList<>();
     for (TVList tvList : tvLists) {
-      tvListIterators.add(tvList.iterator());
+      tvListIterators.add(tvList.iterator(null, null));
     }
     this.tvListOffsets = new int[tvLists.size()];
   }
 
   public MergeSortTvListIterator(
-      TSDataType tsDataType, TSEncoding encoding, int floatPrecision, List<TVList> tvLists) {
-    this(tsDataType, tvLists);
-    this.encoding = encoding;
-    this.floatPrecision = floatPrecision;
+      List<TVList> tvLists, Integer floatPrecision, TSEncoding encoding) {
+    tvListIterators = new ArrayList<>();
+    for (TVList tvList : tvLists) {
+      tvListIterators.add(tvList.iterator(floatPrecision, encoding));
+    }
+    this.tvListOffsets = new int[tvLists.size()];
   }
 
   private void prepareNextRow() {
@@ -100,29 +95,13 @@ public class MergeSortTvListIterator implements IPointReader {
     }
 
     selectedTVListIndex = -1;
-    return currentTimeValuePair();
+    return currentTvPair;
   }
 
   @Override
   public TimeValuePair currentTimeValuePair() {
-    if (encoding != null && floatPrecision != -1) {
-      if (tsDataType == TSDataType.FLOAT) {
-        float value = currentTvPair.getValue().getFloat();
-        if (!Float.isNaN(value)
-            && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-          currentTvPair
-              .getValue()
-              .setFloat(MathUtils.roundWithGivenPrecision(value, floatPrecision));
-        }
-      } else if (tsDataType == TSDataType.DOUBLE) {
-        double value = currentTvPair.getValue().getDouble();
-        if (!Double.isNaN(value)
-            && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-          currentTvPair
-              .getValue()
-              .setDouble(MathUtils.roundWithGivenPrecision(value, floatPrecision));
-        }
-      }
+    if (!hasNextTimeValuePair()) {
+      return null;
     }
     return currentTvPair;
   }
@@ -146,7 +125,7 @@ public class MergeSortTvListIterator implements IPointReader {
     for (int i = 0; i < tvListIterators.size(); i++) {
       tvListIterators.get(i).setIndex(tvListOffsets[i]);
       this.tvListOffsets[i] = tvListOffsets[i];
-      selectedTVListIndex = -1;
     }
+    selectedTVListIndex = -1;
   }
 }

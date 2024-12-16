@@ -59,10 +59,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     List<TVList> tvLists = new ArrayList<>(readableChunk.getTvListQueryMap().keySet());
     timeValuePairIterator =
         new MergeSortTvListIterator(
-            readableChunk.getDataType(),
-            readableChunk.getEncoding(),
-            readableChunk.getFloatPrecision(),
-            tvLists);
+            tvLists, readableChunk.getFloatPrecision(), readableChunk.getEncoding());
     this.globalTimeFilter = globalTimeFilter;
     this.pageReaderList = new ArrayList<>();
     initAllPageReaders(
