@@ -35,14 +35,14 @@ import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
 import static org.apache.tsfile.utils.ReadWriteIOUtils.readInt;
 import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
 
-public class TableDeviceEntry extends DeviceEntry {
+public class AlignedDeviceEntry extends AbstractDeviceEntry {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableDeviceEntry.class);
+      RamUsageEstimator.shallowSizeOfInstance(AlignedDeviceEntry.class);
 
   private final List<Binary> attributeColumnValues;
 
-  public TableDeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
+  public AlignedDeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
     super(deviceID);
     this.attributeColumnValues = attributeColumnValues;
   }
@@ -69,14 +69,14 @@ public class TableDeviceEntry extends DeviceEntry {
     }
   }
 
-  public static TableDeviceEntry deserialize(final ByteBuffer byteBuffer) {
+  public static AlignedDeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
     int size = readInt(byteBuffer);
     final List<Binary> attributeColumnValues = new ArrayList<>(size);
     while (size-- > 0) {
       attributeColumnValues.add(deserializeBinary(byteBuffer));
     }
-    return new TableDeviceEntry(iDeviceID, attributeColumnValues);
+    return new AlignedDeviceEntry(iDeviceID, attributeColumnValues);
   }
 
   public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {
@@ -125,7 +125,7 @@ public class TableDeviceEntry extends DeviceEntry {
   @Override
   public boolean equals(final Object obj) {
     return super.equals(obj)
-        && Objects.equals(attributeColumnValues, ((TableDeviceEntry) obj).attributeColumnValues);
+        && Objects.equals(attributeColumnValues, ((AlignedDeviceEntry) obj).attributeColumnValues);
   }
 
   @Override

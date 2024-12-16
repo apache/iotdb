@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesS
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -70,7 +70,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private final int[] columnsIndexArray;
 
-  private final List<TableDeviceEntry> deviceEntries;
+  private final List<AlignedDeviceEntry> deviceEntries;
 
   private final int deviceCount;
 
@@ -100,7 +100,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
       PlanNodeId sourceId,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      List<TableDeviceEntry> deviceEntries,
+      List<AlignedDeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
@@ -209,7 +209,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
 
   private void constructResultTsBlock() {
     int positionCount = measurementDataBlock.getPositionCount();
-    TableDeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
+    AlignedDeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
     Column[] valueColumns = new Column[columnsIndexArray.length];
     for (int i = 0; i < columnsIndexArray.length; i++) {
       switch (columnSchemas.get(i).getColumnCategory()) {
@@ -320,7 +320,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
           "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
     }
 
-    TableDeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
+    AlignedDeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
     this.seriesScanUtil =
@@ -334,7 +334,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
   }
 
   public static AlignedFullPath constructAlignedPath(
-      TableDeviceEntry deviceEntry,
+      AlignedDeviceEntry deviceEntry,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas,
       Set<String> allSensors) {

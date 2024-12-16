@@ -27,11 +27,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public abstract class DeviceEntry implements Accountable {
+public abstract class AbstractDeviceEntry implements Accountable {
 
   protected final IDeviceID deviceID;
 
-  protected DeviceEntry(final IDeviceID deviceID) {
+  protected AbstractDeviceEntry(final IDeviceID deviceID) {
     this.deviceID = deviceID;
   }
 
@@ -66,7 +66,7 @@ public abstract class DeviceEntry implements Accountable {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final DeviceEntry that = (DeviceEntry) obj;
+    final AbstractDeviceEntry that = (AbstractDeviceEntry) obj;
     return Objects.equals(deviceID, that.deviceID);
   }
 

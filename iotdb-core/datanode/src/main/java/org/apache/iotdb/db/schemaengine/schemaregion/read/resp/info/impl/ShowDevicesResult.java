@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import org.apache.tsfile.utils.Binary;
@@ -81,7 +81,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   }
 
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
-      final TableDeviceEntry entry, final List<String> attributeColumns) {
+          final AlignedDeviceEntry entry, final List<String> attributeColumns) {
     final ShowDevicesResult result =
         new ShowDevicesResult(
             entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());

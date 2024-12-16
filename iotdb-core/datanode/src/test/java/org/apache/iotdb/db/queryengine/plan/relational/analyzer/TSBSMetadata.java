@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -288,7 +288,7 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public List<TableDeviceEntry> indexScan(
+  public List<AlignedDeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
@@ -299,9 +299,9 @@ public class TSBSMetadata implements Metadata {
         && attributeColumns.isEmpty()) {
       // r01, r02
       return ImmutableList.of(
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()));
     } else if (expressionList.size() == 1
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
@@ -309,32 +309,32 @@ public class TSBSMetadata implements Metadata {
         && attributeColumns.get(0).equals("load_capacity")) {
       // r03
       return ImmutableList.of(
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
               ImmutableList.of(new Binary("2000", TSFileConfig.STRING_CHARSET))),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
               ImmutableList.of(new Binary("1000", TSFileConfig.STRING_CHARSET))));
     } else {
       // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
       return Arrays.asList(
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_1.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_3.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_1.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_2.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)),
-          new TableDeviceEntry(
+          new AlignedDeviceEntry(
               new StringArrayDeviceID(T2_DEVICE_3.split("\\.")),
               ImmutableList.of(Binary.EMPTY_VALUE, Binary.EMPTY_VALUE)));
     }

@@ -24,10 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -72,7 +72,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      List<TableDeviceEntry> deviceEntries,
+      List<AlignedDeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
@@ -355,7 +355,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     }
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
-    for (TableDeviceEntry entry : deviceEntries) {
+    for (AlignedDeviceEntry entry : deviceEntries) {
       entry.serialize(byteBuffer);
     }
 
@@ -435,7 +435,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     }
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
-    for (TableDeviceEntry entry : deviceEntries) {
+    for (AlignedDeviceEntry entry : deviceEntries) {
       entry.serialize(stream);
     }
 
@@ -513,9 +513,9 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<TableDeviceEntry> deviceEntries = new ArrayList<>(size);
+    List<AlignedDeviceEntry> deviceEntries = new ArrayList<>(size);
     while (size-- > 0) {
-      deviceEntries.add(TableDeviceEntry.deserialize(byteBuffer));
+      deviceEntries.add(AlignedDeviceEntry.deserialize(byteBuffer));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
