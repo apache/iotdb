@@ -26,9 +26,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.com
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Collections;
 import java.util.List;
 
 public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
@@ -45,19 +45,17 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       Operator rightChild,
       int rightJoinKeyPosition,
       JoinKeyComparator joinKeyComparator,
-      List<TSDataType> dataTypes,
-      Type joinKeyType) {
+      List<TSDataType> dataTypes) {
     super(
         operatorContext,
         leftChild,
-        leftJoinKeyPosition,
+        new int[] {leftJoinKeyPosition},
         leftOutputSymbolIdx,
         rightChild,
-        rightJoinKeyPosition,
+        new int[] {rightJoinKeyPosition},
         null,
-        joinKeyComparator,
-        dataTypes,
-        joinKeyType);
+        Collections.singletonList(joinKeyComparator),
+        dataTypes);
     outputColumnNum = dataTypes.size();
   }
 
@@ -99,13 +97,20 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in right, because NULL value will not match the left value
+    while (currentRightHasNullValue()) {
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
+
     // continue right < left, until right >= left
-    while (comparator.lessThan(
+    while (lessThan(
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex,
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex)) {
       if (rightFinishedWithIncIndex()) {
         return true;
@@ -115,13 +120,20 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in left, because NULL value will not match the left value
+    while (currentLeftHasNullValue()) {
+      if (leftFinishedWithIncIndex()) {
+        return true;
+      }
+    }
+
     // continue left < right, until left >= right
-    while (comparator.lessThan(
+    while (lessThan(
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex,
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex)) {
       // current left won't match any right, append left with false SemiJoin result
       appendValueToResult(false);
@@ -150,12 +162,12 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
   @Override
   protected boolean hasMatchedRightValueToProbeLeft() {
     boolean matches =
-        comparator.equalsTo(
+        equalsTo(
             leftBlock,
-            leftJoinKeyPosition,
+            leftJoinKeyPositions,
             leftIndex,
             rightBlockList.get(rightBlockListIdx),
-            rightJoinKeyPosition,
+            rightJoinKeyPositions,
             rightIndex);
     appendValueToResult(matches);
     return matches;

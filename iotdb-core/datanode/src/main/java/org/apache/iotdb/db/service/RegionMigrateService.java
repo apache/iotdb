@@ -256,42 +256,29 @@ public class RegionMigrateService implements IService {
       TEndPoint destEndpoint = getConsensusEndPoint(destDataNode, regionId);
       boolean addPeerSucceed = true;
       Throwable throwable = null;
-      for (int i = 0; i < MAX_RETRY_NUM; i++) {
-        try {
-          if (!addPeerSucceed) {
-            Thread.sleep(SLEEP_MILLIS);
-          }
-          addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
-          addPeerSucceed = true;
-        } catch (PeerAlreadyInConsensusGroupException e) {
-          addPeerSucceed = true;
-        } catch (InterruptedException e) {
-          throwable = e;
-          Thread.currentThread().interrupt();
-        } catch (ConsensusException e) {
-          addPeerSucceed = false;
-          throwable = e;
-          taskLogger.error(
-              "{}, executed addPeer {} for region {} error, retry times: {}",
-              REGION_MIGRATE_PROCESS,
-              destEndpoint,
-              regionId,
-              i,
-              e);
-        } catch (Exception e) {
-          addPeerSucceed = false;
-          throwable = e;
-          taskLogger.warn("Unexpected exception", e);
-        }
-        if (addPeerSucceed || throwable instanceof InterruptedException) {
-          break;
-        }
+      try {
+        addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
+      } catch (PeerAlreadyInConsensusGroupException ignore) {
+
+      } catch (ConsensusException e) {
+        addPeerSucceed = false;
+        throwable = e;
+        taskLogger.error(
+            "{}, executed addPeer {} for region {} error",
+            REGION_MIGRATE_PROCESS,
+            destEndpoint,
+            regionId,
+            e);
+      } catch (Exception e) {
+        addPeerSucceed = false;
+        throwable = e;
+        taskLogger.warn("Unexpected exception", e);
       }
 
       if (!addPeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, AddPeer for region error after max retry times, peerId: %s, regionId: %s",
+                "%s, AddPeer for region error, peerId: %s, regionId: %s",
                 REGION_MIGRATE_PROCESS, destEndpoint, regionId);
         taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());

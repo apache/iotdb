@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -61,11 +62,12 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTableStatementDataTypeConvertExecutionVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -144,9 +146,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementExceptionVisitor();
   private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
       new PipeStatementPatternParseVisitor();
-  private final PipeStatementDataTypeConvertExecutionVisitor
-      statementDataTypeConvertExecutionVisitor =
-          new PipeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
+  private final PipeTableStatementDataTypeConvertExecutionVisitor
+      tableStatementDataTypeConvertExecutionVisitor =
+          new PipeTableStatementDataTypeConvertExecutionVisitor(
+              this::executeStatementForTableModel);
+  private final PipeTreeStatementDataTypeConvertExecutionVisitor
+      treeStatementDataTypeConvertExecutionVisitor =
+          new PipeTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -479,6 +485,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected TSStatus tryLogin() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (clientSession == null || !clientSession.isLogin()) {
+      return SESSION_MANAGER.login(
+          SESSION_MANAGER.getCurrSession(),
+          username,
+          password,
+          ZoneId.systemDefault().toString(),
+          SessionManager.CURRENT_RPC_VERSION,
+          IoTDBConstant.ClientVersion.V_1_0);
+    }
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() throws DiskSpaceInsufficientException {
     // Get next receiver file base dir by folder manager
     return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
@@ -529,6 +550,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
+    if (Objects.isNull(loadActiveListeningPipeDir)) {
+      throw new PipeException("Load active listening pipe dir is not set.");
+    }
 
     for (final String absolutePath : absolutePaths) {
       if (absolutePath == null) {
@@ -782,18 +806,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ? executeStatementForTableModel(statement, dataBaseName)
             : executeStatementForTreeModel(statement);
 
-    // The following code is used to handle the data type mismatch exception
-    // Data type conversion is not supported for table model statements
-    if (isTableModelStatement) {
-      return status;
-    }
     // Try to convert data type if the statement is a tree model statement
     // and the status code is not success
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
                 || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        ? statement.accept(statementDataTypeConvertExecutionVisitor, status).orElse(status)
+        ? (isTableModelStatement
+            ? statement
+                .accept(
+                    tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, dataBaseName))
+                .orElse(status)
+            : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status))
         : status;
   }
 
@@ -880,7 +904,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+            false)
         .status;
   }
 
@@ -895,5 +920,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     super.handleExit();
+  }
+
+  @Override
+  protected void closeSession() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (session != null) {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+    }
+    SESSION_MANAGER.removeCurrSession();
   }
 }
