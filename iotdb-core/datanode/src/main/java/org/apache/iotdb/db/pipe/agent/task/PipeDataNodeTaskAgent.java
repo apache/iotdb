@@ -546,11 +546,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
 
       // If the pipe has been restarted recently, skip it.
-      if (PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName)) {
-        if (System.currentTimeMillis() - PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName).get()
-            < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
-          continue;
-        }
+      final AtomicLong lastRestartTime = PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeName);
+      if (lastRestartTime != null
+          && System.currentTimeMillis() - lastRestartTime.get()
+              < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()) {
+        continue;
       }
 
       final List<IoTDBDataRegionExtractor> extractors =
