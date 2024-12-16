@@ -1045,7 +1045,7 @@ public class PartitionManager {
                         .getRegionSizeMap()
                         .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
-                regionInfo.setSize(regionSize);
+                regionInfo.setTsfileSize(regionSize);
               });
 
       return regionInfoListResp;

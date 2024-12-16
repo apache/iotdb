@@ -116,8 +116,8 @@ public class ShowRegionTask implements IConfigTask {
         String regionSizeStr = "";
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
-          if (regionInfo.getSize() != -1) {
-            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getSize());
+          if (regionInfo.getTsfileSize() != -1) {
+            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getTsfileSize());
           } else {
             regionSizeStr = "Unknown";
           }
