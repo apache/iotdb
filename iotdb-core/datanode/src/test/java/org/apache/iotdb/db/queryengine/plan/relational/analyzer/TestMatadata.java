@@ -338,7 +338,8 @@ public class TestMatadata implements Metadata {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable) {
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
