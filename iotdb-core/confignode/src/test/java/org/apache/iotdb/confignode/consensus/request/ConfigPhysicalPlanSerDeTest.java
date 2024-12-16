@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNo
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -1491,6 +1492,23 @@ public class ConfigPhysicalPlanSerDeTest {
         (CreateFunctionPlan)
             ConfigPhysicalPlan.Factory.create(createFunctionPlan0.serializeToByteBuffer());
     Assert.assertEquals(createFunctionPlan0, createFunctionPlan1);
+  }
+
+  @Test
+  public void UpdateFunctionPlanTest() throws IOException {
+    UDFInformation udfInformation =
+        new UDFInformation(
+            "test1",
+            "test1",
+            UDFType.of(Model.TREE, FunctionType.NONE, true),
+            true,
+            "test1.jar",
+            "12345");
+    UpdateFunctionPlan updateFunctionPlan = new UpdateFunctionPlan(udfInformation);
+    UpdateFunctionPlan updateFunctionPlan1 =
+        (UpdateFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(updateFunctionPlan.serializeToByteBuffer());
+    Assert.assertEquals(updateFunctionPlan, updateFunctionPlan1);
   }
 
   @Test

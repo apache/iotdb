@@ -158,7 +158,7 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
-  public static void getConfigurationDefaultValue() throws IOException {
+  public static void loadConfigurationDefaultValueFromTemplate() throws IOException {
     if (configuration2DefaultValue != null) {
       return;
     }
@@ -185,6 +185,7 @@ public class ConfigurationFileUtils {
         }
       }
     } catch (IOException e) {
+      configuration2DefaultValue = null;
       logger.warn("Failed to read configuration template", e);
       throw e;
     }
@@ -197,7 +198,7 @@ public class ConfigurationFileUtils {
     if (configuration2DefaultValue != null) {
       return configuration2DefaultValue.get(parameterName);
     } else {
-      getConfigurationDefaultValue();
+      loadConfigurationDefaultValueFromTemplate();
       return configuration2DefaultValue.getOrDefault(parameterName, null);
     }
   }
@@ -225,14 +226,24 @@ public class ConfigurationFileUtils {
     return content.toString();
   }
 
-  public static List<String> filterImmutableConfigItems(Map<String, String> configItems) {
+  public static List<String> filterInvalidConfigItems(Map<String, String> configItems) {
+    boolean successLoadDefaultValueMap = true;
+    try {
+      loadConfigurationDefaultValueFromTemplate();
+    } catch (IOException e) {
+      successLoadDefaultValueMap = false;
+    }
+
     List<String> ignoredConfigItems = new ArrayList<>();
-    for (String ignoredKey : ignoreConfigKeys) {
-      if (configItems.containsKey(ignoredKey)) {
-        configItems.remove(ignoredKey);
-        ignoredConfigItems.add(ignoredKey);
+    for (String key : configItems.keySet()) {
+      if (ignoreConfigKeys.contains(key)) {
+        ignoredConfigItems.add(key);
+      }
+      if (successLoadDefaultValueMap && !configuration2DefaultValue.containsKey(key)) {
+        ignoredConfigItems.add(key);
       }
     }
+    ignoredConfigItems.forEach(configItems::remove);
     return ignoredConfigItems;
   }
 
