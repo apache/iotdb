@@ -254,7 +254,7 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
-  private long pipeStuckRestartMinIntervalMs = 0;
+  private long pipeStuckRestartMinIntervalMs = 20 * 60 * 1000L; // 20 minutes
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;

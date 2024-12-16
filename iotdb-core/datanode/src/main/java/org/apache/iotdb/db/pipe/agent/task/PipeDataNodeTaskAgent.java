@@ -104,7 +104,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final AtomicLong LAST_FORCED_RESTART_TIME =
       new AtomicLong(System.currentTimeMillis());
-
   private static final Map<String, AtomicLong> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
       new ConcurrentHashMap<>();
 
@@ -477,6 +476,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
+    removeOutdatedPipeInfoFromLastRestartTimeMap();
+
     if (!tryWriteLockWithTimeOut(5)) {
       return;
     }
@@ -495,6 +496,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // and the parent task will wait for the completion of the subtasks in ForkJoinPool forever,
     // causing the deadlock.
     stuckPipes.forEach(this::restartStuckPipe);
+  }
+
+  private void removeOutdatedPipeInfoFromLastRestartTimeMap() {
+    PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+        .entrySet()
+        .removeIf(
+            entry -> {
+              final AtomicLong lastRestartTime = entry.getValue();
+              return lastRestartTime == null
+                  || PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()
+                      <= System.currentTimeMillis() - lastRestartTime.get();
+            });
   }
 
   private Set<PipeMeta> findAllStuckPipes() {
