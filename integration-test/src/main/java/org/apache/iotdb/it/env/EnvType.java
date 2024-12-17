@@ -29,7 +29,7 @@ public enum EnvType {
   TABLE_CLUSTER1;
 
   public static EnvType getSystemEnvType() {
-    String envValue = System.getProperty("TestEnv", Cluster1.name());
+    String envValue = System.getProperty("TestEnv", Simple.name());
     return EnvType.valueOf(envValue);
   }
 }
