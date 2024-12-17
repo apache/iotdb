@@ -53,7 +53,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private long firstEventProcessingTime = Long.MIN_VALUE;
   private long totalBufferSize = 0;
 
-  private volatile Iterator<EnrichedEvent> enrichedEventsIterator;
+  private volatile Iterator<EnrichedEvent> currentEnrichedEventsIterator;
   private volatile Iterator<TabletInsertionEvent> currentTabletInsertionEventsIterator;
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
 
@@ -99,7 +99,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
     enrichedEvents.clear();
 
-    enrichedEventsIterator = null;
+    currentEnrichedEventsIterator = null;
     currentTabletInsertionEventsIterator = null;
     currentTsFileInsertionEvent = null;
   }
@@ -195,7 +195,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   /////////////////////////////// iterator ///////////////////////////////
 
   public void resetIterator() {
-    enrichedEventsIterator = enrichedEvents.iterator();
+    currentEnrichedEventsIterator = enrichedEvents.iterator();
+    currentTabletInsertionEventsIterator = null;
+    currentTsFileInsertionEvent = null;
+
+    iteratedEnrichedEvents.clear();
   }
 
   @Override
@@ -211,15 +215,15 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       }
     }
 
-    if (Objects.isNull(enrichedEventsIterator)) {
+    if (Objects.isNull(currentEnrichedEventsIterator)) {
       return false;
     }
 
-    if (enrichedEventsIterator.hasNext()) {
+    if (currentEnrichedEventsIterator.hasNext()) {
       return true;
     } else {
       // reset
-      enrichedEventsIterator = null;
+      currentEnrichedEventsIterator = null;
       return false;
     }
   }
@@ -240,15 +244,15 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       }
     }
 
-    if (Objects.isNull(enrichedEventsIterator)) {
+    if (Objects.isNull(currentEnrichedEventsIterator)) {
       return null;
     }
 
-    if (!enrichedEventsIterator.hasNext()) {
+    if (!currentEnrichedEventsIterator.hasNext()) {
       return null;
     }
 
-    final EnrichedEvent enrichedEvent = enrichedEventsIterator.next();
+    final EnrichedEvent enrichedEvent = currentEnrichedEventsIterator.next();
     if (enrichedEvent instanceof TsFileInsertionEvent) {
       if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
         LOGGER.warn(
