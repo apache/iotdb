@@ -124,12 +124,16 @@ public class CompactionTaskManager implements IService {
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
-      candidateCompactionTaskQueue.regsitPollLastHook(
-          AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
-      candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
+    candidateCompactionTaskQueue.regsitPollLastHook(
+        AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
+    candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
     logger.info("Compaction task manager started.");
+  }
+
+  public boolean isInit() {
+    return this.init;
   }
 
   private void initThreadPool() {

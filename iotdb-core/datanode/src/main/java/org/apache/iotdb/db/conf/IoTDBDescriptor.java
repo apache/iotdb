@@ -1767,8 +1767,8 @@ public class IoTDBDescriptor {
 
     CompactionScheduleTaskManager.getInstance().checkAndMayApplyConfigurationChange();
     // hot load compaction task manager configurations
-    loadCompactionIsEnabledHotModifiedProps(properties);
-    boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
+    boolean restartCompactionTaskManager = loadCompactionIsEnabledHotModifiedProps(properties);
+    restartCompactionTaskManager |= loadCompactionThreadCountHotModifiedProps(properties);
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
@@ -2115,7 +2115,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private void loadCompactionIsEnabledHotModifiedProps(TrimProperties properties)
+  private boolean loadCompactionIsEnabledHotModifiedProps(TrimProperties properties)
       throws IOException {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
@@ -2159,14 +2159,10 @@ public class IoTDBDescriptor {
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
-    if (!isCompactionEnabled && compactionEnabledInNewConfig) {
-      LOGGER.error("Compaction cannot start in current status.");
-      return;
-    }
-
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
+    return !isCompactionEnabled && compactionEnabledInNewConfig;
   }
 
   private void loadWALHotModifiedProps(TrimProperties properties) throws IOException {
