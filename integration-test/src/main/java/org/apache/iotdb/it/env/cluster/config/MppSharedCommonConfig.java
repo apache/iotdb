@@ -519,4 +519,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     return this;
   }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    dnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    cnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    return this;
+  }
 }
