@@ -114,13 +114,4 @@ public interface IPartitionFetcher {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getSchemaPartition(final String database, final List<IDeviceID> deviceIDs);
-
-  /**
-   * For data query with partial device id conditions.
-   *
-   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
-   *
-   * <p>The device id shall be [table, seg1, ....]
-   */
-  SchemaPartition getSchemaPartition(final String database);
 }
