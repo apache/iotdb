@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,55 +19,34 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.read.common.type.LongType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
+public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode {
+  private final String treeDBName;
+  private final Map<String, String> measurementColumnNameMap;
 
-public class AggregationTableScanNode extends DeviceTableScanNode {
-  // if there is date_bin function of time, we should use this field to transform time input
-  protected final Assignments projection;
-
-  protected final Map<Symbol, AggregationNode.Aggregation> aggregations;
-  protected final AggregationNode.GroupingSetDescriptor groupingSets;
-  protected final List<Symbol> preGroupedSymbols;
-  protected AggregationNode.Step step;
-  protected final Optional<Symbol> groupIdSymbol;
-
-  public AggregationTableScanNode(
+  public AggregationTreeDeviceViewScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -86,147 +65,10 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode.GroupingSetDescriptor groupingSets,
       List<Symbol> preGroupedSymbols,
       AggregationNode.Step step,
-      Optional<Symbol> groupIdSymbol) {
+      Optional<Symbol> groupIdSymbol,
+      String treeDBName,
+      Map<String, String> measurementColumnNameMap) {
     super(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        idAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice);
-    this.projection = projection;
-
-    this.aggregations = new LinkedHashMap<>(aggregations.size());
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
-      Symbol symbol = entry.getKey();
-      AggregationNode.Aggregation aggregation = entry.getValue();
-      if (aggregation.getArguments().isEmpty()
-          && COUNT.equals(aggregation.getResolvedFunction().getSignature().getName())) {
-        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
-        if (!assignments.containsKey(Symbol.of(TABLE_TIME_COLUMN_NAME))) {
-          assignments.put(
-              Symbol.of(TABLE_TIME_COLUMN_NAME),
-              new ColumnSchema(
-                  TABLE_TIME_COLUMN_NAME,
-                  TimestampType.TIMESTAMP,
-                  false,
-                  TsTableColumnCategory.TIME));
-        }
-        this.aggregations.put(symbol, countStarAggregation);
-      } else {
-        this.aggregations.put(symbol, aggregation);
-      }
-    }
-    aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
-
-    requireNonNull(groupingSets, "groupingSets is null");
-    groupIdSymbol.ifPresent(
-        symbol ->
-            checkArgument(
-                groupingSets.getGroupingKeys().contains(symbol),
-                "Grouping columns does not contain groupId column"));
-    this.groupingSets = groupingSets;
-
-    this.groupIdSymbol = requireNonNull(groupIdSymbol);
-
-    boolean noOrderBy =
-        aggregations.values().stream()
-            .map(AggregationNode.Aggregation::getOrderingScheme)
-            .noneMatch(Optional::isPresent);
-    checkArgument(
-        noOrderBy || step == AggregationNode.Step.SINGLE,
-        "ORDER BY does not support distributed aggregation");
-
-    this.step = step;
-
-    requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
-    checkArgument(
-        preGroupedSymbols.isEmpty()
-            || groupingSets.getGroupingKeys().containsAll(preGroupedSymbols),
-        "Pre-grouped symbols must be a subset of the grouping keys");
-    this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
-
-    ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
-    outputs.addAll(groupingSets.getGroupingKeys());
-    outputs.addAll(aggregations.keySet());
-
-    this.setOutputSymbols(outputs.build());
-  }
-
-  private AggregationNode.Aggregation getCountStarAggregation(
-      AggregationNode.Aggregation aggregation) {
-    ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
-    ResolvedFunction countStarFunction =
-        new ResolvedFunction(
-            new BoundSignature(
-                COUNT, LongType.INT64, Collections.singletonList(TimestampType.TIMESTAMP)),
-            resolvedFunction.getFunctionId(),
-            resolvedFunction.getFunctionKind(),
-            resolvedFunction.isDeterministic(),
-            resolvedFunction.getFunctionNullability());
-    return new AggregationNode.Aggregation(
-        countStarFunction,
-        Collections.singletonList(new SymbolReference(TABLE_TIME_COLUMN_NAME)),
-        aggregation.isDistinct(),
-        aggregation.getFilter(),
-        aggregation.getOrderingScheme(),
-        aggregation.getMask());
-  }
-
-  public Assignments getProjection() {
-    return projection;
-  }
-
-  public List<Symbol> getGroupingKeys() {
-    return groupingSets.getGroupingKeys();
-  }
-
-  public AggregationNode.GroupingSetDescriptor getGroupingSets() {
-    return groupingSets;
-  }
-
-  public Map<Symbol, AggregationNode.Aggregation> getAggregations() {
-    return aggregations;
-  }
-
-  public List<Symbol> getPreGroupedSymbols() {
-    return preGroupedSymbols;
-  }
-
-  public boolean isStreamable() {
-    return true;
-  }
-
-  public AggregationNode.Step getStep() {
-    return step;
-  }
-
-  public void setStep(AggregationNode.Step step) {
-    this.step = step;
-  }
-
-  public int getGroupingSetCount() {
-    return groupingSets.getGroupingSetCount();
-  }
-
-  public Set<Integer> getGlobalGroupingSets() {
-    return groupingSets.getGlobalGroupingSets();
-  }
-
-  public Optional<Symbol> getGroupIdSymbol() {
-    return groupIdSymbol;
-  }
-
-  @Override
-  public AggregationTableScanNode clone() {
-    return new AggregationTableScanNode(
         id,
         qualifiedObjectName,
         outputSymbols,
@@ -246,156 +88,52 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         preGroupedSymbols,
         step,
         groupIdSymbol);
+    this.treeDBName = treeDBName;
+    this.measurementColumnNameMap = measurementColumnNameMap;
+  }
+
+  public String getTreeDBName() {
+    return treeDBName;
+  }
+
+  public Map<String, String> getMeasurementColumnNameMap() {
+    return measurementColumnNameMap;
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggregationTableScan(this, context);
+    return visitor.visitAggregationTreeDeviceViewScanNode(this, context);
   }
 
-  public static AggregationTableScanNode combineAggregationAndTableScan(
-      PlanNodeId id,
-      AggregationNode aggregationNode,
-      ProjectNode projectNode,
-      DeviceTableScanNode tableScanNode) {
-    if (tableScanNode instanceof TreeDeviceViewScanNode) {
-      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getIdAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          aggregationNode.getStep(),
-          aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
-    }
-
-    return new AggregationTableScanNode(
+  @Override
+  public AggregationTreeDeviceViewScanNode clone() {
+    return new AggregationTreeDeviceViewScanNode(
         id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getIdAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
-        aggregationNode.getStep(),
-        aggregationNode.getGroupIdSymbol());
-  }
-
-  public static AggregationTableScanNode combineAggregationAndTableScan(
-      PlanNodeId id,
-      AggregationNode aggregationNode,
-      ProjectNode projectNode,
-      DeviceTableScanNode tableScanNode,
-      AggregationNode.Step step) {
-    if (tableScanNode instanceof TreeDeviceViewScanNode) {
-      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getIdAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          step,
-          aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
-    }
-
-    return new AggregationTableScanNode(
-        id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getIdAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        projection,
+        aggregations,
+        groupingSets,
+        preGroupedSymbols,
         step,
-        aggregationNode.getGroupIdSymbol());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    AggregationTableScanNode that = (AggregationTableScanNode) o;
-    return Objects.equals(qualifiedObjectName, that.qualifiedObjectName)
-        && Objects.equals(outputSymbols, that.outputSymbols)
-        && Objects.equals(regionReplicaSet, that.regionReplicaSet)
-        && Objects.equals(projection, that.projection)
-        && Objects.equals(aggregations, that.aggregations)
-        && Objects.equals(groupingSets, that.groupingSets)
-        && Objects.equals(step, that.step)
-        && Objects.equals(groupIdSymbol, that.groupIdSymbol);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        super.hashCode(), projection, aggregations, groupingSets, step, groupIdSymbol);
-  }
-
-  @Override
-  public String toString() {
-    return "AggregationTableScanNode-" + this.getPlanNodeId();
+        groupIdSymbol,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(byteBuffer);
+    PlanNodeType.AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
 
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
@@ -474,11 +212,18 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     if (groupIdSymbol.isPresent()) {
       Symbol.serialize(groupIdSymbol.get(), byteBuffer);
     }
+
+    ReadWriteIOUtils.write(treeDBName, byteBuffer);
+    ReadWriteIOUtils.write(measurementColumnNameMap.size(), byteBuffer);
+    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(stream);
+    PlanNodeType.AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE.serialize(stream);
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
@@ -555,6 +300,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     ReadWriteIOUtils.write(groupIdSymbol.isPresent(), stream);
     if (groupIdSymbol.isPresent()) {
       Symbol.serialize(groupIdSymbol.get(), stream);
+    }
+
+    ReadWriteIOUtils.write(treeDBName, stream);
+    ReadWriteIOUtils.write(measurementColumnNameMap.size(), stream);
+    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
     }
   }
 
@@ -638,9 +390,17 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       groupIdSymbol = Optional.of(Symbol.deserialize(byteBuffer));
     }
 
+    String treeDBName = ReadWriteIOUtils.readString(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<String, String> measurementColumnNameMap = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      measurementColumnNameMap.put(
+          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
-    return new AggregationTableScanNode(
+    return new AggregationTreeDeviceViewScanNode(
         planNodeId,
         qualifiedObjectName,
         null,
@@ -659,6 +419,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         groupingSetDescriptor,
         preGroupedSymbols,
         step,
-        groupIdSymbol);
+        groupIdSymbol,
+        treeDBName,
+        measurementColumnNameMap);
   }
 }
