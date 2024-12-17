@@ -770,14 +770,15 @@ public class IoTDBDescriptor {
                         "merge_interval_sec", Long.toString(conf.getMergeIntervalSec())))
                 .map(String::trim)
                 .orElse(Long.toString(conf.getMergeIntervalSec()))));
-    conf.setCompactionThreadCount(
+    int compactionThreadCount =
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
                         "compaction_thread_count",
                         Integer.toString(conf.getCompactionThreadCount())))
                 .map(String::trim)
-                .orElse(Integer.toString(conf.getCompactionThreadCount()))));
+                .orElse(Integer.toString(conf.getCompactionThreadCount())));
+    conf.setCompactionThreadCount(compactionThreadCount <= 0 ? 1 : compactionThreadCount);
     int maxConcurrentAlignedSeriesInCompaction =
         Integer.parseInt(
             Optional.ofNullable(
@@ -2071,8 +2072,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "compaction_thread_count")));
     if (newConfigCompactionThreadCount <= 0) {
-      LOGGER.error("compaction_thread_count must greater than 0");
-      return false;
+      newConfigCompactionThreadCount = 1;
     }
     if (newConfigCompactionThreadCount == conf.getCompactionThreadCount()) {
       return false;
@@ -2105,8 +2105,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "sub_compaction_thread_count")));
     if (newConfigSubtaskNum <= 0) {
-      LOGGER.error("sub_compaction_thread_count must greater than 0");
-      return false;
+      newConfigSubtaskNum = 1;
     }
     if (newConfigSubtaskNum == conf.getSubCompactionTaskNum()) {
       return false;

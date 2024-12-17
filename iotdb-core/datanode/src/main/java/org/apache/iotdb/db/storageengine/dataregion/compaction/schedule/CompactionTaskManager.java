@@ -118,17 +118,13 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public synchronized void start() {
-    if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
-        && (config.isEnableSeqSpaceCompaction()
-            || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction())) {
+    if (!init) {
       initThreadPool();
+      candidateCompactionTaskQueue.regsitPollLastHook(
+          AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
+      candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
-    candidateCompactionTaskQueue.regsitPollLastHook(
-        AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
-    candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
     logger.info("Compaction task manager started.");
   }
 
