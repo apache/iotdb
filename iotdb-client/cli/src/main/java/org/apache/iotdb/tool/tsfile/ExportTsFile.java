@@ -337,8 +337,8 @@ public class ExportTsFile extends AbstractTsFileTool {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
       long start = System.currentTimeMillis();
-      boolean empty = writeWithTablets(sessionDataSet, path);
-      if (empty) {
+      boolean isComplete = writeWithTablets(sessionDataSet, path);
+      if (isComplete) {
         long end = System.currentTimeMillis();
         ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
       }
