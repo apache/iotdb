@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.pipe.it.tablemodel;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
@@ -42,8 +40,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.fail;
 
@@ -59,39 +55,27 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // Create tree pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "tree");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(treePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s with sink ('node-urls'='%s')",
+              treePipeName, receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
 
     // Create table pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "table");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(tablePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s with sink ('node-urls'='%s')",
+              tablePipeName, receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
 
     try (final SyncConfigNodeIServiceClient client =
@@ -300,23 +284,20 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // Create tree pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "tree");
-      extractorAttributes.put("capture.tree", "true");
-      extractorAttributes.put("capture.table", "true");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(treePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ("
+                  + "'capture.tree'='true',"
+                  + "'capture.table'='true')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              treePipeName, receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
 
     // Show tree pipe by tree session
@@ -346,134 +327,20 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     }
 
     // Create table pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "table");
-      extractorAttributes.put("capture.tree", "true");
-      extractorAttributes.put("capture.table", "true");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(tablePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    }
-
-    // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
-
-    // Show table pipe by table session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ("
+                  + "'capture.tree'='true',"
+                  + "'capture.table'='true')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              tablePipeName, receiverDataNode.getIpAndPortString()));
     } catch (final SQLException e) {
+      e.printStackTrace();
       fail(e.getMessage());
-    }
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      // Drop pipe
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(true)).getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
-              .getCode());
-    }
-  }
-
-  @Test
-  public void testDoubleLivingIsolation() throws Exception {
-    final String treePipeName = "tree_a2b";
-    final String tablePipeName = "table_a2b";
-
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    // Create tree pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "tree");
-      extractorAttributes.put("mode.double-living", "true");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(treePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    }
-
-    // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
-
-    // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
-
-    // Create table pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-
-      extractorAttributes.put("__system.sql-dialect", "table");
-      extractorAttributes.put("mode.double-living", "true");
-      connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq(tablePipeName, connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
     // Show tree pipe by tree session

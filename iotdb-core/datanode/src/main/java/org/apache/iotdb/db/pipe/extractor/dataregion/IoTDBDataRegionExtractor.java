@@ -127,6 +127,15 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
+    final boolean isDoubleLiving =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+
     // Validate whether the pipe needs to extract table model data or tree model data
     final boolean isTreeDialect =
         validator
@@ -135,21 +144,23 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                 SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
             .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
     final boolean isTreeModelDataAllowedToBeCaptured =
-        validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-                isTreeDialect);
+        isDoubleLiving
+            || validator
+                .getParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                    isTreeDialect);
     final boolean isTableModelDataAllowedToBeCaptured =
-        validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-                !isTreeDialect);
+        isDoubleLiving
+            || validator
+                .getParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                    !isTreeDialect);
     if (!isTreeModelDataAllowedToBeCaptured
         && validator
             .getParameters()

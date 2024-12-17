@@ -89,7 +89,6 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                     EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
 
     // Validate double living
-    // NOTE: this function may modify pipe parameters
     validateDoubleLiving(validator.getParameters());
   }
 
@@ -100,58 +99,41 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
             PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-    if (isDoubleLiving) {
-      // check 'capture.tree'
-      final Boolean isTreeModelDataAllowedToBeCaptured =
-          parameters.getBooleanByKeys(
-              PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-              PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
-      if (Objects.nonNull(isTreeModelDataAllowedToBeCaptured)
-          && !isTreeModelDataAllowedToBeCaptured) {
-        throw new PipeParameterNotValidException(
-            "capture.tree can not be specified to false when double living is enabled");
-      }
-
-      // check 'capture.table'
-      final Boolean isTableModelDataAllowedToBeCaptured =
-          parameters.getBooleanByKeys(
-              PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-              PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
-      if (Objects.nonNull(isTableModelDataAllowedToBeCaptured)
-          && !isTableModelDataAllowedToBeCaptured) {
-        throw new PipeParameterNotValidException(
-            "capture.table can not be specified to false when double living is enabled");
-      }
-
-      // check 'forwarding-pipe-requests'
-      final Boolean isForwardingPipeRequests =
-          parameters.getBooleanByKeys(
-              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-              PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
-      if (Objects.nonNull(isForwardingPipeRequests) && isForwardingPipeRequests) {
-        throw new PipeParameterNotValidException(
-            "forwarding-pipe-requests can not be specified to true when double living is enabled");
-      }
-
-      // modify pipe parameters
-      applyDoubleLiving(parameters);
+    if (!isDoubleLiving) {
+      return;
     }
-  }
 
-  private void applyDoubleLiving(final PipeParameters parameters) {
-    // temporarily set 'capture.tree' = 'true'
-    parameters.addAttribute(PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
-    parameters.addRawAttribute(PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY, "true");
-    parameters.addRawAttribute(PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY, "true");
-    // temporarily set 'capture.table' = 'true'
-    parameters.addAttribute(PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
-    parameters.addRawAttribute(PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY, "true");
-    parameters.addRawAttribute(PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
-    // temporarily set 'forwarding-pipe-requests' = 'false'
-    parameters.addAttribute(PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, "false");
-    parameters.addRawAttribute(
-        PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY, "false");
-    parameters.addRawAttribute(PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY, "false");
+    // check 'capture.tree'
+    final Boolean isTreeModelDataAllowedToBeCaptured =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
+    if (Objects.nonNull(isTreeModelDataAllowedToBeCaptured)
+        && !isTreeModelDataAllowedToBeCaptured) {
+      throw new PipeParameterNotValidException(
+          "capture.tree can not be specified to false when double living is enabled");
+    }
+
+    // check 'capture.table'
+    final Boolean isTableModelDataAllowedToBeCaptured =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
+    if (Objects.nonNull(isTableModelDataAllowedToBeCaptured)
+        && !isTableModelDataAllowedToBeCaptured) {
+      throw new PipeParameterNotValidException(
+          "capture.table can not be specified to false when double living is enabled");
+    }
+
+    // check 'forwarding-pipe-requests'
+    final Boolean isForwardingPipeRequests =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
+    if (Objects.nonNull(isForwardingPipeRequests) && isForwardingPipeRequests) {
+      throw new PipeParameterNotValidException(
+          "forwarding-pipe-requests can not be specified to true when double living is enabled");
+    }
   }
 
   @Override
@@ -166,15 +148,22 @@ public abstract class IoTDBExtractor implements PipeExtractor {
     taskID = pipeName + "_" + regionId + "_" + creationTime;
     pipeTaskMeta = environment.getPipeTaskMeta();
 
-    // apply double living before setting isForwardingPipeRequests
-    applyDoubleLiving(parameters);
-
-    isForwardingPipeRequests =
+    final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (isDoubleLiving) {
+      isForwardingPipeRequests = false;
+    } else {
+      isForwardingPipeRequests =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                  PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    }
   }
 
   @Override

@@ -125,7 +125,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
           String.format(
               "create pipe p1"
                   + " with source ( "
-                  + "'capture.table'='test',"
+                  + "'capture.table'='true',"
                   + "'database-name'='test',"
                   + "'table-name'='test',"
                   + "'mode.streaming'='true',"
@@ -545,6 +545,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
