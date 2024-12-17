@@ -201,7 +201,7 @@ public class Arena {
     }
 
     private long evict(int num) {
-      int evicted = 0;
+      long evicted = 0;
       while (num > 0 && !queue.isEmpty()) {
         queue.poll();
         evictions.incrementAndGet();
