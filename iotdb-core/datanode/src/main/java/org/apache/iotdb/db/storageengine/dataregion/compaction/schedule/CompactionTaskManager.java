@@ -222,6 +222,7 @@ public class CompactionTaskManager implements IService {
     }
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
+    init = false;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
