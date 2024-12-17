@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -40,6 +41,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
@@ -53,6 +55,42 @@ public class IoTDBSetConfigurationIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testSetConfigurationWithUndefinedConfigKey() {
+    String expectedExceptionMsg =
+        "301: ignored config items: [a] because they are immutable or undefined.";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeAndExpectException(
+          statement, "set configuration \"a\"=\"false\"", expectedExceptionMsg);
+      int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+      int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
+
+      for (int i = 0; i < configNodeNum; i++) {
+        executeAndExpectException(
+            statement, "set configuration \"a\"=\"false\" on " + i, expectedExceptionMsg);
+      }
+      for (int i = 0; i < dataNodeNum; i++) {
+        int dnId = configNodeNum + i;
+        executeAndExpectException(
+            statement, "set configuration \"a\"=\"false\" on " + dnId, expectedExceptionMsg);
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  private void executeAndExpectException(
+      Statement statement, String sql, String expectedContentInExceptionMsg) {
+    try {
+      statement.execute(sql);
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(expectedContentInExceptionMsg));
+      return;
+    }
+    Assert.fail();
   }
 
   @Test
@@ -119,24 +157,49 @@ public class IoTDBSetConfigurationIT {
     Awaitility.await()
         .atMost(10, TimeUnit.SECONDS)
         .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
+    AbstractNodeWrapper datanode = EnvFactory.getEnv().getDataNodeWrapper(0);
     Assert.assertTrue(
         checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+
+    // Modify the config file manually because the datanode can not restart
+    Properties properties = new Properties();
+    properties.put("cluster_name", "xx");
+    ConfigurationFileUtils.updateConfigurationFile(getConfigFile(datanode), properties);
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    // wait the datanode restart successfully (won't do any meaningful modification)
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              try (Connection connection = EnvFactory.getEnv().getConnection();
+                  Statement statement = connection.createStatement()) {
+                statement.execute("set configuration \"cluster_name\"=\"xx\" on 1");
+              } catch (Exception e) {
+                return false;
+              }
+              return true;
+            });
   }
 
   private static boolean checkConfigFileContains(
       AbstractNodeWrapper nodeWrapper, String... contents) {
     try {
-      String systemPropertiesPath =
-          nodeWrapper.getNodePath()
-              + File.separator
-              + "conf"
-              + File.separator
-              + CommonConfig.SYSTEM_CONFIG_NAME;
-      File f = new File(systemPropertiesPath);
-      String fileContent = new String(Files.readAllBytes(f.toPath()));
+      String fileContent = new String(Files.readAllBytes(getConfigFile(nodeWrapper).toPath()));
       return Arrays.stream(contents).allMatch(fileContent::contains);
     } catch (IOException ignore) {
       return false;
     }
+  }
+
+  private static File getConfigFile(AbstractNodeWrapper nodeWrapper) {
+    String systemPropertiesPath =
+        nodeWrapper.getNodePath()
+            + File.separator
+            + "conf"
+            + File.separator
+            + CommonConfig.SYSTEM_CONFIG_NAME;
+    return new File(systemPropertiesPath);
   }
 }

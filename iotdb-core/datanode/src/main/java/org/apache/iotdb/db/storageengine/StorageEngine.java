@@ -662,6 +662,10 @@ public class StorageEngine implements IService {
     URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
       // configuration file not exist, update in mem
+      String msg =
+          "Unable to find the configuration file. Some modifications are made only in memory.";
+      tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
+      LOGGER.warn(msg);
       try {
         IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
         IoTDBDescriptor.getInstance().reloadMetricProperties(properties);
