@@ -441,7 +441,17 @@ public class TsFileResource {
     }
   }
 
-  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
+  // cannot use FileTimeIndex
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  // can use FileTimeIndex
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 
