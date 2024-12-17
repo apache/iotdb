@@ -95,6 +95,7 @@ public class PipeConsensusServerImpl {
   private final ReplicateMode replicateMode;
 
   private ProgressIndex cachedProgressIndex = MinimumProgressIndex.INSTANCE;
+  private Map<Integer, ProgressIndex> cachedReplicateProgressIndex;
 
   public PipeConsensusServerImpl(
       Peer thisNode,
@@ -357,6 +358,10 @@ public class PipeConsensusServerImpl {
           getStateMachineLockTime - consensusWriteStartTime);
 
       long writeToStateMachineStartTime = System.nanoTime();
+      if (request instanceof ComparableConsensusRequest) {
+        progressIndexManager.recordPeerMaxProgressIndex(
+            thisNode.getGroupId(), ((ComparableConsensusRequest) request).getProgressIndex());
+      }
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
 
@@ -369,6 +374,10 @@ public class PipeConsensusServerImpl {
     } finally {
       stateMachineLock.unlock();
     }
+  }
+
+  public void recordTsFileProgressOnFollowerReplica(ProgressIndex progressIndex) {
+    progressIndexManager.recordPeerMaxProgressIndex(thisNode.getGroupId(), progressIndex);
   }
 
   public DataSet read(IConsensusRequest request) {
@@ -550,7 +559,6 @@ public class PipeConsensusServerImpl {
       if (checkForCoordinator) {
         ConsensusPipeName consensusPipeName = new ConsensusPipeName(thisNode, targetPeer);
         while (!isTransmissionCompleted) {
-          Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
           // Only wait coordinator to transfer snapshot instead of waiting all peers completing data
           // transfer. Keep consistent with IoTV1.
           isTransmissionCompleted =
@@ -559,15 +567,14 @@ public class PipeConsensusServerImpl {
                   isFirstCheckForCurrentPeer);
 
           isFirstCheckForCurrentPeer = false;
+
+          Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
         }
         // Reset coordinator's processor filter switch
-        ConsensusPipeManager.getProcessorFilterSwitch()
-            .computeIfPresent(consensusPipeName, (k, v) -> true);
+        ConsensusPipeManager.getProcessorFilterSwitch().put(consensusPipeName, true);
       } else {
         while (!isTransmissionCompleted) {
-          Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
           final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-
           isTransmissionCompleted = true;
           for (Peer peer : otherPeers) {
             if (!peer.equals(targetPeer)) {
@@ -587,6 +594,8 @@ public class PipeConsensusServerImpl {
               }
             }
             isFirstCheckForOtherPeers = false;
+
+            Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
           }
         }
       }

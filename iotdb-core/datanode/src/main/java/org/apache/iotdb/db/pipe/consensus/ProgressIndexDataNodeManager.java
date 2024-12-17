@@ -37,15 +37,19 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
+  // 1 dataRegion -> n peers(denoted by datanodeId) -> n progressIndex
+  private final Map<ConsensusGroupId, Map<Integer, ProgressIndex>> groupId2PeersMaxProgressIndexMap;
 
   public ProgressIndexDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
+    this.groupId2PeersMaxProgressIndexMap = new ConcurrentHashMap<>();
 
     recoverMaxProgressIndexFromDataRegion();
   }
@@ -128,5 +132,54 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   @Override
   public ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId) {
     return groupId2MaxProgressIndex.getOrDefault(consensusGroupId, MinimumProgressIndex.INSTANCE);
+  }
+
+  @Override
+  public void recordPeerMaxProgressIndex(
+      ConsensusGroupId consensusGroupId, ProgressIndex progressIndex) {
+    RecoverProgressIndex recoverProgressIndex = getRecoverProgressIndex(progressIndex);
+
+    if (recoverProgressIndex == null) {
+      return;
+    }
+
+    // IoTV2 uses recoverProgressIndex
+    groupId2PeersMaxProgressIndexMap.compute(
+        consensusGroupId,
+        (key, peer2MaxProgressIndexMap) -> {
+          if (peer2MaxProgressIndexMap == null) {
+            peer2MaxProgressIndexMap = new ConcurrentHashMap<>();
+          }
+          for (Entry<Integer, SimpleProgressIndex> datanodeId2SimpleProgressIndex :
+              recoverProgressIndex.getDataNodeId2LocalIndex().entrySet()) {
+            peer2MaxProgressIndexMap.compute(
+                datanodeId2SimpleProgressIndex.getKey(),
+                (datanodeId, maxProgressIndex) ->
+                    ((maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex)
+                        .updateToMinimumEqualOrIsAfterProgressIndex(
+                            datanodeId2SimpleProgressIndex.getValue())));
+          }
+          return peer2MaxProgressIndexMap;
+        });
+  }
+
+  private static RecoverProgressIndex getRecoverProgressIndex(ProgressIndex progressIndex) {
+    RecoverProgressIndex recoverProgressIndex = null;
+
+    if (progressIndex instanceof RecoverProgressIndex) {
+      recoverProgressIndex = (RecoverProgressIndex) progressIndex;
+    } else if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      recoverProgressIndex =
+          ((RecoverProgressIndex)
+              type2Index.getOrDefault(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType(), null));
+    }
+    return recoverProgressIndex;
+  }
+
+  @Override
+  public Map<Integer, ProgressIndex> getPeerProgressIndexMap(ConsensusGroupId consensusGroupId) {
+    return this.groupId2PeersMaxProgressIndexMap.getOrDefault(consensusGroupId, null);
   }
 }

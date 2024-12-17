@@ -22,10 +22,16 @@ package org.apache.iotdb.consensus.pipe.consensuspipe;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 
+import java.util.Map;
+
 public interface ProgressIndexManager {
   ProgressIndex getProgressIndex(ConsensusPipeName consensusPipeName);
 
   ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId);
 
   ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId);
+
+  void recordPeerMaxProgressIndex(ConsensusGroupId consensusGroupId, ProgressIndex progressIndex);
+
+  Map<Integer, ProgressIndex> getPeerProgressIndexMap(ConsensusGroupId consensusGroupId);
 }
