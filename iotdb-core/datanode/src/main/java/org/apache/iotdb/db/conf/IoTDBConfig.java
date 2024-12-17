@@ -1169,6 +1169,8 @@ public class IoTDBConfig {
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
 
+  private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
+
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
@@ -4089,6 +4091,14 @@ public class IoTDBConfig {
       int loadTsFileMaxDeviceCountToUseDeviceTimeIndex) {
     this.loadTsFileMaxDeviceCountToUseDeviceTimeIndex =
         loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
+  }
+
+  public long getLoadChunkMetadataMemorySizeInBytes() {
+    return loadChunkMetadataMemorySizeInBytes;
+  }
+
+  public void setLoadChunkMetadataMemorySizeInBytes(long loadChunkMetadataMemorySizeInBytes) {
+    this.loadChunkMetadataMemorySizeInBytes = loadChunkMetadataMemorySizeInBytes;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {

@@ -330,7 +330,11 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 

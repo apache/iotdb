@@ -1073,7 +1073,11 @@ public class AnalyzerTest {
     return new TestMatadata() {
       @Override
       public Optional<TableSchema> validateTableHeaderSchema(
-          String database, TableSchema schema, MPPQueryContext context, boolean allowCreateTable) {
+          String database,
+          TableSchema schema,
+          MPPQueryContext context,
+          boolean allowCreateTable,
+          boolean isStrictIdColumn) {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);
