@@ -348,7 +348,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(
-          pipeName, SystemConstant.fromIsTableModel(isTableModel));
+          pipeName, SystemConstant.fetchSqlDialectValue(isTableModel));
     } finally {
       releaseReadLock();
     }

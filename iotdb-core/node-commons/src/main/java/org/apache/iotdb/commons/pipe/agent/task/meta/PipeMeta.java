@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -28,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class PipeMeta {
@@ -64,7 +66,7 @@ public class PipeMeta {
   }
 
   public boolean matchSqlDialect(final boolean isTableModel) {
-    return matchSqlDialect(SystemConstant.fromIsTableModel(isTableModel));
+    return matchSqlDialect(SystemConstant.fetchSqlDialectValue(isTableModel));
   }
 
   public boolean matchSqlDialect(final String sqlDialect) {
@@ -80,7 +82,21 @@ public class PipeMeta {
   }
 
   private boolean isDoubleLiving() {
-    return false;
+    // TODO: consider 'mode.double-living'
+    return getStaticMeta()
+            .getExtractorParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                false)
+        && getStaticMeta()
+            .getExtractorParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                false);
   }
 
   public ByteBuffer serialize() throws IOException {
