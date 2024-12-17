@@ -443,7 +443,7 @@ public class TsFileResource {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
       return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
