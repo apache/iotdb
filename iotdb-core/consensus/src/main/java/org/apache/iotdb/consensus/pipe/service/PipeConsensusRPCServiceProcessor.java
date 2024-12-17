@@ -192,7 +192,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
     try {
       isCompleted =
           impl.isConsensusPipesTransmissionCompleted(
-              req.consensusPipeNames, req.refreshCachedProgressIndex);
+              req.consensusPipeNames, req.refreshCachedProgressIndex, false);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

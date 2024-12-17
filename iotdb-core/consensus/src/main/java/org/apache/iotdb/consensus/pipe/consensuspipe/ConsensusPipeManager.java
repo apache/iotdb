@@ -28,8 +28,8 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_PIPE_NAME;
@@ -53,7 +53,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 public class ConsensusPipeManager {
   // Extract data.insert and data.delete to support deletion.
   private static final String CONSENSUS_EXTRACTOR_INCLUSION_VALUE = "data";
-  private static final Map<ConsensusPipeName, Boolean> processorFilterSwitchMap = new HashMap<>();
+  private static final Map<ConsensusPipeName, Boolean> processorFilterSwitchMap =
+      new ConcurrentHashMap<>();
   private final PipeConsensusConfig.Pipe config;
   private final ReplicateMode replicateMode;
   private final ConsensusPipeDispatcher dispatcher;

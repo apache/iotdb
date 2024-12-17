@@ -95,7 +95,7 @@ public class PipeConsensusServerImpl {
   private final ReplicateMode replicateMode;
 
   private ProgressIndex cachedProgressIndex = MinimumProgressIndex.INSTANCE;
-  private Map<Integer, ProgressIndex> cachedReplicateProgressIndex;
+  private ProgressIndex cachedReplicateProgressIndex = MinimumProgressIndex.INSTANCE;
 
   public PipeConsensusServerImpl(
       Peer thisNode,
@@ -564,7 +564,8 @@ public class PipeConsensusServerImpl {
           isTransmissionCompleted =
               isConsensusPipesTransmissionCompleted(
                   Collections.singletonList(consensusPipeName.toString()),
-                  isFirstCheckForCurrentPeer);
+                  isFirstCheckForCurrentPeer,
+                  true);
 
           isFirstCheckForCurrentPeer = false;
 
@@ -665,19 +666,39 @@ public class PipeConsensusServerImpl {
   }
 
   public synchronized boolean isConsensusPipesTransmissionCompleted(
-      List<String> consensusPipeNames, boolean refreshCachedProgressIndex) {
+      List<String> consensusPipeNames,
+      boolean refreshCachedProgressIndex,
+      boolean checkForCoordinator) {
     if (refreshCachedProgressIndex) {
       cachedProgressIndex =
           cachedProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
               progressIndexManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
+
+      cachedReplicateProgressIndex =
+          cachedReplicateProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+              progressIndexManager.getMaxReplicatedProgressIndex(thisNode.getGroupId()));
     }
 
     try {
-      return consensusPipeNames.stream()
-          .noneMatch(
-              name ->
-                  cachedProgressIndex.isAfter(
-                      progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
+      if (checkForCoordinator) {
+        // check all types of write(user local write and replica write), because coordinator will
+        // transfer data regardless write type.
+        return consensusPipeNames.stream()
+            .allMatch(
+                name -> {
+                  ProgressIndex currentProgressIndex =
+                      progressIndexManager.getProgressIndex(new ConsensusPipeName(name));
+                  return currentProgressIndex.isAfter(cachedProgressIndex)
+                      && currentProgressIndex.isAfter(cachedReplicateProgressIndex);
+                });
+      } else {
+        // only check user local write progressIndex
+        return consensusPipeNames.stream()
+            .noneMatch(
+                name ->
+                    cachedProgressIndex.isAfter(
+                        progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
+      }
     } catch (PipeException e) {
       LOGGER.warn(e.getMessage(), e);
       return false;

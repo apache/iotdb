@@ -319,6 +319,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               .getPipeTaskProgressIndex(
                   currentNode2CoordinatorPipeName.toString(),
                   currentNode2CoordinatorPipeName.getConsensusGroupId().getId());
+      LOGGER.info("Debug: startIndex: {}", startIndex);
     } else {
       startIndex = environment.getPipeTaskMeta().getProgressIndex();
     }
