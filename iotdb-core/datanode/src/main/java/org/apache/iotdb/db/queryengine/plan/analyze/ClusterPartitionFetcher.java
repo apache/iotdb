@@ -53,6 +53,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +63,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -300,28 +303,34 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return getOrCreateSchemaPartition(database, deviceIDs, true, userName);
   }
 
+  // deviceIDs is null if search the whole database, in which case we skip the cache and fetch the
+  // configNode directly
   @Override
   public SchemaPartition getSchemaPartition(
-      final String database, final List<IDeviceID> deviceIDs) {
+      final String database, final @Nullable List<IDeviceID> deviceIDs) {
     return getOrCreateSchemaPartition(database, deviceIDs, false, null);
   }
 
   private SchemaPartition getOrCreateSchemaPartition(
       final String database,
-      final List<IDeviceID> deviceIDs,
+      final @Nullable List<IDeviceID> deviceIDs,
       final boolean isAutoCreate,
       final String userName) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       partitionCache.checkAndAutoCreateDatabase(database, isAutoCreate, userName);
       SchemaPartition schemaPartition =
-          partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs));
+          Objects.nonNull(deviceIDs)
+              ? partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs))
+              : null;
       if (null == schemaPartition) {
         final List<TSeriesPartitionSlot> partitionSlots =
-            deviceIDs.stream()
-                .map(partitionExecutor::getSeriesPartitionSlot)
-                .distinct()
-                .collect(Collectors.toList());
+            Objects.nonNull(deviceIDs)
+                ? deviceIDs.stream()
+                    .map(partitionExecutor::getSeriesPartitionSlot)
+                    .distinct()
+                    .collect(Collectors.toList())
+                : Collections.emptyList();
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             isAutoCreate
                 ? client.getOrCreateSchemaPartitionTableWithSlots(
@@ -340,6 +349,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   schemaPartitionTableResp.getStatus().getCode()));
         }
       }
+      System.out.println(schemaPartition.getSchemaPartitionMap());
       return schemaPartition;
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(

@@ -739,7 +739,7 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public SchemaPartition getSchemaPartition(final String database) {
-    return partitionFetcher.getSchemaPartition(database, Collections.emptyList());
+    return partitionFetcher.getSchemaPartition(database, null);
   }
 
   @Override

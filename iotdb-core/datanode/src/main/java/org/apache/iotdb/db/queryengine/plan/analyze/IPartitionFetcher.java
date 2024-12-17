@@ -28,6 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -113,5 +114,5 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(final String database, final List<IDeviceID> deviceIDs);
+  SchemaPartition getSchemaPartition(final String database, final @Nullable List<IDeviceID> deviceIDs);
 }

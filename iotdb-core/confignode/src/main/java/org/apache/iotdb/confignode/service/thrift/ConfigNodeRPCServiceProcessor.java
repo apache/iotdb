@@ -639,7 +639,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     return configManager.getOrCreateSchemaPartition(dbSlotMap);
   }
 
