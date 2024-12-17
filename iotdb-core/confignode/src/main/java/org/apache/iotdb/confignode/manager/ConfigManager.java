@@ -836,11 +836,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition4TableModel(final String database) {
-    return getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()));
-  }
-
-  @Override
   public TSchemaPartitionTableResp getSchemaPartition(
       final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     // Construct empty response
@@ -2418,7 +2413,8 @@ public class ConfigManager implements IManager {
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup4TableModel(
       final String database) {
     return getRelatedSchemaRegionGroup(
-        getSchemaPartition4TableModel(database).getSchemaPartitionTable());
+        getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()))
+            .getSchemaPartitionTable());
   }
 
   private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
@@ -2450,7 +2446,8 @@ public class ConfigManager implements IManager {
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(
       final String database) {
     return getRelatedDataRegionGroup(
-        getSchemaPartition4TableModel(database).getSchemaPartitionTable());
+        getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()))
+            .getSchemaPartitionTable());
   }
 
   private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
