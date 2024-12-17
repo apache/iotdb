@@ -485,13 +485,11 @@ public class ExportTsFile extends AbstractTsFileTool {
 
       if (tabletList.isEmpty()) {
         ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
-        System.exit(CODE_ERROR);
+      } else {
+        writeWithTablets(
+            sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
+        tsFileWriter.flushAllChunkGroups();
       }
-
-      writeWithTablets(
-          sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
-
-      tsFileWriter.flushAllChunkGroups();
     }
   }
 
