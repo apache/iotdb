@@ -425,6 +425,13 @@ public interface IManager {
       final PathPatternTree patternTree, final boolean isTableModel);
 
   /**
+   * Get SchemaPartition.
+   *
+   * @return TSchemaPartitionResp
+   */
+  TSchemaPartitionTableResp getSchemaPartition4TableModel(final String database);
+
+  /**
    * Get SchemaPartition with <databaseName, seriesSlot>.
    *
    * @return TSchemaPartitionResp

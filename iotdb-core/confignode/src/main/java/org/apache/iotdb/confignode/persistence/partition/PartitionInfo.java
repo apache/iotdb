@@ -281,11 +281,11 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param preDeleteDatabasePlan PreDeleteStorageGroupPlan
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus preDeleteDatabase(PreDeleteDatabasePlan preDeleteDatabasePlan) {
+  public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
     final String database = preDeleteDatabasePlan.getStorageGroup();
-    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -302,7 +302,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean isDatabasePreDeleted(String database) {
+  public boolean isDatabasePreDeleted(final String database) {
     DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     return databasePartitionTable != null && !databasePartitionTable.isNotPreDeleted();
   }
@@ -312,7 +312,7 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param plan DeleteDatabasePlan
    */
-  public void deleteDatabase(DeleteDatabasePlan plan) {
+  public void deleteDatabase(final DeleteDatabasePlan plan) {
     // Clean the databaseTable cache
     databasePartitionTables.remove(plan.getName());
   }
@@ -323,10 +323,10 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetSchemaPartitionPlan plan) {
-    AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
+  public DataSet getSchemaPartition(final GetSchemaPartitionPlan plan) {
+    final AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
     // TODO: Replace this map with new SchemaPartition
-    Map<String, SchemaPartitionTable> schemaPartition = new ConcurrentHashMap<>();
+    final Map<String, SchemaPartitionTable> schemaPartition = new ConcurrentHashMap<>();
 
     if (plan.getPartitionSlotsMap().isEmpty()) {
       // Return all SchemaPartitions when the queried PartitionSlots are empty

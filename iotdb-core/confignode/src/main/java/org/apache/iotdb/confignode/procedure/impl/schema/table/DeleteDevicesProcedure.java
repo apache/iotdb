@@ -172,7 +172,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       deletedDevicesNum = 0;
@@ -285,7 +285,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "roll back table device black list",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TTableDeviceDeletionWithPatternOrModReq(
@@ -301,7 +301,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       new TableRegionTaskExecutor<>(
               "roll back table device black list",
               env,
-              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+              env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TTableDeviceDeletionWithPatternOrModReq(

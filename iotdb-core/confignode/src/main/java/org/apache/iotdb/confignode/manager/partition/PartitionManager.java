@@ -990,17 +990,17 @@ public class PartitionManager {
   }
 
   public void preDeleteDatabase(
-      String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
+      final String database, final PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
         new PreDeleteDatabasePlan(database, preDeleteType);
     try {
       getConsensusManager().write(preDeleteDatabasePlan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
   }
 
-  public boolean isDatabasePreDeleted(String database) {
+  public boolean isDatabasePreDeleted(final String database) {
     return partitionInfo.isDatabasePreDeleted(database);
   }
 
@@ -1010,16 +1010,17 @@ public class PartitionManager {
    * @param deviceID IDeviceID
    * @return SeriesPartitionSlot
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+  public TSeriesPartitionSlot getSeriesPartitionSlot(final IDeviceID deviceID) {
     return executor.getSeriesPartitionSlot(deviceID);
   }
 
-  public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
+  public RegionInfoListResp getRegionInfoList(final GetRegionInfoListPlan req) {
     try {
       // Get static result
-      RegionInfoListResp regionInfoListResp = (RegionInfoListResp) getConsensusManager().read(req);
+      final RegionInfoListResp regionInfoListResp =
+          (RegionInfoListResp) getConsensusManager().read(req);
       // Get cached result
-      Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
+      final Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
       regionInfoListResp
           .getRegionInfoList()
           .forEach(
@@ -1030,7 +1031,7 @@ public class PartitionManager {
                             regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
                         .getStatus());
 
-                String regionType =
+                final String regionType =
                     regionInfo.getDataNodeId()
                             == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
                         ? RegionRoleType.Leader.toString()
@@ -1040,11 +1041,11 @@ public class PartitionManager {
 
       return regionInfoListResp;
 
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
-      RegionInfoListResp resp = new RegionInfoListResp();
+      final RegionInfoListResp resp = new RegionInfoListResp();
       resp.setStatus(res);
       return resp;
     }
@@ -1055,38 +1056,38 @@ public class PartitionManager {
    *
    * @param regionGroupId The specified RegionGroup
    */
-  public boolean isRegionGroupExists(TConsensusGroupId regionGroupId) {
+  public boolean isRegionGroupExists(final TConsensusGroupId regionGroupId) {
     return partitionInfo.isRegionGroupExisted(regionGroupId);
   }
 
-  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
+  public TSStatus addRegionLocation(final AddRegionLocationPlan req) {
     try {
       return getConsensusManager().write(req);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
     }
   }
 
-  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
+  public TSStatus removeRegionLocation(final RemoveRegionLocationPlan req) {
     try {
       return getConsensusManager().write(req);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
     }
   }
 
-  public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    GetRegionIdPlan plan = new GetRegionIdPlan(req.getType());
+  public GetRegionIdResp getRegionId(final TGetRegionIdReq req) {
+    final GetRegionIdPlan plan = new GetRegionIdPlan(req.getType());
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
-      IDeviceID deviceID =
+      final IDeviceID deviceID =
           Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
@@ -1108,7 +1109,7 @@ public class PartitionManager {
 
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());

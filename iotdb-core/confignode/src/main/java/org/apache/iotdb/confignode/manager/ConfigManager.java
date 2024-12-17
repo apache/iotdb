@@ -765,21 +765,22 @@ public class ConfigManager implements IManager {
     }
   }
 
-  private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
+  private List<TSeriesPartitionSlot> calculateRelatedSlot(
+      final PartialPath path, final PartialPath database) {
     // The path contains `**`
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
     // with database = root.sg, path = root.*.d1
     // convert path = root.sg.d1
-    List<PartialPath> innerPathList = path.alterPrefixPath(database);
+    final List<PartialPath> innerPathList = path.alterPrefixPath(database);
     if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
-    String[] devicePath =
+    final String[] devicePath =
         Arrays.copyOf(innerPathList.get(0).getNodes(), innerPathList.get(0).getNodeLength() - 1);
     // root.sg1.*.d1
-    for (String node : devicePath) {
+    for (final String node : devicePath) {
       if (node.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
         return Collections.emptyList();
       }
@@ -835,8 +836,13 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSchemaPartitionTableResp getSchemaPartition4TableModel(final String database) {
+    return getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()));
+  }
+
+  @Override
   public TSchemaPartitionTableResp getSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     // Construct empty response
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
     // Return empty resp if the partitionSlotsMap is empty
@@ -844,11 +850,12 @@ public class ConfigManager implements IManager {
       return resp.setStatus(StatusUtils.OK).setSchemaPartitionTable(new HashMap<>());
     }
 
-    GetSchemaPartitionPlan getSchemaPartitionPlan =
+    final GetSchemaPartitionPlan getSchemaPartitionPlan =
         new GetSchemaPartitionPlan(
             dbSlotMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    final SchemaPartitionResp queryResult =
+        partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", dbSlotMap, resp);
@@ -2404,14 +2411,18 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedSchemaRegionGroup(patternTree, false);
+    return getRelatedSchemaRegionGroup(
+        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
   }
 
-  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
-      final PathPatternTree patternTree, final boolean isTableModel) {
-    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup4TableModel(
+      final String database) {
+    return getRelatedSchemaRegionGroup(
+        getSchemaPartition4TableModel(database).getSchemaPartitionTable());
+  }
 
+  private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
     final List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
     final Set<TConsensusGroupId> groupIdSet =
         schemaPartitionTable.values().stream()

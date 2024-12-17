@@ -51,7 +51,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
@@ -59,9 +58,6 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
-
-  // Transient
-  private PathPatternTree patternTree;
 
   public DropTableProcedure() {
     super();
@@ -186,24 +182,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void deleteSchema(final ConfigNodeProcedureEnv env) {
-    if (Objects.isNull(patternTree)) {
-      patternTree = new PathPatternTree();
-      final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      final PartialPath path;
-      try {
-        path = new PartialPath(new String[] {ROOT, database, tableName});
-        patternTree.appendPathPattern(path);
-        patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-        patternTree.serialize(dataOutputStream);
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "failed to serialize request for table {}.{}", database, table.getTableName(), e);
-      }
-    }
-
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(

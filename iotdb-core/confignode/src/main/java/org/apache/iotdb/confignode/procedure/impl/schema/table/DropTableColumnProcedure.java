@@ -194,7 +194,7 @@ public class DropTableColumnProcedure
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
         isAttributeColumn
-            ? env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true)
+            ? env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database)
             : env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
 
     if (!relatedRegionGroup.isEmpty()) {
