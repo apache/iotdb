@@ -30,12 +30,10 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
-    implements AsyncMethodCallback<E> {
+public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
@@ -43,15 +41,14 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   protected final TabletInsertionEvent event;
   protected final TPipeTransferReq req;
 
-  protected final IoTDBDataRegionAsyncConnector connector;
-
   protected PipeTransferTabletInsertionEventHandler(
       final TabletInsertionEvent event,
       final TPipeTransferReq req,
       final IoTDBDataRegionAsyncConnector connector) {
+    super(connector);
+
     this.event = event;
     this.req = req;
-    this.connector = connector;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
@@ -63,19 +60,15 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
           req.getBody().length);
     }
 
-    doTransfer(client, req);
+    tryTransfer(client, req);
   }
 
-  protected abstract void doTransfer(
-      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
-      throws TException;
-
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
-      return;
+      return false;
     }
 
     final TSStatus status = response.getStatus();
@@ -96,13 +89,14 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       }
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return true;
   }
 
-  protected abstract void updateLeaderCache(final TSStatus status);
-
   @Override
-  public void onError(final Exception exception) {
+  protected void onErrorInternal(final Exception exception) {
     try {
       LOGGER.warn(
           "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
@@ -116,4 +110,14 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       connector.addFailureEventToRetryQueue(event);
     }
   }
+
+  @Override
+  public void clearEventsReferenceCount() {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event)
+          .clearReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
+    }
+  }
+
+  protected abstract void updateLeaderCache(final TSStatus status);
 }

@@ -86,6 +86,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
 
@@ -312,6 +313,15 @@ public class IoTDBDescriptor {
                 .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
                 .trim());
 
+    final double walBufferQueueProportion =
+        Double.parseDouble(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "wal_buffer_queue_proportion",
+                        Double.toString(conf.getWalBufferQueueProportion())))
+                .map(String::trim)
+                .orElse(Double.toString(conf.getWalBufferQueueProportion())));
+
     final double devicePathCacheProportion =
         Double.parseDouble(
             properties
@@ -320,11 +330,12 @@ public class IoTDBDescriptor {
                     Double.toString(conf.getDevicePathCacheProportion()))
                 .trim());
 
-    if (rejectProportion + devicePathCacheProportion >= 1) {
+    if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
       LOGGER.warn(
-          "The sum of write_memory_proportion and device_path_cache_proportion is too large, use default values 0.8 and 0.05.");
+          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
     } else {
       conf.setRejectProportion(rejectProportion);
+      conf.setWalBufferQueueProportion(walBufferQueueProportion);
       conf.setDevicePathCacheProportion(devicePathCacheProportion);
     }
 
@@ -1167,14 +1178,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferQueueCapacity =
-        Integer.parseInt(
-            properties.getProperty(
-                "wal_buffer_queue_capacity", Integer.toString(conf.getWalBufferQueueCapacity())));
-    if (walBufferQueueCapacity > 0) {
-      conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
-    }
-
     boolean WALInsertNodeCacheShrinkClearEnabled =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2001,6 +2004,50 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update query_sample_throughput_bytes_per_sec
+      String querySamplingRateLimitNumber =
+          Optional.ofNullable(
+                  properties.getProperty(
+                      "query_sample_throughput_bytes_per_sec",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "query_sample_throughput_bytes_per_sec")))
+              .map(String::trim)
+              .orElse(
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "query_sample_throughput_bytes_per_sec"));
+      if (querySamplingRateLimitNumber != null) {
+        try {
+          int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
+          commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+              querySamplingRateLimitNumber);
+        }
+      }
+
+      // update trusted_uri_pattern
+      String trustedUriPattern =
+          Optional.ofNullable(
+                  properties.getProperty(
+                      "trusted_uri_pattern",
+                      ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern")))
+              .map(String::trim)
+              .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern"));
+      Pattern pattern;
+      if (trustedUriPattern != null) {
+        try {
+          pattern = Pattern.compile(trustedUriPattern);
+        } catch (Exception e) {
+          LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+          pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+        }
+      } else {
+        pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+      }
+      commonDescriptor.getConfig().setTrustedUriPattern(pattern);
+
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2020,7 +2067,7 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      ConfigurationFileUtils.getConfigurationDefaultValue();
+      ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);
@@ -2287,9 +2334,20 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
     conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
         Long.parseLong(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_memory_size_in_bytes",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_tsfile_analyze_schema_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadChunkMetadataMemorySizeInBytes(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_chunk_metadata_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(

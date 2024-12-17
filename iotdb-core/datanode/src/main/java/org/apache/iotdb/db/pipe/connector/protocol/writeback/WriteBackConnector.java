@@ -193,7 +193,8 @@ public class WriteBackConnector implements PipeConnector {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+            false)
         .status;
   }
 

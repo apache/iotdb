@@ -332,11 +332,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               continue;
             }
           } catch (IllegalPathException e) {
-            LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
-                device,
-                timeseriesMetadata.getMeasurementId(),
-                e);
+            // In aligned devices, there may be empty measurements which will cause
+            // IllegalPathException.
+            if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+              LOGGER.warn(
+                  "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                  device,
+                  timeseriesMetadata.getMeasurementId(),
+                  e);
+            }
           }
 
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
@@ -539,7 +543,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   "",
                   partitionFetcher,
                   schemaFetcher,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         LOGGER.warn(

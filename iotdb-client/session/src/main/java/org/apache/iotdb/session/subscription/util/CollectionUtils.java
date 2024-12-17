@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.pipe;
+package org.apache.iotdb.session.subscription.util;
 
-public class PipeRuntimeConnectorRetryTimesConfigurableException
-    extends PipeRuntimeConnectorCriticalException {
+import java.util.Collection;
+import java.util.stream.Collectors;
 
-  private final int retryTimes;
+public class CollectionUtils {
 
-  public PipeRuntimeConnectorRetryTimesConfigurableException(
-      final String message, final int retryTimes) {
-    super(message);
-    this.retryTimes = retryTimes;
-  }
-
-  public int getRetryTimes() {
-    return retryTimes;
+  public static String getLimitedString(final Collection<?> collection, final int limit) {
+    return collection.stream().limit(limit).collect(Collectors.toList())
+        + (collection.size() > limit ? " ... (" + (collection.size() - limit) + " more)" : "");
   }
 }

@@ -81,6 +81,8 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
+  private boolean userQuery = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -330,4 +332,12 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+  public boolean isUserQuery() {
+    return userQuery;
+  }
+
+  public void setUserQuery(boolean userQuery) {
+    this.userQuery = userQuery;
+  }
 }

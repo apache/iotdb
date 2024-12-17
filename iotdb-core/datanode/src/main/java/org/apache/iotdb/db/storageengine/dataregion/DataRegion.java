@@ -303,6 +303,8 @@ public class DataRegion implements IDataRegionForQuery {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private final DataRegionMetrics metrics;
+
   /**
    * Construct a database processor.
    *
@@ -363,7 +365,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
+    this.metrics = new DataRegionMetrics(this);
+    MetricService.getInstance().addMetricSet(metrics);
   }
 
   @TestOnly
@@ -373,6 +376,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
+    this.metrics = new DataRegionMetrics(this);
   }
 
   @Override
@@ -2392,6 +2396,7 @@ public class DataRegion implements IDataRegionForQuery {
         synchronized (modFile) {
           try {
             originSize = modFile.getSize();
+            boolean modFileExists = modFile.exists();
             // delete data in sealed file
             if (tsFileResource.isCompacting()) {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
@@ -2407,8 +2412,6 @@ public class DataRegion implements IDataRegionForQuery {
             } else {
               deletion.setFileOffset(tsFileResource.getTsFileSize());
               // write deletion into modification file
-              boolean modFileExists = modFile.exists();
-
               modFile.write(deletion);
 
               // remember to close mod file
@@ -2416,15 +2419,14 @@ public class DataRegion implements IDataRegionForQuery {
 
               // if file length greater than 1M,execute compact.
               modFile.compact();
-
-              if (!modFileExists) {
-                FileMetrics.getInstance().increaseModFileNum(1);
-              }
-
-              // The file size may be smaller than the original file, so the increment here may be
-              // negative
-              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
             }
+
+            if (!modFileExists) {
+              FileMetrics.getInstance().increaseModFileNum(1);
+            }
+            // The file size may be smaller than the original file, so the increment here may be
+            // negative
+            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
           } catch (Throwable t) {
             if (originSize != -1) {
               modFile.truncate(originSize);
@@ -2469,6 +2471,7 @@ public class DataRegion implements IDataRegionForQuery {
         synchronized (modFile) {
           try {
             originSize = modFile.getSize();
+            boolean modFileExists = modFile.exists();
             // delete data in sealed file
             if (tsFileResource.isCompacting()) {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk
@@ -2484,7 +2487,6 @@ public class DataRegion implements IDataRegionForQuery {
             } else {
               deletion.setFileOffset(tsFileResource.getTsFileSize());
               // write deletion into modification file
-              boolean modFileExists = modFile.exists();
 
               modFile.write(deletion);
 
@@ -2493,15 +2495,14 @@ public class DataRegion implements IDataRegionForQuery {
 
               // if file length greater than 1M,execute compact.
               modFile.compact();
-
-              if (!modFileExists) {
-                FileMetrics.getInstance().increaseModFileNum(1);
-              }
-
-              // The file size may be smaller than the original file, so the increment here may be
-              // negative
-              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
             }
+            if (!modFileExists) {
+              FileMetrics.getInstance().increaseModFileNum(1);
+            }
+
+            // The file size may be smaller than the original file, so the increment here may be
+            // negative
+            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
           } catch (Throwable t) {
             if (originSize != -1) {
               modFile.truncate(originSize);
@@ -3545,6 +3546,7 @@ public class DataRegion implements IDataRegionForQuery {
         deletedCondition.await();
       }
       FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
+      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
