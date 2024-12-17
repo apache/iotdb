@@ -81,6 +81,7 @@
         <google.java.format.version>1.22.0</google.java.format.version>
         <gson.version>2.10.1</gson.version>
         <guava.version>32.1.2-jre</guava.version>
+        <h2.version>2.3.232</h2.version>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!--
@@ -88,7 +89,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
-        <jackson.version>2.15.4</jackson.version>
+        <jackson.version>2.16.2</jackson.version>
         <!-- This is the last version to support the javax namespace -->
         <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
         <!-- This is the last version to support the javax namespace -->
@@ -428,6 +429,11 @@
                 <groupId>io.moquette</groupId>
                 <artifactId>moquette-broker</artifactId>
                 <version>${moquette.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2-mvstore</artifactId>
+                <version>${h2.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.lmax</groupId>
