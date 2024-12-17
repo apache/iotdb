@@ -109,7 +109,8 @@ public class RestApiServiceImpl extends RestApiService {
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               metadata,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              true);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
@@ -228,7 +229,8 @@ public class RestApiServiceImpl extends RestApiService {
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               metadata,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
