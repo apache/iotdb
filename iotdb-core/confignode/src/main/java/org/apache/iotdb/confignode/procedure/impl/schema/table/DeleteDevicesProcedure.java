@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -48,7 +46,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -59,8 +56,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CHECK_TABLE_EXISTENCE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
@@ -73,9 +68,6 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   private byte[] patternBytes;
   private byte[] filterBytes;
   private byte[] modBytes;
-
-  // Transient
-  private PathPatternTree patternTree;
 
   // Transient, will not be returned if once recovers
   private long deletedDevicesNum;
@@ -158,19 +150,6 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   }
 
   private void constructBlackList(final ConfigNodeProcedureEnv env) {
-    patternTree = new PathPatternTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    final PartialPath path;
-    try {
-      path = new PartialPath(new String[] {ROOT, database, tableName});
-      patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
-    }
-
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
@@ -272,7 +251,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "delete data for table device",
             env,
-            env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedDataRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TTableDeviceDeletionWithPatternOrModReq(

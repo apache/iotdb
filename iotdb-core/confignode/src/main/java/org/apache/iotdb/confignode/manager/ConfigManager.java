@@ -2442,11 +2442,19 @@ public class ConfigManager implements IManager {
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
-      final PathPatternTree patternTree, final boolean isTableModel) {
-    // Get all databases and slots by getting schemaengine partition
-    final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        getSchemaPartition(patternTree, isTableModel).getSchemaPartitionTable();
+      final PathPatternTree patternTree) {
+    return getRelatedDataRegionGroup(
+        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
+  }
 
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(
+      final String database) {
+    return getRelatedDataRegionGroup(
+        getSchemaPartition4TableModel(database).getSchemaPartitionTable());
+  }
+
+  private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
     // Construct request for getting data partition
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
