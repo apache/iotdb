@@ -397,6 +397,15 @@ struct TSchemaRegionAttributeInfo {
   3: required binary body
 }
 
+struct TDeviceViewResp {
+  1: required map<string, string> deviewViewUpdateMap
+}
+
+struct TSchemaRegionViewInfo {
+  1: required i32 maxLength
+  2: required set<string> measurements
+}
+
 struct TLoadResp {
   1: required bool accepted
   2: optional string message
@@ -1164,6 +1173,11 @@ service IDataNodeRPCService {
    * Delete table devices in black list
    */
   common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
+
+  /**
+   * Get delete device view info for device view
+   */
+  TDeviceViewResp getDeleteDeviceViewInfos(list<i32> regionIds)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 
