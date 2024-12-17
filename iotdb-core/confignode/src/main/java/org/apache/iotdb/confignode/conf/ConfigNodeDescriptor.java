@@ -361,6 +361,14 @@ public class ConfigNodeDescriptor {
               routePriorityPolicy));
     }
 
+    conf.setTreeDeviceViewUpdateIntervalInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "tree_device_view_update_interval_in_ms",
+                    String.valueOf(conf.getTreeDeviceViewUpdateIntervalInMs()))
+                .trim()));
+
     String readConsistencyLevel =
         properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel()).trim();
     if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
