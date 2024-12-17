@@ -161,7 +161,7 @@ public class ColumnHeaderConstant {
   public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
-  public static final String TSFILE_SIZE = "TsfileSize";
+  public static final String TSFILE_SIZE = "TsFileSize";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";

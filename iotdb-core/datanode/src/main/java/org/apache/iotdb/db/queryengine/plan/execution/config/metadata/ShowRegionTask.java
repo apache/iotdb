@@ -37,10 +37,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
 import java.util.List;
@@ -109,22 +107,18 @@ public class ShowRegionTask implements IConfigTask {
         builder
             .getColumnBuilder(11)
             .writeBinary(
-                new Binary(
-                    DateTimeUtils.convertLongToDate(regionInfo.getCreateTime()),
-                    TSFileConfig.STRING_CHARSET));
+                BytesUtils.valueOf(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
         // region size
         String regionSizeStr = "";
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
-          if (regionInfo.getTsfileSize() != -1) {
-            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getTsfileSize());
+          if (regionInfo.getTsFileSize() != -1) {
+            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getTsFileSize());
           } else {
             regionSizeStr = "Unknown";
           }
         }
-        builder
-            .getColumnBuilder(12)
-            .writeBinary(new Binary(regionSizeStr, TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(12).writeBinary(BytesUtils.valueOf(regionSizeStr));
         builder.declarePosition();
       }
     }

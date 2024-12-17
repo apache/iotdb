@@ -445,11 +445,7 @@ public class TsFileMetrics implements IMetricSet {
     for (Map<String, Pair<Long, Gauge>> map : unseqFileSizeMap.values()) {
       for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
         Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
-        if (regionSizeMap.containsKey(regionId)) {
-          regionSizeMap.compute(regionId, (k, v) -> v + regionSizeEntry.getValue().getLeft());
-        } else {
-          regionSizeMap.put(regionId, regionSizeEntry.getValue().getLeft());
-        }
+        regionSizeMap.merge(regionId, regionSizeEntry.getValue().getLeft(), Long::sum);
       }
     }
     return regionSizeMap;
