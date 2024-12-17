@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -343,10 +344,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isPipeExisted(final String pipeName, final String sqlDialect) {
+  public boolean isPipeExisted(final String pipeName, final boolean isTableModel) {
     acquireReadLock();
     try {
-      return pipeMetaKeeper.containsPipeMeta(pipeName, sqlDialect);
+      return pipeMetaKeeper.containsPipeMeta(
+          pipeName, SystemConstant.fromIsTableModel(isTableModel));
     } finally {
       releaseReadLock();
     }

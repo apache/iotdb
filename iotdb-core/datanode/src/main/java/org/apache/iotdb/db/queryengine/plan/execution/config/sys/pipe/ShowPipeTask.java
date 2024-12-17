@@ -56,7 +56,7 @@ public class ShowPipeTask implements IConfigTask {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
-    showPipesStatement.setSqlDialect(node.getSqlDialect());
+    showPipesStatement.setTableModel(true);
   }
 
   @Override

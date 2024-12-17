@@ -2041,7 +2041,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
       req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
-      req.setSqlDialect(alterPipeStatement.getSqlDialect());
+      req.setIsTableModel(alterPipeStatement.isTableModel());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -2075,7 +2075,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.startPipeExtended(
               new TStartPipeReq()
                   .setPipeName(startPipeStatement.getPipeName())
-                  .setSqlDialect(startPipeStatement.getSqlDialect()));
+                  .setIsTableModel(startPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2109,7 +2109,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               new TDropPipeReq()
                   .setPipeName(dropPipeStatement.getPipeName())
                   .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition())
-                  .setSqlDialect(dropPipeStatement.getSqlDialect()));
+                  .setIsTableModel(dropPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2143,7 +2143,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.stopPipeExtended(
               new TStopPipeReq()
                   .setPipeName(stopPipeStatement.getPipeName())
-                  .setSqlDialect(stopPipeStatement.getSqlDialect()));
+                  .setIsTableModel(stopPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2167,7 +2167,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showPipesStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
-      tShowPipeReq.setSqlDialect(showPipesStatement.getSqlDialect());
+      tShowPipeReq.setIsTableModel(showPipesStatement.isTableModel());
       final List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);

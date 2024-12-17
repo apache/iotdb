@@ -721,49 +721,30 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     }
 
-    // Inject table model into the node
-    node.setSqlDialect(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
     return new AlterPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-
-    // Inject table model into the node
-    node.setSqlDialect(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
     return new DropPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-
-    // Inject table model into the node
-    node.setSqlDialect(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
     return new StartPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-
-    // Inject table model into the node
-    node.setSqlDialect(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
     return new StopPipeTask(node);
   }
 
   @Override
   protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-
-    // Inject table model into the node
-    node.setSqlDialect(SystemConstant.SQL_DIALECT_TABLE_VALUE);
-
     return new ShowPipeTask(node);
   }
 

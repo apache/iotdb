@@ -58,7 +58,7 @@ public class AlterPipeTask implements IConfigTask {
     alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
     alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
 
-    alterPipeStatement.setSqlDialect(node.getSqlDialect());
+    alterPipeStatement.setTableModel(true);
   }
 
   @Override

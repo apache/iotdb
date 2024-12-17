@@ -63,15 +63,24 @@ public class PipeMeta {
     return temporaryMeta;
   }
 
+  public boolean matchSqlDialect(final boolean isTableModel) {
+    return matchSqlDialect(SystemConstant.fromIsTableModel(isTableModel));
+  }
+
   public boolean matchSqlDialect(final String sqlDialect) {
     if (Objects.isNull(sqlDialect)) {
       return true;
     }
-    return sqlDialect.equalsIgnoreCase(
-        getStaticMeta()
-            .getExtractorParameters()
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+    return isDoubleLiving()
+        || sqlDialect.equalsIgnoreCase(
+            getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+  }
+
+  private boolean isDoubleLiving() {
+    return false;
   }
 
   public ByteBuffer serialize() throws IOException {

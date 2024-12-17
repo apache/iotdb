@@ -39,7 +39,7 @@ public class StopPipeTask implements IConfigTask {
   public StopPipeTask(final StopPipe node) {
     stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
     stopPipeStatement.setPipeName(node.getPipeName());
-    stopPipeStatement.setSqlDialect(node.getSqlDialect());
+    stopPipeStatement.setTableModel(true);
   }
 
   @Override

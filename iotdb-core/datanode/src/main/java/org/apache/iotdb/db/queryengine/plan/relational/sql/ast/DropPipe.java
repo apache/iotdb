@@ -28,15 +28,10 @@ public class DropPipe extends PipeStatement {
 
   private final String pipeName;
   private final boolean ifExistsCondition;
-  private String sqlDialect;
 
   public DropPipe(final String pipeName, final boolean ifExistsCondition) {
     this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
     this.ifExistsCondition = ifExistsCondition;
-  }
-
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = requireNonNull(sqlDialect, "sql dialect can not be null");
   }
 
   public String getPipeName() {
@@ -45,10 +40,6 @@ public class DropPipe extends PipeStatement {
 
   public boolean hasIfExistsCondition() {
     return ifExistsCondition;
-  }
-
-  public String getSqlDialect() {
-    return sqlDialect;
   }
 
   @Override
@@ -71,8 +62,7 @@ public class DropPipe extends PipeStatement {
     }
     final DropPipe that = (DropPipe) obj;
     return Objects.equals(this.pipeName, that.pipeName)
-        && Objects.equals(this.ifExistsCondition, that.ifExistsCondition)
-        && Objects.equals(this.sqlDialect, that.sqlDialect);
+        && Objects.equals(this.ifExistsCondition, that.ifExistsCondition);
   }
 
   @Override
@@ -80,7 +70,6 @@ public class DropPipe extends PipeStatement {
     return toStringHelper(this)
         .add("pipeName", pipeName)
         .add("ifExistsCondition", ifExistsCondition)
-        .add("sqlDialect", sqlDialect)
         .toString();
   }
 }

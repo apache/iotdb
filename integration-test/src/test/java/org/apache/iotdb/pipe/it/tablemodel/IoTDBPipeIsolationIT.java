@@ -98,53 +98,39 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
           client
-              .startPipeExtended(
-                  new TStartPipeReq(treePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
+              .startPipeExtended(new TStartPipeReq(treePipeName).setIsTableModel(true))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
           client
-              .startPipeExtended(
-                  new TStartPipeReq(tablePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+              .startPipeExtended(new TStartPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
-              .startPipeExtended(
-                  new TStartPipeReq(treePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+              .startPipeExtended(new TStartPipeReq(treePipeName).setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
-              .startPipeExtended(
-                  new TStartPipeReq(tablePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
+              .startPipeExtended(new TStartPipeReq(tablePipeName).setIsTableModel(true))
               .getCode());
 
       // stop pipe
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
-          client
-              .stopPipeExtended(
-                  new TStopPipeReq(treePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
-              .getCode());
+          client.stopPipeExtended(new TStopPipeReq(treePipeName).setIsTableModel(true)).getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
           client
-              .stopPipeExtended(
-                  new TStopPipeReq(tablePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+              .stopPipeExtended(new TStopPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .stopPipeExtended(
-                  new TStopPipeReq(treePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
-              .getCode());
+          client.stopPipeExtended(new TStopPipeReq(treePipeName).setIsTableModel(false)).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .stopPipeExtended(
-                  new TStopPipeReq(tablePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
-              .getCode());
+          client.stopPipeExtended(new TStopPipeReq(tablePipeName).setIsTableModel(true)).getCode());
 
       // alter pipe
       Assert.assertEquals(
@@ -159,7 +145,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
                           false)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setIsReplaceAllExtractorAttributes(false)
-                      .setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
+                      .setIsTableModel(true))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
@@ -173,7 +159,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
                           false)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setIsReplaceAllExtractorAttributes(false)
-                      .setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+                      .setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
@@ -187,7 +173,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
                           false)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setIsReplaceAllExtractorAttributes(false)
-                      .setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+                      .setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
@@ -201,34 +187,24 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
                           false)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setIsReplaceAllExtractorAttributes(false)
-                      .setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
+                      .setIsTableModel(true))
               .getCode());
 
       // drop pipe
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
-          client
-              .dropPipeExtended(
-                  new TDropPipeReq(treePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
-              .getCode());
+          client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(true)).getCode());
       Assert.assertEquals(
           TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(),
           client
-              .dropPipeExtended(
-                  new TDropPipeReq(tablePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
+              .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .dropPipeExtended(
-                  new TDropPipeReq(treePipeName).setSqlDialect(BaseEnv.TREE_SQL_DIALECT))
-              .getCode());
+          client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(false)).getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .dropPipeExtended(
-                  new TDropPipeReq(tablePipeName).setSqlDialect(BaseEnv.TABLE_SQL_DIALECT))
-              .getCode());
+          client.dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(true)).getCode());
     }
   }
 

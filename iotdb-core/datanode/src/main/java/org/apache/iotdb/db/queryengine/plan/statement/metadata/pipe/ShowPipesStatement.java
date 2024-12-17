@@ -39,7 +39,7 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
 
   private boolean whereClause;
 
-  private String sqlDialect;
+  private boolean isTableModel;
 
   public String getPipeName() {
     return pipeName;
@@ -49,8 +49,8 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
     return whereClause;
   }
 
-  public String getSqlDialect() {
-    return sqlDialect;
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public void setPipeName(final String pipeName) {
@@ -61,8 +61,8 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
     this.whereClause = whereClause;
   }
 
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override

@@ -36,7 +36,7 @@ import java.util.List;
 public class StopPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
-  private String sqlDialect;
+  private boolean isTableModel;
 
   public StopPipeStatement(final StatementType stopPipeStatement) {
     this.statementType = stopPipeStatement;
@@ -46,16 +46,16 @@ public class StopPipeStatement extends Statement implements IConfigStatement {
     return pipeName;
   }
 
-  public String getSqlDialect() {
-    return sqlDialect;
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override

@@ -37,22 +37,22 @@ public class DropPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
   private boolean ifExistsCondition;
-  private String sqlDialect;
+  private boolean isTableModel;
 
   public DropPipeStatement(final StatementType dropPipeStatement) {
     this.statementType = dropPipeStatement;
-  }
-
-  public boolean hasIfExistsCondition() {
-    return ifExistsCondition;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public String getSqlDialect() {
-    return sqlDialect;
+  public boolean hasIfExistsCondition() {
+    return ifExistsCondition;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public void setPipeName(final String pipeName) {
@@ -63,8 +63,8 @@ public class DropPipeStatement extends Statement implements IConfigStatement {
     this.ifExistsCondition = ifExistsCondition;
   }
 
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override

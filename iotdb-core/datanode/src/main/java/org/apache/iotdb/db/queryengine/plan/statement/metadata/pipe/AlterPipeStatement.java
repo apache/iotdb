@@ -44,7 +44,7 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   private boolean isReplaceAllExtractorAttributes;
   private boolean isReplaceAllProcessorAttributes;
   private boolean isReplaceAllConnectorAttributes;
-  private String sqlDialect;
+  private boolean isTableModel;
 
   public AlterPipeStatement(final StatementType alterPipeStatement) {
     this.statementType = alterPipeStatement;
@@ -82,8 +82,8 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return isReplaceAllConnectorAttributes;
   }
 
-  public String getSqlDialect() {
-    return sqlDialect;
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public void setPipeName(final String pipeName) {
@@ -118,8 +118,8 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     isReplaceAllConnectorAttributes = replaceAllConnectorAttributes;
   }
 
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = sqlDialect;
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override

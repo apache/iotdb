@@ -35,7 +35,6 @@ public class AlterPipe extends PipeStatement {
   private final boolean isReplaceAllExtractorAttributes;
   private final boolean isReplaceAllProcessorAttributes;
   private final boolean isReplaceAllConnectorAttributes;
-  private String sqlDialect;
 
   public AlterPipe(
       final String pipeName,
@@ -54,10 +53,6 @@ public class AlterPipe extends PipeStatement {
     this.isReplaceAllExtractorAttributes = isReplaceAllExtractorAttributes;
     this.isReplaceAllProcessorAttributes = isReplaceAllProcessorAttributes;
     this.isReplaceAllConnectorAttributes = isReplaceAllConnectorAttributes;
-  }
-
-  public void setSqlDialect(final String sqlDialect) {
-    this.sqlDialect = requireNonNull(sqlDialect, "sql dialect can not be null");
   }
 
   public String getPipeName() {
@@ -92,10 +87,6 @@ public class AlterPipe extends PipeStatement {
     return isReplaceAllConnectorAttributes;
   }
 
-  public String getSqlDialect() {
-    return sqlDialect;
-  }
-
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitAlterPipe(this, context);
@@ -111,8 +102,7 @@ public class AlterPipe extends PipeStatement {
         connectorAttributes,
         isReplaceAllExtractorAttributes,
         isReplaceAllProcessorAttributes,
-        isReplaceAllConnectorAttributes,
-        sqlDialect);
+        isReplaceAllConnectorAttributes);
   }
 
   @Override
@@ -134,8 +124,7 @@ public class AlterPipe extends PipeStatement {
         && Objects.equals(
             this.isReplaceAllProcessorAttributes, that.isReplaceAllProcessorAttributes)
         && Objects.equals(
-            this.isReplaceAllConnectorAttributes, that.isReplaceAllConnectorAttributes)
-        && Objects.equals(this.sqlDialect, that.sqlDialect);
+            this.isReplaceAllConnectorAttributes, that.isReplaceAllConnectorAttributes);
   }
 
   @Override
@@ -149,7 +138,6 @@ public class AlterPipe extends PipeStatement {
         .add("isReplaceAllExtractorAttributes", isReplaceAllExtractorAttributes)
         .add("isReplaceAllProcessorAttributes", isReplaceAllProcessorAttributes)
         .add("isReplaceAllConnectorAttributes", isReplaceAllConnectorAttributes)
-        .add("sqlDialect", sqlDialect)
         .toString();
   }
 }

@@ -453,9 +453,6 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipes(
       ShowPipesStatement showPipesStatement, MPPQueryContext context) {
-    // Inject tree model into the statement
-    showPipesStatement.setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE);
-
     return new ShowPipeTask(showPipesStatement);
   }
 
@@ -505,26 +502,17 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
     }
 
-    // Inject tree model into the statement
-    alterPipeStatement.setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE);
-
     return new AlterPipeTask(alterPipeStatement);
   }
 
   @Override
   public IConfigTask visitStartPipe(
       StartPipeStatement startPipeStatement, MPPQueryContext context) {
-    // Inject tree model into the statement
-    startPipeStatement.setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE);
-
     return new StartPipeTask(startPipeStatement);
   }
 
   @Override
   public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, MPPQueryContext context) {
-    // Inject tree model into the statement
-    stopPipeStatement.setSqlDialect(SystemConstant.SQL_DIALECT_TREE_VALUE);
-
     return new StopPipeTask(stopPipeStatement);
   }
 

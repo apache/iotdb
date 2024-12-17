@@ -40,7 +40,7 @@ public class DropPipeTask implements IConfigTask {
     dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
     dropPipeStatement.setPipeName(node.getPipeName());
     dropPipeStatement.setIfExists(node.hasIfExistsCondition());
-    dropPipeStatement.setSqlDialect(node.getSqlDialect());
+    dropPipeStatement.setTableModel(true);
   }
 
   @Override

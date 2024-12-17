@@ -39,7 +39,7 @@ public class StartPipeTask implements IConfigTask {
   public StartPipeTask(final StartPipe node) {
     startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
     startPipeStatement.setPipeName(node.getPipeName());
-    startPipeStatement.setSqlDialect(node.getSqlDialect());
+    startPipeStatement.setTableModel(true);
   }
 
   @Override
