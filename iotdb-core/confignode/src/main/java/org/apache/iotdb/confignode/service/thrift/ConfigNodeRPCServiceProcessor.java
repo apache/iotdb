@@ -1271,7 +1271,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+  public TSStatus setSpaceQuota(final TSetSpaceQuotaReq req) throws TException {
     return configManager.setSpaceQuota(req);
   }
 
