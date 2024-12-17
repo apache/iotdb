@@ -483,9 +483,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
       List<Tablet> tabletList = constructTablets(deviceSchemaMap, alignedDevices, tsFileWriter);
 
-      if (tabletList.isEmpty()) {
-        ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
-      } else {
+      if (!tabletList.isEmpty()) {
         writeWithTablets(
             sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
         tsFileWriter.flushAllChunkGroups();
