@@ -75,6 +75,14 @@ public interface AggregateFunction extends SQLFunction {
   void combineState(State state, State rhs);
 
   /**
+   * Calculate output value from final state
+   *
+   * @param state final state
+   * @param resultValue used to collect output data points
+   */
+  void outputFinal(State state, ResultValue resultValue);
+
+  /**
    * Remove input data from state. This method is used to remove the data points that have been
    * added to the state. Once it is implemented, {@linkplain AggregateFunctionConfig#setRemovable}
    * should be set to true.
@@ -85,14 +93,6 @@ public interface AggregateFunction extends SQLFunction {
   default void remove(State state, Record input) {
     throw new UnsupportedOperationException();
   }
-
-  /**
-   * Calculate output value from final state
-   *
-   * @param state final state
-   * @param resultValue used to collect output data points
-   */
-  void outputFinal(State state, ResultValue resultValue);
 
   /** This method is mainly used to release the resources used in the SQLFunction. */
   default void beforeDestroy() {

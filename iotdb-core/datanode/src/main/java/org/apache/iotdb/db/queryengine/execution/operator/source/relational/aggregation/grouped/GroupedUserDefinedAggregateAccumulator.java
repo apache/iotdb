@@ -82,10 +82,6 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     while (iterator.hasNext()) {
       int groupId = groupIds[index++];
       State state = getOrCreateState(groupId);
-      if (state == null) {
-        state = aggregateFunction.createState();
-        stateArray.set(groupId, state);
-      }
       aggregateFunction.addInput(state, iterator.next());
     }
   }
@@ -114,11 +110,10 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
     if (stateArray.get(groupId) == null) {
-      columnBuilder.writeBinary(new Binary(new byte[0]));
-    } else {
-      byte[] bytes = stateArray.get(groupId).serialize();
-      columnBuilder.writeBinary(new Binary(bytes));
+      throw new IllegalStateException(String.format("State for group %d is not found", groupId));
     }
+    byte[] bytes = stateArray.get(groupId).serialize();
+    columnBuilder.writeBinary(new Binary(bytes));
   }
 
   @Override
