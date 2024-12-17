@@ -398,7 +398,8 @@ struct TSchemaRegionAttributeInfo {
 }
 
 struct TDeviceViewResp {
-  1: required map<string, string> deviewViewUpdateMap
+  1: required common.TSStatus status
+  2: required map<string, TSchemaRegionViewInfo> deviewViewUpdateMap
 }
 
 struct TSchemaRegionViewInfo {

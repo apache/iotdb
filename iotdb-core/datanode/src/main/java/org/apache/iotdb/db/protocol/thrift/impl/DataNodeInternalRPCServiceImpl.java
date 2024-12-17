@@ -261,6 +261,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -308,6 +309,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1698,65 +1700,60 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TDeviceViewResp getDeleteDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
-    final PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
-    final TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
+    final TDeviceViewResp resp = new TDeviceViewResp();
+    resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final TSStatus status =
         executeInternalSchemaTask(
             regionIds,
             consensusGroupId -> {
-              ReadWriteLock readWriteLock =
-                  regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-              // Check timeseries existence for set template shall block all timeseries creation
-              readWriteLock.writeLock().lock();
+              final ISchemaRegion schemaRegion =
+                  schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              final String database = schemaRegion.getDatabaseFullPath();
+
+              // Get database length
+              int databaseLength = 2;
               try {
-                final ISchemaRegion schemaRegion =
-                    schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-                final PathPatternTree filteredPatternTree =
-                    filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
-                if (filteredPatternTree.isEmpty()) {
-                  return RpcUtils.SUCCESS_STATUS;
-                }
-                for (final PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
-                  ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
-                      SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
-                  try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
-                      schemaSource.getSchemaReader(schemaRegion)) {
-                    if (schemaReader.hasNext()) {
-                      return RpcUtils.getStatus(TSStatusCode.TIMESERIES_ALREADY_EXIST);
-                    }
-                  } catch (final Exception e) {
-                    LOGGER.warn(e.getMessage(), e);
-                    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-                  }
-                }
-                return RpcUtils.SUCCESS_STATUS;
-              } finally {
-                readWriteLock.writeLock().unlock();
+                databaseLength = new PartialPath(database).getNodeLength();
+              } catch (final IllegalPathException e) {
+                // Should not happen, the tree model database's full path can always be parsed
+                LOGGER.warn(
+                    "Failed to get the schema region database length for device view schema", e);
               }
+              final int finalDBLength = databaseLength;
+
+              final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                  SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                      SchemaConstant.ALL_MATCH_PATTERN,
+                      false,
+                      null,
+                      null,
+                      SchemaConstant.ALL_MATCH_SCOPE);
+              try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  schemaSource.getSchemaReader(schemaRegion)) {
+                while (schemaReader.hasNext()) {
+                  final ITimeSeriesSchemaInfo result = schemaReader.next();
+                  resp.getDeviewViewUpdateMap()
+                      .compute(
+                          database,
+                          (db, info) -> {
+                            if (Objects.isNull(info)) {
+                              info = new TSchemaRegionViewInfo();
+                            }
+                            info.setMaxLength(
+                                Math.max(
+                                    info.getMaxLength(),
+                                    result.getPartialPath().getNodeLength() - finalDBLength));
+                            info.getMeasurements().add(result.getSchema().getMeasurementName());
+                            return info;
+                          });
+                }
+              } catch (final Exception e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              }
+              return RpcUtils.SUCCESS_STATUS;
             });
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setStatus(RpcUtils.SUCCESS_STATUS);
-      resp.setExists(false);
-    } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      boolean hasFailure = false;
-      for (final TSStatus subStatus : status.getSubStatus()) {
-        if (subStatus.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-          resp.setExists(true);
-        } else if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          hasFailure = true;
-          break;
-        }
-      }
-      if (hasFailure) {
-        resp.setStatus(status);
-      } else {
-        resp.setStatus(RpcUtils.SUCCESS_STATUS);
-      }
-    } else {
-      resp.setStatus(status);
-    }
-    return resp;
+    return resp.setStatus(status);
   }
 
   @Override
