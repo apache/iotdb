@@ -65,7 +65,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -127,6 +128,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -571,10 +573,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     removeInvalidDataRegions(dataNodeConsensusGroupIds);
     removeInvalidConsensusSchemaRegions(dataNodeConsensusGroupIds);
     removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
-    if (ConsensusFactory.IOT_CONSENSUS.equals(
-        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
-      IoTConsensus.setCorrectPeerListBeforeStart(correctedRegions);
-    }
+    prepareToResetDataRegionPeerList(correctedRegions);
   }
 
   private void removeInvalidDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
@@ -664,6 +663,31 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.info("delete {} succeed.", regionDir.getAbsolutePath());
     } else {
       logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
+    }
+  }
+
+  private void prepareToResetDataRegionPeerList(List<TRegionReplicaSet> correctedRegions) {
+    Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : correctedRegions) {
+      ConsensusGroupId consensusGroupId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
+      if (consensusGroupId.getType() != TConsensusGroupType.DataRegion) {
+        continue;
+      }
+      List<Peer> peerList = new ArrayList<>();
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        peerList.add(
+            new Peer(
+                consensusGroupId,
+                dataNodeLocation.getDataNodeId(),
+                dataNodeLocation.getDataRegionConsensusEndPoint()));
+      }
+      correctPeerListBeforeStart.put(consensusGroupId, peerList);
+    }
+    try {
+      DataRegionConsensusImpl.getInstance().recordCorrectPeerList(correctPeerListBeforeStart);
+    } catch (ConsensusException e) {
+      logger.warn("Something wrong happened during recordCorrectPeerList", e);
     }
   }
 

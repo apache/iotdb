@@ -212,6 +212,12 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
+      throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support record correct peer list");
+  }
+
+  @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support leader transfer");
   }

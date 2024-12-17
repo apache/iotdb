@@ -37,6 +37,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /** Consensus module base interface. */
 @ThreadSafe
@@ -144,6 +145,9 @@ public interface IConsensus {
    * @throws ConsensusException when removeRemotePeer doesn't success with other reasons
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
+
+  void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
+      throws ConsensusException;
 
   /**
    * Reset the peer list of the corresponding consensus group. Currently only used in the automatic

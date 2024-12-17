@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.consensus.iot;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -102,8 +100,7 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
-  private static final Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart =
-      new HashMap<>();
+  private final Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -183,7 +180,6 @@ public class IoTConsensus implements IConsensus {
                   syncClientManager,
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
-          consensus.start();
         }
       }
     }
@@ -197,6 +193,7 @@ public class IoTConsensus implements IConsensus {
             logger.warn("Failed to reset peer list while start", e);
           }
         }));
+    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
 
   @Override
@@ -499,6 +496,11 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    this.correctPeerListBeforeStart.putAll(correctPeerList);
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
     IoTConsensusServerImpl impl =
@@ -521,12 +523,9 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : currentMembers) {
         if (!correctPeers.contains(peer)) {
           if (!impl.removeSyncLogChannel(peer)) {
-            logger.error(
-                "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
-                peer,
-                groupId);
+            logger.error("[RESET PEER LIST] Failed to remove sync channel with: {}", peer);
           } else {
-            logger.info("[RESET PEER LIST] Remove sync log channel with: {}", peer);
+            logger.info("[RESET PEER LIST] Remove sync channel with: {}", peer);
           }
         }
       }
@@ -534,7 +533,7 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : correctPeers) {
         if (!impl.getConfiguration().contains(peer)) {
           impl.buildSyncLogChannel(peer);
-          logger.info("[RESET PEER LIST] Build sync log channel with: {}", peer);
+          logger.info("[RESET PEER LIST] Build sync channel with: {}", peer);
         }
       }
       // show result
@@ -554,21 +553,5 @@ public class IoTConsensus implements IConsensus {
 
   public static String buildPeerDir(File storageDir, ConsensusGroupId groupId) {
     return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
-  }
-
-  public static void setCorrectPeerListBeforeStart(List<TRegionReplicaSet> correctedPeerList) {
-    for (TRegionReplicaSet regionReplicaSet : correctedPeerList) {
-      ConsensusGroupId consensusGroupId =
-          ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
-      List<Peer> peerList = new ArrayList<>();
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        peerList.add(
-            new Peer(
-                consensusGroupId,
-                dataNodeLocation.getDataNodeId(),
-                dataNodeLocation.getDataRegionConsensusEndPoint()));
-      }
-      correctPeerListBeforeStart.put(consensusGroupId, peerList);
-    }
   }
 }
