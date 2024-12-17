@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -151,7 +152,11 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(byteBuffer);
+      entry.serialize(
+          byteBuffer,
+          entry instanceof AlignedDeviceEntry
+              ? DeviceEntry.DeviceEntryType.ALIGNED.ordinal()
+              : DeviceEntry.DeviceEntryType.NON_ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
@@ -240,7 +245,11 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(stream);
+      entry.serialize(
+          stream,
+          entry instanceof AlignedDeviceEntry
+              ? DeviceEntry.DeviceEntryType.ALIGNED.ordinal()
+              : DeviceEntry.DeviceEntryType.NON_ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);

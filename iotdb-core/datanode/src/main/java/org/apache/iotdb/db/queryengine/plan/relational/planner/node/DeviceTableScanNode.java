@@ -163,7 +163,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(byteBuffer);
+      entry.serialize(byteBuffer, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
@@ -219,7 +219,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(stream);
+      entry.serialize(stream, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);

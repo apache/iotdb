@@ -22,36 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
-
-import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
 
 public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
 
   public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
     super(deviceID, attributeColumnValues);
-  }
-
-  public void serialize(final ByteBuffer byteBuffer) {
-    deviceID.serialize(byteBuffer);
-    write(attributeColumnValues.size(), byteBuffer);
-    for (final Binary value : attributeColumnValues) {
-      serializeBinary(byteBuffer, value);
-    }
-    write(DeviceEntryType.NON_ALIGNED.ordinal(), byteBuffer);
-  }
-
-  public void serialize(final DataOutputStream stream) throws IOException {
-    deviceID.serialize(stream);
-    write(attributeColumnValues.size(), stream);
-    for (final Binary value : attributeColumnValues) {
-      serializeBinary(stream, value);
-    }
-    write(DeviceEntryType.NON_ALIGNED.ordinal(), stream);
   }
 
   @Override

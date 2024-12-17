@@ -100,7 +100,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               deviceTableScanNode.getPushDownPredicate(),
               deviceTableScanNode.getPushDownLimit(),
               deviceTableScanNode.getPushDownOffset(),
-              deviceTableScanNode.isPushLimitToEachDevice()));
+              deviceTableScanNode.isPushLimitToEachDevice(),
+              deviceTableScanNode.containsNonAlignedDevice()));
     } else if (node instanceof InformationSchemaTableScanNode) {
       return Optional.of(
           new InformationSchemaTableScanNode(

@@ -179,7 +179,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownPredicate(),
               node.getPushDownLimit(),
               node.getPushDownOffset(),
-              node.isPushLimitToEachDevice()),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice()),
           mapping);
     }
 
