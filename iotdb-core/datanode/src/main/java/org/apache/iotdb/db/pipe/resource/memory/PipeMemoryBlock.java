@@ -180,9 +180,10 @@ public class PipeMemoryBlock implements AutoCloseable {
             lock.unlock();
           }
         }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for the lock.", e);
+      } catch (final InterruptedException ignore) {
+        // Each time the close task is run, it means that the interrupt status left by the previous
+        // tryLock does not need to be retained. Otherwise, it will lead to an infinite loop.
+        LOGGER.warn("Interrupted while waiting for the lock.", ignore);
       }
     }
   }

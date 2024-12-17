@@ -70,6 +70,11 @@ public abstract class PipeSubtask
 
   @Override
   public Boolean call() throws Exception {
+    // For each task, it needs to be assigned to a different thread for processing. The thread
+    // running the task may be a fixed thread or a thread in the thread pool. In order to ensure
+    // that the thread running the current task will not be affected by the result of the previous
+    // task, it is necessary to clear the interrupt status left by the previous task.
+    Thread.interrupted();
     boolean hasAtLeastOneEventProcessed = false;
 
     try {
