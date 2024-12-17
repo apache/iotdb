@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.rescon.quotas;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -93,7 +94,8 @@ public class DataNodeSpaceQuotaManager {
     }
   }
 
-  public boolean checkDeviceLimit(final String database) {
+  public boolean checkDeviceLimit(String database) {
+    database = IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + database;
     final TSpaceQuota spaceQuota = spaceQuotaLimit.get(database);
     return spaceQuota == null
         || spaceQuota.getDeviceNum() == 0
@@ -107,7 +109,8 @@ public class DataNodeSpaceQuotaManager {
     }
   }
 
-  public boolean checkTimeSeriesNum(final String database) {
+  public boolean checkTimeSeriesNum(String database) {
+    database = IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + database;
     final TSpaceQuota spaceQuota = spaceQuotaLimit.get(database);
     return spaceQuota == null
         || spaceQuota.getTimeserieNum() == 0
@@ -115,8 +118,8 @@ public class DataNodeSpaceQuotaManager {
         || spaceQuota.getTimeserieNum() - spaceQuotaUsage.get(database).getTimeserieNum() > 0;
   }
 
-  public boolean checkRegionDisk(final String database) {
-    final TSpaceQuota spaceQuota = spaceQuotaLimit.get(database);
+  public boolean checkRegionDisk(String database) {
+    TSpaceQuota spaceQuota = spaceQuotaLimit.get(database);
     return spaceQuota == null
         || spaceQuota.getDiskSize() == 0
         || spaceQuota.getDiskSize() == -1
