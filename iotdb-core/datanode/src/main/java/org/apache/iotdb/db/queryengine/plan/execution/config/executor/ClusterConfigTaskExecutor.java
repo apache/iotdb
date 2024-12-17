@@ -3100,16 +3100,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-  private String transformDBName(final String dbName) {
-    return ROOT + PATH_SEPARATOR_CHAR + dbName;
-  }
-
   @Override
   public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteDatabasesReq req =
-        new TDeleteDatabasesReq(
-                Collections.singletonList(transformDBName(dropDB.getDbName().getValue())))
+        new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
             .setIsTableModel(true);
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
