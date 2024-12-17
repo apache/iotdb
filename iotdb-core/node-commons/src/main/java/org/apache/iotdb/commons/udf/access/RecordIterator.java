@@ -25,6 +25,7 @@ import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.LocalDate;
@@ -87,12 +88,16 @@ public class RecordIterator implements Iterator<Record> {
 
       @Override
       public Binary getBinary(int columnIndex) {
+        // TODO: tsfile binary
         return new Binary(childrenColumns.get(columnIndex).getBinary(index).getValues());
       }
 
       @Override
       public String getString(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBinary(index).toString();
+        return childrenColumns
+            .get(columnIndex)
+            .getBinary(index)
+            .getStringValue(TSFileConfig.STRING_CHARSET);
       }
 
       @Override

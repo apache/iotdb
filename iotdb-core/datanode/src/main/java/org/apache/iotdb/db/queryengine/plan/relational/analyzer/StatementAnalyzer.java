@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -166,11 +167,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -179,10 +182,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -3107,6 +3112,234 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitTableFunctionInvocation(
+        TableFunctionInvocation node, Optional<Scope> context) {
+      //      TableFunctionMetadata tableFunctionMetadata = resolveTableFunction(node)
+      //              .orElseThrow(() -> semanticException(FUNCTION_NOT_FOUND, node, "Table function
+      // '%s' not registered", node.getName()));
+      //
+      //      ConnectorTableFunction function = tableFunctionMetadata.function();
+      //      CatalogHandle catalogHandle = tableFunctionMetadata.catalogHandle();
+
+      //      Node errorLocation = node;
+      //      if (!node.getArguments().isEmpty()) {
+      //        errorLocation = node.getArguments().getFirst();
+      //      }
+
+      //      ArgumentsAnalysis argumentsAnalysis = analyzeArguments(function.getArguments(),
+      // node.getArguments(), scope, errorLocation);
+      //
+      //      ConnectorTransactionHandle transactionHandle =
+      // transactionManager.getConnectorTransaction(session.getRequiredTransactionId(),
+      // catalogHandle);
+      //      TableFunctionAnalysis functionAnalysis = function.analyze(
+      //              session.toConnectorSession(catalogHandle),
+      //              transactionHandle,
+      //              argumentsAnalysis.getPassedArguments(),
+      //              new InjectedConnectorAccessControl(accessControl, session.toSecurityContext(),
+      // catalogHandle.getCatalogName().toString()));
+
+      if (node.getCopartitioning().size() != 0) {
+        // TODO: support copartition in future
+        throw new SemanticException("Copartitioning is not supported now.");
+      }
+
+      // determine the result relation type per SQL standard ISO/IEC 9075-2, 4.33 SQL-invoked
+      // routines, p. 123, 413, 414
+      ReturnTypeSpecification returnTypeSpecification = function.getReturnTypeSpecification();
+      if (returnTypeSpecification == GENERIC_TABLE
+          || !argumentsAnalysis.getTableArgumentAnalyses().isEmpty()) {
+        analysis.addPolymorphicTableFunction(node);
+      }
+      Optional<Descriptor> analyzedProperColumnsDescriptor = functionAnalysis.getReturnedType();
+      Descriptor properColumnsDescriptor;
+      if (returnTypeSpecification == ONLY_PASS_THROUGH) {
+        if (analysis.isAliased(node)) {
+          // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
+          // table alias is prohibited for a table function with ONLY PASS THROUGH returned type.
+          throw semanticException(
+              INVALID_TABLE_FUNCTION_INVOCATION,
+              node,
+              "Alias specified for table function with ONLY PASS THROUGH return type");
+        }
+        if (analyzedProperColumnsDescriptor.isPresent()) {
+          // If a table function has ONLY PASS THROUGH returned type, it does not produce any proper
+          // columns,
+          // so the function's analyze() method should not return the proper columns descriptor.
+          throw semanticException(
+              AMBIGUOUS_RETURN_TYPE,
+              node,
+              "Returned relation type for table function %s is ambiguous",
+              node.getName());
+        }
+        if (function.getArguments().stream()
+            .filter(TableArgumentSpecification.class::isInstance)
+            .map(TableArgumentSpecification.class::cast)
+            .noneMatch(TableArgumentSpecification::isPassThroughColumns)) {
+          // According to SQL standard ISO/IEC 9075-2, 10.4 <routine invocation>, p. 764,
+          // if there is no generic table parameter that specifies PASS THROUGH, then number of
+          // proper columns shall be positive.
+          // For GENERIC_TABLE and DescribedTable returned types, this is enforced by the Descriptor
+          // constructor, which requires positive number of fields.
+          // Here we enforce it for the remaining returned type specification: ONLY_PASS_THROUGH.
+          throw new TrinoException(
+              FUNCTION_IMPLEMENTATION_ERROR,
+              "A table function with ONLY_PASS_THROUGH return type must have a table argument with pass-through columns.");
+        }
+        properColumnsDescriptor = null;
+      } else if (returnTypeSpecification == GENERIC_TABLE) {
+        // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
+        // table alias is mandatory for a polymorphic table function invocation which produces
+        // proper columns.
+        // We don't enforce this requirement.
+        properColumnsDescriptor =
+            analyzedProperColumnsDescriptor.orElseThrow(
+                () ->
+                    semanticException(
+                        MISSING_RETURN_TYPE,
+                        node,
+                        "Cannot determine returned relation type for table function %s",
+                        node.getName()));
+      } else { // returned type is statically declared at function declaration
+        // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
+        // table alias is mandatory for a polymorphic table function invocation which produces
+        // proper columns.
+        // We don't enforce this requirement.
+        if (analyzedProperColumnsDescriptor.isPresent()) {
+          // If a table function has statically declared returned type, it is returned in
+          // TableFunctionMetadata
+          // so the function's analyze() method should not return the proper columns descriptor.
+          throw semanticException(
+              AMBIGUOUS_RETURN_TYPE,
+              node,
+              "Returned relation type for table function %s is ambiguous",
+              node.getName());
+        }
+        properColumnsDescriptor = ((DescribedTable) returnTypeSpecification).getDescriptor();
+      }
+
+      // validate the required input columns
+      Map<String, List<Integer>> requiredColumns = functionAnalysis.getRequiredColumns();
+      Map<String, TableArgumentAnalysis> tableArgumentsByName =
+          argumentsAnalysis.getTableArgumentAnalyses().stream()
+              .collect(toImmutableMap(TableArgumentAnalysis::getArgumentName, Function.identity()));
+      Set<String> allInputs = ImmutableSet.copyOf(tableArgumentsByName.keySet());
+      requiredColumns.forEach(
+          (name, columns) -> {
+            if (!allInputs.contains(name)) {
+              throw new TrinoException(
+                  FUNCTION_IMPLEMENTATION_ERROR,
+                  format(
+                      "Table function %s specifies required columns from table argument %s which cannot be found",
+                      node.getName(), name));
+            }
+            if (columns.isEmpty()) {
+              throw new TrinoException(
+                  FUNCTION_IMPLEMENTATION_ERROR,
+                  format(
+                      "Table function %s specifies empty list of required columns from table argument %s",
+                      node.getName(), name));
+            }
+            // the scope is recorded, because table arguments are already analyzed
+            Scope inputScope = analysis.getScope(tableArgumentsByName.get(name).getRelation());
+            columns.stream()
+                .filter(
+                    column ->
+                        column < 0 || column >= inputScope.getRelationType().getVisibleFieldCount())
+                .findFirst()
+                .ifPresent(
+                    column -> {
+                      throw new TrinoException(
+                          FUNCTION_IMPLEMENTATION_ERROR,
+                          format(
+                              "Invalid index: %s of required column from table argument %s",
+                              column, name));
+                    });
+            // record the required columns for access control
+            columns.stream()
+                .map(inputScope.getRelationType()::getFieldByIndex)
+                .forEach(this::recordColumnAccess);
+          });
+      Set<String> requiredInputs = ImmutableSet.copyOf(requiredColumns.keySet());
+      allInputs.stream()
+          .filter(input -> !requiredInputs.contains(input))
+          .findFirst()
+          .ifPresent(
+              input -> {
+                throw new TrinoException(
+                    FUNCTION_IMPLEMENTATION_ERROR,
+                    format(
+                        "Table function %s does not specify required input columns from table argument %s",
+                        node.getName(), input));
+              });
+
+      // The result relation type of a table function consists of:
+      // 1. columns created by the table function, called the proper columns.
+      // 2. passed columns from input tables:
+      // - for tables with the "pass through columns" option, these are all columns of the table,
+      // - for tables without the "pass through columns" option, these are the partitioning columns
+      // of the table, if any.
+      ImmutableList.Builder<Field> fields = ImmutableList.builder();
+
+      // proper columns first
+      if (properColumnsDescriptor != null) {
+        properColumnsDescriptor.getFields().stream()
+            // per spec, field names are mandatory. We support anonymous fields.
+            .map(
+                field ->
+                    Field.newUnqualified(
+                        field.getName(),
+                        field
+                            .getType()
+                            .orElseThrow(
+                                () ->
+                                    new IllegalStateException(
+                                        "missing returned type for proper field"))))
+            .forEach(fields::add);
+      }
+
+      // next, columns derived from table arguments, in order of argument declarations
+      List<String> tableArgumentNames =
+          function.getArguments().stream()
+              .filter(
+                  argumentSpecification ->
+                      argumentSpecification instanceof TableArgumentSpecification)
+              .map(ArgumentSpecification::getName)
+              .collect(toImmutableList());
+
+      // table arguments in order of argument declarations
+      ImmutableList.Builder<TableArgumentAnalysis> orderedTableArguments = ImmutableList.builder();
+
+      for (String name : tableArgumentNames) {
+        TableArgumentAnalysis argument = tableArgumentsByName.get(name);
+        orderedTableArguments.add(argument);
+        Scope argumentScope = analysis.getScope(argument.getRelation());
+        if (argument.isPassThroughColumns()) {
+          argumentScope.getRelationType().getAllFields().forEach(fields::add);
+        } else if (argument.getPartitionBy().isPresent()) {
+          argument.getPartitionBy().get().stream()
+              .map(expression -> validateAndGetInputField(expression, argumentScope))
+              .forEach(fields::add);
+        }
+      }
+
+      analysis.setTableFunctionAnalysis(
+          node,
+          new TableFunctionInvocationAnalysis(
+              catalogHandle,
+              function.getName(),
+              argumentsAnalysis.getPassedArguments(),
+              orderedTableArguments.build(),
+              functionAnalysis.getRequiredColumns(),
+              copartitioningLists,
+              properColumnsDescriptor == null ? 0 : properColumnsDescriptor.getFields().size(),
+              functionAnalysis.getHandle(),
+              transactionHandle));
+
+      return createAndAssignScope(node, scope, fields.build());
     }
   }
 
