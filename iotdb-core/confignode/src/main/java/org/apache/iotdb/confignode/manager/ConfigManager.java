@@ -791,8 +791,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(
-      final PathPatternTree patternTree, final boolean isTableModel) {
+  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
     // Construct empty response
 
     final TSStatus status = confirmLeader();
@@ -804,7 +803,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(isTableModel);
+    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames(false);
     final List<PartialPath> allDatabasePaths = new ArrayList<>();
     for (final String database : allDatabases) {
       try {
@@ -2406,8 +2405,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedSchemaRegionGroup(
-        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
+    return getRelatedSchemaRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup4TableModel(
@@ -2439,8 +2437,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       final PathPatternTree patternTree) {
-    return getRelatedDataRegionGroup(
-        getSchemaPartition(patternTree, false).getSchemaPartitionTable());
+    return getRelatedDataRegionGroup(getSchemaPartition(patternTree).getSchemaPartitionTable());
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup4TableModel(

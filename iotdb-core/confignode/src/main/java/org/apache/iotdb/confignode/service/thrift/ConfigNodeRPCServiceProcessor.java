@@ -621,10 +621,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
-    final PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getSchemaPartition(
-        patternTree, req.isSetIsTableModel() && req.isIsTableModel());
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
   }
 
   @Override
