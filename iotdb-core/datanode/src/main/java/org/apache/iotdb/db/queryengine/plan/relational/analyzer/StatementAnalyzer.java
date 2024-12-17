@@ -33,6 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTableModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTreeModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -132,7 +135,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -158,11 +164,19 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.specification.ArgumentSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.DescriptorArgumentSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarArgumentSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.TableArgumentSpecification;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -3129,8 +3143,8 @@ public class StatementAnalyzer {
       //        errorLocation = node.getArguments().getFirst();
       //      }
 
-      //      ArgumentsAnalysis argumentsAnalysis = analyzeArguments(function.getArguments(),
-      // node.getArguments(), scope, errorLocation);
+            ArgumentsAnalysis argumentsAnalysis = analyzeArguments(function.getArguments(),
+       node.getArguments(), scope, errorLocation);
       //
       //      ConnectorTransactionHandle transactionHandle =
       // transactionManager.getConnectorTransaction(session.getRequiredTransactionId(),
@@ -3341,6 +3355,261 @@ public class StatementAnalyzer {
 
       return createAndAssignScope(node, scope, fields.build());
     }
+
+    private ArgumentsAnalysis analyzeArguments(List<ArgumentSpecification> argumentSpecifications, List<TableFunctionArgument> arguments, Optional<Scope> scope, Node errorLocation)
+    {
+      if (argumentSpecifications.size() < arguments.size()) {
+        throw new SemanticException(String.format("Too many arguments. Expected at most %s arguments, got %s arguments", argumentSpecifications.size(), arguments.size()));
+      }
+
+      if (argumentSpecifications.isEmpty()) {
+        return new ArgumentsAnalysis(ImmutableMap.of(), ImmutableList.of());
+      }
+
+      boolean argumentsPassedByName = !arguments.isEmpty() && arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      boolean argumentsPassedByPosition = arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (!argumentsPassedByName && !argumentsPassedByPosition) {
+        throw new SemanticException("All arguments must be passed by name or all must be passed positionally");
+      }
+
+      ImmutableMap.Builder<String, Argument> passedArguments = ImmutableMap.builder();
+      ImmutableList.Builder<TableArgumentAnalysis> tableArgumentAnalyses = ImmutableList.builder();
+      // TODO(UDF): args passed positionally - can one only pass some prefix of args?
+      // TODO(UDF): check at most one table argument passed
+      if (argumentsPassedByName) {
+        Map<String, ArgumentSpecification> argumentSpecificationsByName = new HashMap<>();
+        for (ArgumentSpecification argumentSpecification : argumentSpecifications) {
+          if (argumentSpecificationsByName.put(argumentSpecification.getName(), argumentSpecification) != null) {
+            // this should never happen, because the argument names are validated at function registration time
+            throw new IllegalStateException("Duplicate argument specification for name: " + argumentSpecification.getName());
+          }
+        }
+        Set<String> uniqueArgumentNames = new HashSet<>();
+        for (TableFunctionArgument argument : arguments) {
+          // it has been checked that all arguments have names
+          String argumentName = argument.getName().get().getCanonicalValue();
+          if (!uniqueArgumentNames.add(argumentName)) {
+            throw new SemanticException(String.format("Duplicate argument name: %s", argumentName));
+          }
+          ArgumentSpecification argumentSpecification = argumentSpecificationsByName.remove(argumentName);
+          if (argumentSpecification == null) {
+            throw new SemanticException(String.format("Unexpected argument name: %s", argumentName));
+          }
+          ArgumentAnalysis argumentAnalysis = analyzeArgument(argumentSpecification, argument, scope);
+          passedArguments.put(argumentName, argumentAnalysis.getArgument());
+          argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
+        }
+        // apply defaults for not specified arguments
+        for (Map.Entry<String, ArgumentSpecification> entry : argumentSpecificationsByName.entrySet()) {
+          ArgumentSpecification argumentSpecification = entry.getValue();
+          passedArguments.put(argumentSpecification.getName(), analyzeDefault(argumentSpecification, errorLocation));
+        }
+      }
+      else {
+        for (int i = 0; i < arguments.size(); i++) {
+          TableFunctionArgument argument = arguments.get(i);
+          ArgumentSpecification argumentSpecification = argumentSpecifications.get(i);
+          ArgumentAnalysis argumentAnalysis = analyzeArgument(argumentSpecification, argument, scope);
+          passedArguments.put(argumentSpecification.getName(), argumentAnalysis.getArgument());
+          argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
+        }
+        // apply defaults for not specified arguments
+        for (int i = arguments.size(); i < argumentSpecifications.size(); i++) {
+          ArgumentSpecification argumentSpecification = argumentSpecifications.get(i);
+          passedArguments.put(argumentSpecification.getName(), analyzeDefault(argumentSpecification, errorLocation));
+        }
+      }
+
+      return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private ArgumentAnalysis analyzeArgument(ArgumentSpecification argumentSpecification, TableFunctionArgument argument, Optional<Scope> scope)
+    {
+      String actualType;
+      if (argument.getValue() instanceof TableFunctionTableArgument) {
+        actualType = "table";
+      }
+      else if (argument.getValue() instanceof TableFunctionDescriptorArgument) {
+        actualType = "descriptor";
+      }
+      else if (argument.getValue() instanceof Expression) {
+        actualType = "expression";
+      }
+      else {
+        throw new SemanticException(String.format("Unexpected table function argument type: %s", argument.getClass().getSimpleName()));
+      }
+
+      if (argumentSpecification instanceof TableArgumentSpecification) {
+        if (!(argument.getValue() instanceof TableFunctionTableArgument)) {
+          throw new SemanticException(String.format("Invalid argument %s. Expected table argument, got %s", argumentSpecification.getName(), actualType));
+        }
+        return analyzeTableArgument(argument, (TableArgumentSpecification) argumentSpecification, scope);
+      }else if (argumentSpecification instanceof DescriptorArgumentSpecification) {
+        if (!(argument.getValue() instanceof TableFunctionDescriptorArgument)) {
+          throw new SemanticException(String.format("Invalid argument %s. Expected descriptor argument, got %s", argumentSpecification.getName(), actualType));
+        }
+        return analyzeDescriptorArgument((TableFunctionDescriptorArgument) argument.getValue());
+      }else if (argumentSpecification instanceof ScalarArgumentSpecification) {
+        if (!(argument.getValue() instanceof Expression)) {
+          throw new SemanticException(String.format("Invalid argument %s. Expected scalar argument, got %s", argumentSpecification.getName(), actualType));
+        }
+        // TODO(UDF): 如果functionName是descriptor的话，会被解析成FunctionCall还是TableFunctionDescriptorArgument？
+//        // 'descriptor' as a function name is not allowed in this context
+//        if (expression instanceof FunctionCall && ((FunctionCall) expression).getName().hasSuffix(QualifiedName.of("descriptor"))) { // function name is always compared case-insensitive
+//          throw semanticException(INVALID_FUNCTION_ARGUMENT, argument, "'descriptor' function is not allowed as a table function argument");
+//        }
+        return analyzeScalarArgument(argument, (ScalarArgumentSpecification) argumentSpecification);
+      }else {
+        throw new IllegalStateException("Unexpected argument specification: " + argumentSpecification.getClass().getSimpleName());
+      }
+    }
+
+    private ArgumentAnalysis analyzeTableArgument(TableFunctionArgument argument, TableArgumentSpecification argumentSpecification, Optional<Scope> scope)
+    {
+      TableFunctionTableArgument tableArgument = (TableFunctionTableArgument) argument.getValue();
+
+      TableArgument.Builder argumentBuilder = TableArgument.builder();
+      TableArgumentAnalysis.Builder analysisBuilder = TableArgumentAnalysis.builder();
+      analysisBuilder.withArgumentName(argumentSpecification.getName());
+
+      // process the relation
+      Relation relation = tableArgument.getTable();
+      analysisBuilder.withRelation(relation);
+      Scope argumentScope = process(relation, scope);
+      QualifiedName relationName = analysis.getRelationName(relation);
+      if (relationName != null) {
+        analysisBuilder.withName(relationName);
+      }
+
+      argumentBuilder.rowType(RowType.from(argumentScope.getRelationType().getVisibleFields().stream()
+              .map(field -> new RowType.Field(field.getName(), field.getType()))
+              .collect(toImmutableList())));
+
+      // analyze PARTITION BY
+      if (tableArgument.getPartitionBy().isPresent()) {
+        if (argumentSpecification.isRowSemantics()) {
+          throw semanticException(INVALID_FUNCTION_ARGUMENT, argument, "Invalid argument %s. Partitioning specified for table argument with row semantics", argumentSpecification.getName());
+        }
+        List<Expression> partitionBy = tableArgument.getPartitionBy().get();
+        analysisBuilder.withPartitionBy(partitionBy);
+        partitionBy.forEach(partitioningColumn -> {
+          validateAndGetInputField(partitioningColumn, argumentScope);
+          Type type = analyzeExpression(partitioningColumn, argumentScope).getType(partitioningColumn);
+          if (!type.isComparable()) {
+            throw semanticException(TYPE_MISMATCH, partitioningColumn, "%s is not comparable, and therefore cannot be used in PARTITION BY", type);
+          }
+        });
+        argumentBuilder.partitionBy(partitionBy.stream()
+                .map(expression -> switch (expression) {
+                  case Identifier identifier -> identifier.getValue();
+                  case DereferenceExpression dereferenceExpression -> dereferenceExpression.toString();
+                  default -> throw new IllegalStateException("Unexpected partitionBy expression: " + expression);
+                })
+                .collect(toImmutableList()));
+      }
+
+      // analyze ORDER BY
+      if (tableArgument.getOrderBy().isPresent()) {
+        if (argumentSpecification.isRowSemantics()) {
+          throw semanticException(INVALID_FUNCTION_ARGUMENT, argument, "Invalid argument %s. Ordering specified for table argument with row semantics", argumentSpecification.getName());
+        }
+        OrderBy orderBy = tableArgument.getOrderBy().get();
+        analysisBuilder.withOrderBy(orderBy);
+        orderBy.getSortItems().stream()
+                .map(SortItem::getSortKey)
+                .forEach(orderingColumn -> {
+                  validateAndGetInputField(orderingColumn, argumentScope);
+                  Type type = analyzeExpression(orderingColumn, argumentScope).getType(orderingColumn);
+                  if (!type.isOrderable()) {
+                    throw semanticException(TYPE_MISMATCH, orderingColumn, "%s is not orderable, and therefore cannot be used in ORDER BY", type);
+                  }
+                });
+        argumentBuilder.orderBy(orderBy.getSortItems().stream()
+                .map(SortItem::getSortKey)
+                .map(expression -> switch (expression) {
+                  case Identifier identifier -> identifier.getValue();
+                  case DereferenceExpression dereferenceExpression -> dereferenceExpression.toString();
+                  default -> throw new IllegalStateException("Unexpected orderBy expression: " + expression);
+                })
+                .collect(toImmutableList()));
+      }
+
+      // analyze the PRUNE/KEEP WHEN EMPTY property
+      boolean pruneWhenEmpty = argumentSpecification.isPruneWhenEmpty();
+      if (tableArgument.getEmptyTableTreatment().isPresent()) {
+        if (argumentSpecification.isRowSemantics()) {
+          throw semanticException(INVALID_FUNCTION_ARGUMENT, tableArgument.getEmptyTableTreatment().get(), "Invalid argument %s. Empty behavior specified for table argument with row semantics", argumentSpecification.getName());
+        }
+        pruneWhenEmpty = tableArgument.getEmptyTableTreatment().get().getTreatment() == EmptyTableTreatment.Treatment.PRUNE;
+      }
+      analysisBuilder.withPruneWhenEmpty(pruneWhenEmpty);
+
+      // record remaining properties
+      analysisBuilder.withRowSemantics(argumentSpecification.isRowSemantics());
+      analysisBuilder.withPassThroughColumns(argumentSpecification.isPassThroughColumns());
+
+      return new ArgumentAnalysis(argumentBuilder.build(), Optional.of(analysisBuilder.build()));
+    }
+
+    private ArgumentAnalysis analyzeDescriptorArgument(TableFunctionDescriptorArgument argument)
+    {
+      return new ArgumentAnalysis(
+              argument.getDescriptor()
+                      .map(descriptor -> DescriptorArgument.builder()
+                              .descriptor(new Descriptor(descriptor.getFields().stream()
+                                      .map(field -> new Descriptor.Field(
+                                              field.getName().getCanonicalValue(),
+                                              field.getType().map(type -> {
+                                                try {
+                                                  return plannerContext.getTypeManager().getType(toTypeSignature(type));
+                                                }
+                                                catch (TypeNotFoundException e) {
+                                                  throw semanticException(TYPE_MISMATCH, type, "Unknown type: %s", type);
+                                                }
+                                              })))
+                                      .collect(toImmutableList())))
+                              .build())
+                      .orElse(NULL_DESCRIPTOR),
+              Optional.empty());
+    }
+
+    private ArgumentAnalysis analyzeScalarArgument(Expression expression, ScalarArgumentSpecification argumentSpecification)
+    {
+      // currently, only constant arguments are supported
+      // TODO(UDF): 从 epxression 中提取常量
+      Object constantValue = 1L;
+      if(!argumentSpecification.getType().checkObjectType(constantValue)) {
+        throw new SemanticException(String.format("Invalid scalar argument value. Expected type %s, got %s", argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+      }
+//      Object constantValue = evaluateConstant(inlined, type, plannerContext, session, accessControl);
+      return new ArgumentAnalysis(
+              new ScalarArgument(argumentSpecification.getType(), constantValue),
+              Optional.empty());
+    }
+
+    private Argument analyzeDefault(ArgumentSpecification argumentSpecification, Node errorLocation)
+    {
+      if (argumentSpecification.isRequired()) {
+        throw semanticException(MISSING_ARGUMENT, errorLocation, "Missing argument: %s", argumentSpecification.getName());
+      }
+
+      checkArgument(!(argumentSpecification instanceof TableArgumentSpecification), "invalid table argument specification: default set");
+
+      if (argumentSpecification instanceof DescriptorArgumentSpecification) {
+        return DescriptorArgument.builder()
+                .descriptor((Descriptor) argumentSpecification.getDefaultValue())
+                .build();
+      }
+      if (argumentSpecification instanceof ScalarArgumentSpecification) {
+        return ScalarArgument.builder()
+                .type(((ScalarArgumentSpecification) argumentSpecification).getType())
+                .value(argumentSpecification.getDefaultValue())
+                .build();
+      }
+
+      throw new IllegalStateException("Unexpected argument specification: " + argumentSpecification.getClass().getSimpleName());
+    }
+
   }
 
   private static boolean hasScopeAsLocalParent(Scope root, Scope parent) {
