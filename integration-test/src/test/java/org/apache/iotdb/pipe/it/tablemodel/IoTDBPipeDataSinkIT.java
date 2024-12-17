@@ -470,7 +470,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
 
     int deviceIDStartIndex = 0;
-    int deviceIDEndIndex = 100;
+    int deviceIDEndIndex = 10;
 
     for (int j = 0; j < 25; j++) {
       final String dataBaseName = "test" + j % 2;
@@ -488,15 +488,15 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
         map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
       }
-      deviceIDStartIndex += 25;
-      deviceIDEndIndex += 25;
+      deviceIDStartIndex += 2;
+      deviceIDEndIndex += 2;
     }
   }
 
   private void insertTablet2(
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
     int deviceIDStartIndex = 0;
-    int deviceIDEndIndex = 30;
+    int deviceIDEndIndex = 10;
 
     for (int j = 0; j < 25; j++) {
       final String dataBaseName = "test" + j % 2;
@@ -514,8 +514,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
         map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
       }
-      deviceIDStartIndex += 10;
-      deviceIDEndIndex += 10;
+      deviceIDStartIndex += 2;
+      deviceIDEndIndex += 2;
     }
   }
 
@@ -529,8 +529,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
         final String dataBaseName = "test" + j % 2;
-        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
-        deviceIDEndIndex = deviceIDStartIndex + 25;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 10;
+        deviceIDEndIndex = deviceIDStartIndex + 10;
         Tablet tablet =
             TableModelUtils.generateTablet(
                 tableName,
@@ -562,8 +562,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final String dataBaseName = "test" + j % 2;
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
-        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
-        deviceIDEndIndex = deviceIDStartIndex + 25;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 10;
+        deviceIDEndIndex = deviceIDStartIndex + 10;
         Tablet tablet =
             TableModelUtils.generateTablet(
                 tableName,
@@ -594,11 +594,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
         final String dataBaseName = "test" + j % 2;
-        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
-        deviceIDEndIndex = deviceIDStartIndex + 25;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 10;
+        deviceIDEndIndex = deviceIDStartIndex + 10;
         Tablet tablet =
             TableModelUtils.generateTablet(
-                tableName, 0, 25, deviceIDStartIndex, deviceIDEndIndex, false, true);
+                tableName, 0, 10, deviceIDStartIndex, deviceIDEndIndex, false, true);
         TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
         try {
           Thread.sleep(100);
@@ -621,8 +621,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final String dataBaseName = "test" + j % 2;
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
-        deviceIDStartIndex = random.nextInt(1 << 16) - 25;
-        deviceIDEndIndex = deviceIDStartIndex + 25;
+        deviceIDStartIndex = random.nextInt(1 << 16) - 10;
+        deviceIDEndIndex = deviceIDStartIndex + 10;
         Tablet tablet =
             TableModelUtils.generateTablet(
                 tableName, deviceIDStartIndex, deviceIDEndIndex, 100, 110, false, true);
@@ -644,7 +644,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     final Random random = new Random();
     int deviceIDStartIndex = 0;
     int deviceIDEndIndex = 100;
-    deviceIDStartIndex = random.nextInt(1 << 16) - 300;
+    deviceIDStartIndex = random.nextInt(1 << 16) - 10;
     deviceIDEndIndex = deviceIDStartIndex + 10;
     for (int j = 0; j < 25; j++) {
       final String dataBaseName = "test" + j % 2;
@@ -662,8 +662,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
         map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
       }
-      deviceIDStartIndex += 25;
-      deviceIDEndIndex += 25;
+      deviceIDStartIndex += 2;
+      deviceIDEndIndex += 2;
     }
   }
 
@@ -671,14 +671,14 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final Map<String, List<Tablet>> testResult, final Map<String, List<Tablet>> test1Result) {
     final Random random = new Random();
     int deviceIDStartIndex = random.nextInt(1 << 16);
-    int deviceIDEndIndex = deviceIDStartIndex + 35;
+    int deviceIDEndIndex = deviceIDStartIndex + 10;
     for (int j = 0; j < 25; j++) {
       final String dataBaseName = "test" + j % 2;
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
         Tablet tablet =
             TableModelUtils.generateTablet(
-                tableName, 100, 125, deviceIDStartIndex, deviceIDEndIndex, false, true);
+                tableName, 100, 110, deviceIDStartIndex, deviceIDEndIndex, false, true);
         TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
         try {
           Thread.sleep(100);
@@ -688,8 +688,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         Map<String, List<Tablet>> map = j % 2 == 0 ? testResult : test1Result;
         map.computeIfAbsent(tableName, k -> new ArrayList<>()).add(tablet);
       }
-      deviceIDStartIndex += 25;
-      deviceIDEndIndex += 25;
+      deviceIDStartIndex += 2;
+      deviceIDEndIndex += 2;
     }
   }
 
@@ -701,7 +701,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       for (int i = 0; i < 5; i++) {
         final String tableName = "test" + i;
         Tablet tablet =
-            TableModelUtils.generateTabletDeviceIDAllIsNull(tableName, 100, 125, 25, false);
+            TableModelUtils.generateTabletDeviceIDAllIsNull(tableName, 100, 110, 10, false);
         TableModelUtils.insertTablet(dataBaseName, tablet, senderEnv);
         try {
           Thread.sleep(100);
