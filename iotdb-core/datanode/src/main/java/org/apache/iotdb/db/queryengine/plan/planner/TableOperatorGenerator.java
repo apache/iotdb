@@ -1755,7 +1755,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     int aggregationsCount = node.getAggregations().size();
     List<Integer> aggColumnIndexes = new ArrayList<>();
     int channel = 0;
-    int idx = -1;
     int measurementColumnCount = 0;
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
@@ -1770,7 +1769,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Aggregation aggregation = entry.getValue();
 
       for (Expression argument : aggregation.getArguments()) {
-        idx++;
         Symbol symbol = Symbol.from(argument);
         ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
         switch (schema.getColumnCategory()) {
@@ -1914,6 +1912,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     // for time column
     allSensors.add("");
+
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
@@ -1939,7 +1938,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 
-    for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
+    if (canUseLastCacheOptimize()) {
+      // context add TableLastQueryOperator
+    }
+
+    for (int i = 0; i < node.getDeviceEntries().size(); i++) {
       AlignedFullPath alignedPath =
           constructAlignedPath(
               node.getDeviceEntries().get(i),
@@ -2034,6 +2037,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     return new boolean[] {canUseStatistic, isAscending};
+  }
+
+  private boolean canUseLastCacheOptimize() {
+    // TODO complete this method
+    return true;
   }
 
   public static long calculateMaxAggregationResultSize(

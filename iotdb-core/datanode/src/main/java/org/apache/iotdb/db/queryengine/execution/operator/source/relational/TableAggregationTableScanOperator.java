@@ -49,7 +49,6 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -68,6 +67,7 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.satisfiedTimeRange;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.CURRENT_DEVICE_INDEX_STRING;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
@@ -82,25 +82,19 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final List<ColumnSchema> groupingKeySchemas;
   private final int[] groupingKeyIndex;
 
-  public static final LongColumn TIME_COLUMN_TEMPLATE =
-      new LongColumn(1, Optional.empty(), new long[] {0});
-
   private final List<ColumnSchema> columnSchemas;
-
   private final int[] columnsIndexArray;
 
   private final List<DeviceEntry> deviceEntries;
-
   private final int deviceCount;
+  private int currentDeviceIndex;
 
   private final Ordering scanOrder;
   private final SeriesScanOptions seriesScanOptions;
 
   private final List<String> measurementColumnNames;
   private final Set<String> allSensors;
-
   private final List<IMeasurementSchema> measurementSchemas;
-
   private final List<TSDataType> measurementColumnTSDataTypes;
 
   // TODO calc maxTsBlockLineNum using date_bin
@@ -110,8 +104,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final List<Integer> aggArguments;
 
   private QueryDataSource queryDataSource;
-
-  private int currentDeviceIndex;
 
   ITableTimeRangeIterator timeIterator;
 
@@ -192,9 +184,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       finished = !hasNextWithTimer();
     }
     return finished;
-
-    //    return (retainedTsBlock == null)
-    //        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
   }
 
   @Override

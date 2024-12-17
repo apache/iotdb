@@ -3056,8 +3056,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
+      context.dataNodeQueryContext.lock();
       try {
-        context.dataNodeQueryContext.lock();
         if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
