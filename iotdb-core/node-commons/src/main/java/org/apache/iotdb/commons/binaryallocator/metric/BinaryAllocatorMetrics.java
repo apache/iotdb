@@ -34,10 +34,14 @@ public class BinaryAllocatorMetrics implements IMetricSet {
   private static final String ALLOCATE_FROM_SLAB = "allocate-from-slab";
   private static final String ALLOCATE_FROM_JVM = "allocate-from-jvm";
   private static final String ACTIVE_MEMORY = "active-memory";
+  private static final String EVICTED_BY_SAMPLE_EVICTION = "evicted-by-sample-eviction";
+  private static final String EVICTED_BY_GC_EVICTION = "evicted-by-gc-eviction";
 
   private final BinaryAllocator binaryAllocator;
   private Counter allocateFromSlab;
   private Counter allocateFromJVM;
+  private Counter evictedBySampleEviction;
+  private Counter evictedByGcEviction;
 
   public BinaryAllocatorMetrics(final BinaryAllocator binaryAllocator) {
     this.binaryAllocator = binaryAllocator;
@@ -71,6 +75,18 @@ public class BinaryAllocatorMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ALLOCATE_FROM_JVM);
+    evictedBySampleEviction =
+        metricService.getOrCreateCounter(
+            Metric.BINARY_ALLOCATOR.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            EVICTED_BY_SAMPLE_EVICTION);
+    evictedByGcEviction =
+        metricService.getOrCreateCounter(
+            Metric.BINARY_ALLOCATOR.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            EVICTED_BY_GC_EVICTION);
   }
 
   @Override
@@ -95,10 +111,28 @@ public class BinaryAllocatorMetrics implements IMetricSet {
         Metric.BINARY_ALLOCATOR.toString(),
         Tag.NAME.toString(),
         ALLOCATE_FROM_JVM);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.BINARY_ALLOCATOR.toString(),
+        Tag.NAME.toString(),
+        EVICTED_BY_SAMPLE_EVICTION);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.BINARY_ALLOCATOR.toString(),
+        Tag.NAME.toString(),
+        EVICTED_BY_GC_EVICTION);
   }
 
-  public void updateCounter(int allocateFromSlabDelta, int allocateFromJVMDelta) {
+  public void updateAllocationCounter(long allocateFromSlabDelta, long allocateFromJVMDelta) {
     allocateFromSlab.inc(allocateFromSlabDelta);
     allocateFromJVM.inc(allocateFromJVMDelta);
+  }
+
+  public void updateGcEvictionCounter(long evictedByGcEvictionDelta) {
+    evictedByGcEviction.inc(evictedByGcEvictionDelta);
+  }
+
+  public void updateSampleEvictionCounter(long evictedBySampleEvictionDelta) {
+    evictedBySampleEviction.inc(evictedBySampleEvictionDelta);
   }
 }

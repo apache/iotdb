@@ -1038,6 +1038,14 @@ public class PartitionManager {
                         ? RegionRoleType.Leader.toString()
                         : RegionRoleType.Follower.toString();
                 regionInfo.setRoleType(regionType);
+
+                long regionSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setTsFileSize(regionSize);
               });
 
       return regionInfoListResp;
