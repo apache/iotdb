@@ -21,6 +21,8 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.subscription.event.SubscriptionCommitContextSupplier;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -36,6 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * The {@code SubscriptionEventTabletResponse} class extends {@link
@@ -51,16 +54,27 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
+  private static final long PREFETCH_TABLET_BUFFER_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
+
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionCommitContext commitContext;
+  private final SubscriptionCommitContextSupplier commitContextSupplier;
 
-  private volatile int tabletsSize;
+  private volatile int totalTablets;
   private final AtomicInteger nextOffset = new AtomicInteger(0);
 
+  // use these variables to limit control for large message
+  private volatile long totalBufferSize;
+  private volatile boolean availableForNext = false;
+
   public SubscriptionEventTabletResponse(
-      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
+      final SubscriptionPipeTabletEventBatch batch,
+      final SubscriptionCommitContext commitContext,
+      final SubscriptionCommitContextSupplier commitContextSupplier) {
     this.batch = batch;
     this.commitContext = commitContext;
+    this.commitContextSupplier = commitContextSupplier;
 
     init();
   }
@@ -81,12 +95,25 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   }
 
   @Override
+  public synchronized void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
+    if (availableForNext) {
+      // generate next subscription event with the same batch
+      onCommittedHook.accept(new SubscriptionEvent(batch, commitContextSupplier));
+    }
+  }
+
+  @Override
   public synchronized void nack() {
     if (nextOffset.get() == 1) {
       // do nothing if with complete tablets
       return;
     }
+
     cleanUp();
+
+    // should not reset the iterator of batch when init
+    // TODO: avoid completely rewinding the iterator
+    batch.resetIterator();
     init();
   }
 
@@ -94,8 +121,16 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   public synchronized void cleanUp() {
     super.cleanUp();
 
-    tabletsSize = 0;
+    totalTablets = 0;
     nextOffset.set(0);
+
+    totalBufferSize = 0;
+    availableForNext = false;
+  }
+
+  @Override
+  public boolean isCommittable() {
+    return (availableForNext || hasNoMore) && size() == 1;
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -108,11 +143,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       return;
     }
 
-    batch.resetIterator();
     offer(generateNextTabletResponse());
   }
 
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse() {
+    if (availableForNext) {
+      return new CachedSubscriptionPollResponse(
+          SubscriptionPollResponseType.TABLETS.getType(),
+          new TabletsPayload(Collections.emptyList(), -totalTablets),
+          commitContext);
+    }
+
     final List<Tablet> currentTablets = new ArrayList<>();
     long currentBufferSize = 0;
 
@@ -128,7 +169,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
-      tabletsSize += tablets.size();
+      totalTablets += tablets.size();
+      totalBufferSize += bufferSize;
 
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
         // TODO: split tablets
@@ -148,6 +190,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       }
 
       currentBufferSize += bufferSize;
+
+      // limit control for large message
+      if (totalBufferSize > PREFETCH_TABLET_BUFFER_SIZE && batch.hasNext()) {
+        availableForNext = true;
+        break;
+      }
     }
 
     final CachedSubscriptionPollResponse response;
@@ -155,7 +203,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       response =
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.TABLETS.getType(),
-              new TabletsPayload(Collections.emptyList(), -tabletsSize),
+              new TabletsPayload(Collections.emptyList(), -totalTablets),
               commitContext);
       hasNoMore = true;
     } else {
