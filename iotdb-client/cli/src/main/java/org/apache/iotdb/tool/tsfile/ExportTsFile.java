@@ -493,7 +493,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         isEmpty = true;
       }
     }
-    if ((isEmpty)) {
+    if (isEmpty) {
       ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
       return false;
     }
