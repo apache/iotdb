@@ -379,8 +379,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return result;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(
-      final PathPatternTree patternTree) {
+  private TSchemaPartitionReq constructSchemaPartitionReq(final PathPatternTree patternTree) {
     try {
       return new TSchemaPartitionReq(patternTree.serialize());
     } catch (final IOException e) {
