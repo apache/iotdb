@@ -65,7 +65,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   // time & values statistics
   private final List<Statistics<? extends Serializable>> timeStatisticsList;
-  private final List<List<Statistics<? extends Serializable>>> valueStatisticsList;
+  private final List<Statistics<? extends Serializable>[]> valueStatisticsList;
 
   // AlignedTVList rowCount during query
   protected Map<AlignedTVList, Integer> alignedTvListQueryMap;
@@ -123,17 +123,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata chunkTimeMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
-    List<Statistics<? extends Serializable>> chunkValueStatistics = new ArrayList<>();
-    List<IChunkMetadata> chunkValueMetadataList = new ArrayList<>();
-    for (int column = 0; column < valueChunkNames.size(); column++) {
-      Statistics<? extends Serializable> valueStatistics =
-          Statistics.getStatsByType(dataTypes.get(column));
-      chunkValueStatistics.add(valueStatistics);
-      IChunkMetadata valueChunkMetadata =
-          new ChunkMetadata(
-              valueChunkNames.get(column), dataTypes.get(column), null, null, 0, valueStatistics);
-      chunkValueMetadataList.add(valueChunkMetadata);
-    }
+    Statistics<? extends Serializable>[] chunkValueStatistics =
+        new Statistics[valueChunkNames.size()];
+    Arrays.fill(chunkValueStatistics, null);
 
     int cnt = 0;
     List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListQueryMap.keySet());
@@ -147,6 +139,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             valueColumnsDeletionList,
             context.isIgnoreAllNullRows());
     int[] alignedTvListOffsets = timeValuePairIterator.getAlignedTVListOffsets();
+
+    Statistics<? extends Serializable> pageTimeStats = null;
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       // Split pages
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
@@ -154,82 +148,78 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             Statistics.getStatsByType(TSDataType.VECTOR);
         pageTimeStatistics.setEmpty(false);
         timeStatisticsList.add(pageTimeStatistics);
-        List<Statistics<? extends Serializable>> pageValueStatistics = new ArrayList<>();
-        for (int column = 0; column < valueChunkNames.size(); column++) {
-          Statistics<? extends Serializable> valueStatistics =
-              Statistics.getStatsByType(dataTypes.get(column));
-          pageValueStatistics.add(valueStatistics);
-        }
+        pageTimeStats = timeStatisticsList.get(timeStatisticsList.size() - 1);
+
+        Statistics<? extends Serializable>[] pageValueStatistics =
+            new Statistics[valueChunkNames.size()];
+        Arrays.fill(pageValueStatistics, null);
         valueStatisticsList.add(pageValueStatistics);
         pageOffsetsList.add(Arrays.copyOf(alignedTvListOffsets, alignedTvListOffsets.length));
       }
 
       // Update Page & Chunk Statistics
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
-      Statistics<? extends Serializable> pageTimeStats =
-          timeStatisticsList.get(timeStatisticsList.size() - 1);
       pageTimeStats.update(tvPair.getTimestamp());
       chunkTimeStatistics.update(tvPair.getTimestamp());
 
-      List<Statistics<? extends Serializable>> pageValuesStats =
+      Statistics<? extends Serializable>[] pageValuesStats =
           valueStatisticsList.get(valueStatisticsList.size() - 1);
       TsPrimitiveType[] primitiveValues = tvPair.getValue().getVector();
       for (int column = 0; column < primitiveValues.length; column++) {
         if (primitiveValues[column] == null) {
           continue;
         }
+
+        if (pageValuesStats[column] == null) {
+          Statistics<? extends Serializable> valueStatistics =
+              Statistics.getStatsByType(dataTypes.get(column));
+          pageValuesStats[column] = valueStatistics;
+        }
+        if (chunkValueStatistics[column] == null) {
+          Statistics<? extends Serializable> chunkValueStats =
+              Statistics.getStatsByType(dataTypes.get(column));
+          chunkValueStatistics[column] = chunkValueStats;
+        }
+
         switch (dataTypes.get(column)) {
           case BOOLEAN:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getBoolean());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getBoolean());
+            pageValuesStats[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getBoolean());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getBoolean());
             break;
           case INT32:
           case DATE:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getInt());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getInt());
+            pageValuesStats[column].update(tvPair.getTimestamp(), primitiveValues[column].getInt());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getInt());
             break;
           case INT64:
           case TIMESTAMP:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getLong());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getLong());
+            pageValuesStats[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getLong());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getLong());
             break;
           case FLOAT:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getFloat());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getFloat());
+            pageValuesStats[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getFloat());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getFloat());
             break;
           case DOUBLE:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getDouble());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getDouble());
+            pageValuesStats[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getDouble());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getDouble());
             break;
           case TEXT:
           case BLOB:
           case STRING:
-            pageValuesStats
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getBinary());
-            chunkValueStatistics
-                .get(column)
-                .update(tvPair.getTimestamp(), primitiveValues[column].getBinary());
+            pageValuesStats[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getBinary());
+            chunkValueStatistics[column].update(
+                tvPair.getTimestamp(), primitiveValues[column].getBinary());
             break;
           default:
             throw new UnSupportedDataTypeException(
@@ -241,21 +231,23 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     pageOffsetsList.add(Arrays.copyOf(alignedTvListOffsets, alignedTvListOffsets.length));
     chunkTimeStatistics.setEmpty(cnt == 0);
 
-    // statistics should be set null if there is no data
-    for (int column = 0; column < chunkValueMetadataList.size(); column++) {
-      if (chunkValueMetadataList.get(column).getStatistics().isEmpty()) {
-        chunkValueMetadataList.set(column, null);
-      }
-    }
-    for (List<Statistics<? extends Serializable>> pageValueStats : valueStatisticsList) {
-      for (int column = 0; column < pageValueStats.size(); column++) {
-        if (pageValueStats.get(column).isEmpty()) {
-          pageValueStats.set(column, null);
-        }
-      }
-    }
-
     // aligned chunk meta
+    List<IChunkMetadata> chunkValueMetadataList = new ArrayList<>();
+    for (int column = 0; column < valueChunkNames.size(); column++) {
+      if (chunkValueStatistics[column] != null) {
+        IChunkMetadata valueChunkMetadata =
+            new ChunkMetadata(
+                valueChunkNames.get(column),
+                dataTypes.get(column),
+                null,
+                null,
+                0,
+                chunkValueStatistics[column]);
+        chunkValueMetadataList.add(valueChunkMetadata);
+      } else {
+        chunkValueMetadataList.add(null);
+      }
+    }
     IChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(chunkTimeMetadata, chunkValueMetadataList);
     alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
@@ -386,7 +378,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return timeStatisticsList;
   }
 
-  public List<List<Statistics<? extends Serializable>>> getValuesStatisticsList() {
+  public List<Statistics<? extends Serializable>[]> getValuesStatisticsList() {
     return valueStatisticsList;
   }
 }

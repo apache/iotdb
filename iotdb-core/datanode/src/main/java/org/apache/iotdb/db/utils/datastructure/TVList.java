@@ -610,6 +610,7 @@ public abstract class TVList implements WALEntryValue {
   /* TVList Iterator */
   public class TVListIterator {
     protected int index;
+    protected int rows;
     protected long currentTime;
     protected boolean probeNext;
     private final Integer floatPrecision;
@@ -617,7 +618,8 @@ public abstract class TVList implements WALEntryValue {
 
     public TVListIterator(Integer floatPrecision, TSEncoding encoding) {
       this.index = 0;
-      this.currentTime = index < rowCount ? getTime(index) : Long.MIN_VALUE;
+      this.rows = rowCount;
+      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       this.floatPrecision = floatPrecision;
       this.encoding = encoding;
     }
@@ -625,16 +627,16 @@ public abstract class TVList implements WALEntryValue {
     private void prepareNext() {
       // skip deleted rows
       int prevIndex = index;
-      while (index < rowCount && (bitMap != null && isNullValue(getValueIndex(index)))) {
+      while (index < rows && (bitMap != null && isNullValue(getValueIndex(index)))) {
         index++;
       }
       // update current timestamp if needed
       if (index > prevIndex) {
-        currentTime = index < rowCount ? getTime(index) : Long.MIN_VALUE;
+        currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       }
 
       // skip duplicated timestamp
-      while (index + 1 < rowCount && getTime(index + 1) == currentTime) {
+      while (index + 1 < rows && getTime(index + 1) == currentTime) {
         index++;
       }
       probeNext = true;
@@ -644,7 +646,7 @@ public abstract class TVList implements WALEntryValue {
       if (!probeNext) {
         prepareNext();
       }
-      return index < rowCount;
+      return index < rows;
     }
 
     public TimeValuePair next() {
@@ -652,7 +654,7 @@ public abstract class TVList implements WALEntryValue {
         return null;
       }
       TimeValuePair ret = getTimeValuePair(index++, currentTime, floatPrecision, encoding);
-      currentTime = index < rowCount ? getTime(index) : Long.MIN_VALUE;
+      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
       probeNext = false;
       return ret;
     }
@@ -666,9 +668,9 @@ public abstract class TVList implements WALEntryValue {
 
     public boolean hasCurrent() {
       if (bitMap == null) {
-        return index < rowCount;
+        return index < rows;
       }
-      return index < rowCount && !isNullValue(getValueIndex(index));
+      return index < rows && !isNullValue(getValueIndex(index));
     }
 
     public long currentTime() {
@@ -685,13 +687,13 @@ public abstract class TVList implements WALEntryValue {
     public void setIndex(int index) {
       this.index = index;
       this.probeNext = false;
-      this.currentTime = index < rowCount ? getTime(index) : Long.MIN_VALUE;
+      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
     }
 
     protected void step() {
       index++;
       probeNext = false;
-      currentTime = index < rowCount ? getTime(index) : Long.MIN_VALUE;
+      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
     }
   }
 }

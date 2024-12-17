@@ -73,7 +73,7 @@ public class MemAlignedChunkReader implements IChunkReader {
   private void initAllPageReaders(
       List<TSDataType> tsDataTypes,
       List<Statistics<? extends Serializable>> timeStatistics,
-      List<List<Statistics<? extends Serializable>>> valuesStatistics,
+      List<Statistics<? extends Serializable>[]> valuesStatistics,
       List<int[]> pageOffsetsList) {
     Supplier<TsBlock> tsBlockSupplier = new MemAlignedChunkReader.TsBlockSupplier();
     for (int i = 0; i < timeStatistics.size(); i++) {

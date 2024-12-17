@@ -26,11 +26,10 @@ import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MergeSortAlignedTVListIterator implements IPointReader {
-  private final List<AlignedTVList.AlignedTVListIterator> alignedTvListIterators;
+  private final AlignedTVList.AlignedTVListIterator[] alignedTvListIterators;
   private boolean probeNext = false;
   private TimeValuePair currentTvPair;
 
@@ -44,16 +43,18 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       boolean ignoreAllNullRows) {
-    this.alignedTvListIterators = new ArrayList<>();
-    for (AlignedTVList alignedTvList : alignedTvLists) {
-      alignedTvListIterators.add(
-          alignedTvList.iterator(
-              columnIndexList,
-              ignoreAllNullRows,
-              floatPrecision,
-              encodingList,
-              timeColumnDeletion,
-              valueColumnsDeletionList));
+    this.alignedTvListIterators = new AlignedTVList.AlignedTVListIterator[alignedTvLists.size()];
+    for (int i = 0; i < alignedTvLists.size(); i++) {
+      alignedTvListIterators[i] =
+          alignedTvLists
+              .get(i)
+              .iterator(
+                  columnIndexList,
+                  ignoreAllNullRows,
+                  floatPrecision,
+                  encodingList,
+                  timeColumnDeletion,
+                  valueColumnsDeletionList);
     }
     this.alignedTvListOffsets = new int[alignedTvLists.size()];
   }
@@ -61,15 +62,15 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
   private void prepareNextRow() {
     currentTvPair = null;
     long time = Long.MAX_VALUE;
-    for (int i = 0; i < alignedTvListIterators.size(); i++) {
-      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+    for (int i = 0; i < alignedTvListIterators.length; i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators[i];
       if (iterator.hasNext() && iterator.currentTime() <= time) {
         TimeValuePair tvPair = iterator.current();
         // check valueColumnsDeletionList
-        TsPrimitiveType[] primitiveValues = tvPair.getValue().getVector();
         if (currentTvPair == null || iterator.currentTime() < time) {
           currentTvPair = tvPair;
         } else {
+          TsPrimitiveType[] primitiveValues = tvPair.getValue().getVector();
           for (int columnIndex = 0; columnIndex < primitiveValues.length; columnIndex++) {
             // update currentTvPair if the column is not null
             if (primitiveValues[columnIndex] != null) {
@@ -97,11 +98,11 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
       return null;
     }
 
-    for (int i = 0; i < alignedTvListIterators.size(); i++) {
-      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+    for (int i = 0; i < alignedTvListIterators.length; i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators[i];
       if (iterator.hasCurrent() && iterator.currentTime() == currentTvPair.getTimestamp()) {
-        alignedTvListIterators.get(i).step();
-        alignedTvListOffsets[i] = alignedTvListIterators.get(i).getIndex();
+        alignedTvListIterators[i].step();
+        alignedTvListOffsets[i] = alignedTvListIterators[i].getIndex();
       }
     }
 
@@ -125,17 +126,15 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
   }
 
   @Override
-  public void close() throws IOException {
-    alignedTvListIterators.clear();
-  }
+  public void close() throws IOException {}
 
   public int[] getAlignedTVListOffsets() {
     return alignedTvListOffsets;
   }
 
   public void setAlignedTVListOffsets(int[] alignedTvListOffsets) {
-    for (int i = 0; i < alignedTvListIterators.size(); i++) {
-      alignedTvListIterators.get(i).setIndex(alignedTvListOffsets[i]);
+    for (int i = 0; i < alignedTvListIterators.length; i++) {
+      alignedTvListIterators[i].setIndex(alignedTvListOffsets[i]);
       this.alignedTvListOffsets[i] = alignedTvListOffsets[i];
     }
     probeNext = false;

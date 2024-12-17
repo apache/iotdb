@@ -75,26 +75,26 @@ public class MemAlignedChunkLoaderTest {
     timeStatitsticsList.add(timeStatistics);
     Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
 
-    List<List<Statistics<? extends Serializable>>> valuesStatitsticsList = new ArrayList<>();
-    List<Statistics<? extends Serializable>> valuesStatistics = new ArrayList<>();
+    List<Statistics<? extends Serializable>[]> valuesStatitsticsList = new ArrayList<>();
+    Statistics<? extends Serializable>[] valuesStatistics = new Statistics[6];
     Statistics<? extends Serializable> statistics1 = Mockito.mock(Statistics.class);
     Mockito.when(statistics1.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics1);
+    valuesStatistics[0] = statistics1;
     Statistics<? extends Serializable> statistics2 = Mockito.mock(Statistics.class);
     Mockito.when(statistics2.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics2);
+    valuesStatistics[1] = statistics2;
     Statistics<? extends Serializable> statistics3 = Mockito.mock(Statistics.class);
     Mockito.when(statistics3.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics3);
+    valuesStatistics[2] = statistics3;
     Statistics<? extends Serializable> statistics4 = Mockito.mock(Statistics.class);
     Mockito.when(statistics4.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics4);
+    valuesStatistics[3] = statistics4;
     Statistics<? extends Serializable> statistics5 = Mockito.mock(Statistics.class);
     Mockito.when(statistics5.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics5);
+    valuesStatistics[4] = statistics5;
     Statistics<? extends Serializable> statistics6 = Mockito.mock(Statistics.class);
     Mockito.when(statistics6.hasNullValue(2)).thenReturn(true);
-    valuesStatistics.add(statistics6);
+    valuesStatistics[5] = statistics6;
     valuesStatitsticsList.add(valuesStatistics);
     Mockito.when(chunk.getValuesStatisticsList()).thenReturn(valuesStatitsticsList);
 

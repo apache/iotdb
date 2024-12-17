@@ -23,24 +23,23 @@ import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Optional;
 
 public class AlignedPageMetadata implements IMetadata {
   private Statistics<? extends Serializable> timeStatistics;
-  private List<Statistics<? extends Serializable>> valueStatistics;
+  private Statistics<? extends Serializable>[] valueStatistics;
 
   public AlignedPageMetadata(
       Statistics<? extends Serializable> timeStatistics,
-      List<Statistics<? extends Serializable>> valuesStatistics) {
+      Statistics<? extends Serializable>[] valuesStatistics) {
     this.timeStatistics = timeStatistics;
     this.valueStatistics = valuesStatistics;
   }
 
   @Override
   public Statistics<? extends Serializable> getStatistics() {
-    return valueStatistics.size() == 1 && valueStatistics.get(0) != null
-        ? valueStatistics.get(0)
+    return valueStatistics.length == 1 && valueStatistics[0] != null
+        ? valueStatistics[0]
         : timeStatistics;
   }
 
@@ -53,22 +52,22 @@ public class AlignedPageMetadata implements IMetadata {
   public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
       int measurementIndex) {
     return Optional.ofNullable(
-        measurementIndex >= valueStatistics.size() ? null : valueStatistics.get(measurementIndex));
+        measurementIndex >= valueStatistics.length ? null : valueStatistics[measurementIndex]);
   }
 
   @Override
   public boolean hasNullValue(int measurementIndex) {
-    if (measurementIndex >= valueStatistics.size()) {
+    if (measurementIndex >= valueStatistics.length) {
       return false;
     }
     long rowCount = getTimeStatistics().getCount();
-    Statistics<? extends Serializable> stats = valueStatistics.get(measurementIndex);
+    Statistics<? extends Serializable> stats = valueStatistics[measurementIndex];
     return stats != null && stats.hasNullValue(rowCount);
   }
 
   public void setStatistics(
       Statistics<? extends Serializable> timeStatistics,
-      List<Statistics<? extends Serializable>> valueStatistics) {
+      Statistics<? extends Serializable>[] valueStatistics) {
     this.timeStatistics = timeStatistics;
     this.valueStatistics = valueStatistics;
   }

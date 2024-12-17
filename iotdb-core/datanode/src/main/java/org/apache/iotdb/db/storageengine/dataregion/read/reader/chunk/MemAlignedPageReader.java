@@ -39,7 +39,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -70,7 +69,7 @@ public class MemAlignedPageReader implements IPageReader {
       int[] pageEndOffSets,
       List<TSDataType> tsDataTypes,
       Statistics<? extends Serializable> timeStatistics,
-      List<Statistics<? extends Serializable>> valueStatistics,
+      Statistics<? extends Serializable>[] valueStatistics,
       Filter recordFilter) {
     this.tsBlockSupplier = tsBlockSupplier;
     this.mergeSortAlignedTVListIterator = mergeSortAlignedTVListIterator;
@@ -245,11 +244,11 @@ public class MemAlignedPageReader implements IPageReader {
   private void initPageStatistics() {
     Statistics<? extends Serializable> pageTimeStatistics =
         Statistics.getStatsByType(TSDataType.VECTOR);
-    List<Statistics<? extends Serializable>> pageValueStatistics = new ArrayList<>();
+    Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[tsDataTypes.size()];
     for (int column = 0; column < tsDataTypes.size(); column++) {
       Statistics<? extends Serializable> valueStatistics =
           Statistics.getStatsByType(tsDataTypes.get(column));
-      pageValueStatistics.add(valueStatistics);
+      pageValueStatistics[column] = valueStatistics;
     }
     updatePageStatisticsFromTsBlock(pageTimeStatistics, pageValueStatistics);
     pageMetadata.setStatistics(pageTimeStatistics, pageValueStatistics);
@@ -257,7 +256,7 @@ public class MemAlignedPageReader implements IPageReader {
 
   private void updatePageStatisticsFromTsBlock(
       Statistics<? extends Serializable> timeStatistics,
-      List<Statistics<? extends Serializable>> valueStatistics) {
+      Statistics<? extends Serializable>[] valueStatistics) {
     if (!tsBlock.isEmpty()) {
       // update time statistics
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -269,48 +268,42 @@ public class MemAlignedPageReader implements IPageReader {
         switch (tsDataTypes.get(column)) {
           case BOOLEAN:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
             }
             break;
           case INT32:
           case DATE:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
             }
             break;
           case INT64:
           case TIMESTAMP:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
             }
             break;
           case FLOAT:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
             }
             break;
           case DOUBLE:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
             }
             break;
           case TEXT:
           case BLOB:
           case STRING:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              valueStatistics
-                  .get(column)
-                  .update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
             }
             break;
           default:

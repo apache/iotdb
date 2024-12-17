@@ -35,13 +35,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
 
@@ -100,10 +97,10 @@ public class AlignedMemPageReaderTest {
 
   private MemAlignedPageReader generateAlignedPageReader() {
     Supplier<TsBlock> tsBlockSupplier = () -> tsBlock1;
-    List<Statistics<? extends Serializable>> valueStatistcsList =
+    Statistics[] valueStatistcsList =
         chunkMetadata1.getValueChunkMetadataList().stream()
             .map(IMetadata::getStatistics)
-            .collect(Collectors.toList());
+            .toArray(Statistics[]::new);
     MemAlignedPageReader alignedPageReader =
         new MemAlignedPageReader(
             tsBlockSupplier,
@@ -120,10 +117,10 @@ public class AlignedMemPageReaderTest {
 
   private MemAlignedPageReader generateSingleColumnAlignedPageReader() {
     Supplier<TsBlock> tsBlockSupplier = () -> tsBlock2;
-    List<Statistics<? extends Serializable>> valueStatistcsList =
+    Statistics[] valueStatistcsList =
         chunkMetadata2.getValueChunkMetadataList().stream()
             .map(IMetadata::getStatistics)
-            .collect(Collectors.toList());
+            .toArray(Statistics[]::new);
     MemAlignedPageReader alignedPageReader =
         new MemAlignedPageReader(
             tsBlockSupplier,
