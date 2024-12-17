@@ -55,6 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class SubqueryTest {
+
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
     PlanTester planTester = new PlanTester();
