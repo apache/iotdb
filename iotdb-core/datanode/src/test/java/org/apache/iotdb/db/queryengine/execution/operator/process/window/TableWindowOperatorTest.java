@@ -164,7 +164,6 @@ public class TableWindowOperatorTest {
         Collections.singletonList(windowFunction),
         Collections.singletonList(frameInfo),
         Collections.singletonList(1),
-        Collections.singletonList(2),
-        Collections.singletonList(SortOrder.ASC_NULLS_FIRST));
+        Collections.singletonList(2));
   }
 }

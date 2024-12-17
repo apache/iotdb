@@ -1,20 +1,23 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,11 +27,14 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableWindowOperator implements ProcessOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
+
   // Common fields
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final List<TSDataType> inputDataTypes;
-  private final TsBlockBuilder resultBuilder;
+  private final TsBlockBuilder tsBlockBuilder;
 
   // Basic information about window operator
   private final List<WindowFunction> windowFunctions;
@@ -51,19 +57,18 @@ public class TableWindowOperator implements ProcessOperator {
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
-      List<WindowFunction> windowFunction,
+      List<WindowFunction> windowFunctions,
       List<FrameInfo> frameInfoList,
       List<Integer> partitionChannels,
-      List<Integer> sortChannels,
-      List<SortOrder> sortOrders) {
+      List<Integer> sortChannels) {
     // Common part(among all other operators)
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.inputDataTypes = ImmutableList.copyOf(inputDataTypes);
-    this.resultBuilder = new TsBlockBuilder(outputDataTypes);
+    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Basic information part
-    this.windowFunctions = windowFunction;
+    this.windowFunctions = windowFunctions;
     this.frameInfoList = frameInfoList;
 
     // Partition Part
@@ -85,7 +90,7 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public OperatorContext getOperatorContext() {
-    return this.operatorContext;
+    return operatorContext;
   }
 
   @Override
@@ -115,11 +120,11 @@ public class TableWindowOperator implements ProcessOperator {
       return transform();
     } else {
       // Return remaining data in result TsBlockBuilder
-      if (!resultBuilder.isEmpty()) {
+      if (!tsBlockBuilder.isEmpty()) {
         TsBlock result =
-            resultBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
-        resultBuilder.reset();
+            tsBlockBuilder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        tsBlockBuilder.reset();
         return result;
       } else {
         return null;
@@ -133,6 +138,7 @@ public class TableWindowOperator implements ProcessOperator {
     int partitionStartInCurrentBlock = 0;
     int partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
 
+    // In this stage, we only consider partition channels
     List<Column> partitionColumns = new ArrayList<>();
     for (int channel : partitionChannels) {
       Column partitionColumn = tsBlock.getColumn(channel);
@@ -150,10 +156,10 @@ public class TableWindowOperator implements ProcessOperator {
 
       if (partitionEndInCurrentBlock != tsBlock.getPositionCount()) {
         // Find partition
-        PartitionExecutor partition;
+        PartitionExecutor partitionExecutor;
         if (partitionStartInCurrentBlock != 0 || startIndexInFirstBlock == -1) {
           // Small partition within this TsBlock
-          partition =
+          partitionExecutor =
               new PartitionExecutor(
                   Collections.singletonList(tsBlock),
                   inputDataTypes,
@@ -165,7 +171,7 @@ public class TableWindowOperator implements ProcessOperator {
         } else {
           // Large partition crosses multiple TsBlocks
           cachedTsBlocks.add(tsBlock);
-          partition =
+          partitionExecutor =
               new PartitionExecutor(
                   cachedTsBlocks,
                   inputDataTypes,
@@ -177,7 +183,7 @@ public class TableWindowOperator implements ProcessOperator {
           // Clear TsBlock of last partition
           cachedTsBlocks.clear();
         }
-        partitionExecutors.addLast(partition);
+        partitionExecutors.addLast(partitionExecutor);
 
         partitionStartInCurrentBlock = partitionEndInCurrentBlock;
         partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
@@ -196,19 +202,19 @@ public class TableWindowOperator implements ProcessOperator {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
 
-      while (!resultBuilder.isFull() && partitionExecutor.hasNext()) {
-        partitionExecutor.processNextRow(resultBuilder);
+      while (!tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
+        partitionExecutor.processNextRow(tsBlockBuilder);
       }
 
       if (!partitionExecutor.hasNext()) {
         cachedPartitionExecutors.removeFirst();
       }
 
-      if (resultBuilder.isFull()) {
+      if (tsBlockBuilder.isFull()) {
         TsBlock result =
-            resultBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
-        resultBuilder.reset();
+            tsBlockBuilder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        tsBlockBuilder.reset();
         return result;
       }
     }
@@ -221,34 +227,43 @@ public class TableWindowOperator implements ProcessOperator {
   public boolean hasNext() throws Exception {
     return !cachedPartitionExecutors.isEmpty()
         || inputOperator.hasNext()
-        || !resultBuilder.isEmpty();
+        || !tsBlockBuilder.isEmpty();
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    inputOperator.close();
+  }
 
   @Override
   public boolean isFinished() throws Exception {
-    return false;
+    return !this.hasNextWithTimer();
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    long maxPeekMemoryFromInput = inputOperator.calculateMaxPeekMemoryWithCounter();
+    // PartitionExecutor only hold reference to TsBlock
+    // So only cached TsBlocks are considered
+    long maxPeekMemoryFromCurrent = (long) cachedTsBlocks.size() * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes() + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent) + inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return inputOperator.calculateRetainedSizeAfterCallingNext() + (long) cachedTsBlocks.size() * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }
