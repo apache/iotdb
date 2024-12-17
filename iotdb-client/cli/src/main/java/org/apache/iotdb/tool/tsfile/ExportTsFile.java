@@ -337,9 +337,11 @@ public class ExportTsFile extends AbstractTsFileTool {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
       long start = System.currentTimeMillis();
-      writeWithTablets(sessionDataSet, path);
-      long end = System.currentTimeMillis();
-      ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      Boolean empty = writeWithTablets(sessionDataSet, path);
+      if (empty) {
+        long end = System.currentTimeMillis();
+        ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      }
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
@@ -460,7 +462,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     "squid:S3776",
     "squid:S6541"
   }) // Suppress high Cognitive Complexity warning, Suppress many task in one method warning
-  public static void writeWithTablets(SessionDataSet sessionDataSet, String filePath)
+  public static Boolean writeWithTablets(SessionDataSet sessionDataSet, String filePath)
       throws IOException,
           IoTDBConnectionException,
           StatementExecutionException,
@@ -471,7 +473,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
-
+    boolean isEmpty = false;
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       // device -> column indices in columnNames
       Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
@@ -487,8 +489,15 @@ public class ExportTsFile extends AbstractTsFileTool {
         writeWithTablets(
             sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
         tsFileWriter.flushAllChunkGroups();
+      } else {
+        isEmpty = true;
       }
     }
+    if ((isEmpty)) {
+      ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
+      return false;
+    }
+    return true;
   }
 
   private static void writeToTsFile(
