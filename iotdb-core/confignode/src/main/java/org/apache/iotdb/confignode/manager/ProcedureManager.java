@@ -357,11 +357,11 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
-    String queryId = req.getQueryId();
-    ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
-    int size = byteBuffer.getInt();
+  public TSStatus alterLogicalView(final TAlterLogicalViewReq req) {
+    final String queryId = req.getQueryId();
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+    final int size = byteBuffer.getInt();
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {
