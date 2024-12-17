@@ -39,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -71,7 +70,7 @@ public class RestApiServiceImpl extends RestApiService {
       throws NotFoundException {
     SqlParser relationSqlParser = new SqlParser();
     Long queryId = null;
-    Statement statement = null;
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement = null;
     long startTime = System.nanoTime();
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
@@ -192,7 +191,7 @@ public class RestApiServiceImpl extends RestApiService {
       throws NotFoundException {
     SqlParser relationSqlParser = new SqlParser();
     Long queryId = null;
-    Statement statement = null;
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement = null;
     long startTime = System.nanoTime();
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
