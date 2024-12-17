@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 <@pp.dropOutputFile />
 <#list mathematicalOperator.binaryOperators as operator>
 <#list mathematicalDataType.types as first>

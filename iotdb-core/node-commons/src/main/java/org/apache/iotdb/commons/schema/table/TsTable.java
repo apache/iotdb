@@ -109,6 +109,21 @@ public class TsTable {
     }
   }
 
+  public List<TsTableColumnSchema> getIdColumnSchemaList() {
+    readWriteLock.readLock().lock();
+    try {
+      final List<TsTableColumnSchema> idColumnSchemaList = new ArrayList<>();
+      for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+        if (TsTableColumnCategory.ID.equals(columnSchema.getColumnCategory())) {
+          idColumnSchemaList.add(columnSchema);
+        }
+      }
+      return idColumnSchemaList;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {

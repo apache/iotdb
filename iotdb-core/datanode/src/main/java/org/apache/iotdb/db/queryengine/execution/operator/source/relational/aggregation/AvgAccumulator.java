@@ -84,6 +84,34 @@ public class AvgAccumulator implements TableAccumulator {
   }
 
   @Override
+  public void removeInput(Column[] arguments) {
+    checkArgument(arguments.length == 1, "argument of Avg should be one column");
+    switch (argumentDataType) {
+      case INT32:
+        removeIntInput(arguments[0]);
+        return;
+      case INT64:
+        removeLongInput(arguments[0]);
+        return;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        return;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
+        return;
+      case TEXT:
+      case BLOB:
+      case STRING:
+      case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
+    }
+  }
+
+  @Override
   public void addIntermediate(Column argument) {
     checkArgument(
         argument instanceof BinaryColumn
@@ -154,6 +182,11 @@ public class AvgAccumulator implements TableAccumulator {
     this.sumValue = 0.0;
   }
 
+  @Override
+  public boolean removable() {
+    return true;
+  }
+
   private byte[] serializeState() {
     byte[] bytes = new byte[16];
     BytesUtils.longToBytes(countValue, bytes, 0);
@@ -201,6 +234,46 @@ public class AvgAccumulator implements TableAccumulator {
         initResult = true;
         countValue++;
         sumValue += column.getDouble(i);
+      }
+    }
+  }
+
+  private void removeIntInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getInt(i);
+      }
+    }
+  }
+
+  private void removeLongInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getLong(i);
+      }
+    }
+  }
+
+  private void removeFloatInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue += column.getFloat(i);
+      }
+    }
+  }
+
+  private void removeDoubleInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getDouble(i);
       }
     }
   }

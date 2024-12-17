@@ -394,8 +394,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -637,6 +637,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsFileSize
 }
 
 struct TShowRegionResp {

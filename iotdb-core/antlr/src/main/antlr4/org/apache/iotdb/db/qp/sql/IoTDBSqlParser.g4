@@ -669,7 +669,7 @@ showSubscriptions
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier USING URI modelUri=STRING_LITERAL
+    : CREATE MODEL modelName=identifier uriClause
     ;
 
 windowFunction

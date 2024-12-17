@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -86,6 +92,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -254,6 +262,7 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
+    builder = distinct(builder, node, outputs);
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -793,6 +802,23 @@ public class QueryPlanner {
     return subPlan.withNewRoot(
         new SortNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
+  }
+
+  private PlanBuilder distinct(
+      PlanBuilder subPlan, QuerySpecification node, List<Expression> expressions) {
+    if (node.getSelect().isDistinct()) {
+      List<Symbol> symbols =
+          expressions.stream().map(subPlan::translate).collect(Collectors.toList());
+
+      return subPlan.withNewRoot(
+          singleAggregation(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              ImmutableMap.of(),
+              singleGroupingSet(symbols)));
+    }
+
+    return subPlan;
   }
 
   private Optional<OrderingScheme> orderingScheme(

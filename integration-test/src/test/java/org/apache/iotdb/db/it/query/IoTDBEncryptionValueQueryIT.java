@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,6 +46,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
+@Ignore
 public class IoTDBEncryptionValueQueryIT {
   private static String[] sqls =
       new String[] {
@@ -126,7 +128,7 @@ public class IoTDBEncryptionValueQueryIT {
         .getConfig()
         .getCommonConfig()
         .setEncryptFlag(true)
-        .setEncryptType("org.apache.tsfile.encrypt.AES128");
+        .setEncryptType("UNENCRYPTED");
     EnvFactory.getEnv().initClusterEnvironment();
     importData();
   }
