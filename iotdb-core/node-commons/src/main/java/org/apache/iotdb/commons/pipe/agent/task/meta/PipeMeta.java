@@ -73,7 +73,7 @@ public class PipeMeta {
     if (Objects.isNull(sqlDialect)) {
       return true;
     }
-    return isDoubleLiving()
+    return matchBoth()
         || sqlDialect.equalsIgnoreCase(
             getStaticMeta()
                 .getExtractorParameters()
@@ -81,22 +81,31 @@ public class PipeMeta {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
-  private boolean isDoubleLiving() {
-    // TODO: consider 'mode.double-living'
-    return getStaticMeta()
+  private boolean matchBoth() {
+    return // 1. 'mode.double-living' is set to true
+    getStaticMeta()
             .getExtractorParameters()
             .getBooleanOrDefault(
                 Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-                false)
-        && getStaticMeta()
-            .getExtractorParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-                false);
+                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+        ||
+        // 2. 'capture.tree' and 'capture.table' is set to true
+        (getStaticMeta()
+                .getExtractorParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                    false)
+            && getStaticMeta()
+                .getExtractorParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                    false));
   }
 
   public ByteBuffer serialize() throws IOException {
