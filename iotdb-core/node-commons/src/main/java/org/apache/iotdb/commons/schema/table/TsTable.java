@@ -228,6 +228,15 @@ public class TsTable {
         : Long.MAX_VALUE;
   }
 
+  public Map<String, String> getProps() {
+    readWriteLock.readLock().lock();
+    try {
+      return props;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public Optional<String> getPropValue(final String propKey) {
     readWriteLock.readLock().lock();
     try {

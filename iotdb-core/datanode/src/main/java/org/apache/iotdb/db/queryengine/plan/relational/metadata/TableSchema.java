@@ -31,14 +31,15 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TableSchema {
 
   private final String tableName;
-
-  private final List<ColumnSchema> columns;
+  protected final List<ColumnSchema> columns;
+  protected Map<String, String> props;
 
   public TableSchema(final String tableName, final List<ColumnSchema> columns) {
     this.tableName = tableName;
@@ -51,6 +52,14 @@ public class TableSchema {
 
   public List<ColumnSchema> getColumns() {
     return columns;
+  }
+
+  public void setProps(final Map<String, String> props) {
+    this.props = props;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
   }
 
   /** Get the column with the specified name and category, return null if not found. */
@@ -80,11 +89,14 @@ public class TableSchema {
   }
 
   public static TableSchema of(final TsTable tsTable) {
-    return new TableSchema(
-        tsTable.getTableName(),
-        tsTable.getColumnList().stream()
-            .map(ColumnSchema::ofTsColumnSchema)
-            .collect(Collectors.toList()));
+    final TableSchema schema =
+        new TableSchema(
+            tsTable.getTableName(),
+            tsTable.getColumnList().stream()
+                .map(ColumnSchema::ofTsColumnSchema)
+                .collect(Collectors.toList()));
+    schema.setProps(tsTable.getProps());
+    return schema;
   }
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchema() {

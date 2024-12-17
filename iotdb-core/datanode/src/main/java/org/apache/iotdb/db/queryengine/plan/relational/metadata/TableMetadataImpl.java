@@ -94,9 +94,10 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    String databaseName = name.getDatabaseName();
-    String tableName = name.getObjectName();
+  public Optional<TableSchema> getTableSchema(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final String databaseName = name.getDatabaseName();
+    final String tableName = name.getObjectName();
 
     // TODO Recover this line after put InformationSchema Table into cache
     TsTable table =
@@ -106,7 +107,7 @@ public class TableMetadataImpl implements Metadata {
     if (table == null) {
       return Optional.empty();
     }
-    List<ColumnSchema> columnSchemaList =
+    final List<ColumnSchema> columnSchemaList =
         table.getColumnList().stream()
             .map(
                 o ->

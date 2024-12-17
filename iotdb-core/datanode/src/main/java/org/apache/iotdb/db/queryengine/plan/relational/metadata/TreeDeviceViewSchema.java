@@ -17,15 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.table;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-public class TreeViewSchema {
-  public static final String TREE_VIEW_DATABASE = "tree_view_db";
-  public static final String DEVICE_VIEW_SUFFIX = "device_view";
-  public static final String ORIGINAL_COLUMN = "__original_column";
-  public static final String TREE_DATABASE = "__tree_database";
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 
-  private TreeViewSchema() {
-    // Private constructor
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+public class TreeDeviceViewSchema extends TableSchema {
+  public TreeDeviceViewSchema(final String tableName, final List<ColumnSchema> columns) {
+    super(tableName, columns);
+  }
+
+  public String getTreeDBName() {
+    return props.get(TreeViewSchema.TREE_DATABASE);
+  }
+
+  public Map<String, String> getMeasurementColumnNameMap() {
+    return columns.stream()
+        .collect(
+            Collectors.toMap(
+                ColumnSchema::getName,
+                columnSchema -> columnSchema.getProps().get(TreeViewSchema.ORIGINAL_COLUMN)));
   }
 }
