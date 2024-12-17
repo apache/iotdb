@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import com.google.common.primitives.Ints;
@@ -30,6 +31,13 @@ public class WindowAggregator {
     return outputType;
   }
 
+  public void addInput(Partition partition) {
+    List<Column[]> allColumns = partition.getAllColumns();
+    for (Column[] columns : allColumns) {
+      addInput(columns);
+    }
+  }
+
   public void addInput(Column[] columns) {
     Column[] arguments = new Column[inputChannels.length];
     for (int i = 0; i < inputChannels.length; i++) {
@@ -45,7 +53,14 @@ public class WindowAggregator {
     accumulator.addInput(arguments);
   }
 
-  public void removeInput(Column[] columns) {
+  public void removeInput(Partition partition) {
+    List<Column[]> allColumns = partition.getAllColumns();
+    for (Column[] columns : allColumns) {
+      removeInput(columns);
+    }
+  }
+
+  private void removeInput(Column[] columns) {
     Column[] arguments = new Column[inputChannels.length];
     for (int i = 0; i < inputChannels.length; i++) {
       arguments[i] = columns[inputChannels[i]];

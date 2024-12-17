@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -23,7 +24,7 @@ public class RankFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,

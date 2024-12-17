@@ -1,179 +1,134 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.Frame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.GroupsFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RangeFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.RowsFrame;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
-
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
+public class Partition {
+  private final List<TsBlock> tsBlocks;
+  private int cachedPositionCount = -1;
 
-public final class Partition {
-  private final TsBlock tsBlock;
-  private final int partitionStart;
-  private final int partitionEnd;
-  private final Column[] partition;
-
-  private final List<WindowFunction> windowFunctions;
-
-  private final List<Column> sortedColumns;
-  private final RowComparator peerGroupComparator;
-  private int peerGroupStart;
-  private int peerGroupEnd;
-
-  private int currentGroupIndex = -1;
-  private int currentPosition;
-
-  private final List<Frame> frames;
-
-  private final boolean needPeerGroup;
-
-  public Partition(
-      TsBlock tsBlock,
-      List<TSDataType> dataTypes,
-      int partitionStart,
-      int partitionEnd,
-      List<WindowFunction> windowFunctions,
-      List<FrameInfo> frameInfoList,
-      List<Integer> sortChannels) {
-    this.tsBlock = tsBlock;
-    this.partitionStart = partitionStart;
-    this.partitionEnd = partitionEnd;
-    this.partition =
-        tsBlock.getRegion(partitionStart, partitionEnd - partitionStart).getAllColumns();
-    this.windowFunctions = ImmutableList.copyOf(windowFunctions);
-    this.frames = new ArrayList<>();
-
-    // Prepare for peer group comparing
-    List<TSDataType> sortDataTypes = new ArrayList<>();
-    for (int channel : sortChannels) {
-      TSDataType dataType = dataTypes.get(channel);
-      sortDataTypes.add(dataType);
-    }
-    peerGroupComparator = new RowComparator(sortDataTypes);
-    sortedColumns = new ArrayList<>();
-    for (Integer channel : sortChannels) {
-      Column partitionColumn = tsBlock.getColumn(channel);
-      sortedColumns.add(partitionColumn);
+  public Partition(List<TsBlock> tsBlocks, int startIndexInFirstBlock, int endIndexInLastBlock) {
+    if (tsBlocks.size() == 1) {
+      int length = endIndexInLastBlock - startIndexInFirstBlock;
+      this.tsBlocks = Collections.singletonList(tsBlocks.get(0).getRegion(startIndexInFirstBlock, length));
+      return;
     }
 
-    // Reset functions for new partition
-    for (WindowFunction windowFunction : windowFunctions) {
-      windowFunction.reset();
+    this.tsBlocks = new ArrayList<>();
+    // First TsBlock
+    TsBlock firstBlock = tsBlocks.get(0).subTsBlock(startIndexInFirstBlock);
+    this.tsBlocks.add(firstBlock);
+    // Middle TsBlock
+    for (int i = 1; i < tsBlocks.size() - 1; i++) {
+      this.tsBlocks.add(tsBlocks.get(i));
     }
+    // Last TsBlock
+    TsBlock lastBlock = tsBlocks.get(tsBlocks.size() - 1).getRegion(0, endIndexInLastBlock);
+    this.tsBlocks.add(lastBlock);
+  }
 
-    currentPosition = partitionStart;
-    updatePeerGroup();
-
-    for (FrameInfo frameInfo : frameInfoList) {
-      Frame frame;
-      switch (frameInfo.getFrameType()) {
-        case RANGE:
-          if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-            frame =
-                new RangeFrame(
-                    frameInfo,
-                    partitionStart,
-                    partitionEnd,
-                    sortedColumns,
-                    peerGroupComparator,
-                    partitionEnd - partitionStart - 1);
-          } else {
-            frame =
-                new RangeFrame(
-                    frameInfo,
-                    partitionStart,
-                    partitionEnd,
-                    sortedColumns,
-                    peerGroupComparator,
-                    peerGroupEnd - partitionStart - 1);
-          }
-          break;
-        case ROWS:
-          frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
-          break;
-        case GROUPS:
-          frame =
-              new GroupsFrame(
-                  frameInfo,
-                  partitionStart,
-                  partitionEnd,
-                  sortedColumns,
-                  peerGroupComparator,
-                  peerGroupEnd - partitionStart - 1);
-          break;
-        default:
-          // Unreachable
-          throw new UnsupportedOperationException("Unreachable!");
+  public int getPositionCount() {
+    if (cachedPositionCount == -1) {
+      // Lazy initialized
+      cachedPositionCount = 0;
+      for (TsBlock block : tsBlocks) {
+        cachedPositionCount += block.getPositionCount();
       }
-      frames.add(frame);
     }
 
-    needPeerGroup = windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup);
+    return cachedPositionCount;
   }
 
-  public boolean hasNext() {
-    return currentPosition < partitionEnd;
+  public int getValueColumnCount() {
+    return tsBlocks.get(0).getValueColumnCount();
   }
 
-  public void processNextRow(TsBlockBuilder builder) {
-    // Copy origin data
-    int count = tsBlock.getValueColumnCount();
-    for (int i = 0; i < count; i++) {
-      Column column = tsBlock.getColumn(i);
-      ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, currentPosition);
-    }
-
-    if (needPeerGroup && currentPosition == peerGroupEnd) {
-      updatePeerGroup();
-    }
-
-    for (int i = 0; i < windowFunctions.size(); i++) {
-      Frame frame = frames.get(i);
-      WindowFunction windowFunction = windowFunctions.get(i);
-
-      Range frameRange =
-          windowFunction.needFrame()
-              ? frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd)
-              : new Range(-1, -1);
-      windowFunction.transform(
-          partition,
-          builder.getColumnBuilder(count),
-          currentPosition - partitionStart,
-          frameRange.getStart(),
-          frameRange.getEnd(),
-          peerGroupStart - partitionStart,
-          peerGroupEnd - partitionStart - 1);
-
-      count++;
-    }
-
-    currentPosition++;
-    builder.declarePosition();
+  public TsBlock getTsBlock(int tsBlockIndex) {
+    return tsBlocks.get(tsBlockIndex);
   }
 
-  private void updatePeerGroup() {
-    currentGroupIndex++;
-    peerGroupStart = currentPosition;
-    // Find end of peer group
-    peerGroupEnd = peerGroupStart + 1;
-    while (peerGroupEnd < partitionEnd
-        && peerGroupComparator.equal(sortedColumns, peerGroupStart, peerGroupEnd)) {
-      peerGroupEnd++;
+  public List<Column[]> getAllColumns() {
+    List<Column[]> allColumns = new ArrayList<>();
+    for (TsBlock block : tsBlocks) {
+      allColumns.add(block.getAllColumns());
+    }
+
+    return allColumns;
+  }
+
+  public boolean isNull(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).isNull(offsetInTsBlock);
+  }
+
+  public void writeTo(ColumnBuilder builder, int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    Column column = tsBlocks.get(tsBlockIndex).getColumn(channel);
+    builder.write(column, offsetInTsBlock);
+  }
+
+  public static class PartitionIndex {
+    private final int tsBlockIndex;
+    private final int offsetInTsBlock;
+
+    PartitionIndex(int tsBlockIndex, int offsetInTsBlock) {
+      this.tsBlockIndex = tsBlockIndex;
+      this.offsetInTsBlock = offsetInTsBlock;
+    }
+
+    public int getTsBlockIndex() {
+      return tsBlockIndex;
+    }
+
+    public int getOffsetInTsBlock() {
+      return offsetInTsBlock;
+    }
+  }
+
+  // start and end are indexes within partition
+  // Both of them are inclusive, i.e. [start, end]
+  public Partition getRegion(int start, int end) {
+    PartitionIndex startPartitionIndex = getPartitionIndex(start);
+    PartitionIndex endPartitionIndex = getPartitionIndex(end);
+
+    List<TsBlock> tsBlockList = new ArrayList<>();
+    int startTsBlockIndex = startPartitionIndex.getTsBlockIndex();
+    int endTsBlockIndex = endPartitionIndex.getTsBlockIndex();
+    for (int i = startTsBlockIndex; i < endTsBlockIndex; i++) {
+      tsBlockList.add(tsBlocks.get(i));
+    }
+
+    int startIndexInFirstBlock = startPartitionIndex.getOffsetInTsBlock();
+    int endIndexInLastBlock = endPartitionIndex.getOffsetInTsBlock();
+    return new Partition(tsBlockList, startIndexInFirstBlock, endIndexInLastBlock);
+  }
+
+  // rowIndex is index within partition
+  public PartitionIndex getPartitionIndex(int rowIndex) {
+    int tsBlockIndex = 0;
+    while (tsBlockIndex < tsBlocks.size() && rowIndex >= tsBlocks.get(tsBlockIndex).getPositionCount()) {
+      rowIndex -= tsBlocks.get(tsBlockIndex).getPositionCount();
+      // Enter next TsBlock
+      tsBlockIndex++;
+    }
+
+    if (tsBlockIndex != tsBlocks.size()) {
+      return new PartitionIndex(tsBlockIndex, rowIndex);
+    } else {
+      // Unlikely
+      throw new IndexOutOfBoundsException("Index out of Partition's bounds!");
     }
   }
 }

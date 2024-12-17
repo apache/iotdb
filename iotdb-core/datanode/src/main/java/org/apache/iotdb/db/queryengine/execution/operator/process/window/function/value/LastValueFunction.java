@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -19,7 +20,7 @@ public class LastValueFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,
@@ -35,17 +36,17 @@ public class LastValueFunction implements WindowFunction {
     if (ignoreNull) {
       // Handle nulls
       int pos = index;
-      while (pos >= frameStart && partition[channel].isNull(pos)) {
+      while (pos >= frameStart && partition.isNull(channel, pos)) {
         pos--;
       }
 
       if (pos < frameStart) {
         builder.appendNull();
       } else {
-        builder.write(partition[channel], pos);
+        partition.writeTo(builder, channel, pos);
       }
     } else {
-      builder.write(partition[channel], frameEnd);
+      partition.writeTo(builder, channel, frameEnd);
     }
   }
 

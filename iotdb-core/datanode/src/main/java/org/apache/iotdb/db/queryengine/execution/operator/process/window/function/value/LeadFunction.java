@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -23,21 +24,21 @@ public class LeadFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    int length = partition[0].getPositionCount();
+    int length = partition.getPositionCount();
 
     int pos;
     if (ignoreNull) {
       int nonNullCount = 0;
       pos = index + 1;
       while (pos < length) {
-        if (partition[channel].isNull(pos)) {
+        if (partition.isNull(channel, pos)) {
           nonNullCount++;
           if (nonNullCount == offset) {
             break;
@@ -51,7 +52,7 @@ public class LeadFunction implements WindowFunction {
     }
 
     if (pos < length) {
-      builder.write(partition[channel], pos);
+      partition.writeTo(builder, channel, pos);
     } else if (defaultVal != null) {
       // TODO: Replace write object
       builder.writeObject(defaultVal);

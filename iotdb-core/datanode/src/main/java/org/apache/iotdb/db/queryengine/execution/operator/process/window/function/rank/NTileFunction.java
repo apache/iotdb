@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -17,14 +18,14 @@ public class NTileFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    builder.writeLong(bucket(n, index, partition[0].getPositionCount()) + 1);
+    builder.writeLong(bucket(n, index, partition.getPositionCount()) + 1);
   }
 
   private long bucket(long buckets, int index, int count) {

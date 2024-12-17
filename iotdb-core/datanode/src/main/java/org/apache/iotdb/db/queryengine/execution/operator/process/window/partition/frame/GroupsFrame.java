@@ -1,6 +1,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
@@ -13,7 +15,7 @@ public class GroupsFrame implements Frame {
   private final int partitionStart;
   private final int partitionEnd;
 
-  private final List<Column> columns;
+  private final List<ColumnList> columns;
   private final RowComparator peerGroupComparator;
 
   private Range recentRange;
@@ -25,13 +27,13 @@ public class GroupsFrame implements Frame {
       FrameInfo frameInfo,
       int partitionStart,
       int partitionEnd,
-      List<Column> columns,
+      List<ColumnList> columns,
       RowComparator peerGroupComparator,
       int initialEnd) {
     this.frameInfo = frameInfo;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
-    this.columns = columns;
+    this.columns = ImmutableList.copyOf(columns);
     this.peerGroupComparator = peerGroupComparator;
 
     this.recentRange = new Range(0, initialEnd);
@@ -177,7 +179,7 @@ public class GroupsFrame implements Frame {
 
   private int scanPeerGroup(int currentPosition) {
     while (currentPosition < partitionEnd - 1
-        && peerGroupComparator.equal(columns, currentPosition, currentPosition + 1)) {
+        && peerGroupComparator.equalColumnLists(columns, currentPosition, currentPosition + 1)) {
       currentPosition++;
     }
     return currentPosition;

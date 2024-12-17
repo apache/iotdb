@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -21,7 +22,7 @@ public class CumeDistFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,
@@ -34,7 +35,7 @@ public class CumeDistFunction implements WindowFunction {
       count += (peerGroupEnd - peerGroupStart + 1);
     }
 
-    builder.writeDouble(((double) count) / partition[0].getPositionCount());
+    builder.writeDouble(((double) count) / partition.getPositionCount());
   }
 
   @Override

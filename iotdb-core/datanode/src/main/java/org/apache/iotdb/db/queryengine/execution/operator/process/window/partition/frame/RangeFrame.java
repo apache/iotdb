@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
@@ -17,7 +18,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.window.
 
 public class RangeFrame implements Frame {
   private final FrameInfo frameInfo;
-  private final Column column;
+  private final ColumnList column;
   private final TSDataType dataType;
 
   private final int partitionStart;
@@ -29,7 +30,7 @@ public class RangeFrame implements Frame {
       FrameInfo frameInfo,
       int partitionStart,
       int partitionEnd,
-      List<Column> columns,
+      List<ColumnList> columns,
       RowComparator comparator,
       int initialEnd) {
     this.frameInfo = frameInfo;
@@ -178,6 +179,11 @@ public class RangeFrame implements Frame {
     // Optimize with cached range
     int recentEnd = recentRange.getEnd() + partitionStart;
 
+    if (!frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd)) {
+      // Then the frame starts with current row
+      return recentEnd - partitionStart;
+    }
+
     if (frameInfo.getSortOrder().isAscending()) {
       return getAscFollowingOffset(currentPosition, recentEnd, isStart) - partitionStart;
     } else {
@@ -293,7 +299,7 @@ public class RangeFrame implements Frame {
     // Find first row which satisfy:
     // follow <= current + offset
     double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentEnd < partitionEnd) {
+    while (recentEnd < partitionEnd && !column.isNull(recentEnd)) {
       switch (column.getDataType()) {
         case INT32:
           {
@@ -350,7 +356,7 @@ public class RangeFrame implements Frame {
     // Find first row which satisfy:
     // follow >= current - offset
     double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentEnd < partitionEnd) {
+    while (recentEnd < partitionEnd && !column.isNull(recentEnd)) {
       switch (column.getDataType()) {
         case INT32:
           {

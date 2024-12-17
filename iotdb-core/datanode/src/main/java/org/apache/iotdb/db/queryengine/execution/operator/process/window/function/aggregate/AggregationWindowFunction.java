@@ -2,7 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 
-import org.apache.tsfile.block.column.Column;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class AggregationWindowFunction implements WindowFunction {
@@ -24,7 +24,7 @@ public class AggregationWindowFunction implements WindowFunction {
 
   @Override
   public void transform(
-      Column[] partition,
+      Partition partition,
       ColumnBuilder builder,
       int index,
       int frameStart,
@@ -36,8 +36,8 @@ public class AggregationWindowFunction implements WindowFunction {
       reset();
     } else if (frameStart == currentStart && frameEnd >= currentEnd) {
       // Frame expansion
-      Column[] columns = getColumnsRegion(partition, currentEnd + 1, frameEnd);
-      aggregator.addInput(columns);
+      Partition region = partition.getRegion(currentEnd + 1, frameEnd);
+      aggregator.addInput(region);
     } else {
       buildNewFrame(partition, frameStart, frameEnd);
     }
@@ -45,7 +45,7 @@ public class AggregationWindowFunction implements WindowFunction {
     aggregator.evaluate(builder);
   }
 
-  private void buildNewFrame(Column[] partition, int frameStart, int frameEnd) {
+  private void buildNewFrame(Partition partition, int frameStart, int frameEnd) {
     if (aggregator.removable()) {
       int prefix = Math.abs(currentStart - frameStart);
       int suffix = Math.abs(currentEnd - frameEnd);
@@ -54,19 +54,19 @@ public class AggregationWindowFunction implements WindowFunction {
       // Compare remove && add cost with re-computation
       if (frameLength > prefix + suffix) {
         if (currentStart < frameStart) {
-          Column[] columns = getColumnsRegion(partition, currentStart, frameStart - 1);
-          aggregator.removeInput(columns);
+          Partition region = partition.getRegion(currentStart, frameStart - 1);
+          aggregator.removeInput(region);
         } else if (currentStart > frameStart) {
-          Column[] columns = getColumnsRegion(partition, frameStart, currentStart - 1);
-          aggregator.addInput(columns);
+          Partition region = partition.getRegion(frameStart, currentStart - 1);
+          aggregator.addInput(region);
         } // Do nothing when currentStart == frameStart
 
         if (frameEnd < currentEnd) {
-          Column[] columns = getColumnsRegion(partition, frameEnd + 1, currentEnd);
-          aggregator.removeInput(columns);
+          Partition region = partition.getRegion(frameEnd + 1, currentEnd);
+          aggregator.removeInput(region);
         } else if (frameEnd > currentEnd) {
-          Column[] columns = getColumnsRegion(partition, currentEnd + 1, frameEnd);
-          aggregator.addInput(columns);
+          Partition region = partition.getRegion(currentEnd + 1, frameEnd);
+          aggregator.addInput(region);
         } // Do nothing when frameEnd == currentEnd
 
         currentStart = frameStart;
@@ -77,22 +77,11 @@ public class AggregationWindowFunction implements WindowFunction {
 
     // Re-compute
     aggregator.reset();
-    Column[] columns = getColumnsRegion(partition, frameStart, frameEnd);
-    aggregator.addInput(columns);
+    Partition region = partition.getRegion(frameStart, frameEnd);
+    aggregator.addInput(region);
 
     currentStart = frameStart;
     currentEnd = frameEnd;
-  }
-
-  // [start, end], i.e., inclusive
-  private Column[] getColumnsRegion(Column[] columns, int start, int end) {
-    int length = end - start + 1;
-    Column[] ret = new Column[columns.length];
-    for (int i = 0; i < columns.length; i++) {
-      ret[i] = columns[i].getRegion(start, length);
-    }
-
-    return ret;
   }
 
   @Override
