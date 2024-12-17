@@ -133,10 +133,9 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
     final String pipeName = req.getPipeName();
-    final boolean isTableModel = req.isIsTableModel();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -168,8 +167,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(TStartPipeReq req) {
     final String pipeName = req.getPipeName();
-    final boolean isTableModel = req.isIsTableModel();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
@@ -206,8 +204,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(TStopPipeReq req) {
     final String pipeName = req.getPipeName();
-    final boolean isTableModel = req.isIsTableModel();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
@@ -219,10 +216,9 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(TDropPipeReq req) {
     final String pipeName = req.getPipeName();
-    final boolean isTableModel = req.isIsTableModel();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -244,9 +240,8 @@ public class PipeTaskCoordinator {
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
-      final boolean isTableModel = req.isIsTableModel();
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, isTableModel)
+          .filter(req.whereClause, req.pipeName, req.isTableModel)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
