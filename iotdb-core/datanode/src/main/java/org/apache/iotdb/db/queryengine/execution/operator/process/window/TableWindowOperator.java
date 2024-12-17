@@ -116,8 +116,9 @@ public class TableWindowOperator implements ProcessOperator {
     } else {
       // Return remaining data in result TsBlockBuilder
       if (!resultBuilder.isEmpty()) {
-        TsBlock result = resultBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+        TsBlock result =
+            resultBuilder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
         resultBuilder.reset();
         return result;
       } else {
@@ -142,7 +143,8 @@ public class TableWindowOperator implements ProcessOperator {
     while (partitionEndInCurrentBlock < tsBlock.getPositionCount()) {
       // Try to find one partition
       while (partitionEndInCurrentBlock < tsBlock.getPositionCount()
-          && partitionComparator.equalColumns(partitionColumns, partitionStartInCurrentBlock, partitionEndInCurrentBlock)) {
+          && partitionComparator.equalColumns(
+              partitionColumns, partitionStartInCurrentBlock, partitionEndInCurrentBlock)) {
         partitionEndInCurrentBlock++;
       }
 
@@ -163,14 +165,15 @@ public class TableWindowOperator implements ProcessOperator {
         } else {
           // Large partition crosses multiple TsBlocks
           cachedTsBlocks.add(tsBlock);
-          partition = new PartitionExecutor(
-              cachedTsBlocks,
-              inputDataTypes,
-              startIndexInFirstBlock,
-              partitionEndInCurrentBlock,
-              windowFunctions,
-              frameInfoList,
-              sortChannels);
+          partition =
+              new PartitionExecutor(
+                  cachedTsBlocks,
+                  inputDataTypes,
+                  startIndexInFirstBlock,
+                  partitionEndInCurrentBlock,
+                  windowFunctions,
+                  frameInfoList,
+                  sortChannels);
           // Clear TsBlock of last partition
           cachedTsBlocks.clear();
         }
@@ -202,8 +205,9 @@ public class TableWindowOperator implements ProcessOperator {
       }
 
       if (resultBuilder.isFull()) {
-        TsBlock result = resultBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+        TsBlock result =
+            resultBuilder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
         resultBuilder.reset();
         return result;
       }
@@ -215,7 +219,9 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !cachedPartitionExecutors.isEmpty() || inputOperator.hasNext() || !resultBuilder.isEmpty();
+    return !cachedPartitionExecutors.isEmpty()
+        || inputOperator.hasNext()
+        || !resultBuilder.isEmpty();
   }
 
   @Override

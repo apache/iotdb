@@ -15,7 +15,8 @@ public class Partition {
   public Partition(List<TsBlock> tsBlocks, int startIndexInFirstBlock, int endIndexInLastBlock) {
     if (tsBlocks.size() == 1) {
       int length = endIndexInLastBlock - startIndexInFirstBlock;
-      this.tsBlocks = Collections.singletonList(tsBlocks.get(0).getRegion(startIndexInFirstBlock, length));
+      this.tsBlocks =
+          Collections.singletonList(tsBlocks.get(0).getRegion(startIndexInFirstBlock, length));
       return;
     }
 
@@ -118,7 +119,8 @@ public class Partition {
   // rowIndex is index within partition
   public PartitionIndex getPartitionIndex(int rowIndex) {
     int tsBlockIndex = 0;
-    while (tsBlockIndex < tsBlocks.size() && rowIndex >= tsBlocks.get(tsBlockIndex).getPositionCount()) {
+    while (tsBlockIndex < tsBlocks.size()
+        && rowIndex >= tsBlocks.get(tsBlockIndex).getPositionCount()) {
       rowIndex -= tsBlocks.get(tsBlockIndex).getPositionCount();
       // Enter next TsBlock
       tsBlockIndex++;

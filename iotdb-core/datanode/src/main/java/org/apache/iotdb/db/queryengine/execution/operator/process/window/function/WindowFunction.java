@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
-import org.apache.tsfile.block.column.Column;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public interface WindowFunction {

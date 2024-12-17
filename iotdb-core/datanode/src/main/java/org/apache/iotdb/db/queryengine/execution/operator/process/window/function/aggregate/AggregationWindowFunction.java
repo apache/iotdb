@@ -1,8 +1,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class AggregationWindowFunction implements WindowFunction {

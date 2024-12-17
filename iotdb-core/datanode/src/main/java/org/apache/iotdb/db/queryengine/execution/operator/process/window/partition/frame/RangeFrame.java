@@ -5,7 +5,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.C
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;

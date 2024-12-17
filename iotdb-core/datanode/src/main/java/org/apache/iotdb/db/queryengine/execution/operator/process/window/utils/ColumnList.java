@@ -20,11 +20,11 @@ public class ColumnList {
       positionCounts.add(column.getPositionCount());
     }
   }
-  
+
   public TSDataType getDataType() {
     return columns.get(0).getDataType();
   }
-  
+
   public ColumnEncoding getEncoding() {
     return columns.get(0).getEncoding();
   }
@@ -71,7 +71,6 @@ public class ColumnList {
     return columns.get(columnIndex).getBoolean(offsetInColumn);
   }
 
-  
   public int getInt(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -79,7 +78,6 @@ public class ColumnList {
     return columns.get(columnIndex).getInt(offsetInColumn);
   }
 
-  
   public long getLong(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -87,7 +85,6 @@ public class ColumnList {
     return columns.get(columnIndex).getLong(offsetInColumn);
   }
 
-  
   public float getFloat(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -95,7 +92,6 @@ public class ColumnList {
     return columns.get(columnIndex).getFloat(offsetInColumn);
   }
 
-  
   public double getDouble(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -103,7 +99,6 @@ public class ColumnList {
     return columns.get(columnIndex).getDouble(offsetInColumn);
   }
 
-  
   public Binary getBinary(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -111,7 +106,6 @@ public class ColumnList {
     return columns.get(columnIndex).getBinary(offsetInColumn);
   }
 
-  
   public Object getObject(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
@@ -119,7 +113,6 @@ public class ColumnList {
     return columns.get(columnIndex).getObject(offsetInColumn);
   }
 
-  
   public boolean isNull(int position) {
     ColumnListIndex columnListIndex = getColumnIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();

@@ -1,12 +1,11 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
-import org.apache.tsfile.block.column.Column;
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
