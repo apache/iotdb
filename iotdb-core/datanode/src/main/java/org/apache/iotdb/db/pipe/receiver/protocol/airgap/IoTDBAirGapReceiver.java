@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -76,8 +75,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
 
-    final ClientSession session = new ClientSession(socket);
-    SessionManager.getInstance().registerSession(session);
+    SessionManager.getInstance().registerSession(new ClientSession(socket));
 
     try {
       while (!socket.isClosed()) {
@@ -96,9 +94,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           e);
       throw e;
     } finally {
+      // session will be closed and removed here
       PipeDataNodeAgent.receiver().thrift().handleClientExit();
-      SessionManager.getInstance()
-          .closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
       socket.close();
     }
   }
@@ -109,9 +106,20 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     try {
       final byte[] data = readData(inputStream);
 
+      // If check sum failed, it indicates that the length we read may not be correct.
+      // Namely, there may be remaining bytes in the socket stream, which will fail any subsequent
+      // attempts to read from that.
+      // We directly close the socket here.
       if (!checkSum(data)) {
-        LOGGER.warn("Checksum failed, receiverId: {}", receiverId);
-        fail();
+        LOGGER.warn(
+            "Pipe air gap receiver {} closed because of checksum failed. Socket: {}",
+            receiverId,
+            socket);
+        try {
+          fail();
+        } finally {
+          socket.close();
+        }
         return;
       }
 
@@ -134,21 +142,31 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           || status.getCode()
               == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
         LOGGER.info(
-            "TSStatus:{} is encountered at the air gap receiver, will ignore.", resp.getStatus());
+            "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
+            receiverId,
+            resp.getStatus());
         ok();
       } else {
         LOGGER.warn(
-            "Handle data failed, receiverId: {}, status: {}, req: {}",
+            "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
             receiverId,
             resp.getStatus(),
             req);
         fail();
       }
     } catch (final PipeConnectionException e) {
-      LOGGER.info("Socket closed when listening to data. Because: {}", e.getMessage());
+      LOGGER.info(
+          "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
+          receiverId,
+          socket,
+          e.getMessage());
       socket.close();
     } catch (final Exception e) {
-      LOGGER.warn("Exception during handling receiving, receiverId: {}", receiverId, e);
+      LOGGER.warn(
+          "Pipe air gap receiver {}: Exception during handling receiving. Socket: {}",
+          receiverId,
+          socket,
+          e);
       fail();
     }
   }
@@ -169,7 +187,17 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     try {
       final CRC32 crc32 = new CRC32();
       crc32.update(bytes, LONG_LEN, bytes.length - LONG_LEN);
-      return BytesUtils.bytesToLong(BytesUtils.subBytes(bytes, 0, LONG_LEN)) == crc32.getValue();
+
+      final long expectedChecksum = BytesUtils.bytesToLong(BytesUtils.subBytes(bytes, 0, LONG_LEN));
+      final long actualChecksum = crc32.getValue();
+      if (expectedChecksum != actualChecksum) {
+        LOGGER.warn(
+            "Pipe air gap receiver {}: checksum failed, expected: {}, actual: {}",
+            receiverId,
+            expectedChecksum,
+            actualChecksum);
+      }
+      return expectedChecksum == actualChecksum;
     } catch (final Exception e) {
       // ArrayIndexOutOfBoundsException when bytes.length < LONG_LEN
       return false;

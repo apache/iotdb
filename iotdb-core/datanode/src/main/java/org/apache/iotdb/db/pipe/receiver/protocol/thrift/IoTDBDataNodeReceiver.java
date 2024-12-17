@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -484,6 +485,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected TSStatus tryLogin() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (clientSession == null || !clientSession.isLogin()) {
+      return SESSION_MANAGER.login(
+          SESSION_MANAGER.getCurrSession(),
+          username,
+          password,
+          ZoneId.systemDefault().toString(),
+          SessionManager.CURRENT_RPC_VERSION,
+          IoTDBConstant.ClientVersion.V_1_0);
+    }
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() throws DiskSpaceInsufficientException {
     // Get next receiver file base dir by folder manager
     return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
@@ -607,13 +623,25 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
-    return req.getPlanNode() instanceof AlterLogicalViewNode
-        ? new TPipeTransferResp(
-            ClusterConfigTaskExecutor.getInstance()
-                .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
-        : new TPipeTransferResp(
-            executeStatementAndClassifyExceptions(
-                PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
+    if (req.getPlanNode() instanceof AlterLogicalViewNode) {
+      final TSStatus status =
+          ((AlterLogicalViewNode) req.getPlanNode()).checkPermissionBeforeProcess(username);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Failed to check authority for statement {}, username = {}, response = {}.",
+            receiverId.get(),
+            StatementType.ALTER_LOGICAL_VIEW.name(),
+            username,
+            status);
+        return new TPipeTransferResp(status);
+      }
+      return new TPipeTransferResp(
+          ClusterConfigTaskExecutor.getInstance()
+              .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
+    }
+    return new TPipeTransferResp(
+        executeStatementAndClassifyExceptions(
+            PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
@@ -904,5 +932,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     super.handleExit();
+  }
+
+  @Override
+  protected void closeSession() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (session != null) {
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+    }
+    SESSION_MANAGER.removeCurrSession();
   }
 }

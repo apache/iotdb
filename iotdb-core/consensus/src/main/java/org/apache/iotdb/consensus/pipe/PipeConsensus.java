@@ -75,7 +75,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.consensus.iot.IoTConsensus.getConsensusGroupIdsFromDir;
@@ -93,7 +95,9 @@ public class PipeConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final PipeConsensusRPCService rpcService;
   private final RegisterManager registerManager = new RegisterManager();
-  private final ReentrantLock stateMachineMapLock = new ReentrantLock();
+  private final Map<ConsensusGroupId, ReentrantLock> consensusGroupIdReentrantLockMap =
+      new ConcurrentHashMap<>();
+  private final ReentrantReadWriteLock stateMachineMapLock = new ReentrantReadWriteLock();
   private final PipeConsensusConfig config;
   private final ConsensusPipeManager consensusPipeManager;
   private final ConsensusPipeGuardian consensusPipeGuardian;
@@ -209,7 +213,7 @@ public class PipeConsensus implements IConsensus {
                     entry -> entry.getKey().getConsensusGroupId(),
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     try {
-      stateMachineMapLock.lock();
+      stateMachineMapLock.writeLock().lock();
       stateMachineMap.forEach(
           (key, value) ->
               value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
@@ -233,7 +237,7 @@ public class PipeConsensus implements IConsensus {
                 }
               });
     } finally {
-      stateMachineMapLock.unlock();
+      stateMachineMapLock.writeLock().unlock();
     }
   }
 
@@ -282,8 +286,11 @@ public class PipeConsensus implements IConsensus {
       throw new IllegalPeerEndpointException(thisNode, peers);
     }
 
+    Lock lock =
+        consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
     try {
-      stateMachineMapLock.lock();
+      lock.lock();
+      stateMachineMapLock.readLock().lock();
       if (stateMachineMap.containsKey(groupId)) {
         throw new ConsensusGroupAlreadyExistException(groupId);
       }
@@ -312,21 +319,26 @@ public class PipeConsensus implements IConsensus {
       LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
       throw new ConsensusException(e);
     } finally {
-      stateMachineMapLock.unlock();
+      stateMachineMapLock.readLock().unlock();
+      lock.unlock();
     }
   }
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+    Lock lock =
+        consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
     try {
-      stateMachineMapLock.lock();
+      lock.lock();
+      stateMachineMapLock.readLock().lock();
       if (!stateMachineMap.containsKey(groupId)) {
         throw new ConsensusGroupNotExistException(groupId);
       }
 
       final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
       consensus.clear();
+      stateMachineMap.remove(groupId);
 
       FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
       KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
@@ -334,7 +346,9 @@ public class PipeConsensus implements IConsensus {
       LOGGER.warn("Cannot delete local peer for group {}", groupId, e);
       throw new ConsensusException(e);
     } finally {
-      stateMachineMapLock.unlock();
+      stateMachineMapLock.readLock().unlock();
+      lock.unlock();
+      consensusGroupIdReentrantLockMap.remove(groupId);
     }
   }
 

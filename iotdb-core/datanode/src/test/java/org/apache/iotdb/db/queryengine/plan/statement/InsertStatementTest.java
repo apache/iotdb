@@ -95,6 +95,7 @@ public class InsertStatementTest {
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
     when(queryContext.getSession()).thenReturn(sessionInfo);
@@ -184,6 +185,7 @@ public class InsertStatementTest {
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
@@ -213,6 +215,7 @@ public class InsertStatementTest {
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
