@@ -378,21 +378,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
 
-    SeriesScanOptions.Builder scanOptionsBuilder =
-        node.getTimePredicate().isPresent()
-            ? getSeriesScanOptionsBuilder(context, node.getTimePredicate().get())
-            : new SeriesScanOptions.Builder();
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
-    scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
-    scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
-
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      scanOptionsBuilder.withPushDownFilter(
-          convertPredicateToFilter(
-              pushDownPredicate, measurementColumnsIndexMap, columnSchemaMap, timeColumnName));
-    }
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            columnSchemaMap,
+            measurementColumnNames,
+            measurementColumnsIndexMap,
+            timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate());
 
     OperatorContext operatorContext =
         context
@@ -421,7 +418,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             columnsIndexArray,
             node.getDeviceEntries(),
             node.getScanOrder(),
-            scanOptionsBuilder.build(),
+            seriesScanOptions,
             measurementColumnNames,
             allSensors,
             measurementSchemas,
@@ -1753,7 +1750,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     int distinctArgumentCount = node.getAssignments().size();
     int aggregationsCount = node.getAggregations().size();
-    List<Integer> aggColumnIndexes = new ArrayList<>();
+    List<Integer> aggregatorInputChannels = new ArrayList<>();
     int channel = 0;
     int measurementColumnCount = 0;
     Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
@@ -1804,10 +1801,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         }
 
         if (!columnLayout.containsKey(symbol)) {
-          aggColumnIndexes.add(channel);
+          aggregatorInputChannels.add(channel);
           columnLayout.put(symbol, channel++);
         } else {
-          aggColumnIndexes.add(columnLayout.get(symbol));
+          aggregatorInputChannels.add(columnLayout.get(symbol));
         }
       }
     }
@@ -1894,25 +1891,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 TableAggregationTableScanOperator.class.getSimpleName());
-    SeriesScanOptions.Builder scanOptionsBuilder =
-        node.getTimePredicate().isPresent()
-            ? getSeriesScanOptionsBuilder(context, node.getTimePredicate().get())
-            : new SeriesScanOptions.Builder();
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
-    scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
-    scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      scanOptionsBuilder.withPushDownFilter(
-          convertPredicateToFilter(
-              pushDownPredicate, measurementColumnsIndexMap, columnSchemaMap, timeColumnName));
-    }
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            columnSchemaMap,
+            measurementColumnNames,
+            measurementColumnsIndexMap,
+            timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate());
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
-    // for time column
-    allSensors.add("");
-
+    allSensors.add(""); // for time column
     TableAggregationTableScanOperator aggTableScanOperator =
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
@@ -1921,11 +1914,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             columnsIndexArray,
             node.getDeviceEntries(),
             scanAscending ? Ordering.ASC : Ordering.DESC,
-            scanOptionsBuilder.build(),
+            seriesScanOptions,
             measurementColumnNames,
             allSensors,
             measurementSchemas,
-            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
             measurementColumnCount,
             aggregators,
             groupingKeySchemas,
@@ -1934,7 +1926,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             scanAscending,
             calculateMaxAggregationResultSize(),
             canUseStatistic,
-            aggColumnIndexes);
+            aggregatorInputChannels);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
 
@@ -1955,6 +1947,33 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     context.getDriverContext().setInputDriver(true);
 
     return aggTableScanOperator;
+  }
+
+  private SeriesScanOptions buildSeriesScanOptions(
+      LocalExecutionPlanContext context,
+      Map<Symbol, ColumnSchema> columnSchemaMap,
+      List<String> measurementColumnNames,
+      Map<String, Integer> measurementColumnsIndexMap,
+      String timeColumnName,
+      Optional<Expression> timePredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      Expression pushDownPredicate) {
+    SeriesScanOptions.Builder scanOptionsBuilder =
+        timePredicate
+            .map(expression -> getSeriesScanOptionsBuilder(context, expression))
+            .orElseGet(SeriesScanOptions.Builder::new);
+    scanOptionsBuilder.withPushDownLimit(pushDownLimit);
+    scanOptionsBuilder.withPushDownOffset(pushDownOffset);
+    scanOptionsBuilder.withPushLimitToEachDevice(pushLimitToEachDevice);
+    scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
+    if (pushDownPredicate != null) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(
+              pushDownPredicate, measurementColumnsIndexMap, columnSchemaMap, timeColumnName));
+    }
+    return scanOptionsBuilder.build();
   }
 
   @Override

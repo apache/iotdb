@@ -97,11 +97,9 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   private final List<IMeasurementSchema> measurementSchemas;
   private final List<TSDataType> measurementColumnTSDataTypes;
 
-  // TODO calc maxTsBlockLineNum using date_bin
-  private final int maxTsBlockLineNum;
-
-  // for different aggregations aiming to same column, use this variable to point to same column
-  private final List<Integer> aggArguments;
+  // stores all inputChannels of tableAggregators,
+  // e.g. for aggregation `last(s1), count(s2), count(s1)`, the inputChannels should be [0, 1, 0]
+  private final List<Integer> aggregatorInputChannels;
 
   private QueryDataSource queryDataSource;
 
@@ -120,7 +118,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum,
       int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
@@ -129,7 +126,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
       boolean ascending,
       long maxReturnSize,
       boolean canUseStatistics,
-      List<Integer> aggArguments) {
+      List<Integer> aggregatorInputChannels) {
 
     super(
         sourceId,
@@ -165,7 +162,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     this.currentDeviceIndex = 0;
     this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
-    this.aggArguments = aggArguments;
+    this.aggregatorInputChannels = aggregatorInputChannels;
     this.timeIterator = tableTimeRangeIterator;
     if (tableTimeRangeIterator.getType()
         == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR) {
@@ -173,7 +170,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     this.maxReturnSize = maxReturnSize;
-    this.maxTsBlockLineNum = maxTsBlockLineNum;
 
     constructAlignedSeriesScanUtil();
   }
@@ -409,8 +405,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
 
     TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-    Column[] valueColumns = new Column[aggArguments.size()];
-    for (int idx : aggArguments) {
+    Column[] valueColumns = new Column[aggregatorInputChannels.size()];
+    for (int idx : aggregatorInputChannels) {
       if (valueColumns[idx] != null) {
         continue;
       }
@@ -496,10 +492,13 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
         idx++;
 
         TsTableColumnCategory columnSchemaCategory =
-            columnSchemas.get(aggArguments.get(idx)).getColumnCategory();
+            columnSchemas.get(aggregatorInputChannels.get(idx)).getColumnCategory();
         statisticsArray[i] =
             buildStatistics(
-                columnSchemaCategory, timeStatistics, valueStatistics, aggArguments.get(idx));
+                columnSchemaCategory,
+                timeStatistics,
+                valueStatistics,
+                aggregatorInputChannels.get(idx));
       }
 
       aggregator.processStatistics(statisticsArray);
@@ -855,7 +854,6 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     this.queryDataSource = (QueryDataSource) dataSource;
     this.seriesScanUtil.initQueryDataSource(queryDataSource);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
-    this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
   @Override
