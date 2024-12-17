@@ -21,19 +21,19 @@ package org.apache.iotdb.udf.api.relational.table.argument;
 
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
-public class TableArgument {
-  private final List<String> fieldNames;
+public class TableArgument implements Argument {
+  private final List<Optional<String>> fieldNames;
   private final List<Type> fieldTypes;
   private final List<String> partitionBy;
   private final List<String> orderBy;
 
   public TableArgument(
-      List<String> fieldNames,
+      List<Optional<String>> fieldNames,
       List<Type> fieldTypes,
       List<String> partitionBy,
       List<String> orderBy) {
@@ -46,7 +46,7 @@ public class TableArgument {
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
   }
 
-  public List<String> getFieldNames() {
+  public List<Optional<String>> getFieldNames() {
     return fieldNames;
   }
 
@@ -60,38 +60,5 @@ public class TableArgument {
 
   public List<String> getOrderBy() {
     return orderBy;
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder {
-    private List<String> fieldNames = Collections.emptyList();
-    private List<Type> fieldTypes = Collections.emptyList();
-    private List<String> partitionBy = Collections.emptyList();
-    private List<String> orderBy = Collections.emptyList();
-
-    private Builder() {}
-
-    public Builder field(List<String> fieldNames, List<Type> fieldTypes) {
-      this.fieldNames = fieldNames;
-      this.fieldTypes = fieldTypes;
-      return this;
-    }
-
-    public Builder partitionBy(List<String> partitionBy) {
-      this.partitionBy = partitionBy;
-      return this;
-    }
-
-    public Builder orderBy(List<String> orderBy) {
-      this.orderBy = orderBy;
-      return this;
-    }
-
-    public TableArgument build() {
-      return new TableArgument(fieldNames, fieldTypes, partitionBy, orderBy);
-    }
   }
 }

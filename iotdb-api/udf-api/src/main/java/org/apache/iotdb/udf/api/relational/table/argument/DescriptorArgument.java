@@ -25,7 +25,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class DescriptorArgument implements Argument {
-  public static final DescriptorArgument NULL_DESCRIPTOR = builder().build();
+  public static final DescriptorArgument NULL_DESCRIPTOR = new DescriptorArgument(Optional.empty());
+
+  // it is optional because it is possible that the descriptor is not present(null descriptor)
   private final Optional<Descriptor> descriptor;
 
   public DescriptorArgument(Optional<Descriptor> descriptor) {
@@ -51,24 +53,5 @@ public class DescriptorArgument implements Argument {
   @Override
   public int hashCode() {
     return Objects.hash(descriptor);
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static final class Builder {
-    private Descriptor descriptor;
-
-    private Builder() {}
-
-    public Builder descriptor(Descriptor descriptor) {
-      this.descriptor = descriptor;
-      return this;
-    }
-
-    public DescriptorArgument build() {
-      return new DescriptorArgument(Optional.ofNullable(descriptor));
-    }
   }
 }

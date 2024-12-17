@@ -26,22 +26,21 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class ArgumentAnalysis {
-    private final Argument argument;
-    private final Optional<TableArgumentAnalysis> tableArgumentAnalysis;
+  private final Argument argument;
+  private final Optional<TableArgumentAnalysis> tableArgumentAnalysis;
 
-    public ArgumentAnalysis(Argument argument, Optional<TableArgumentAnalysis> tableArgumentAnalysis)
-    {
-        this.argument = requireNonNull(argument, "argument is null");
-        this.tableArgumentAnalysis = requireNonNull(tableArgumentAnalysis, "tableArgumentAnalysis is null");
-    }
+  public ArgumentAnalysis(
+      Argument argument, Optional<TableArgumentAnalysis> tableArgumentAnalysis) {
+    this.argument = requireNonNull(argument, "argument is null");
+    this.tableArgumentAnalysis =
+        requireNonNull(tableArgumentAnalysis, "tableArgumentAnalysis is null");
+  }
 
-    public Argument getArgument()
-    {
-        return argument;
-    }
+  public Argument getArgument() {
+    return argument;
+  }
 
-    public Optional<TableArgumentAnalysis> getTableArgumentAnalysis()
-    {
-        return tableArgumentAnalysis;
-    }
+  public Optional<TableArgumentAnalysis> getTableArgumentAnalysis() {
+    return tableArgumentAnalysis;
+  }
 }
