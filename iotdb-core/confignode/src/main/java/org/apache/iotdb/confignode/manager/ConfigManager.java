@@ -858,8 +858,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartition(
-      final PathPatternTree patternTree, final boolean isTableModel) {
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(final PathPatternTree patternTree) {
     final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Construct empty response
@@ -868,7 +867,7 @@ public class ConfigManager implements IManager {
     }
 
     final List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
-    final List<String> databases = getClusterSchemaManager().getDatabaseNames(isTableModel);
+    final List<String> databases = getClusterSchemaManager().getDatabaseNames(false);
 
     // Build GetOrCreateSchemaPartitionPlan
     final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
