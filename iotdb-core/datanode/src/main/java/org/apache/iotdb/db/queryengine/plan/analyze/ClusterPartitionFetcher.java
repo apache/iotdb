@@ -104,7 +104,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree, false));
+            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -136,7 +136,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree, false));
+            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -380,9 +380,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaPartitionReq constructSchemaPartitionReq(
-      final PathPatternTree patternTree, final boolean isTableModel) {
+      final PathPatternTree patternTree) {
     try {
-      return new TSchemaPartitionReq(patternTree.serialize()).setIsTableModel(isTableModel);
+      return new TSchemaPartitionReq(patternTree.serialize());
     } catch (final IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
