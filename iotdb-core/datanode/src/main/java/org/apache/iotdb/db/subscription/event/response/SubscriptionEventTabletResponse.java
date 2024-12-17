@@ -112,6 +112,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     cleanUp();
 
     // should not reset the iterator of batch when init
+    // TODO: avoid completely rewinding the iterator
     batch.resetIterator();
     init();
   }
