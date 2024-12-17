@@ -206,7 +206,8 @@ public class ActiveLoadTsFileLoader {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IOTDB_CONFIG.getQueryTimeoutThreshold())
+            IOTDB_CONFIG.getQueryTimeoutThreshold(),
+            false)
         .status;
   }
 

@@ -83,6 +83,23 @@ public class TsFileResourceManager {
     }
   }
 
+  public void forceDegradeTsFileResource(TsFileResource resource) {
+    if (TimeIndexLevel.valueOf(resource.getTimeIndexType()) == TimeIndexLevel.FILE_TIME_INDEX) {
+      return;
+    }
+    logger.debug("Force degrade tsfile resource {}", resource.getTsFilePath());
+    synchronized (this) {
+      if (!sealedTsFileResources.remove(resource)) {
+        resource.degradeTimeIndex();
+        return;
+      }
+      long memoryReduce = resource.degradeTimeIndex();
+      degradedTimeIndexNum++;
+      releaseTimeIndexMemCost(memoryReduce);
+      sealedTsFileResources.add(resource);
+    }
+  }
+
   /** once degradation is triggered, the total memory for timeIndex should reduce */
   private void releaseTimeIndexMemCost(long memCost) {
     totalTimeIndexMemCost -= memCost;

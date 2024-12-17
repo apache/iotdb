@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNo
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
@@ -294,6 +295,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CreateFunction:
           plan = new CreateFunctionPlan();
+          break;
+        case UpdateFunction:
+          plan = new UpdateFunctionPlan();
           break;
         case DropTreeModelFunction:
           plan = new DropTreeModelFunctionPlan();

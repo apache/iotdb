@@ -87,6 +87,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
 
@@ -1394,6 +1395,24 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptFlag(
+            Optional.ofNullable(properties.getProperty("encrypt_flag", "false"))
+                .map(String::trim)
+                .orElse("false"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptType(
+            Optional.ofNullable(properties.getProperty("encrypt_type", "UNENCRYPTED"))
+                .map(String::trim)
+                .orElse("UNENCRYPTED"));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromPath(
+            Optional.ofNullable(properties.getProperty("encrypt_key_from_path", ""))
+                .map(String::trim)
+                .orElse(""));
 
     conf.setCoordinatorReadExecutorSize(
         Integer.parseInt(
@@ -1560,6 +1579,11 @@ public class IoTDBDescriptor {
 
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
+
+    // update query_sample_throughput_bytes_per_sec
+    loadQuerySampleThroughput(properties);
+    // update trusted_uri_pattern
+    loadTrustedUriPattern(properties);
   }
 
   private void reloadConsensusProps(TrimProperties properties) throws IOException {
@@ -2504,24 +2528,6 @@ public class IoTDBDescriptor {
                 .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("compressor")));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setEncryptFlag(
-            properties.getProperty(
-                "encrypt_flag",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_flag")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptType(
-            properties.getProperty(
-                "encrypt_type",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_type")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setEncryptKeyFromPath(
-            properties.getProperty(
-                "encrypt_key_path",
-                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_key_path")));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setMaxTsBlockSizeInBytes(
             Integer.parseInt(
                 Optional.ofNullable(
@@ -2880,12 +2886,62 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      // update query_sample_throughput_bytes_per_sec
+      loadQuerySampleThroughput(properties);
+      // update trusted_uri_pattern
+      loadTrustedUriPattern(properties);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
+  }
+
+  private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
+    String querySamplingRateLimitNumber =
+        Optional.ofNullable(
+                properties.getProperty(
+                    "query_sample_throughput_bytes_per_sec",
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "query_sample_throughput_bytes_per_sec")))
+            .map(String::trim)
+            .orElse(
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "query_sample_throughput_bytes_per_sec"));
+    if (querySamplingRateLimitNumber != null) {
+      try {
+        int rateLimit = Integer.parseInt(querySamplingRateLimitNumber);
+        commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+            querySamplingRateLimitNumber);
+      }
+    }
+  }
+
+  private void loadTrustedUriPattern(TrimProperties properties) throws IOException {
+    String trustedUriPattern =
+        Optional.ofNullable(
+                properties.getProperty(
+                    "trusted_uri_pattern",
+                    ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern")))
+            .map(String::trim)
+            .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("trusted_uri_pattern"));
+    Pattern pattern;
+    if (trustedUriPattern != null) {
+      try {
+        pattern = Pattern.compile(trustedUriPattern);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+        pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+      }
+    } else {
+      pattern = commonDescriptor.getConfig().getTrustedUriPattern();
+    }
+    commonDescriptor.getConfig().setTrustedUriPattern(pattern);
   }
 
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
@@ -2899,7 +2955,7 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      ConfigurationFileUtils.getConfigurationDefaultValue();
+      ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);
@@ -3201,6 +3257,14 @@ public class IoTDBDescriptor {
                         String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex())))
                 .map(String::trim)
                 .orElse(String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
+    conf.setLoadChunkMetadataMemorySizeInBytes(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_chunk_metadata_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             Optional.ofNullable(

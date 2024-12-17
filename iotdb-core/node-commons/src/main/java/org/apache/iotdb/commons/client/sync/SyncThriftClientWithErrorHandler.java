@@ -21,15 +21,9 @@ package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
-import org.apache.thrift.TException;
-
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 
-public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
+public class SyncThriftClientWithErrorHandler {
 
   /**
    * Note: The caller needs to ensure that the constructor corresponds to the class, or the cast
@@ -37,25 +31,7 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
    */
   @SuppressWarnings("unchecked")
   public static <V extends ThriftClient> V newErrorHandler(
-      Class<V> targetClass, Constructor<V> constructor, Object... args) {
-    Enhancer enhancer = new Enhancer();
-    enhancer.setSuperclass(targetClass);
-    enhancer.setCallback(new SyncThriftClientWithErrorHandler());
-    if (constructor == null) {
-      return (V) enhancer.create();
-    }
-    return (V) enhancer.create(constructor.getParameterTypes(), args);
-  }
-
-  @Override
-  public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy)
-      throws Throwable {
-    try {
-      return methodProxy.invokeSuper(o, objects);
-    } catch (Throwable t) {
-      ThriftClient.resolveException(t, (ThriftClient) o);
-      throw new TException(
-          "Error in calling method " + method.getName() + ", because: " + t.getMessage(), t);
-    }
+      Class<V> targetClass, Constructor<V> constructor, Object... args) throws Exception {
+    return ByteBuddyEnhancer.createProxy(targetClass, constructor, args);
   }
 }
