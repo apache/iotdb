@@ -155,10 +155,12 @@ public class BinaryAllocator {
     return metrics;
   }
 
-  private void evict(double ratio) {
+  private long evict(double ratio) {
+    long evictedSize = 0;
     for (Arena arena : heapArenas) {
-      arena.evict(ratio);
+      evictedSize += arena.evict(ratio);
     }
+    return evictedSize;
   }
 
   public static BinaryAllocator getInstance() {
@@ -231,17 +233,19 @@ public class BinaryAllocator {
       return;
     }
 
+    long evictedSize = 0;
     if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
       LOGGER.info(
           "Binary allocator is shutting down because of high GC time percentage {}%.",
           curGcTimePercent);
-      evict(1.0);
+      evictedSize = evict(1.0);
       close(false);
     } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
-      evict(0.5);
+      evictedSize = evict(0.5);
     } else if (curGcTimePercent > WARNING_GC_TIME_PERCENTAGE) {
-      evict(0.2);
+      evictedSize = evict(0.2);
     }
+    metrics.updateGcEvictionCounter(evictedSize);
   }
 
   public class SampleEvictor extends Evictor {
@@ -252,9 +256,11 @@ public class BinaryAllocator {
 
     @Override
     public void run() {
+      long evictedSize = 0;
       for (Arena arena : heapArenas) {
-        arena.runSampleEviction();
+        evictedSize += arena.runSampleEviction();
       }
+      metrics.updateSampleEvictionCounter(evictedSize);
     }
   }
 }
