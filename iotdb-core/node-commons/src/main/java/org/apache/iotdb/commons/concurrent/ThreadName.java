@@ -69,6 +69,8 @@ public enum ThreadName {
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
+  TREE_DEVICE_VIEW_UPDATER("Tree-Device-View-Updater"),
+
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -189,12 +191,11 @@ public enum ThreadName {
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
-  REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
 
   // the unknown thread name is used for metrics
-  UNKOWN("UNKNOWN");
+  UNKNOWN("UNKNOWN");
 
   private final String name;
   private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
@@ -244,7 +245,8 @@ public enum ThreadName {
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
               PBTREE_WORKER_POOL,
-              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE,
+              TREE_DEVICE_VIEW_UPDATER));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -486,6 +488,6 @@ public enum ThreadName {
       }
     }
     LOGGER.debug("Unknown thread name: {}", givenThreadName);
-    return ThreadName.UNKOWN;
+    return ThreadName.UNKNOWN;
   }
 }
