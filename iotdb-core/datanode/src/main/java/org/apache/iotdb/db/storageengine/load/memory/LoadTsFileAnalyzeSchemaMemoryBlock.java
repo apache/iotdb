@@ -45,13 +45,15 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  public boolean hasEnoughMemory(long memoryTobeAddedInBytes) {
+  public synchronized boolean hasEnoughMemory(long memoryTobeAddedInBytes) {
     return memoryUsageInBytes.get() + memoryTobeAddedInBytes <= totalMemorySizeInBytes;
   }
 
   @Override
-  public void addMemoryUsage(long memoryInBytes) {
-    memoryUsageInBytes.addAndGet(memoryInBytes);
+  public synchronized void addMemoryUsage(long memoryInBytes) {
+    if (memoryUsageInBytes.addAndGet(memoryInBytes) > totalMemorySizeInBytes) {
+      LOGGER.warn("{} has exceed total memory size", this);
+    }
 
     MetricService.getInstance()
         .getOrCreateGauge(
@@ -63,7 +65,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  public void reduceMemoryUsage(long memoryInBytes) {
+  public synchronized void reduceMemoryUsage(long memoryInBytes) {
     if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
       LOGGER.warn("{} has reduce memory usage to negative", this);
     }
@@ -78,7 +80,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  protected void releaseAllMemory() {
+  protected synchronized void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
           "Try to release memory from a memory block {} which has not released all memory", this);
