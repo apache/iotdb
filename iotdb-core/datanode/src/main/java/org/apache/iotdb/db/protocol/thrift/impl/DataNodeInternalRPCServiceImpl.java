@@ -213,6 +213,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -1693,6 +1694,69 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DeleteTableDevicesInBlackListNode(
                         new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
+  }
+
+  @Override
+  public TDeviceViewResp getDeleteDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
+    final PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
+    final TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
+    final TSStatus status =
+        executeInternalSchemaTask(
+            regionIds,
+            consensusGroupId -> {
+              ReadWriteLock readWriteLock =
+                  regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
+              // Check timeseries existence for set template shall block all timeseries creation
+              readWriteLock.writeLock().lock();
+              try {
+                final ISchemaRegion schemaRegion =
+                    schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+                final PathPatternTree filteredPatternTree =
+                    filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
+                if (filteredPatternTree.isEmpty()) {
+                  return RpcUtils.SUCCESS_STATUS;
+                }
+                for (final PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
+                  ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                      SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
+                  try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                      schemaSource.getSchemaReader(schemaRegion)) {
+                    if (schemaReader.hasNext()) {
+                      return RpcUtils.getStatus(TSStatusCode.TIMESERIES_ALREADY_EXIST);
+                    }
+                  } catch (final Exception e) {
+                    LOGGER.warn(e.getMessage(), e);
+                    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+                  }
+                }
+                return RpcUtils.SUCCESS_STATUS;
+              } finally {
+                readWriteLock.writeLock().unlock();
+              }
+            });
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      resp.setExists(false);
+    } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      boolean hasFailure = false;
+      for (final TSStatus subStatus : status.getSubStatus()) {
+        if (subStatus.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+          resp.setExists(true);
+        } else if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          hasFailure = true;
+          break;
+        }
+      }
+      if (hasFailure) {
+        resp.setStatus(status);
+      } else {
+        resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
   }
 
   @Override

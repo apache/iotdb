@@ -1177,7 +1177,7 @@ service IDataNodeRPCService {
   /**
    * Get delete device view info for device view
    */
-  TDeviceViewResp getDeleteDeviceViewInfos(list<i32> regionIds)
+  TDeviceViewResp getDeleteDeviceViewInfos(list<common.TConsensusGroupId> regionIds)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 
