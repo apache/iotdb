@@ -834,7 +834,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                       SESSION_MANAGER.getCurrSession(), databaseName),
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false)
               .status;
 
       // Delete data & Update device attribute is itself idempotent
