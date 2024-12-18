@@ -1699,7 +1699,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TDeviceViewResp getDeleteDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
+  public TDeviceViewResp getTreeDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
     final TDeviceViewResp resp = new TDeviceViewResp();
     resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final TSStatus status =
