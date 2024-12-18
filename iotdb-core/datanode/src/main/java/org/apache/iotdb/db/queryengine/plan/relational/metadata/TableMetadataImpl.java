@@ -50,8 +50,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -640,7 +642,6 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // User-defined scalar function
-
     if (TableUDFUtils.isScalarFunction(functionName)) {
       ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
       FunctionParameters functionParameters =
@@ -659,9 +660,25 @@ public class TableMetadataImpl implements Metadata {
       } finally {
         scalarFunction.beforeDestroy();
       }
+    } else if (TableUDFUtils.isAggregateFunction(functionName)) {
+      AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
+      FunctionParameters functionParameters =
+          new FunctionParameters(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        aggregateFunction.validate(functionParameters);
+        AggregateFunctionConfig config = new AggregateFunctionConfig();
+        aggregateFunction.beforeStart(functionParameters, config);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        aggregateFunction.beforeDestroy();
+      }
     }
-
-    // TODO UDAF
 
     throw new SemanticException("Unknown function: " + functionName);
   }
@@ -670,7 +687,8 @@ public class TableMetadataImpl implements Metadata {
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
     return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
-        .contains(functionName.toLowerCase(Locale.ENGLISH));
+            .contains(functionName.toLowerCase(Locale.ENGLISH))
+        || TableUDFUtils.isAggregateFunction(functionName);
   }
 
   @Override

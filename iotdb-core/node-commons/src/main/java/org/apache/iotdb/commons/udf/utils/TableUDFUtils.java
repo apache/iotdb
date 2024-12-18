@@ -37,19 +37,19 @@ public class TableUDFUtils {
   public static boolean isScalarFunction(String functionName) {
     UDFInformation information =
         UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName);
-    return FunctionType.SCALAR.equals(information.getUdfType().getType());
+    return information != null && FunctionType.SCALAR.equals(information.getUdfType().getType());
   }
 
   public static boolean isAggregateFunction(String functionName) {
     UDFInformation information =
         UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName);
-    return FunctionType.AGGREGATE.equals(information.getUdfType().getType());
+    return information != null && FunctionType.AGGREGATE.equals(information.getUdfType().getType());
   }
 
   public static boolean isTableFunction(String functionName) {
     UDFInformation information =
         UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName);
-    return FunctionType.TABLE.equals(information.getUdfType().getType());
+    return information != null && FunctionType.TABLE.equals(information.getUdfType().getType());
   }
 
   public static ScalarFunction getScalarFunction(String functionName) throws UDFException {
