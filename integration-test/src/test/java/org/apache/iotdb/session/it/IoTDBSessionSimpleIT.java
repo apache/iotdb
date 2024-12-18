@@ -36,12 +36,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -55,6 +60,8 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1857,6 +1864,75 @@ public class IoTDBSessionSimpleIT {
       assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
+    EnvFactory.getEnv().initClusterEnvironment();
+    try {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MIN_VALUE));
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MAX_VALUE));
+
+        SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+        RowRecord record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getTimestamp());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getTimestamp());
+        assertFalse(dataSet.hasNext());
+
+        session.executeNonQueryStatement("FLUSH");
+        dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+        record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getTimestamp());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getTimestamp());
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(true);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void loadMinMaxTimeTest()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    File file = new File("target", "test.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(new String[] {"root", "test", "d1"});
+      writer.registerTimeseries(deviceID, new MeasurementSchema("s1", TSDataType.INT32));
+      TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
+      record.addPoint("s1", 1);
+      writer.writeRecord(record);
+      record.setTime(Long.MAX_VALUE);
+    }
+
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
+    EnvFactory.getEnv().initClusterEnvironment();
+    try {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("LOAD " + file.getAbsolutePath());
+
+        SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+        RowRecord record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getTimestamp());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getTimestamp());
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(true);
     }
   }
 }
