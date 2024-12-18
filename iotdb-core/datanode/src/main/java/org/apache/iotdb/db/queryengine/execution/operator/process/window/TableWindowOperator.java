@@ -123,7 +123,8 @@ public class TableWindowOperator implements ProcessOperator {
       if (!tsBlockBuilder.isEmpty()) {
         TsBlock result =
             tsBlockBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+                new RunLengthEncodedColumn(
+                    TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
         tsBlockBuilder.reset();
         return result;
       } else {
@@ -213,7 +214,8 @@ public class TableWindowOperator implements ProcessOperator {
       if (tsBlockBuilder.isFull()) {
         TsBlock result =
             tsBlockBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+                new RunLengthEncodedColumn(
+                    TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
         tsBlockBuilder.reset();
         return result;
       }
@@ -245,8 +247,12 @@ public class TableWindowOperator implements ProcessOperator {
     long maxPeekMemoryFromInput = inputOperator.calculateMaxPeekMemoryWithCounter();
     // PartitionExecutor only hold reference to TsBlock
     // So only cached TsBlocks are considered
-    long maxPeekMemoryFromCurrent = (long) cachedTsBlocks.size() * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes() + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent) + inputOperator.calculateRetainedSizeAfterCallingNext();
+    long maxPeekMemoryFromCurrent =
+        (long) cachedTsBlocks.size()
+                * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()
+            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent)
+        + inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
@@ -256,7 +262,9 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext() + (long) cachedTsBlocks.size() * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    return inputOperator.calculateRetainedSizeAfterCallingNext()
+        + (long) cachedTsBlocks.size()
+            * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
