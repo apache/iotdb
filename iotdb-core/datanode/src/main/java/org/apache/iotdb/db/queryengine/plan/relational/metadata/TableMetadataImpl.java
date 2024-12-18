@@ -112,12 +112,16 @@ public class TableMetadataImpl implements Metadata {
     final List<ColumnSchema> columnSchemaList =
         table.getColumnList().stream()
             .map(
-                o ->
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory()))
+                o -> {
+                  final ColumnSchema schema =
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory());
+                  schema.setProps(o.getProps());
+                  return schema;
+                })
             .collect(Collectors.toList());
     return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
   }
