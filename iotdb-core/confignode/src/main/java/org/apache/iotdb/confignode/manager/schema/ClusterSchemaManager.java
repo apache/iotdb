@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
@@ -55,9 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -1244,32 +1243,24 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
-  public synchronized TSStatus addTableColumn(
-      final String database,
-      final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
-    final AddTableColumnPlan addTableColumnPlan =
-        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
-    try {
-      return getConsensusManager().write(addTableColumnPlan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-  }
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForRenaming(
+      final String database, final String tableName, final String newName)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
-  public synchronized TSStatus rollbackAddTableColumn(
-      final String database,
-      final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
-    final AddTableColumnPlan addTableColumnPlan =
-        new AddTableColumnPlan(database, tableName, columnSchemaList, true);
-    try {
-      return getConsensusManager().write(addTableColumnPlan);
-    } catch (final ConsensusException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
     }
+
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    expandedTable.renameTable(newName);
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
   public synchronized TSStatus renameTableColumn(
@@ -1284,12 +1275,9 @@ public class ClusterSchemaManager {
     }
   }
 
-  public synchronized TSStatus setTableProperties(
-      final String database, final String tableName, final Map<String, String> properties) {
-    final SetTablePropertiesPlan setTablePropertiesPlan =
-        new SetTablePropertiesPlan(database, tableName, properties);
+  public TSStatus executePlan(final ConfigPhysicalPlan plan) {
     try {
-      return getConsensusManager().write(setTablePropertiesPlan);
+      return getConsensusManager().write(plan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

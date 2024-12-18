@@ -61,7 +61,7 @@ public class TsTable {
 
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
-  private final String tableName;
+  private String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
@@ -121,6 +121,16 @@ public class TsTable {
       return idColumnSchemaList;
     } finally {
       readWriteLock.readLock().unlock();
+    }
+  }
+
+  // Currently only supports device view
+  public void renameTable(final String newName) {
+    readWriteLock.writeLock().lock();
+    try {
+      tableName = newName;
+    } finally {
+      readWriteLock.writeLock().unlock();
     }
   }
 

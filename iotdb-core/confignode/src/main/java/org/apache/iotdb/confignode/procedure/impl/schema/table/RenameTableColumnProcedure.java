@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -78,22 +79,23 @@ public class RenameTableColumnProcedure
           LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
           preRelease(env);
           break;
-        case RENAME_COLUMN_ON_CONFIG_NODE:
+        case RENAME_COLUMN:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              "Commit release info of table {}.{} when renaming column", database, tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          setFailure(new ProcedureException("Unrecognized RenameTableColumnState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AddTableColumn-{}.{}-{} costs {}ms",
+          "RenameTableColumn-{}.{}-{} costs {}ms",
           database,
           tableName,
           state,
@@ -123,14 +125,14 @@ public class RenameTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
-    setNextState(RenameTableColumnState.RENAME_COLUMN_ON_CONFIG_NODE);
+    setNextState(RenameTableColumnState.RENAME_COLUMN);
   }
 
   private void renameColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, oldName, newName);
+            .executePlan(new RenameTableColumnPlan(database, tableName, oldName, newName));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -144,7 +146,7 @@ public class RenameTableColumnProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case RENAME_COLUMN_ON_CONFIG_NODE:
+        case RENAME_COLUMN:
           LOGGER.info(
               "Start rollback Renaming column to table {}.{} on configNode",
               database,
@@ -159,7 +161,9 @@ public class RenameTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          "Rollback DropTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          "Rollback RenameTableColumn-{} costs {}ms.",
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -170,7 +174,7 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, newName, oldName);
+            .executePlan(new RenameTableColumnPlan(database, tableName, newName, oldName));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
