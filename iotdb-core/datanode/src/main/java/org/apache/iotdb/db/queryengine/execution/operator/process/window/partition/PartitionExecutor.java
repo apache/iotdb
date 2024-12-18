@@ -83,46 +83,49 @@ public final class PartitionExecutor {
     currentPosition = partitionStart;
     updatePeerGroup();
 
-    for (FrameInfo frameInfo : frameInfoList) {
-      Frame frame;
-      switch (frameInfo.getFrameType()) {
-        case RANGE:
-          if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
+    for (int i = 0; i < frameInfoList.size(); i++) {
+      Frame frame = null;
+      if (windowFunctions.get(i).needFrame()) {
+        FrameInfo frameInfo = frameInfoList.get(i);
+        switch (frameInfo.getFrameType()) {
+          case RANGE:
+            if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
+              frame =
+                  new RangeFrame(
+                      frameInfo,
+                      partitionStart,
+                      partitionEnd,
+                      sortedColumns,
+                      peerGroupComparator,
+                      partitionEnd - partitionStart - 1);
+            } else {
+              frame =
+                  new RangeFrame(
+                      frameInfo,
+                      partitionStart,
+                      partitionEnd,
+                      sortedColumns,
+                      peerGroupComparator,
+                      peerGroupEnd - partitionStart - 1);
+            }
+            break;
+          case ROWS:
+            frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
+            break;
+          case GROUPS:
             frame =
-                new RangeFrame(
-                    frameInfo,
-                    partitionStart,
-                    partitionEnd,
-                    sortedColumns,
-                    peerGroupComparator,
-                    partitionEnd - partitionStart - 1);
-          } else {
-            frame =
-                new RangeFrame(
+                new GroupsFrame(
                     frameInfo,
                     partitionStart,
                     partitionEnd,
                     sortedColumns,
                     peerGroupComparator,
                     peerGroupEnd - partitionStart - 1);
-          }
-          break;
-        case ROWS:
-          frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
-          break;
-        case GROUPS:
-          frame =
-              new GroupsFrame(
-                  frameInfo,
-                  partitionStart,
-                  partitionEnd,
-                  sortedColumns,
-                  peerGroupComparator,
-                  peerGroupEnd - partitionStart - 1);
-          break;
-        default:
-          // Unreachable
-          throw new UnsupportedOperationException("Unreachable!");
+            break;
+          default:
+            // Unreachable
+            throw new UnsupportedOperationException("Unreachable!");
+        }
       }
       frames.add(frame);
     }
