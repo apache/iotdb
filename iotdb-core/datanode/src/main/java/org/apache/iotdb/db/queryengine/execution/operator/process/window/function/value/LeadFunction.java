@@ -37,7 +37,7 @@ public class LeadFunction implements WindowFunction {
       int nonNullCount = 0;
       pos = index + 1;
       while (pos < length) {
-        if (partition.isNull(channel, pos)) {
+        if (!partition.isNull(channel, pos)) {
           nonNullCount++;
           if (nonNullCount == offset) {
             break;
@@ -51,7 +51,11 @@ public class LeadFunction implements WindowFunction {
     }
 
     if (pos < length) {
-      partition.writeTo(builder, channel, pos);
+      if (!partition.isNull(channel, pos)) {
+        partition.writeTo(builder, channel, pos);
+      } else {
+        builder.appendNull();
+      }
     } else if (defaultVal != null) {
       // TODO: Replace write object
       builder.writeObject(defaultVal);

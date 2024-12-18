@@ -59,4 +59,24 @@ public class FunctionTestUtils {
         new RunLengthEncodedColumn(
             TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
+
+  // Data type does not matter in value window functions as well
+  // We only test integers for simplicity
+  public static TsBlock createTsBlockForValueFunction(int[] inputs) {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    for (int input : inputs) {
+      if (input >= 0) {
+        columnBuilders[0].writeInt(input);
+      } else {
+        // Mimic null value
+        columnBuilders[0].appendNull();
+      }
+      tsBlockBuilder.declarePosition();
+    }
+
+    return tsBlockBuilder.build(
+        new RunLengthEncodedColumn(
+            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+  }
 }

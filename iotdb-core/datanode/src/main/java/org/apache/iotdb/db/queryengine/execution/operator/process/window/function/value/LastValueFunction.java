@@ -34,7 +34,7 @@ public class LastValueFunction implements WindowFunction {
 
     if (ignoreNull) {
       // Handle nulls
-      int pos = index;
+      int pos = frameEnd;
       while (pos >= frameStart && partition.isNull(channel, pos)) {
         pos--;
       }
@@ -45,7 +45,11 @@ public class LastValueFunction implements WindowFunction {
         partition.writeTo(builder, channel, pos);
       }
     } else {
-      partition.writeTo(builder, channel, frameEnd);
+      if (partition.isNull(channel, frameEnd)) {
+        builder.appendNull();
+      } else {
+        partition.writeTo(builder, channel, frameEnd);
+      }
     }
   }
 

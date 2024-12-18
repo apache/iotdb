@@ -37,7 +37,7 @@ public class NthValueFunction implements WindowFunction {
     int pos;
     if (ignoreNull) {
       // Handle nulls
-      pos = index;
+      pos = frameStart;
       int nonNullCount = 0;
       while (pos <= frameEnd) {
         if (!partition.isNull(channel, pos)) {
@@ -48,13 +48,23 @@ public class NthValueFunction implements WindowFunction {
         }
         pos++;
       }
-    } else {
-      // n starts with 1
-      pos = frameStart + n - 1;
+
+      if (pos <= frameEnd) {
+        partition.writeTo(builder, channel, pos);
+      } else {
+        builder.appendNull();
+      }
+      return;
     }
 
-    if (pos >= frameStart && pos <= frameEnd) {
-      partition.writeTo(builder, channel, pos);
+    // n starts with 1
+    pos = frameStart + n - 1;
+    if (pos <= frameEnd) {
+      if (!partition.isNull(channel, pos)) {
+        partition.writeTo(builder, channel, pos);
+      } else {
+        builder.appendNull();
+      }
     } else {
       builder.appendNull();
     }

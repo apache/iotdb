@@ -45,7 +45,11 @@ public class FirstValueFunction implements WindowFunction {
         partition.writeTo(builder, channel, pos);
       }
     } else {
-      partition.writeTo(builder, channel, frameEnd);
+      if (partition.isNull(channel, frameStart)) {
+        builder.appendNull();
+      } else {
+        partition.writeTo(builder, channel, frameStart);
+      }
     }
   }
 

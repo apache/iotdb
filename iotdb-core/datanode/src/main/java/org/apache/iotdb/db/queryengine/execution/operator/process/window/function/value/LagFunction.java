@@ -8,10 +8,10 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 public class LagFunction implements WindowFunction {
   private final int channel;
   private final Integer offset;
-  private final Integer defaultVal;
+  private final Object defaultVal;
   private final boolean ignoreNull;
 
-  public LagFunction(int channel, Integer offset, Integer defaultVal, boolean ignoreNull) {
+  public LagFunction(int channel, Integer offset, Object defaultVal, boolean ignoreNull) {
     this.channel = channel;
     this.offset = offset == null ? 1 : offset;
     this.defaultVal = defaultVal;
@@ -35,7 +35,7 @@ public class LagFunction implements WindowFunction {
       int nonNullCount = 0;
       pos = index - 1;
       while (pos >= 0) {
-        if (partition.isNull(channel, pos)) {
+        if (!partition.isNull(channel, pos)) {
           nonNullCount++;
           if (nonNullCount == offset) {
             break;
@@ -49,7 +49,11 @@ public class LagFunction implements WindowFunction {
     }
 
     if (pos >= 0) {
-      partition.writeTo(builder, channel, pos);
+      if (!partition.isNull(channel, pos)) {
+        partition.writeTo(builder, channel, pos);
+      } else {
+        builder.appendNull();
+      }
     } else if (defaultVal != null) {
       // TODO: Replace write object
       builder.writeObject(defaultVal);
