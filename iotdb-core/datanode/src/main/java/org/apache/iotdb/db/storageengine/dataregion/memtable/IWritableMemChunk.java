@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -31,6 +32,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
+  int TVLIST_SORT_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
 
   boolean putLongWithFlushCheck(long t, long v);
 
@@ -84,6 +86,8 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   long count();
 
+  long rowCount();
+
   IMeasurementSchema getSchema();
 
   /**
@@ -125,12 +129,16 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default TVList getTVList() {
+  default TVList getWorkingTVList() {
     return null;
   }
 
   default long getMaxTime() {
     return Long.MAX_VALUE;
+  }
+
+  default long getMinTime() {
+    return Long.MIN_VALUE;
   }
 
   /**
