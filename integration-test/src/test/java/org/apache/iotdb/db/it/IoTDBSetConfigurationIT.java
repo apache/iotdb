@@ -161,7 +161,9 @@ public class IoTDBSetConfigurationIT {
       try {
         statement.execute("INSERT INTO root.fail(timestamp, s1) VALUES (1, 1)");
       } catch (SQLException e) {
-        assertEquals("509: root.fail is not a legal path, because it is no longer than default sg level: 3", e.getMessage());
+        assertEquals(
+            "509: root.fail is not a legal path, because it is no longer than default sg level: 3",
+            e.getMessage());
       }
 
       // illegal value
