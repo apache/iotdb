@@ -215,8 +215,8 @@ public class TableModelUtils {
 
   public static boolean insertTablet(
       final String dataBaseName, final Tablet tablet, final BaseEnv baseEnv) {
-    ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(20);
-    try (final ITableSession session = tableSessionPool.getSession()) {
+    try (ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(20);
+        final ITableSession session = tableSessionPool.getSession()) {
       session.executeNonQueryStatement("use " + dataBaseName);
       session.insert(tablet);
       session.executeNonQueryStatement("flush");
