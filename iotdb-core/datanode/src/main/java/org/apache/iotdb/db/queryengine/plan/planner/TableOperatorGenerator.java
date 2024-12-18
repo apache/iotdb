@@ -1745,72 +1745,71 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitAggregationTableScan(
       AggregationTableScanNode node, LocalExecutionPlanContext context) {
 
-    List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
-    Map<Symbol, Integer> columnLayout = new HashMap<>(node.getAggregations().size());
+    List<String> measurementColumnNames = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    Map<String, Integer> measurementColumnsIndexMap = new HashMap<>();
 
-    int distinctArgumentCount = node.getAssignments().size();
-    int aggregationsCount = node.getAggregations().size();
-    List<Integer> aggregatorInputChannels = new ArrayList<>();
+    List<TableAggregator> aggregators = new ArrayList<>(node.getAggregations().size());
+    List<Integer> aggregatorInputChannels =
+        new ArrayList<>(
+            (int)
+                node.getAggregations().values().stream()
+                    .mapToLong(aggregation -> aggregation.getArguments().size())
+                    .sum());
+    int aggDistinctArgumentCount =
+        (int)
+            node.getAggregations().values().stream()
+                .flatMap(aggregation -> aggregation.getArguments().stream())
+                .map(Symbol::from)
+                .distinct()
+                .count();
+    List<ColumnSchema> aggColumnSchemas = new ArrayList<>(aggDistinctArgumentCount);
+    Map<Symbol, Integer> aggColumnLayout = new HashMap<>(aggDistinctArgumentCount);
+    int[] aggColumnsIndexArray = new int[aggDistinctArgumentCount];
+
+    String timeColumnName = null;
     int channel = 0;
     int measurementColumnCount = 0;
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
-    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
-    List<ColumnSchema> columnSchemas = new ArrayList<>(aggregationsCount);
-    int[] columnsIndexArray = new int[distinctArgumentCount];
-    List<String> measurementColumnNames = new ArrayList<>();
-    Map<String, Integer> measurementColumnsIndexMap = new HashMap<>();
-    String timeColumnName = null;
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      AggregationNode.Aggregation aggregation = entry.getValue();
-
-      for (Expression argument : aggregation.getArguments()) {
+      for (Expression argument : entry.getValue().getArguments()) {
         Symbol symbol = Symbol.from(argument);
-        ColumnSchema schema = requireNonNull(columnSchemaMap.get(symbol), symbol + " is null");
-        switch (schema.getColumnCategory()) {
-          case ID:
-          case ATTRIBUTE:
-            if (!columnLayout.containsKey(symbol)) {
-              columnsIndexArray[channel] =
-                  requireNonNull(idAndAttributeColumnsIndexMap.get(symbol), symbol + " is null");
-              columnSchemas.add(schema);
-            }
-            break;
-          case MEASUREMENT:
-            if (!columnLayout.containsKey(symbol)) {
-              columnsIndexArray[channel] = measurementColumnCount;
+        ColumnSchema schema =
+            requireNonNull(node.getAssignments().get(symbol), symbol + " is null");
+        if (!aggColumnLayout.containsKey(symbol)) {
+          switch (schema.getColumnCategory()) {
+            case ID:
+            case ATTRIBUTE:
+              aggColumnsIndexArray[channel] =
+                  requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
+              break;
+            case MEASUREMENT:
+              aggColumnsIndexArray[channel] = measurementColumnCount;
               measurementColumnCount++;
               measurementColumnNames.add(schema.getName());
               measurementSchemas.add(
                   new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
-              columnSchemas.add(schema);
               measurementColumnsIndexMap.put(symbol.getName(), measurementColumnCount - 1);
-            }
-            break;
-          case TIME:
-            if (!columnLayout.containsKey(symbol)) {
-              columnsIndexArray[channel] = -1;
-              columnSchemas.add(schema);
+              break;
+            case TIME:
+              aggColumnsIndexArray[channel] = -1;
               timeColumnName = symbol.getName();
-            }
-            break;
-          default:
-            throw new IllegalArgumentException(
-                "Unexpected column category: " + schema.getColumnCategory());
-        }
+              break;
+            default:
+              throw new IllegalArgumentException(
+                  "Unexpected column category: " + schema.getColumnCategory());
+          }
 
-        if (!columnLayout.containsKey(symbol)) {
+          aggColumnSchemas.add(schema);
           aggregatorInputChannels.add(channel);
-          columnLayout.put(symbol, channel++);
+          aggColumnLayout.put(symbol, channel++);
         } else {
-          aggregatorInputChannels.add(columnLayout.get(symbol));
+          aggregatorInputChannels.add(aggColumnLayout.get(symbol));
         }
       }
     }
 
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (!columnLayout.containsKey(entry.getKey())
+      if (!aggColumnLayout.containsKey(entry.getKey())
           && entry.getValue().getColumnCategory() == MEASUREMENT) {
         measurementColumnCount++;
         measurementColumnNames.add(entry.getValue().getName());
@@ -1830,7 +1829,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
       aggregators.add(
           buildAggregator(
-              columnLayout,
+              aggColumnLayout,
               entry.getKey(),
               entry.getValue(),
               node.getStep(),
@@ -1848,9 +1847,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       for (int i = 0; i < node.getGroupingKeys().size(); i++) {
         Symbol groupingKey = node.getGroupingKeys().get(i);
 
-        if (idAndAttributeColumnsIndexMap.containsKey(groupingKey)) {
-          groupingKeySchemas.add(columnSchemaMap.get(groupingKey));
-          groupingKeyIndex[i] = idAndAttributeColumnsIndexMap.get(groupingKey);
+        if (node.getIdAndAttributeIndexMap().containsKey(groupingKey)) {
+          groupingKeySchemas.add(node.getAssignments().get(groupingKey));
+          groupingKeyIndex[i] = node.getIdAndAttributeIndexMap().get(groupingKey);
         } else {
           if (node.getProjection() != null
               && !node.getProjection().getMap().isEmpty()
@@ -1894,7 +1893,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
-            columnSchemaMap,
+            node.getAssignments(),
             measurementColumnNames,
             measurementColumnsIndexMap,
             timeColumnName,
@@ -1910,21 +1909,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         new TableAggregationTableScanOperator(
             node.getPlanNodeId(),
             operatorContext,
-            columnSchemas,
-            columnsIndexArray,
+            aggColumnSchemas,
+            aggColumnsIndexArray,
             node.getDeviceEntries(),
-            scanAscending ? Ordering.ASC : Ordering.DESC,
             seriesScanOptions,
             measurementColumnNames,
             allSensors,
             measurementSchemas,
-            measurementColumnCount,
             aggregators,
             groupingKeySchemas,
             groupingKeyIndex,
             timeRangeIterator,
             scanAscending,
-            calculateMaxAggregationResultSize(),
             canUseStatistic,
             aggregatorInputChannels);
 
@@ -2061,31 +2057,5 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private boolean canUseLastCacheOptimize() {
     // TODO complete this method
     return true;
-  }
-
-  public static long calculateMaxAggregationResultSize(
-      // List<? extends AggregationDescriptor> aggregationDescriptors,
-      // ITimeRangeIterator timeRangeIterator
-      ) {
-    // TODO perfect max aggregation result size logic
-    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-
-    //    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
-    //    for (AggregationDescriptor descriptor : aggregationDescriptors) {
-    //      List<TSDataType> outPutDataTypes =
-    //              descriptor.getOutputColumnNames().stream()
-    //                      .map(typeProvider::getTableModelType)
-    //                      .collect(Collectors.toList());
-    //      for (TSDataType tsDataType : outPutDataTypes) {
-    //        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
-    //      }
-    //    }
-    //
-    //    return Math.min(
-    //            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-    //            Math.min(
-    //                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
-    //                    timeRangeIterator.getTotalIntervalNum())
-    //                    * timeValueColumnsSizePerLine);
   }
 }

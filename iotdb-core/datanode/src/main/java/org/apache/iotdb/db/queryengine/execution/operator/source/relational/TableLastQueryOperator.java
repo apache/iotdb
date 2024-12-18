@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -40,15 +43,18 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR;
 
-public class TableLastQueryOperator extends AbstractDataSourceOperator {
+public class TableLastQueryOperator extends TableAggregationTableScanOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableLastQueryOperator.class);
@@ -58,16 +64,16 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
 
   private boolean finished = false;
   // TODO not need all table aggregators when match last cache
-  private final List<TableAggregator> tableAggregators;
+  // private final List<TableAggregator> tableAggregators;
   private List<TableAggregator> unCachedTableAggregators;
-  private final List<ColumnSchema> groupingKeySchemas;
+  // private final List<ColumnSchema> groupingKeySchemas;
 
   private final QualifiedObjectName qualifiedObjectName;
-  private final List<DeviceEntry> deviceEntries;
+  // private final List<DeviceEntry> deviceEntries;
   private int currentDeviceIndex;
-  private final List<String> measurementColumnNames;
-  private final List<IMeasurementSchema> measurementSchemas;
-  private final List<TSDataType> measurementColumnTSDataTypes;
+  // private final List<String> measurementColumnNames;
+  // private final List<IMeasurementSchema> measurementSchemas;
+  // private final List<TSDataType> measurementColumnTSDataTypes;
 
   private QueryDataSource queryDataSource;
 
@@ -80,25 +86,79 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
   private boolean hashLastBy;
   private boolean needCacheTimeColumn;
   private boolean calcCacheForCurrentDevice;
-  private List<String> currentUnCacheMeasurements = new ArrayList<>();
+  private Set<String> currentUnCacheMeasurements = new HashSet<>();
+
+  private final List<TableAggregator> originalTableAggregators;
+  private final List<String> originalMeasurementColumnNames;
+  private final Set<String> originalAllSensors;
+  private final List<IMeasurementSchema> originalMeasurementSchemas;
+  // private final List<TSDataType> originalMeasurementColumnTSDataTypes;
+  private final List<ColumnSchema> originalColumnSchemas;
+  private final int[] originalColumnsIndexArray;
+  private final SeriesScanOptions originalSeriesScanOptions;
+  // stores all inputChannels of tableAggregators,
+  // e.g. for aggregation `last(s1), count(s2), count(s1)`, the inputChannels should be [0, 1, 0]
+  private final List<Integer> originalAggregatorInputChannels;
 
   public TableLastQueryOperator(
+      PlanNodeId sourceId,
+      OperatorContext context,
+      List<ColumnSchema> columnSchemas,
+      int[] columnsIndexArray,
+      List<DeviceEntry> deviceEntries,
+      SeriesScanOptions seriesScanOptions,
+      List<String> measurementColumnNames,
+      Set<String> allSensors,
+      List<IMeasurementSchema> measurementSchemas,
+      int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
-      QualifiedObjectName qualifiedObjectName,
-      List<DeviceEntry> deviceEntries,
-      List<String> measurementColumnNames,
-      List<IMeasurementSchema> measurementSchemas,
-      List<TSDataType> measurementColumnTSDataTypes) {
-    this.tableAggregators = tableAggregators;
-    this.groupingKeySchemas = groupingKeySchemas;
-    this.qualifiedObjectName = qualifiedObjectName;
-    this.deviceEntries = deviceEntries;
-    this.measurementColumnNames = measurementColumnNames;
-    this.measurementSchemas = measurementSchemas;
-    this.measurementColumnTSDataTypes = measurementColumnTSDataTypes;
-    this.isLastBy = new boolean[tableAggregators.size()];
+      int[] groupingKeyIndex,
+      ITableTimeRangeIterator tableTimeRangeIterator,
+      boolean ascending,
+      boolean canUseStatistics,
+      List<Integer> aggregatorInputChannels,
+      QualifiedObjectName qualifiedObjectName) {
 
+    super(
+        sourceId,
+        context,
+        null,
+        null,
+        deviceEntries,
+        null,
+        Collections.emptyList(),
+        null,
+        Collections.emptyList(),
+        null,
+        groupingKeySchemas,
+        groupingKeyIndex,
+        tableTimeRangeIterator,
+        ascending,
+        canUseStatistics,
+        null);
+
+    this.originalTableAggregators = tableAggregators;
+    this.originalAggregatorInputChannels = aggregatorInputChannels;
+
+    this.originalColumnSchemas = columnSchemas;
+    this.originalColumnsIndexArray = columnsIndexArray;
+
+    this.originalMeasurementColumnNames = measurementColumnNames;
+    this.originalMeasurementSchemas = measurementSchemas;
+
+    this.originalSeriesScanOptions = seriesScanOptions;
+    this.originalAllSensors = allSensors;
+
+    //    this.tableAggregators = tableAggregators;
+    //    this.groupingKeySchemas = groupingKeySchemas;
+    //    this.deviceEntries = deviceEntries;
+    //    this.measurementColumnNames = measurementColumnNames;
+    //    this.measurementSchemas = measurementSchemas;
+    //    this.measurementColumnTSDataTypes = measurementColumnTSDataTypes;
+
+    this.isLastBy = new boolean[tableAggregators.size()];
+    this.qualifiedObjectName = qualifiedObjectName;
     this.lastColumns = new ArrayList<>();
     this.lastByColumns = new ArrayList<>();
     this.indexOfLastColumnInAggregators = new int[lastColumns.size()];
@@ -154,6 +214,22 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
     DeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
 
     if (!calcCacheForCurrentDevice) {
+
+      for (int i = 0; i < originalTableAggregators.size(); i++) {
+        TableAggregator tableAggregator = originalTableAggregators.get(i);
+        if (isLastBy[i]) {
+          Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
+              TABLE_DEVICE_SCHEMA_CACHE.getLastRow(
+                  qualifiedObjectName.getDatabaseName(),
+                  currentDeviceEntry.getDeviceID(),
+                  "",
+                  lastByColumns);
+        } else {
+
+        }
+      }
+
+      // process last(time), last_by(x,time)...
       if (!lastByColumns.isEmpty()) {
         Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
             TABLE_DEVICE_SCHEMA_CACHE.getLastRow(
@@ -161,15 +237,24 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
                 currentDeviceEntry.getDeviceID(),
                 "",
                 lastByColumns);
+
         if (!lastByResult.isPresent()) {
           // all missed
-
+          currentUnCacheMeasurements.addAll(lastByColumns);
         } else {
+          TsPrimitiveType[] lastByResultPair = lastByResult.get().getRight();
+          for (int i = 0; i < lastByColumns.size(); i++) {
+            if (lastByResultPair[i] == null) {
+              currentUnCacheMeasurements.add(lastByColumns.get(i));
+            } else {
 
+            }
+          }
         }
         // TODO verify id and attr columns
       }
 
+      // process last(x), last(y), ...
       if (!lastColumns.isEmpty()) {
         for (int i = 0; i < lastColumns.size(); i++) {
           String measurement = lastByColumns.get(i);
@@ -178,11 +263,14 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
                   qualifiedObjectName.getDatabaseName(),
                   currentDeviceEntry.getDeviceID(),
                   measurement);
+
           if (timeValuePair == null) {
             currentUnCacheMeasurements.add(measurement);
           } else {
+
             ColumnBuilder columnBuilder =
                 resultTsBlockBuilder.getColumnBuilder(indexOfLastColumnInAggregators[i]);
+
             if (timeValuePair == EMPTY_TIME_VALUE_PAIR) {
               columnBuilder.appendNull();
             } else {
@@ -197,6 +285,9 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
 
     // read last value from File or MemTable, update last cache
     if (!currentUnCacheMeasurements.isEmpty()) {
+
+      // avoid invoke twice
+
       // TABLE_DEVICE_SCHEMA_CACHE.initOrInvalidateLastCache();
 
       // TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists
@@ -214,7 +305,7 @@ public class TableLastQueryOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  protected List<TSDataType> getResultDataTypes() {
+  public List<TSDataType> getResultDataTypes() {
     int groupingKeySize = groupingKeySchemas != null ? groupingKeySchemas.size() : 0;
     List<TSDataType> resultDataTypes = new ArrayList<>(groupingKeySize + tableAggregators.size());
 
