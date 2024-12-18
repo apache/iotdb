@@ -488,7 +488,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       if (!tabletList.isEmpty()) {
         writeWithTablets(
             sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
-        tsFileWriter.flush();
+          tsFileWriter.flush();
       } else {
         isEmpty = true;
       }
