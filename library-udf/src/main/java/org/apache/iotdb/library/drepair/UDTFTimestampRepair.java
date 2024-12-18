@@ -36,16 +36,25 @@ public class UDTFTimestampRepair implements UDTF {
   String intervalMethod;
   long interval;
   long intervalMode;
+  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
+
     String intervalString = validator.getParameters().getStringOrDefault("interval", null);
     if (intervalString != null) {
       try {
+        if (intervalString.matches("^\\d+$")) {
+          String timestampPrecision =
+              validator.getParameters().getSystemString(TIMESTAMP_PRECISION);
+          intervalString = intervalString + timestampPrecision;
+        }
+
         long parsedInterval = Util.parseTime(intervalString, validator.getParameters());
+
         validator.validate(
             x -> parsedInterval > 0,
             "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
@@ -61,13 +70,20 @@ public class UDTFTimestampRepair implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
+
     intervalMethod = parameters.getStringOrDefault("method", "Median");
     String intervalString = parameters.getStringOrDefault("interval", null);
+
     if (intervalString != null) {
+      if (intervalString.matches("^\\d+$")) {
+        String timestampPrecision = parameters.getSystemString(TIMESTAMP_PRECISION);
+        intervalString = intervalString + timestampPrecision;
+      }
       interval = Util.parseTime(intervalString, parameters);
     } else {
       interval = 0;
     }
+
     if (interval > 0) {
       intervalMode = interval;
     } else if ("Median".equalsIgnoreCase(intervalMethod)) {
