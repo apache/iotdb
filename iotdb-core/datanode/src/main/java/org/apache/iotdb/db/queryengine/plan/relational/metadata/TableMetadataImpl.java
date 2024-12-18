@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.InformationSchemaTable;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
@@ -123,7 +124,10 @@ public class TableMetadataImpl implements Metadata {
                   return schema;
                 })
             .collect(Collectors.toList());
-    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+    return Optional.of(
+        databaseName.equals(TreeViewSchema.TREE_DATABASE)
+            ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
+            : new TableSchema(table.getTableName(), columnSchemaList));
   }
 
   @Override

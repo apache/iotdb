@@ -26,8 +26,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TreeDeviceViewSchema extends TableSchema {
-  public TreeDeviceViewSchema(final String tableName, final List<ColumnSchema> columns) {
+  public TreeDeviceViewSchema(
+      final String tableName, final List<ColumnSchema> columns, final Map<String, String> props) {
     super(tableName, columns);
+    setProps(props);
   }
 
   public String getTreeDBName() {
