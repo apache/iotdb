@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewUpdater;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
@@ -129,6 +130,7 @@ public class ClusterSchemaManager {
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
+  private final TreeDeviceViewUpdater treeDeviceViewUpdater = new TreeDeviceViewUpdater();
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
@@ -1334,6 +1336,14 @@ public class ClusterSchemaManager {
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
+  public void startTreeDeviceViewUpdate() {
+    treeDeviceViewUpdater.startService();
+  }
+
+  public void stopTreeDeviceViewUpdate() {
+    treeDeviceViewUpdater.stopService();
   }
 
   public void clearSchemaQuotaCache() {

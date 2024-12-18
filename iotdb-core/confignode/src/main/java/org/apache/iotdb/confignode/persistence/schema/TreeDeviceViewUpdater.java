@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance {
 
-  protected TreeDeviceViewUpdater() {
+  public TreeDeviceViewUpdater() {
     super(
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
