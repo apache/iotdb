@@ -19,11 +19,34 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+
+import java.util.Arrays;
+import java.util.stream.Stream;
+
 public class TreeViewSchemaUtils {
 
   public static void putAlignedToTreeCache() {}
 
   public static void getAlignedValueFromTreeCache() {}
+
+  public static IDeviceID convertIdValuesToDeviceID(
+      final String database, final String[] idValues) {
+    final String[] databaseNodes;
+    try {
+      databaseNodes = new PartialPath(database).getNodes();
+    } catch (final IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    return IDeviceID.Factory.DEFAULT_FACTORY.create(
+        StringArrayDeviceID.splitDeviceIdString(
+            Stream.concat(Arrays.stream(databaseNodes), Arrays.stream(idValues))
+                .toArray(String[]::new)));
+  }
 
   private TreeViewSchemaUtils() {
     // Private constructor
