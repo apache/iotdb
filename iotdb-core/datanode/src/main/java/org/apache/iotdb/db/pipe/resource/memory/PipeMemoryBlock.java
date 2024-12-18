@@ -177,6 +177,9 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
+            if (isInterrupted) {
+              LOGGER.warn("{} is released after thread interruption.", this);
+            }
             break;
           } finally {
             lock.unlock();
