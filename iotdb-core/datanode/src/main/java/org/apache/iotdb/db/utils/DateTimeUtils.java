@@ -783,7 +783,8 @@ public class DateTimeUtils {
   }
 
   public static ZonedDateTime convertToZonedDateTime(long timestamp, ZoneId zoneId) {
-    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(correctPrecision(timestamp)), zoneId);
+    timestamp = CAST_TIMESTAMP_TO_MS.apply(timestamp);
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
