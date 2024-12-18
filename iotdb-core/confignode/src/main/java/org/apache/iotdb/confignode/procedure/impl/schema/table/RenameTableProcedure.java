@@ -24,10 +24,27 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<RenameTableState> {
+
+  private String newName;
+
+  public RenameTableProcedure() {
+    super();
+  }
+
+  public RenameTableProcedure(
+      final String database, final String tableName, final String queryId, final String newName) {
+    super(database, tableName, queryId);
+    this.newName = newName;
+  }
 
   @Override
   protected Flow executeFromState(
@@ -58,6 +75,21 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected String getActionMessage() {
-    return null;
+    return "rename table";
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+
+    ReadWriteIOUtils.write(newName, stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+
+    this.newName = ReadWriteIOUtils.readString(byteBuffer);
   }
 }
