@@ -2882,6 +2882,14 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(
+              Optional.ofNullable(
+                      properties.getProperty(
+                          "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert())))
+                  .map(String::trim)
+                  .orElse(String.valueOf(conf.isEnablePartialInsert()))));
+
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern

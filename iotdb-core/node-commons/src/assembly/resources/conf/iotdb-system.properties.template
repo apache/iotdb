@@ -1149,7 +1149,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 
