@@ -677,11 +677,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void initCompactionSchedule() {
-    if (!config.isEnableSeqSpaceCompaction()
-        && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
-      return;
-    }
     RepairUnsortedFileCompactionTask.recoverAllocatedFileTimestamp(
         tsFileManager.getMaxFileTimestampOfUnSequenceFile());
     CompactionScheduleTaskManager.getInstance().registerDataRegion(this);

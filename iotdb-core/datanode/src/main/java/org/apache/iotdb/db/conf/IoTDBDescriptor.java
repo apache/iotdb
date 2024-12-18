@@ -623,12 +623,20 @@ public class IoTDBDescriptor {
     }
     conf.setMergeIntervalSec(
         Long.parseLong(
-            properties.getProperty(
-                "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
-    conf.setCompactionThreadCount(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "merge_interval_sec", Long.toString(conf.getMergeIntervalSec())))
+                .map(String::trim)
+                .orElse(Long.toString(conf.getMergeIntervalSec()))));
+    int compactionThreadCount =
         Integer.parseInt(
-            properties.getProperty(
-                "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "compaction_thread_count",
+                        Integer.toString(conf.getCompactionThreadCount())))
+                .map(String::trim)
+                .orElse(Integer.toString(conf.getCompactionThreadCount())));
+    conf.setCompactionThreadCount(compactionThreadCount <= 0 ? 1 : compactionThreadCount);
     int maxConcurrentAlignedSeriesInCompaction =
         Integer.parseInt(
             properties.getProperty(
@@ -1209,8 +1217,8 @@ public class IoTDBDescriptor {
 
     CompactionScheduleTaskManager.getInstance().checkAndMayApplyConfigurationChange();
     // hot load compaction task manager configurations
-    loadCompactionIsEnabledHotModifiedProps(properties);
-    boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
+    boolean restartCompactionTaskManager = loadCompactionIsEnabledHotModifiedProps(properties);
+    restartCompactionTaskManager |= loadCompactionThreadCountHotModifiedProps(properties);
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
@@ -1425,8 +1433,7 @@ public class IoTDBDescriptor {
                 "compaction_thread_count",
                 ConfigurationFileUtils.getConfigurationDefaultValue("compaction_thread_count")));
     if (newConfigCompactionThreadCount <= 0) {
-      LOGGER.error("compaction_thread_count must greater than 0");
-      return false;
+      newConfigCompactionThreadCount = 1;
     }
     if (newConfigCompactionThreadCount == conf.getCompactionThreadCount()) {
       return false;
@@ -1448,8 +1455,7 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "sub_compaction_thread_count")));
     if (newConfigSubtaskNum <= 0) {
-      LOGGER.error("sub_compaction_thread_count must greater than 0");
-      return false;
+      newConfigSubtaskNum = 1;
     }
     if (newConfigSubtaskNum == conf.getSubCompactionTaskNum()) {
       return false;
@@ -1458,7 +1464,8 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private void loadCompactionIsEnabledHotModifiedProps(Properties properties) throws IOException {
+  private boolean loadCompactionIsEnabledHotModifiedProps(Properties properties)
+      throws IOException {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
             || conf.isEnableUnseqSpaceCompaction()
@@ -1486,14 +1493,10 @@ public class IoTDBDescriptor {
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
-    if (!isCompactionEnabled && compactionEnabledInNewConfig) {
-      LOGGER.error("Compaction cannot start in current status.");
-      return;
-    }
-
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
+    return !isCompactionEnabled && compactionEnabledInNewConfig;
   }
 
   private void loadWALHotModifiedProps(Properties properties) throws IOException {
