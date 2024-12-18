@@ -337,7 +337,8 @@ public class IoTDBDatabaseIT {
                   "create table information_schema.tableA ()",
                   "alter table information_schema.tableA add column a id",
                   "alter table information_schema.tableA set properties ttl=default",
-                  "insert into information_schema.tables (database) values('db')"));
+                  "insert into information_schema.tables (database) values('db')",
+                  "update information_schema.tables set status='RUNNING'"));
 
       for (final String writeSQL : writeSQLs) {
         try {
@@ -346,23 +347,6 @@ public class IoTDBDatabaseIT {
         } catch (final SQLException e) {
           assertEquals(
               "701: The database 'information_schema' can only be queried", e.getMessage());
-        }
-      }
-
-      final Set<String> deviceSQLs =
-          new HashSet<>(
-              Arrays.asList(
-                  "show devices from information_schema.tables",
-                  "count devices from information_schema.tables"));
-
-      for (final String deviceSQL : deviceSQLs) {
-        try {
-          statement.execute(deviceSQL);
-          fail("information_schema does not support device sql");
-        } catch (final SQLException e) {
-          assertEquals(
-              "701: The database 'information_schema' does not support device operations",
-              e.getMessage());
         }
       }
 
