@@ -269,6 +269,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitDeleteData(RelationalDeleteDataNode node, DataRegion dataRegion) {
     try {
       dataRegion.deleteByTable(node);
+      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (IOException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
