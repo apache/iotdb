@@ -59,7 +59,7 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           while true; do
-            mvn clean verify \
+            mvn verify \
             -P with-integration-tests \
             -DskipUTs \
             -DintegrationTest.forkCount=40 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
