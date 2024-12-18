@@ -234,7 +234,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         // see org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException.KEYWORD
-        throw new InterruptedException(
+        throw new SubscriptionException(
             String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
