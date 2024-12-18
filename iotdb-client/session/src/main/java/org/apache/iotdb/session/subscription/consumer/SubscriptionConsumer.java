@@ -610,7 +610,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                         LOGGER.warn("unexpected response type: {}", responseType);
                         return Optional.empty();
                       })
-                  .apply(response, timer)
+                  // TODO: reuse previous timer?
+                  .apply(response, new PollTimer(System.currentTimeMillis(), timeoutMs))
                   .ifPresent(currentMessages::add);
             } catch (final SubscriptionRuntimeNonCriticalException e) {
               LOGGER.warn(

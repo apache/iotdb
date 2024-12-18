@@ -365,4 +365,9 @@ public class RemoteCommonConfig implements CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes) {
     return this;
   }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    return this;
+  }
 }
