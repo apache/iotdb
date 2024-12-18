@@ -44,9 +44,9 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-@Ignore
 public class IoTDBEncryptionValueQueryIT {
   private static String[] sqls =
       new String[] {

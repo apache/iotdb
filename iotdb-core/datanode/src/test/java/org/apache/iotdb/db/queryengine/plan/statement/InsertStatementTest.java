@@ -116,7 +116,7 @@ public class InsertStatementTest {
           TSDataType.STRING,
           TSDataType.STRING,
           TSDataType.DOUBLE,
-          TSDataType.INT64,
+          TSDataType.BLOB,
           TSDataType.STRING
         });
     insertRowStatement.setColumnCategories(

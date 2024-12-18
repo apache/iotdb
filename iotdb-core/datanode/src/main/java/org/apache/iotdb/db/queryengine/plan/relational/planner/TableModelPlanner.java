@@ -202,8 +202,7 @@ public class TableModelPlanner implements IPlanner {
   }
 
   @Override
-  public void setRedirectInfo(
-      IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
+  public void setRedirectInfo(IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus) {
     Analysis analysis = (Analysis) iAnalysis;
 
     // Get the inner statement of PipeEnriched
@@ -221,7 +220,7 @@ public class TableModelPlanner implements IPlanner {
     if (!analysis.isFinishQueryAfterAnalyze()) {
       // Table Model Session only supports insertTablet
       if (insertStatement instanceof InsertTabletStatement) {
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+        if (tsstatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           boolean needRedirect = false;
           List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
           List<TSStatus> subStatus = new ArrayList<>(redirectNodeList.size());
