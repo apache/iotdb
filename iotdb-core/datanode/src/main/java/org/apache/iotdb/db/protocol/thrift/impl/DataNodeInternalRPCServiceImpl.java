@@ -1753,14 +1753,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       database,
                       (db, measurementMap) -> {
                         final IMeasurementSchema schema = result.getSchema();
-                        if (Objects.isNull(measurementMap)) {
-                          final Map<String, Map<TSDataType, Integer>> resultMap = new HashMap<>();
-                          final Map<TSDataType, Integer> typeMap = new EnumMap<>(TSDataType.class);
-                          typeMap.put(schema.getType(), 1);
-                          resultMap.put(schema.getMeasurementName(), typeMap);
-                          return resultMap;
-                        }
-                        return null;
+                        final Map<String, Map<TSDataType, Integer>> resultMap =
+                            Objects.nonNull(measurementMap) ? measurementMap : new HashMap<>();
+                        final Map<TSDataType, Integer> typeMap =
+                            resultMap.containsKey(schema.getMeasurementName())
+                                ? resultMap.get(schema.getMeasurementName())
+                                : new EnumMap<>(TSDataType.class);
+                        typeMap.compute(
+                            schema.getType(), (type, num) -> Objects.nonNull(num) ? num + 1 : 1);
+                        return resultMap;
                       });
                 }
               } catch (final Exception e) {
