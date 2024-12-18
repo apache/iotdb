@@ -338,32 +338,9 @@ public class TableDeviceSchemaCache {
         false);
   }
 
-  /////////////////////////////// Tree view ///////////////////////////////
-
-  public void putIsAligned(final IDeviceID deviceID, final boolean isAligned) {
-    dualKeyCache.update(
-        new TableId(null, deviceID.getTableName()),
-        deviceID,
-        new TableDeviceCacheEntry(),
-        entry ->
-            entry.setDeviceSchema(
-                null, new DeviceSchemaInfo(null, isAligned, -1, Collections.emptyList())),
-        true);
-  }
-
-  public Boolean getIsAligned(final IDeviceID deviceID) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
-    return Objects.nonNull(entry)
-        ? ((TreeDeviceNormalSchema) entry.getDeviceSchema()).isAligned()
-        : null;
-  }
-
   /////////////////////////////// Tree model ///////////////////////////////
 
-  // Shall be accessed through "TreeDeviceSchemaCacheManager"
-
-  void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -378,7 +355,7 @@ public class TableDeviceSchemaCache {
         true);
   }
 
-  IDeviceSchema getDeviceSchema(final String[] devicePath) {
+  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
     final IDeviceID deviceID =
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(devicePath));
