@@ -34,12 +34,15 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -88,18 +91,92 @@ public class SubscriptionBroker {
 
   public List<SubscriptionEvent> poll(
       final String consumerId, final Set<String> topicNames, final long maxBytes) {
-    final List<SubscriptionEvent> events = new ArrayList<>();
+    final List<SubscriptionEvent> eventsToPoll = new ArrayList<>();
+    final Set<String> candidateTopicNames = prepareCandidateTopicNames(topicNames, eventsToPoll);
+
+    // Sort topic names based on the current subscription states (number of events received per
+    // topic)
+    final List<String> sortedTopicNames = new ArrayList<>(candidateTopicNames);
+    sortedTopicNames.sort(
+        Comparator.comparingLong(
+            topicName ->
+                Objects.requireNonNull(consumerIdToSubscriptionStates.get(consumerId))
+                    .getStates(topicName)));
+
+    final List<SubscriptionEvent> eventsToNack = new ArrayList<>();
+    long totalSize = 0;
+    final Map<String, Long> topicNameToIncrements = new HashMap<>();
+
+    // Iterate over each sorted topic name and poll the corresponding events
+    for (final String topicName : sortedTopicNames) {
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
+      // Recheck
+      if (Objects.isNull(prefetchingQueue) || prefetchingQueue.isClosed()) {
+        continue;
+      }
+
+      // Poll the event from the prefetching queue
+      final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
+      if (Objects.isNull(event)) {
+        continue;
+      }
+
+      // Try to get the current size of the event
+      final long currentSize;
+      try {
+        currentSize = event.getCurrentResponseSize();
+      } catch (final IOException e) {
+        // If there is an error getting the event's size, nack the event
+        eventsToNack.add(event);
+        continue;
+      }
+
+      // Add the event to the poll list
+      eventsToPoll.add(event);
+
+      // Increment the event count for the topic
+      topicNameToIncrements.merge(event.getCommitContext().getTopicName(), 1L, Long::sum);
+
+      // Update the total size
+      totalSize += currentSize;
+
+      // If adding this event exceeds the maxBytes (pessimistic estimation), break the loop
+      if (totalSize + currentSize > maxBytes) {
+        break;
+      }
+    }
+
+    // Update the subscription states with the increments for the topics processed
+    Objects.requireNonNull(consumerIdToSubscriptionStates.get(consumerId))
+        .updateStates(topicNameToIncrements);
+
+    // Commit the nack events for the consumer
+    commit(
+        consumerId,
+        eventsToNack.stream().map(SubscriptionEvent::getCommitContext).collect(Collectors.toList()),
+        true);
+
+    // Return the list of events that are to be polled
+    return eventsToPoll;
+  }
+
+  private Set<String> prepareCandidateTopicNames(
+      final Set<String> topicNames,
+      final List<SubscriptionEvent> eventsToPoll /* output parameter */) {
+    final Set<String> candidateTopicNames = new HashSet<>();
     for (final String topicName : topicNames) {
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
+      // If there is no prefetching queue for the topic, check if it's completed
       if (Objects.isNull(prefetchingQueue)) {
-        // check if completed
         if (completedTopicNames.containsKey(topicName)) {
           LOGGER.info(
               "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, return termination response to client",
               topicName,
               brokerId);
-          events.add(
+          // Add a termination event for the completed topic
+          eventsToPoll.add(
               new SubscriptionEvent(
                   SubscriptionPollResponseType.TERMINATION.getType(),
                   new TerminationPayload(),
@@ -118,6 +195,8 @@ public class SubscriptionBroker {
         //   2.2. potential disorder of unbind and close prefetching queue...
         continue;
       }
+
+      // Check if the prefetching queue is closed
       if (prefetchingQueue.isClosed()) {
         LOGGER.warn(
             "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
@@ -125,22 +204,11 @@ public class SubscriptionBroker {
             brokerId);
         continue;
       }
-      final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
-      if (Objects.nonNull(event)) {
-        events.add(event);
-      }
+
+      candidateTopicNames.add(topicName);
     }
 
-    final Pair<List<SubscriptionEvent>, List<SubscriptionEvent>> eventsToPollWithEventsToNack =
-        Objects.requireNonNull(consumerIdToSubscriptionStates.get(consumerId))
-            .filter(events, maxBytes);
-    commit(
-        consumerId,
-        eventsToPollWithEventsToNack.right.stream()
-            .map(SubscriptionEvent::getCommitContext)
-            .collect(Collectors.toList()),
-        true);
-    return eventsToPollWithEventsToNack.left;
+    return candidateTopicNames;
   }
 
   public List<SubscriptionEvent> pollTsFile(

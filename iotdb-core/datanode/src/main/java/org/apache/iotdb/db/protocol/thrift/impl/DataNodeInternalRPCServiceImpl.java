@@ -2244,9 +2244,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus setSystemStatus(String status) throws TException {
     try {
       commonConfig.setNodeStatus(NodeStatus.parse(status));
-      if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
-        PipeDataNodeAgent.runtime().stop();
-      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
