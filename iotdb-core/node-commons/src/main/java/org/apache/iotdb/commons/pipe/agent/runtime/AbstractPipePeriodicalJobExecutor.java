@@ -93,9 +93,6 @@ public abstract class AbstractPipePeriodicalJobExecutor {
   }
 
   protected void execute() {
-    // The interrupt status of the previous task will affect the execution of the current task, so
-    // clear the interrupt status of the current thread
-    Thread.interrupted();
     ++rounds;
 
     for (final Pair<WrappedRunnable, Long> periodicalJob : periodicalJobs) {
