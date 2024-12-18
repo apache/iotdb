@@ -189,6 +189,7 @@ public class LoadTsFileTreeSchemaCache {
 
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
     return currentTimeIndex != null
+        && currentTimeIndex.checkDeviceIdExist(device)
         && ModificationUtils.isAllDeletedByMods(
             currentModifications,
             device,

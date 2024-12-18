@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -318,9 +319,9 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(IDeviceID deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
     long startTime = getStartTime(deviceId);
     if (time < startTime) {
-      int index = getDeviceIndex(deviceId);
       startTimes[index] = time;
     }
     minStartTime = Math.min(minStartTime, time);
@@ -328,9 +329,9 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(IDeviceID deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
     long endTime = getEndTime(deviceId);
     if (time > endTime) {
-      int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
     maxEndTime = Math.max(maxEndTime, time);
@@ -353,7 +354,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public long getStartTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MAX_VALUE;
+      throw new NoSuchElementException(deviceId.toString());
     }
     return startTimes[deviceToIndex.get(deviceId)];
   }
@@ -361,7 +362,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public long getEndTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return Long.MIN_VALUE;
+      throw new NoSuchElementException(deviceId.toString());
     }
     return endTimes[deviceToIndex.get(deviceId)];
   }

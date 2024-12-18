@@ -70,7 +70,11 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
-    final long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    // beware of overflow
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    if (endTime <= startTime) {
+      endTime = Long.MAX_VALUE;
+    }
     final int satisfiedLength = satisfiedLengthQueue.poll();
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);

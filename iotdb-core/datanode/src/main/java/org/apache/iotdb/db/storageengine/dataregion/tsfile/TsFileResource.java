@@ -576,7 +576,9 @@ public class TsFileResource implements PersistentResource {
 
   public long getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+      return deviceId == null || !timeIndex.checkDeviceIdExist(deviceId)
+          ? getFileStartTime()
+          : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -590,7 +592,9 @@ public class TsFileResource implements PersistentResource {
   /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+      return deviceId == null || !timeIndex.checkDeviceIdExist(deviceId)
+          ? getFileEndTime()
+          : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);

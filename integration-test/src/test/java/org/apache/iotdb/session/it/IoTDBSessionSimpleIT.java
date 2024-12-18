@@ -79,6 +79,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("ThrowFromFinallyBlock")
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionSimpleIT {
 
@@ -1870,15 +1871,24 @@ public class IoTDBSessionSimpleIT {
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
-    EnvFactory.getEnv().initClusterEnvironment();
     try {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+
         session.executeNonQueryStatement(
-            String.format("INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MIN_VALUE));
+            String.format(
+                "INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MIN_VALUE));
         session.executeNonQueryStatement(
-            String.format("INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MAX_VALUE));
+            String.format(
+                "INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MAX_VALUE));
 
         SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
         RowRecord record = dataSet.next();
@@ -1896,7 +1906,17 @@ public class IoTDBSessionSimpleIT {
         assertFalse(dataSet.hasNext());
       }
     } finally {
-      EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(true);
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
     }
   }
 
@@ -1909,30 +1929,46 @@ public class IoTDBSessionSimpleIT {
           WriteProcessException {
     File file = new File("target", "test.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
-      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(new String[] {"root", "test", "d1"});
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.test.d1");
       writer.registerTimeseries(deviceID, new MeasurementSchema("s1", TSDataType.INT32));
       TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
       record.addPoint("s1", 1);
       writer.writeRecord(record);
       record.setTime(Long.MAX_VALUE);
+      writer.writeRecord(record);
     }
 
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
-    EnvFactory.getEnv().initClusterEnvironment();
-    try {
-      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        session.executeNonQueryStatement("LOAD " + file.getAbsolutePath());
-
-        SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
-        RowRecord record = dataSet.next();
-        assertEquals(Long.MIN_VALUE, record.getTimestamp());
-        record = dataSet.next();
-        assertEquals(Long.MAX_VALUE, record.getTimestamp());
-        assertFalse(dataSet.hasNext());
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+      } catch (StatementExecutionException e) {
+        // run in IDE will trigger this, ignore it
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
       }
+      session.executeNonQueryStatement("LOAD \"" + file.getAbsolutePath() + "\"");
+
+      SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(Long.MIN_VALUE, record.getTimestamp());
+      record = dataSet.next();
+      assertEquals(Long.MAX_VALUE, record.getTimestamp());
+      assertFalse(dataSet.hasNext());
     } finally {
-      EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(true);
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+      file.delete();
     }
   }
 }

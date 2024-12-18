@@ -2001,10 +2001,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } catch (NumberFormatException e) {
         throw new SemanticException(
             String.format(
-                "Failed to parse the timestamp: " + e.getMessage() +
-                "Current system timestamp precision is %s, "
+                "Failed to parse the timestamp: "
+                    + e.getMessage()
+                    + "Current system timestamp precision is %s, "
                     + "please check whether the timestamp %s is correct.",
-                TIMESTAMP_PRECISION, constant.INTEGER_LITERAL().getText()));
+                TIMESTAMP_PRECISION,
+                constant.INTEGER_LITERAL().getText()));
       }
     } else if (constant.dateExpression() != null) {
       return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());

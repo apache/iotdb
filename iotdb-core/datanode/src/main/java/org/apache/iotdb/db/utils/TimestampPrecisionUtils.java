@@ -73,10 +73,10 @@ public class TimestampPrecisionUtils {
         if (time > 10_000_000_000_000L) {
           throw new SemanticException(
               String.format(
-                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision." +
-                  "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct." +
-                  "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
+                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
+                      + "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct."
+                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
                   TIMESTAMP_PRECISION, time));
         }
         break;
@@ -84,10 +84,10 @@ public class TimestampPrecisionUtils {
         if (time > 10_000_000_000_000_000L) {
           throw new SemanticException(
               String.format(
-                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision." +
-                      "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct." +
-                      "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
+                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
+                      + "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct."
+                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
                   TIMESTAMP_PRECISION, time));
         }
         break;
