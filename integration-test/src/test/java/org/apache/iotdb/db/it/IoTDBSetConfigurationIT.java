@@ -126,6 +126,9 @@ public class IoTDBSetConfigurationIT {
         .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
     Assert.assertTrue(
         checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   private static boolean checkConfigFileContains(
