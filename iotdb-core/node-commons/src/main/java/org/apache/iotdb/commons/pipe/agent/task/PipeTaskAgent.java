@@ -896,6 +896,9 @@ public abstract class PipeTaskAgent {
           try {
             int retryCount = 0;
             while (true) {
+              // Clear the interrupt status of the previous task to ensure that the current task
+              // will not be affected
+              Thread.interrupted();
               if (tryWriteLockWithTimeOut(5)) {
                 try {
                   stopAllPipesWithCriticalExceptionInternal(currentNodeId);
