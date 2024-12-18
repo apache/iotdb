@@ -173,5 +173,19 @@ public class IoTDBSetConfigurationIT {
         assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
       }
     }
+
+    // can start with an illegal value
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultStorageGroupLevel(-1);
+    EnvFactory.getEnv().initClusterEnvironment();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
+      ResultSet databases = statement.executeQuery("show databases");
+      databases.next();
+      // the default value should take effect
+      Assert.assertEquals("root.a", databases.getString(1));
+      assertFalse(databases.next());
+    }
   }
 }
