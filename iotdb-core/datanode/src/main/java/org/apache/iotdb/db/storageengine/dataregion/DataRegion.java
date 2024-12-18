@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -131,6 +133,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -319,6 +322,8 @@ public class DataRegion implements IDataRegionForQuery {
       PerformanceOverviewMetrics.getInstance();
   private final ExecutorService upgradeModFileThreadPool;
 
+  private final DataRegionMetrics metrics;
+
   /**
    * Construct a database processor.
    *
@@ -382,7 +387,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
+    this.metrics = new DataRegionMetrics(this);
+    MetricService.getInstance().addMetricSet(metrics);
   }
 
   @TestOnly
@@ -393,6 +399,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
+    this.metrics = new DataRegionMetrics(this);
   }
 
   @Override
@@ -495,10 +502,6 @@ public class DataRegion implements IDataRegionForQuery {
                     true,
                     resource.getTsFile().getName());
             resource.upgradeModFile(upgradeModFileThreadPool);
-            if (resource.anyModFileExists()) {
-              FileMetrics.getInstance().increaseModFileNum(1);
-              FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
-            }
           }
         }
         while (!value.isEmpty()) {
@@ -528,10 +531,6 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().getName());
           }
           resource.upgradeModFile(upgradeModFileThreadPool);
-          if (resource.anyModFileExists()) {
-            FileMetrics.getInstance().increaseModFileNum(1);
-            FileMetrics.getInstance().increaseModFileSize(resource.getTotalModSizeInByte());
-          }
         }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
@@ -911,7 +910,8 @@ public class DataRegion implements IDataRegionForQuery {
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
       tsFileManager.add(tsFileResource, isSeq);
-      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())
+          && tsFileResource.resourceFileExists()) {
         tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         resourceListForAsyncRecover.add(tsFileResource);
@@ -1158,7 +1158,7 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
-      long[] costsForMetrics) {
+      long[] infoForMetrics) {
     boolean noFailure = true;
     for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
       long timePartitionId = entry.getKey();
@@ -1173,7 +1173,7 @@ public class DataRegion implements IDataRegionForQuery {
                     results,
                     timePartitionId,
                     noFailure,
-                    costsForMetrics)
+                    infoForMetrics)
                 && noFailure;
       }
       List<int[]> unSequenceRangeList = rangeLists[0];
@@ -1186,7 +1186,7 @@ public class DataRegion implements IDataRegionForQuery {
                     results,
                     timePartitionId,
                     noFailure,
-                    costsForMetrics)
+                    infoForMetrics)
                 && noFailure;
       }
     }
@@ -1213,13 +1213,14 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
-      long[] costsForMetrics = new long[4];
-      boolean noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
-
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+      long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
+      boolean noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
+      updateTsFileProcessorMetric(insertTabletNode, infoForMetrics);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1230,10 +1231,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private boolean executeInsertTablet(
-      InsertTabletNode insertTabletNode, TSStatus[] results, long[] costsForMetrics)
+      InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, i -> getTTL(insertTabletNode));
+    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
@@ -1244,7 +1245,7 @@ public class DataRegion implements IDataRegionForQuery {
       split(insertTabletNode, start, end, splitInfo);
       start = end;
     }
-    noFailure = doInsert(insertTabletNode, splitInfo, results, costsForMetrics) && noFailure;
+    noFailure = doInsert(insertTabletNode, splitInfo, results, infoForMetrics) && noFailure;
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
@@ -1289,7 +1290,7 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results,
       long timePartitionId,
       boolean noFailure,
-      long[] costsForMetrics) {
+      long[] infoForMetrics) {
     if (insertTabletNode.allMeasurementFailed()) {
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1319,8 +1320,7 @@ public class DataRegion implements IDataRegionForQuery {
     registerToTsFile(insertTabletNode, tsFileProcessor);
 
     try {
-      tsFileProcessor.insertTablet(
-          insertTabletNode, rangeList, results, noFailure, costsForMetrics);
+      tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1358,12 +1358,14 @@ public class DataRegion implements IDataRegionForQuery {
     if (tsFileProcessor == null || insertRowNode.allMeasurementFailed()) {
       return null;
     }
-    long[] costsForMetrics = new long[4];
-    tsFileProcessor.insert(insertRowNode, costsForMetrics);
-    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+    long[] infoForMetrics = new long[5];
+    // infoForMetrics[0]: CreateMemtableBlockTimeCost
+    // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+    // infoForMetrics[2]: ScheduleWalTimeCost
+    // infoForMetrics[3]: ScheduleMemTableTimeCost
+    // infoForMetrics[4]: InsertedPointsNumber
+    tsFileProcessor.insert(insertRowNode, infoForMetrics);
+    updateTsFileProcessorMetric(insertRowNode, infoForMetrics);
     // register TableSchema (and maybe more) for table insertion
     registerToTsFile(insertRowNode, tsFileProcessor);
     return tsFileProcessor;
@@ -1374,8 +1376,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<InsertRowNode> insertToTsFileProcessors(
-      InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
-    long[] costsForMetrics = new long[4];
+      InsertRowsNode insertRowsNode,
+      boolean[] areSequence,
+      long[] timePartitionIds,
+      long[] infoForMetrics) {
     Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
     for (int i = 0; i < areSequence.length; i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
@@ -1416,7 +1420,7 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
-        tsFileProcessor.insertRows(subInsertRowsNode, costsForMetrics);
+        tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
       } catch (WriteProcessException e) {
         insertRowsNode
             .getResults()
@@ -1432,11 +1436,6 @@ public class DataRegion implements IDataRegionForQuery {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     }
-
-    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
     return executedInsertRowNodeList;
   }
 
@@ -1721,9 +1720,10 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.forEach(
           x -> {
             FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
-            if (x.getExclusiveModFile().exists()) {
-              FileMetrics.getInstance().decreaseModFileNum(1);
-              FileMetrics.getInstance().decreaseModFileSize(x.getExclusiveModFile().getSize());
+            try {
+              x.removeModFile();
+            } catch (IOException e) {
+              logger.warn("Cannot remove mod file {}", x, e);
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
@@ -1939,10 +1939,6 @@ public class DataRegion implements IDataRegionForQuery {
                 resource.getTsFileSize(),
                 resource.isSeq(),
                 resource.getTsFile().getName());
-        if (resource.getExclusiveModFile().exists()) {
-          FileMetrics.getInstance().increaseModFileNum(1);
-          FileMetrics.getInstance().increaseModFileSize(resource.getExclusiveModFile().getSize());
-        }
       }
       WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
@@ -2558,7 +2554,6 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
       // delete data in sealed file
-      long originSize = involvedModificationFile.getSize();
       involvedModificationFile.write(modEntry);
       // The file size may be smaller than the original file, so the increment here may be
       // negative
@@ -2567,8 +2562,6 @@ public class DataRegion implements IDataRegionForQuery {
           "[Deletion] Deletion with path {} written into mods file:{}.",
           modEntry,
           involvedModificationFile);
-      FileMetrics.getInstance()
-          .increaseModFileSize(involvedModificationFile.getSize() - originSize);
     }
 
     // can be deleted by files
@@ -3074,9 +3067,6 @@ public class DataRegion implements IDataRegionForQuery {
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe);
 
-    // help tsfile resource degrade
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-
     tsFileManager.add(tsFileResource, false);
 
     return true;
@@ -3284,7 +3274,6 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       long ttl = getTTL(insertRowsOfOneDeviceNode);
-      long[] costsForMetrics = new long[4];
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
@@ -3348,11 +3337,17 @@ public class DataRegion implements IDataRegionForQuery {
             });
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+      long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          tsFileProcessor.insertRows(subInsertRowsNode, costsForMetrics);
+          tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
@@ -3368,10 +3363,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+      updateTsFileProcessorMetric(insertRowsOfOneDeviceNode, infoForMetrics);
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
           && !insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
         // disable updating last cache on follower
@@ -3438,8 +3430,15 @@ public class DataRegion implements IDataRegionForQuery {
                     > lastFlushTimeMap.getFlushedTime(
                         timePartitionIds[i], insertRowNode.getDeviceID());
       }
+      long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       List<InsertRowNode> executedInsertRowNodeList =
-          insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+          insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds, infoForMetrics);
+      updateTsFileProcessorMetric(insertRowsNode, infoForMetrics);
 
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
           && !insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
@@ -3477,14 +3476,19 @@ public class DataRegion implements IDataRegionForQuery {
             insertMultiTabletsNode.getSearchIndex());
         return;
       }
-      long[] costsForMetrics = new long[4];
+      long[] infoForMetrics = new long[5];
+      // infoForMetrics[0]: CreateMemtableBlockTimeCost
+      // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
+      // infoForMetrics[2]: ScheduleWalTimeCost
+      // infoForMetrics[3]: ScheduleMemTableTimeCost
+      // infoForMetrics[4]: InsertedPointsNumber
       for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
         Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
         boolean noFailure = false;
         try {
-          noFailure = executeInsertTablet(insertTabletNode, results, costsForMetrics);
+          noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
         } catch (WriteProcessException e) {
           insertMultiTabletsNode
               .getResults()
@@ -3506,11 +3510,7 @@ public class DataRegion implements IDataRegionForQuery {
           insertMultiTabletsNode.getResults().put(i, firstStatus);
         }
       }
-
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+      updateTsFileProcessorMetric(insertMultiTabletsNode, infoForMetrics);
 
     } finally {
       writeUnlock();
@@ -3518,6 +3518,41 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException("Partial failed inserting multi tablets");
+    }
+  }
+
+  private void updateTsFileProcessorMetric(InsertNode insertNode, long[] infoForMetrics) {
+    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(infoForMetrics[0]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(infoForMetrics[1]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(infoForMetrics[2]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(infoForMetrics[3]);
+    MetricService.getInstance()
+        .count(
+            infoForMetrics[4],
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            databaseName,
+            Tag.REGION.toString(),
+            dataRegionId,
+            Tag.TYPE.toString(),
+            Metric.MEMTABLE_POINT_COUNT.toString());
+    if (!insertNode.isGeneratedByRemoteConsensusLeader()) {
+      MetricService.getInstance()
+          .count(
+              infoForMetrics[4],
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              databaseName,
+              Tag.REGION.toString(),
+              dataRegionId,
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
     }
   }
 
@@ -3660,6 +3695,7 @@ public class DataRegion implements IDataRegionForQuery {
         deletedCondition.await();
       }
       FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
+      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();

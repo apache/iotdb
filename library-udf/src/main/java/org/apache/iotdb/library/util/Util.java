@@ -21,6 +21,7 @@ package org.apache.iotdb.library.util;
 
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -32,6 +33,9 @@ import java.util.List;
 
 /** This class offers functions of getting and putting values from iotdb interface. */
 public class Util {
+  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
+  public static final String MS_PRECISION = "ms";
+
   private Util() {
     throw new IllegalStateException("Utility class");
   }
@@ -300,26 +304,80 @@ public class Util {
    * @param s input string
    * @return timestamp
    */
-  public static long parseTime(String s) {
+  public static long parseTime(String s, UDFParameters parameters) {
     long unit = 0;
+    String timestampPrecision =
+        parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
     s = s.toLowerCase();
     s = s.replace(" ", "");
-    if (s.endsWith("ms")) {
-      unit = 1;
-      s = s.substring(0, s.length() - 2);
-    } else if (s.endsWith("s")) {
-      unit = 1000;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("m")) {
-      unit = 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("h")) {
-      unit = 60 * 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
-    } else if (s.endsWith("d")) {
-      unit = 24 * 60 * 60 * 1000L;
-      s = s.substring(0, s.length() - 1);
+    if (timestampPrecision.equals("ms")) {
+      if (s.endsWith("ns") || s.endsWith("us")) {
+        throw new IllegalArgumentException(
+            "The provided time precision is higher than the system's time precision (ms). Please check your input.");
+      } else if (s.endsWith("ms")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
+    } else if (timestampPrecision.equals("us")) {
+      if (s.endsWith("ns")) {
+        throw new IllegalArgumentException(
+            "The provided time precision is higher than the system's time precision (us). Please check your input.");
+      } else if (s.endsWith("us")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("ms")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000 * 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
+    } else if (timestampPrecision.equals("ns")) {
+      if (s.endsWith("ns")) {
+        unit = 1;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("us")) {
+        unit = 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("ms")) {
+        unit = 1000 * 1000;
+        s = s.substring(0, s.length() - 2);
+      } else if (s.endsWith("s")) {
+        unit = 1000 * 1000 * 1000;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("m")) {
+        unit = 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("h")) {
+        unit = 60 * 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      } else if (s.endsWith("d")) {
+        unit = 24 * 60 * 60 * 1000 * 1000 * 1000L;
+        s = s.substring(0, s.length() - 1);
+      }
     }
+
     double v = Double.parseDouble(s);
     return (long) (unit * v);
   }

@@ -39,6 +39,7 @@ import org.junit.runner.RunWith;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
 
@@ -68,8 +69,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -80,6 +81,12 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     // Double living is two clusters each with a pipe connecting to the other.
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     createDataBaseAndTable(senderEnv);
     createDataBaseAndTable(receiverEnv);
@@ -151,7 +158,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     }
     insertData("test", "test1", 300, 400, receiverEnv);
 
-    TableModelUtils.assertData("test", "test1", 0, 400, receiverEnv);
+    TableModelUtils.assertData("test", "test1", 0, 400, receiverEnv, handleFailure);
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -163,13 +170,19 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     insertData("test", "test1", 400, 500, senderEnv);
     insertData("test", "test1", 500, 600, receiverEnv);
 
-    TableModelUtils.assertData("test", "test1", 0, 600, receiverEnv);
+    TableModelUtils.assertData("test", "test1", 0, 600, receiverEnv, handleFailure);
   }
 
   @Test
   public void testDoubleLivingAutoConflictTemplate() throws Exception {
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
 
     final String senderIp = senderDataNode.getIp();
     final int senderPort = senderDataNode.getPort();
@@ -245,14 +258,16 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
         TableModelUtils.getQuerySql("test"),
         TableModelUtils.generateHeaderResults(),
         TableModelUtils.generateExpectedResults(0, 200),
-        "test");
+        "test",
+        handleFailure);
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
         TableModelUtils.getQuerySql("test1"),
         TableModelUtils.generateHeaderResults(),
         TableModelUtils.generateExpectedResults(200, 400),
-        "test");
+        "test",
+        handleFailure);
   }
 
   private void createDataBaseAndTable(BaseEnv baseEnv) {

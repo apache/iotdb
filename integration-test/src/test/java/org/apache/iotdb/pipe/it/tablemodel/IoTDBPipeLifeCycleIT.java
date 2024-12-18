@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,6 +38,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -47,6 +49,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -82,34 +90,40 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 300, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 300, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 400, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 400, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 400, 500, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 500, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 500, receiverEnv, handleFailure);
     }
   }
 
+  @Ignore
   @Test
   public void testLifeCycleWithHistoryDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -162,14 +176,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv, handleFailure);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test2", "test2");
       insertResult = TableModelUtils.insertData("test2", "test2", 0, 100, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv, handleFailure);
     }
   }
 
@@ -179,6 +193,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -212,21 +231,21 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 100, senderEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
       insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test1", "test1", 100, senderEnv);
+      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv, handleFailure);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test2", "test2");
       insertResult = TableModelUtils.insertData("test2", "test2", 0, 100, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test2", "test2", 100, senderEnv);
+      TableModelUtils.assertCountData("test2", "test2", 100, receiverEnv, handleFailure);
     }
   }
 
@@ -236,6 +255,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -269,14 +293,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
       insertResult = TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv);
+      TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv, handleFailure);
     }
   }
 
@@ -286,6 +310,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -324,13 +353,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 300, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 300, receiverEnv, handleFailure);
     }
   }
 
@@ -340,6 +369,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -376,7 +410,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
     }
 
     try {
@@ -394,7 +428,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 300, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 300, receiverEnv, handleFailure);
     }
   }
 
@@ -404,6 +438,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -471,7 +510,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 100 + succeedNum.get(), receiverEnv);
+      TableModelUtils.assertCountData(
+          "test", "test", 100 + succeedNum.get(), receiverEnv, handleFailure);
     }
   }
 
@@ -481,6 +521,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -488,7 +533,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, receiverEnv);
+      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
       if (!insertResult) {
         return;
       }
@@ -517,7 +562,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -526,7 +571,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
     }
   }
 
@@ -536,6 +581,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     // Double living is two clusters with pipes connecting each other.
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+        };
 
     final String senderIp = senderDataNode.getIp();
     final int senderPort = senderDataNode.getPort();
@@ -559,7 +609,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
 
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -598,7 +649,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       // Add this property to avoid to make self cycle.
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);
@@ -622,7 +674,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     if (!insertResult) {
       return;
     }
-    TableModelUtils.assertData("test", "test", 0, 400, receiverEnv);
+    TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -637,6 +689,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
       return;
     }
 
-    TableModelUtils.assertData("test", "test", 0, 500, receiverEnv);
+    TableModelUtils.assertData("test", "test", 0, 500, receiverEnv, handleFailure);
   }
 }

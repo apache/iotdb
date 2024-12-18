@@ -719,7 +719,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     }
 
     @Override
-    public long getSize() {
+    public long getFileLength() {
       return 1024 * 1024 * 50 + 1;
     }
   }

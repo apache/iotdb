@@ -483,7 +483,7 @@ public class InsertNodeMemoryEstimator {
     // Header + primitive + reference
     long size = MEASUREMENT_SCHEMA_SIZE;
     // measurementId
-    size += sizeOfString(measurementSchema.getMeasurementId());
+    size += sizeOfString(measurementSchema.getMeasurementName());
     // props
     final Map<String, String> props = measurementSchema.getProps();
     if (props != null) {

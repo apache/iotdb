@@ -18,12 +18,12 @@
 
 import numpy as np
 
-from iotdb.Session import Session
-from iotdb.SessionPool import PoolConfig, create_session_pool
+from iotdb.table_session import TableSession, TableSessionConfig
+from iotdb.table_session_pool import TableSessionPool, TableSessionPoolConfig
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet, ColumnType
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 
 
 def test_session():
@@ -37,32 +37,17 @@ def test_session_pool():
 def session_test(use_session_pool=False):
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-
         if use_session_pool:
-            pool_config = PoolConfig(
-                db.get_container_host_ip(),
-                db.get_exposed_port(6667),
-                "root",
-                "root",
-                None,
-                1024,
-                "Asia/Shanghai",
-                3,
-                sql_dialect="table",
+            config = TableSessionPoolConfig(
+                node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
             )
-            session_pool = create_session_pool(pool_config, 1, 3000)
+            session_pool = TableSessionPool(config)
             session = session_pool.get_session()
         else:
-            session = Session(
-                db.get_container_host_ip(),
-                db.get_exposed_port(6667),
-                sql_dialect="table",
+            config = TableSessionConfig(
+                node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
             )
-        session.open(False)
-
-        if not session.is_open():
-            print("can't open session")
-            exit(1)
+            session = TableSession(config)
 
         session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
         session.execute_non_query_statement('USE "db1"')
@@ -91,7 +76,7 @@ def session_test(use_session_pool=False):
         tablet = Tablet(
             "table5", column_names, data_types, values, timestamps, column_types
         )
-        session.insert_relational_tablet(tablet)
+        session.insert(tablet)
 
         session.execute_non_query_statement("FLush")
 
@@ -110,7 +95,7 @@ def session_test(use_session_pool=False):
             np_timestamps,
             column_types=column_types,
         )
-        session.insert_relational_tablet(np_tablet)
+        session.insert(np_tablet)
 
         with session.execute_query_statement(
             "select * from table5 order by time"

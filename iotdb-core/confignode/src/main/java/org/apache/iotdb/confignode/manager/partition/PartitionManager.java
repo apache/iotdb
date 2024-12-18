@@ -519,11 +519,11 @@ public class PartitionManager {
         }
       }
     } catch (NotEnoughDataNodeException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Extend region group failed", e);
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Extend region group failed", e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(e.getMessage());
     }
@@ -1038,6 +1038,14 @@ public class PartitionManager {
                         ? RegionRoleType.Leader.toString()
                         : RegionRoleType.Follower.toString();
                 regionInfo.setRoleType(regionType);
+
+                long regionSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setTsFileSize(regionSize);
               });
 
       return regionInfoListResp;
@@ -1194,8 +1202,8 @@ public class PartitionManager {
    * @param regionId regionId
    * @return database name
    */
-  public String getRegionStorageGroup(TConsensusGroupId regionId) {
-    return partitionInfo.getRegionStorageGroup(regionId);
+  public String getRegionDatabase(TConsensusGroupId regionId) {
+    return partitionInfo.getRegionDatabase(regionId);
   }
 
   /**

@@ -330,10 +330,7 @@ public class CommonUtils {
           req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
-      return String.format(
-          "Request name: TSFastLastDataQueryForOneDeviceReq, "
-              + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
-          req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
+      return getContentOfTSFastLastDataQueryForOneDeviceReq(req);
     } else if (request instanceof TSFetchResultsReq) {
       TSFetchResultsReq req = (TSFetchResultsReq) request;
       StringBuilder sb = new StringBuilder();
@@ -351,6 +348,14 @@ public class CommonUtils {
     } else {
       return UNKNOWN_RESULT;
     }
+  }
+
+  public static String getContentOfTSFastLastDataQueryForOneDeviceReq(
+      TSFastLastDataQueryForOneDeviceReq req) {
+    return String.format(
+        "Request name: TSFastLastDataQueryForOneDeviceReq, "
+            + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
+        req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
   }
 
   public static int runCli(

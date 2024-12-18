@@ -212,7 +212,6 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
       final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
-      t.rowSize = 2;
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -266,19 +265,7 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
-      List<Tablet.ColumnType> columnTypes = new ArrayList<>();
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      final Tablet t = new Tablet("root.sg.d", schemaList, columnTypes, 1024);
-      t.rowSize = 2;
+      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -362,7 +349,6 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
     final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
-    t.rowSize = 2;
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);
@@ -441,7 +427,6 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
     final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
-    t.rowSize = 2;
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);

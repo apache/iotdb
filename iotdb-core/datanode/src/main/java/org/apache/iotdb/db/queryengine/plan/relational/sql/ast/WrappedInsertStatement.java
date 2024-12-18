@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public abstract class WrappedInsertStatement extends WrappedStatement
@@ -103,7 +104,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     final TableSchema incomingSchema = getTableSchema();
     final TableSchema realSchema =
         metadata
-            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+            .validateTableHeaderSchema(databaseName, incomingSchema, context, true, false)
             .orElse(null);
     if (realSchema == null) {
       throw new SemanticException(
@@ -223,7 +224,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public String getDatabase() {
     String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
     if (databaseName == null) {
-      throw new SemanticException("database is not specified");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return databaseName;
   }

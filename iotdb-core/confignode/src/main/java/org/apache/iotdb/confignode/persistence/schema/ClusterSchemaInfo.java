@@ -79,7 +79,9 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -101,7 +103,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -201,6 +202,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
+
+      // Model conflict detection
+      if (alterSchema.isIsTableModel() && !currentSchema.isIsTableModel()) {
+        final DatabaseModelException exception =
+            new DatabaseModelException(currentSchema.getName(), false);
+        return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      } else if (!alterSchema.isIsTableModel() && currentSchema.isIsTableModel()) {
+        final DatabaseModelException exception =
+            new DatabaseModelException(currentSchema.getName(), true);
+        return RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage());
+      }
+
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
         currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
@@ -233,10 +246,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getMaxDataRegionGroupNum());
       }
 
+      if (alterSchema.isSetTTL()) {
+        currentSchema.setTTL(alterSchema.getTTL());
+        LOGGER.info(
+            "[SetTTL] The ttl of Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getTTL());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
+
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -721,9 +743,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+  public TSStatus createSchemaTemplate(final CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
-      Template template = createSchemaTemplatePlan.getTemplate();
+      final Template template = createSchemaTemplatePlan.getTemplate();
       templateTable.createTemplate(template);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -1125,9 +1147,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                         final TTableInfo info =
                             new TTableInfo(
                                 pair.getLeft().getTableName(),
-                                pair.getLeft()
-                                    .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                    .orElse(TTL_INFINITE));
+                                pair.getLeft().getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                         info.setState(pair.getRight().ordinal());
                         return info;
                       })
@@ -1140,9 +1160,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       tsTable ->
                           new TTableInfo(
                               tsTable.getTableName(),
-                              tsTable
-                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                  .orElse(TTL_INFINITE)))
+                              tsTable.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE)))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new ShowTableResp(
@@ -1290,6 +1308,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (final SemanticException e) {
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

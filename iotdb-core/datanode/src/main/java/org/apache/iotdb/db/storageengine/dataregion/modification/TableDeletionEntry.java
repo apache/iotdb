@@ -45,15 +45,17 @@ public class TableDeletionEntry extends ModEntry {
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
-    super.serialize(stream);
-    predicate.serialize(stream);
+  public long serialize(OutputStream stream) throws IOException {
+    long size = super.serialize(stream);
+    size += predicate.serialize(stream);
+    return size;
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    super.serialize(buffer);
-    predicate.serialize(buffer);
+  public long serialize(ByteBuffer buffer) {
+    long size = super.serialize(buffer);
+    size += predicate.serialize(buffer);
+    return size;
   }
 
   @Override
@@ -145,5 +147,9 @@ public class TableDeletionEntry extends ModEntry {
   @Override
   public int hashCode() {
     return Objects.hash(predicate, timeRange);
+  }
+
+  public DeletionPredicate getPredicate() {
+    return predicate;
   }
 }

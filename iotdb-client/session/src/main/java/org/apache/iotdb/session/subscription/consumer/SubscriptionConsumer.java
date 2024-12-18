@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
@@ -609,7 +610,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                         LOGGER.warn("unexpected response type: {}", responseType);
                         return Optional.empty();
                       })
-                  .apply(response, timer)
+                  // TODO: reuse previous timer?
+                  .apply(response, new PollTimer(System.currentTimeMillis(), timeoutMs))
                   .ifPresent(currentMessages::add);
             } catch (final SubscriptionRuntimeNonCriticalException e) {
               LOGGER.warn(
@@ -1463,8 +1465,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
     result.put("fileSaveDir", fileSaveDir);
-    result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
-    result.put("subscribedTopicNames", subscribedTopics.keySet().toString());
+    result.put(
+        "inFlightFilesCommitContextSet",
+        CollectionUtils.getLimitedString(inFlightFilesCommitContextSet, 32));
+    result.put(
+        "subscribedTopicNames", CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32));
     return result;
   }
 

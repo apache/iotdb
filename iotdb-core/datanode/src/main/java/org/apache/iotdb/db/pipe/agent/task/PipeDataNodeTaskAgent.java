@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -103,6 +104,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private static final AtomicLong LAST_FORCED_RESTART_TIME =
       new AtomicLong(System.currentTimeMillis());
+  private static final Map<String, AtomicLong> PIPE_NAME_TO_LAST_RESTART_TIME_MAP =
+      new ConcurrentHashMap<>();
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
@@ -473,6 +476,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
+    removeOutdatedPipeInfoFromLastRestartTimeMap();
+
     if (!tryWriteLockWithTimeOut(5)) {
       return;
     }
@@ -484,8 +489,35 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       releaseWriteLock();
     }
 
-    // Restart all stuck pipes
-    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+    // If the pipe has been restarted recently, skip it.
+    stuckPipes.removeIf(
+        pipeMeta -> {
+          final AtomicLong lastRestartTime =
+              PIPE_NAME_TO_LAST_RESTART_TIME_MAP.get(pipeMeta.getStaticMeta().getPipeName());
+          return lastRestartTime != null
+              && System.currentTimeMillis() - lastRestartTime.get()
+                  < PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs();
+        });
+
+    // Restart all stuck pipes.
+    // Note that parallelStream cannot be used here. The method PipeTaskAgent#dropPipe also uses
+    // parallelStream. If parallelStream is used here, the subtasks generated inside the dropPipe
+    // may not be scheduled by the worker thread of ForkJoinPool because of less available threads,
+    // and the parent task will wait for the completion of the subtasks in ForkJoinPool forever,
+    // causing the deadlock.
+    stuckPipes.forEach(this::restartStuckPipe);
+  }
+
+  private void removeOutdatedPipeInfoFromLastRestartTimeMap() {
+    PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+        .entrySet()
+        .removeIf(
+            entry -> {
+              final AtomicLong lastRestartTime = entry.getValue();
+              return lastRestartTime == null
+                  || PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()
+                      <= System.currentTimeMillis() - lastRestartTime.get();
+            });
   }
 
   private Set<PipeMeta> findAllStuckPipes() {
@@ -496,6 +528,24 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       LAST_FORCED_RESTART_TIME.set(System.currentTimeMillis());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
+      }
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because of forced restart policy.",
+            stuckPipes.size());
+      }
+      return stuckPipes;
+    }
+
+    if (3 * PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()) {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        stuckPipes.add(pipeMeta);
+      }
+      if (!stuckPipes.isEmpty()) {
+        LOGGER.warn(
+            "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
+            stuckPipes.size());
       }
       return stuckPipes;
     }
@@ -527,16 +577,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         continue;
       }
 
-      // Only restart the stream mode pipes for releasing memTables.
-      if (extractors.get(0).isStreamMode()
-          && extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
-          && (mayMemTablePinnedCountReachDangerousThreshold()
-              || mayWalSizeReachThrottleThreshold())) {
-        // Extractors of this pipe may be stuck and is pinning too many MemTables.
-        LOGGER.warn(
-            "Pipe {} needs to restart because too many memTables are pinned.",
-            pipeMeta.getStaticMeta());
-        stuckPipes.add(pipeMeta);
+      // Try to restart the stream mode pipes for releasing memTables.
+      if (extractors.get(0).isStreamMode()) {
+        if (extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
+            && (mayMemTablePinnedCountReachDangerousThreshold()
+                || mayWalSizeReachThrottleThreshold())) {
+          // Extractors of this pipe may be stuck and is pinning too many MemTables.
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many memTables are pinned.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        } else if (getFloatingMemoryUsageInByte(pipeName)
+            >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
+                / pipeMetaKeeper.getPipeMetaCount()) {
+          // Extractors of this pipe may have too many insert nodes
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many insertNodes are extracted.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        }
       }
     }
 
@@ -582,9 +641,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     acquireWriteLock();
     try {
       final long startTime = System.currentTimeMillis();
-      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy4TaskAgent();
       handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
+
+      final long restartTime = System.currentTimeMillis();
+      PIPE_NAME_TO_LAST_RESTART_TIME_MAP
+          .computeIfAbsent(pipeMeta.getStaticMeta().getPipeName(), k -> new AtomicLong(restartTime))
+          .set(restartTime);
       handleSinglePipeMetaChanges(originalPipeMeta);
+
       LOGGER.warn(
           "Pipe {} was restarted because of stuck, time cost: {} ms.",
           originalPipeMeta.getStaticMeta(),
@@ -594,6 +659,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     } finally {
       releaseWriteLock();
     }
+  }
+
+  public boolean isPipeTaskCurrentlyRestarted(final String pipeName) {
+    return PIPE_NAME_TO_LAST_RESTART_TIME_MAP.containsKey(pipeName);
   }
 
   ///////////////////////// Terminate Logic /////////////////////////

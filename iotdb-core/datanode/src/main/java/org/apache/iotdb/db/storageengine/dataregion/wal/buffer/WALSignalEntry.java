@@ -57,4 +57,9 @@ public class WALSignalEntry extends WALEntry {
   public boolean isSignal() {
     return true;
   }
+
+  @Override
+  public long getMemorySize() {
+    return Byte.BYTES;
+  }
 }

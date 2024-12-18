@@ -51,7 +51,18 @@ public class SubscriptionSession extends Session {
         port,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.SQL_DIALECT);
+  }
+
+  public SubscriptionSession(final String host, final int port, final String sqlDialect) {
+    this(
+        host,
+        port,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        sqlDialect);
   }
 
   public SubscriptionSession(
@@ -60,6 +71,16 @@ public class SubscriptionSession extends Session {
       final String username,
       final String password,
       final int thriftMaxFrameSize) {
+    this(host, port, username, password, thriftMaxFrameSize, SessionConfig.SQL_DIALECT);
+  }
+
+  private SubscriptionSession(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize,
+      final String sqlDialect) {
     // TODO: more configs control
     super(
         new Session.Builder()
@@ -71,7 +92,8 @@ public class SubscriptionSession extends Session {
             // disable auto fetch
             .enableAutoFetch(false)
             // disable redirection
-            .enableRedirection(false));
+            .enableRedirection(false)
+            .sqlDialect(sqlDialect));
   }
 
   @Override

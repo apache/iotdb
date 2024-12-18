@@ -49,6 +49,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -108,6 +111,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -146,6 +152,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -184,6 +193,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -222,6 +234,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -249,7 +264,7 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode, PipeConsensusStreamMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -259,6 +274,9 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml

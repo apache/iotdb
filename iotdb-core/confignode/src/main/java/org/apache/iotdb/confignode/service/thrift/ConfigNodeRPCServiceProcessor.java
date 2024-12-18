@@ -161,6 +161,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -476,11 +477,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) {
+  public TSStatus alterDatabase(final TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
 
     // TODO: Support alter the following fields
-    if (databaseSchema.isSetTTL()) {
+    if (databaseSchema.isSetTTL() && !databaseSchema.isIsTableModel()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
@@ -517,9 +518,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       return errorResp;
     }
 
-    DatabaseSchemaPlan alterPlan =
+    final DatabaseSchemaPlan alterPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
-    TSStatus resp = configManager.alterDatabase(alterPlan);
+    final TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
@@ -839,12 +840,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) {
-    return configManager.dropFunction(req.getUdfName());
+    return configManager.dropFunction(req);
   }
 
   @Override
-  public TGetUDFTableResp getUDFTable() {
-    return configManager.getUDFTable();
+  public TGetUDFTableResp getUDFTable(TGetUdfTableReq req) {
+    return configManager.getUDFTable(req);
   }
 
   @Override

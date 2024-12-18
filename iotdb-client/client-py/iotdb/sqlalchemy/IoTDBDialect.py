@@ -18,13 +18,14 @@
 
 from sqlalchemy import types, util
 from sqlalchemy.engine import default
+from sqlalchemy.sql import text
 from sqlalchemy.sql.sqltypes import String
 
 from iotdb import dbapi
 
+from .IoTDBIdentifierPreparer import IoTDBIdentifierPreparer
 from .IoTDBSQLCompiler import IoTDBSQLCompiler
 from .IoTDBTypeCompiler import IoTDBTypeCompiler
-from .IoTDBIdentifierPreparer import IoTDBIdentifierPreparer
 
 TYPES_MAP = {
     "BOOLEAN": types.Boolean,
@@ -69,6 +70,10 @@ class IoTDBDialect(default.DefaultDialect):
         return [[], opts]
 
     @classmethod
+    def import_dbapi(cls):
+        return dbapi
+
+    @classmethod
     def dbapi(cls):
         return dbapi
 
@@ -79,17 +84,19 @@ class IoTDBDialect(default.DefaultDialect):
         return table_name in self.get_table_names(connection, schema=schema)
 
     def get_schema_names(self, connection, **kw):
-        cursor = connection.execute("SHOW DATABASES")
+        cursor = connection.execute(text("SHOW DATABASES"))
         return [row[0] for row in cursor.fetchall()]
 
     def get_table_names(self, connection, schema=None, **kw):
         cursor = connection.execute(
-            "SHOW DEVICES %s.**" % (schema or self.default_schema_name)
+            text("SHOW DEVICES %s.**" % (schema or self.default_schema_name))
         )
         return [row[0].replace(schema + ".", "", 1) for row in cursor.fetchall()]
 
     def get_columns(self, connection, table_name, schema=None, **kw):
-        cursor = connection.execute("SHOW TIMESERIES %s.%s.*" % (schema, table_name))
+        cursor = connection.execute(
+            text("SHOW TIMESERIES %s.%s.*" % (schema, table_name))
+        )
         columns = [self._general_time_column_info()]
         for row in cursor.fetchall():
             columns.append(self._create_column_info(row, schema, table_name))

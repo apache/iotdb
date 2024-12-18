@@ -42,7 +42,6 @@ import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -90,8 +89,8 @@ public class FileUtils {
   public static void deleteDirectoryAndEmptyParent(File folder) {
     deleteFileOrDirectory(folder);
     final File parentFolder = folder.getParentFile();
-    if (parentFolder.isDirectory()
-        && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
+    File[] files = parentFolder.listFiles();
+    if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
       if (!parentFolder.delete()) {
         LOGGER.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
       }

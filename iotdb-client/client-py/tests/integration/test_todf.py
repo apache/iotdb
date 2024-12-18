@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet

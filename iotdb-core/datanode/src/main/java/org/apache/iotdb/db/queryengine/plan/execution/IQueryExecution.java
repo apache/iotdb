@@ -53,6 +53,8 @@ public interface IQueryExecution {
 
   boolean isQuery();
 
+  boolean isUserQuery();
+
   String getQueryId();
 
   long getStartExecutionTime();
@@ -67,4 +69,6 @@ public interface IQueryExecution {
   Optional<String> getExecuteSQL();
 
   String getStatementType();
+
+  String getSQLDialect();
 }

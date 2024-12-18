@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;
@@ -81,7 +81,9 @@ public class TemplatedAggregationAnalyze {
 
     if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
       // remove the device which won't appear in resultSet after limit/offset
-      deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
+      deviceList =
+          pushDownLimitOffsetInGroupByTimeForDevice(
+              deviceList, queryStatement, context.getZoneId());
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
