@@ -384,7 +384,7 @@ public class PartitionCache {
         }
       } catch (TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
+            "An error occurred when executing getDeviceToDatabase():" + e.getMessage(), e);
       }
     }
   }
