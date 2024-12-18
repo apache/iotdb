@@ -359,6 +359,32 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
           retArray,
           DATABASE_NAME);
     }
+
+    // Test case: where s1 < any (subquery), s1 in table3 contains null value
+    sql =
+        "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < any (SELECT s1 FROM table3)";
+    retArray = new String[] {"30,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
+
+    // Test case: where s1 < some (subquery), s1 in table3 contains null value
+    sql =
+        "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and %s < some (SELECT s1 FROM table3)";
+    retArray = new String[] {"30,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      expectedHeader = new String[] {measurement};
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement, measurement, measurement),
+          expectedHeader,
+          retArray,
+          DATABASE_NAME);
+    }
   }
 
   @Test
@@ -435,7 +461,7 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
     // Test case: where s1 != all (subquery), s1 in table3 contains null value.
     sql =
         "SELECT cast(%s AS INT32) as %s FROM table1 WHERE device_id = 'd01' and cast(%s as INT32) != all (SELECT s1 FROM table3)";
-    retArray = new String[] {"50,", "60,", "70,"};
+    retArray = new String[] {};
     for (String measurement : NUMERIC_MEASUREMENTS) {
       expectedHeader = new String[] {measurement};
       tableResultSetEqualTest(
@@ -541,6 +567,98 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
+    }
+  }
+
+  public void testQuantifiedComparisonInSelectClause() {
+    String sql;
+    String[] expectedHeader;
+    String[] retArray;
+
+    // Test case: select s > any(subquery)
+    sql =
+        "SELECT %s > any(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,", "true,", "true,", "true,", "true,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s > some(subquery)
+    sql =
+        "SELECT %s > some(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,", "true,", "true,", "true,", "true,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s > all(subquery)
+    sql =
+        "SELECT %s > all(SELECT (%s) from table3 WHERE device_id = 'd01') from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,", "false,", "false,", "false,", "false,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s < any(subquery), subquery contains null value
+    sql = "SELECT %s < any(SELECT (%s) from table3) from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,", "null,", "null,", "null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s < some(subquery), subquery contains null value
+    sql = "SELECT %s < some(SELECT (%s) from table3) from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,", "null,", "null,", "null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s <= any(subquery), subquery contains null value
+    sql = "SELECT %s <= any(SELECT (%s) from table3) from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"true,", "null,", "null,", "null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s <= some(subquery), subquery contains null value
+    sql = "SELECT %s <= some(SELECT (%s) from table3) from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"true,", "null,", "null,", "null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s != all(subquery), subquery contains null value
+    sql = "SELECT %s != all(SELECT (%s) from table3) from table1 where device_id = 'd01'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,", "false,", "null,", "null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
+    }
+
+    // Test case: select s != all(subquery), subquery contains null value and s not in non-null
+    // value result set
+    sql =
+        "SELECT %s != all(SELECT (%s) from table3 where device_id = 'd_null') from table1 where device_id = 'd02' and %s != 30";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,", "null,"};
+    for (String measurement : NUMERIC_MEASUREMENTS) {
+      tableResultSetEqualTest(
+          String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
   }
 
