@@ -2479,6 +2479,11 @@ public class IoTDBConfig {
   }
 
   void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    if (defaultStorageGroupLevel < 1) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+    }
     this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
