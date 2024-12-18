@@ -31,15 +31,9 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTsFileDataCacheMemoryBlock.class);
   private static final long MINIMUM_MEMORY_SIZE_IN_BYTES = 1024 * 1024L; // 1 MB
-  private static final int MAX_ASK_FOR_MEMORY_COUNT = 256; // must be a power of 2
-  private static final long EACH_ASK_MEMORY_SIZE_IN_BYTES =
-      Math.max(
-          MINIMUM_MEMORY_SIZE_IN_BYTES,
-          LoadTsFileMemoryManager.MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES >> 4);
 
   private final AtomicLong limitedMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;
-  private final AtomicInteger askForMemoryCount;
   private final AtomicInteger referenceCount;
 
   LoadTsFileDataCacheMemoryBlock(long initialLimitedMemorySizeInBytes) {
@@ -54,7 +48,6 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
     this.limitedMemorySizeInBytes = new AtomicLong(initialLimitedMemorySizeInBytes);
     this.memoryUsageInBytes = new AtomicLong(0L);
-    this.askForMemoryCount = new AtomicInteger(1);
     this.referenceCount = new AtomicInteger(0);
   }
 
@@ -64,29 +57,17 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   }
 
   @Override
-  public void addMemoryUsage(long memoryInBytes) {
-    memoryUsageInBytes.addAndGet(memoryInBytes);
-
-    askForMemoryCount.getAndUpdate(
-        count -> {
-          if ((count & (count - 1)) == 0) {
-            // count is a power of 2
-            long actuallyAllocateMemorySizeInBytes =
-                MEMORY_MANAGER.tryAllocateFromQuery(EACH_ASK_MEMORY_SIZE_IN_BYTES);
-            limitedMemorySizeInBytes.addAndGet(actuallyAllocateMemorySizeInBytes);
-            if (actuallyAllocateMemorySizeInBytes < EACH_ASK_MEMORY_SIZE_IN_BYTES) {
-              return (count & (MAX_ASK_FOR_MEMORY_COUNT - 1)) + 1;
-            } else {
-              return 1;
-            }
-          }
-          return (count & (MAX_ASK_FOR_MEMORY_COUNT - 1)) + 1;
-        });
+  public synchronized void addMemoryUsage(long memoryInBytes) {
+    if (memoryUsageInBytes.addAndGet(memoryInBytes) > limitedMemorySizeInBytes.get()) {
+      LOGGER.warn("{} has exceed total memory size", this);
+    }
   }
 
   @Override
-  public void reduceMemoryUsage(long memoryInBytes) {
-    memoryUsageInBytes.addAndGet(-memoryInBytes);
+  public synchronized void reduceMemoryUsage(long memoryInBytes) {
+    if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
+      LOGGER.warn("{} has reduce memory usage to negative", this);
+    }
   }
 
   @Override
@@ -113,6 +94,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
       return false;
     }
 
+    MEMORY_MANAGER.releaseToQuery(shrinkMemoryInBytes);
     limitedMemorySizeInBytes.addAndGet(-shrinkMemoryInBytes);
     return true;
   }
@@ -140,8 +122,6 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
         + limitedMemorySizeInBytes.get()
         + ", memoryUsageInBytes="
         + memoryUsageInBytes.get()
-        + ", askForMemoryCount="
-        + askForMemoryCount.get()
         + '}';
   }
 }

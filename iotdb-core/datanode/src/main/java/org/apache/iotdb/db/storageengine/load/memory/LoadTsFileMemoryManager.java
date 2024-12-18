@@ -44,7 +44,7 @@ public class LoadTsFileMemoryManager {
   private final AtomicLong usedMemorySizeInBytes = new AtomicLong(0);
   private LoadTsFileDataCacheMemoryBlock dataCacheMemoryBlock;
 
-  private synchronized void forceAllocatedFromQuery(long sizeInBytes)
+  private synchronized void forceAllocateFromQuery(long sizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       // allocate memory from queryEngine
@@ -82,6 +82,12 @@ public class LoadTsFileMemoryManager {
   }
 
   public synchronized void releaseToQuery(long sizeInBytes) {
+    if (usedMemorySizeInBytes.get() < sizeInBytes) {
+      LOGGER.error(
+          "Load: Attempting to release more memory ({}) than allocated ({})",
+          sizeInBytes,
+          usedMemorySizeInBytes.get());
+    }
     usedMemorySizeInBytes.addAndGet(-sizeInBytes);
     QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeInBytes);
     this.notifyAll();
@@ -90,7 +96,7 @@ public class LoadTsFileMemoryManager {
   public synchronized LoadTsFileAnalyzeSchemaMemoryBlock allocateAnalyzeSchemaMemoryBlock(
       long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
     try {
-      forceAllocatedFromQuery(sizeInBytes);
+      forceAllocateFromQuery(sizeInBytes);
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
         return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
