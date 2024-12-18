@@ -34,7 +34,7 @@ public class FirstValueFunction implements WindowFunction {
 
     if (ignoreNull) {
       // Handle nulls
-      int pos = index;
+      int pos = frameStart;
       while (pos <= frameEnd && partition.isNull(channel, pos)) {
         pos++;
       }

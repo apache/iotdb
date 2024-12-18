@@ -147,4 +147,66 @@ public class RowComparator {
     }
     return true;
   }
+
+  public boolean equal(List<Column> columns1, int offset1, List<Column> columns2, int offset2) {
+    for (int i = 0; i < dataTypes.size(); i++) {
+      TSDataType dataType = dataTypes.get(i);
+      Column column1 = columns1.get(i);
+      Column column2 = columns2.get(i);
+
+      switch (dataType) {
+        case BOOLEAN:
+          boolean bool1 = column1.getBoolean(offset1);
+          boolean bool2 = column2.getBoolean(offset2);
+          if (bool1 != bool2) {
+            return false;
+          }
+          break;
+        case INT32:
+          int int1 = column1.getInt(offset1);
+          int int2 = column2.getInt(offset2);
+          if (int1 != int2) {
+            return false;
+          }
+          break;
+        case INT64:
+          long long1 = column1.getLong(offset1);
+          long long2 = column2.getLong(offset2);
+          if (long1 != long2) {
+            return false;
+          }
+          break;
+        case FLOAT:
+          float float1 = column1.getFloat(offset1);
+          float float2 = column2.getFloat(offset2);
+          if (float1 != float2) {
+            return false;
+          }
+          break;
+        case DOUBLE:
+          double double1 = column1.getDouble(offset1);
+          double double2 = column2.getDouble(offset2);
+          if (double1 != double2) {
+            return false;
+          }
+          break;
+        case TEXT:
+          Binary bin1 = column1.getBinary(offset1);
+          Binary bin2 = column2.getBinary(offset2);
+          if (!bin1.equals(bin2)) {
+            return false;
+          }
+          break;
+        default:
+          // Would throw at the first run
+          throw new UnSupportedDataTypeException(dataType.toString());
+      }
+    }
+
+    return true;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
 }

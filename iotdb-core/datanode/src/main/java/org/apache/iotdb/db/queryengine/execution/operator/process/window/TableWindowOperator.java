@@ -83,6 +83,9 @@ public class TableWindowOperator implements ProcessOperator {
     // Ordering part
     this.sortChannels = ImmutableList.copyOf(sortChannels);
 
+    // Transformation part
+    this.cachedPartitionExecutors = new LinkedList<>();
+
     // Misc
     this.cachedTsBlocks = new ArrayList<>();
     this.startIndexInFirstBlock = -1;
@@ -118,19 +121,46 @@ public class TableWindowOperator implements ProcessOperator {
 
       // May return null if builder is not full
       return transform();
-    } else {
-      // Return remaining data in result TsBlockBuilder
-      if (!tsBlockBuilder.isEmpty()) {
-        TsBlock result =
+    } else if (!cachedTsBlocks.isEmpty()) {
+      // Form last partition
+      TsBlock lastTsBlock = cachedTsBlocks.get(cachedTsBlocks.size() - 1);
+      int endIndexOfLastTsBlock = lastTsBlock.getPositionCount();
+      PartitionExecutor partitionExecutor =
+          new PartitionExecutor(
+              cachedTsBlocks,
+              inputDataTypes,
+              startIndexInFirstBlock,
+              endIndexOfLastTsBlock,
+              windowFunctions,
+              frameInfoList,
+              sortChannels);
+      cachedPartitionExecutors.addLast(partitionExecutor);
+      cachedTsBlocks.clear();
+
+      TsBlock tsBlock = transform();
+      if (tsBlock == null) {
+        // TsBlockBuilder is not full
+        // Force build since this is the last partition
+        tsBlock =
             tsBlockBuilder.build(
                 new RunLengthEncodedColumn(
                     TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
         tsBlockBuilder.reset();
-        return result;
-      } else {
-        return null;
       }
+
+      return tsBlock;
+    } else if (!tsBlockBuilder.isEmpty()) {
+      // Return remaining data in result TsBlockBuilder
+      // This happens when last partition is too large
+      // And TsBlockBuilder is not full at the end of transform
+      TsBlock result =
+          tsBlockBuilder.build(
+              new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+      tsBlockBuilder.reset();
+      return result;
     }
+
+    return null;
   }
 
   private LinkedList<PartitionExecutor> partition(TsBlock tsBlock) {
@@ -140,10 +170,31 @@ public class TableWindowOperator implements ProcessOperator {
     int partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
 
     // In this stage, we only consider partition channels
-    List<Column> partitionColumns = new ArrayList<>();
-    for (int channel : partitionChannels) {
-      Column partitionColumn = tsBlock.getColumn(channel);
-      partitionColumns.add(partitionColumn);
+    List<Column> partitionColumns = extractPartitionColumns(tsBlock);
+
+    // Previous TsBlocks forms a partition
+    if (!cachedTsBlocks.isEmpty()) {
+      TsBlock lastTsBlock = cachedTsBlocks.get(cachedTsBlocks.size() - 1);
+      int endIndexOfLastTsBlock = lastTsBlock.getPositionCount();
+
+      // Whether the first row of current TsBlock is not equal to
+      // last row of previous cached TsBlocks
+      List<Column> lastPartitionColumns = extractPartitionColumns(lastTsBlock);
+      if (!partitionComparator.equal(
+          partitionColumns, 0, lastPartitionColumns, endIndexOfLastTsBlock - 1)) {
+        PartitionExecutor partitionExecutor =
+            new PartitionExecutor(
+                cachedTsBlocks,
+                inputDataTypes,
+                startIndexInFirstBlock,
+                endIndexOfLastTsBlock,
+                windowFunctions,
+                frameInfoList,
+                sortChannels);
+        partitionExecutors.addLast(partitionExecutor);
+      }
+
+      cachedTsBlocks.clear();
     }
 
     // Try to find all partitions
@@ -225,10 +276,20 @@ public class TableWindowOperator implements ProcessOperator {
     return null;
   }
 
+  private List<Column> extractPartitionColumns(TsBlock tsBlock) {
+    List<Column> partitionColumns = new ArrayList<>();
+    for (int channel : partitionChannels) {
+      Column partitionColumn = tsBlock.getColumn(channel);
+      partitionColumns.add(partitionColumn);
+    }
+    return partitionColumns;
+  }
+
   @Override
   public boolean hasNext() throws Exception {
     return !cachedPartitionExecutors.isEmpty()
         || inputOperator.hasNext()
+        || !cachedTsBlocks.isEmpty()
         || !tsBlockBuilder.isEmpty();
   }
 
