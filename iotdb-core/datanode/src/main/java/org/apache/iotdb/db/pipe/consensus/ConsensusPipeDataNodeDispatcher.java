@@ -44,9 +44,9 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final String PIPE_ALREADY_EXIST_MSG =
+  public static final String PIPE_ALREADY_EXIST_MSG =
       "the pipe with the same name has been created";
-  private static final String PIPE_NOT_EXIST_MGS = "does not exist";
+  public static final String PIPE_NOT_EXIST_MSG = "the pipe with the same name does not exist";
 
   @Override
   public void createPipe(
@@ -120,7 +120,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
         // ignore idempotence logic
-        if (status.getMessage().contains(PIPE_NOT_EXIST_MGS)) {
+        if (status.getMessage().contains(PIPE_NOT_EXIST_MSG)) {
           return;
         }
         throw new PipeException(status.getMessage());
