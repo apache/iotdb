@@ -103,7 +103,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggregationTreeDeviceViewScanNode(this, context);
+    return visitor.visitAggregationTreeDeviceViewScan(this, context);
   }
 
   @Override

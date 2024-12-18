@@ -773,12 +773,11 @@ public abstract class PlanVisitor<R, C> {
     return visitDeviceTableScan(node, context);
   }
 
-  public R visitTreeDeviceViewScanNode(TreeDeviceViewScanNode node, C context) {
+  public R visitTreeDeviceViewScan(TreeDeviceViewScanNode node, C context) {
     return visitDeviceTableScan(node, context);
   }
 
-  public R visitAggregationTreeDeviceViewScanNode(
-      AggregationTreeDeviceViewScanNode node, C context) {
+  public R visitAggregationTreeDeviceViewScan(AggregationTreeDeviceViewScanNode node, C context) {
     return visitAggregationTableScan(node, context);
   }
 }

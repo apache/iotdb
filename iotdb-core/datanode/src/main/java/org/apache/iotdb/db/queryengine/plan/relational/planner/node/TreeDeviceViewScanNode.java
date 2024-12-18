@@ -101,7 +101,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTreeDeviceViewScanNode(this, context);
+    return visitor.visitTreeDeviceViewScan(this, context);
   }
 
   @Override

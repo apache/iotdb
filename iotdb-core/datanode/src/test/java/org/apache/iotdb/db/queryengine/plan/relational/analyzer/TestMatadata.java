@@ -38,9 +38,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -52,6 +54,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
@@ -115,6 +119,9 @@ public class TestMatadata implements Metadata {
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
+  private static final String TREE_VIEW_DB = "tree_view_db";
+  private static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
+  private static final String TREE_DB = "root.test";
 
   @Override
   public boolean tableExists(QualifiedObjectName name) {
@@ -124,6 +131,26 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
+    if (name.getDatabaseName().equals(TREE_VIEW_DB)) {
+      return Optional.of(
+          new TreeDeviceViewSchema(
+              DEVICE_VIEW_TEST_TABLE,
+              ImmutableList.of(
+                  ColumnSchema.builder(TIME_CM)
+                      .setColumnCategory(TsTableColumnCategory.TIME)
+                      .build(),
+                  ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(S1_CM)
+                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .build(),
+                  ColumnSchema.builder(S2_CM)
+                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .build()),
+              TREE_DB,
+              ImmutableMap.of(TAG1, "province", TAG2, "city")));
+    }
+
     if (name.getDatabaseName().equals(INFORMATION_SCHEMA)) {
       TsTable table = InformationSchemaTable.getTableFromStringValue(name.getObjectName());
       if (table == null) {
@@ -241,6 +268,23 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context) {
+    if (tableName.getDatabaseName().equals(TREE_VIEW_DB)) {
+      if (expressionList.isEmpty()) {
+        return ImmutableList.of(
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_1_ATTRIBUTES),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_2_ATTRIBUTES),
+            new NonAlignedAlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_4.split("\\.")), ImmutableList.of()));
+      }
+
+      return ImmutableList.of(
+          new AlignedDeviceEntry(
+              new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_1_ATTRIBUTES),
+          new AlignedDeviceEntry(
+              new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_2_ATTRIBUTES));
+    }
 
     if (expressionList.size() == 2) {
       if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")

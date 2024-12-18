@@ -528,8 +528,7 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTreeDeviceViewScanNode(
-      TreeDeviceViewScanNode node, PlanContext context) {
+  public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
     Map<TRegionReplicaSet, TreeDeviceViewScanNode> tableScanNodeMap = new HashMap<>();
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
