@@ -70,6 +70,7 @@ public enum ProcedureType {
   RENAME_TABLE_COLUMN_PROCEDURE((short) 754),
   DROP_TABLE_COLUMN_PROCEDURE((short) 755),
   DELETE_DEVICES_PROCEDURE((short) 756),
+  RENAME_TABLE_PROCEDURE((short) 757),
 
   /** AI Model */
   CREATE_MODEL_PROCEDURE((short) 800),
