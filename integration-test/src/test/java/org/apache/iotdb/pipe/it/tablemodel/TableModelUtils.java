@@ -98,7 +98,7 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
@@ -167,7 +167,7 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     return TestUtils.tryExecuteNonQueriesWithRetry(
@@ -185,7 +185,7 @@ public class TableModelUtils {
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
-              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11 time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
               tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
     list.add("flush");
@@ -250,7 +250,7 @@ public class TableModelUtils {
       final String time = RpcUtils.formatDatetime("default", "ms", i, ZoneOffset.UTC);
       expectedResSet.add(
           String.format(
-              "t%s,t%s,t%s,t%s,%s,%s.0,%s,%s,%d,%d.0,%s,%s,%s",
+              "t%s,t%s,t%s,t%s,%s,%s.0,%s,%s,%d,%d.0,%s,%s,%s,",
               i, i, i, i, i, i, i, time, i, i, getDateStr(i), i, time));
     }
     return expectedResSet;
