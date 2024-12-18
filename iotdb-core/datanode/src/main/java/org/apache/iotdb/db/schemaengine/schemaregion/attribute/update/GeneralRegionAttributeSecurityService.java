@@ -299,7 +299,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     super(
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName()),
-        iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds());
+        iotdbConfig.getGeneralRegionAttributeSecurityServiceIntervalSeconds() * 1000L);
   }
 
   private static final class GeneralRegionAttributeSecurityServiceHolder {

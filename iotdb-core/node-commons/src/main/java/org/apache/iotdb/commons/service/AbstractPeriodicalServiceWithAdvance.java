@@ -36,12 +36,12 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
   private volatile boolean allowSubmitListen = false;
 
   private final ExecutorService securityServiceExecutor;
-  private final long intervalSeconds;
+  private final long intervalMillis;
 
   protected AbstractPeriodicalServiceWithAdvance(
-      final ExecutorService securityServiceExecutor, final long intervalSeconds) {
+      final ExecutorService securityServiceExecutor, final long intervalMillis) {
     this.securityServiceExecutor = securityServiceExecutor;
-    this.intervalSeconds = intervalSeconds;
+    this.intervalMillis = intervalMillis;
   }
 
   public void advanceExecution() {
@@ -61,7 +61,7 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
     try {
       executeTask();
       if (!skipNextSleep) {
-        condition.await(intervalSeconds, TimeUnit.MILLISECONDS);
+        condition.await(intervalMillis, TimeUnit.MILLISECONDS);
       }
       skipNextSleep = false;
     } catch (final InterruptedException e) {
