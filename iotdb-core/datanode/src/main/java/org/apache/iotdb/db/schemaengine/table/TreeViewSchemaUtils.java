@@ -21,9 +21,7 @@ package org.apache.iotdb.db.schemaengine.table;
 
 public class TreeViewSchemaUtils {
 
-  public static void putAlignedToTreeCache() {
-
-  }
+  public static void putAlignedToTreeCache() {}
 
   public static void getAlignedValueFromTreeCache() {}
 
