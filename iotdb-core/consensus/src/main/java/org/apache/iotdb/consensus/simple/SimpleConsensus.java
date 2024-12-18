@@ -212,9 +212,8 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
-      throws ConsensusException {
-    throw new ConsensusException("SimpleConsensus does not support record correct peer list");
+  public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    throw new UnsupportedOperationException("SimpleConsensus does not support record correct peer list");
   }
 
   @Override
@@ -258,11 +257,6 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
-  }
-
-  @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    return IoTConsensus.getConsensusGroupIdsFromDir(storageDir, logger);
   }
 
   @Override

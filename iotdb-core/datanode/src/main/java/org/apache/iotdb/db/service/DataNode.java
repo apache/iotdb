@@ -66,7 +66,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -569,9 +568,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             .map(TRegionReplicaSet::getRegionId)
             .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
             .collect(Collectors.toList());
-    removeInvalidConsensusDataRegions(dataNodeConsensusGroupIds);
     removeInvalidDataRegions(dataNodeConsensusGroupIds);
-    removeInvalidConsensusSchemaRegions(dataNodeConsensusGroupIds);
     removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
     prepareToResetDataRegionPeerList(correctedRegions);
   }
@@ -588,24 +585,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             }
           }
         });
-  }
-
-  private void removeInvalidConsensusDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
-        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    if (invalidDataRegionConsensusGroupIds.isEmpty()) {
-      return;
-    }
-    logger.info("Remove invalid dataRegion directories... {}", invalidDataRegionConsensusGroupIds);
-    for (ConsensusGroupId consensusGroupId : invalidDataRegionConsensusGroupIds) {
-      File oldDir =
-          new File(
-              DataRegionConsensusImpl.getInstance()
-                  .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeDir(oldDir);
-    }
   }
 
   private void removeInvalidSchemaRegions(List<ConsensusGroupId> schemaConsensusGroupIds) {
@@ -631,26 +610,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         });
   }
 
-  private void removeInvalidConsensusSchemaRegions(
-      List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
-        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    if (invalidSchemaRegionConsensusGroupIds.isEmpty()) {
-      return;
-    }
-    logger.info(
-        "Remove invalid schemaRegion directories... {}", invalidSchemaRegionConsensusGroupIds);
-    for (ConsensusGroupId consensusGroupId : invalidSchemaRegionConsensusGroupIds) {
-      File oldDir =
-          new File(
-              SchemaRegionConsensusImpl.getInstance()
-                  .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeDir(oldDir);
-    }
-  }
-
   private void removeInvalidSchemaDir(String database, SchemaRegionId schemaRegionId) {
     String systemSchemaDir =
         config.getSystemDir() + File.separator + database + File.separator + schemaRegionId.getId();
@@ -667,13 +626,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void prepareToResetDataRegionPeerList(List<TRegionReplicaSet> correctedRegions) {
-    Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
+    Map<ConsensusGroupId, List<Peer>> correctPeerListForDataRegion = new HashMap<>();
+    Map<ConsensusGroupId, List<Peer>> correctPeerListForSchemaRegion = new HashMap<>();
     for (TRegionReplicaSet regionReplicaSet : correctedRegions) {
       ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
-      if (consensusGroupId.getType() != TConsensusGroupType.DataRegion) {
-        continue;
-      }
       List<Peer> peerList = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         peerList.add(
@@ -682,13 +639,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 dataNodeLocation.getDataNodeId(),
                 dataNodeLocation.getDataRegionConsensusEndPoint()));
       }
-      correctPeerListBeforeStart.put(consensusGroupId, peerList);
+      if (consensusGroupId.getType() == TConsensusGroupType.DataRegion) {
+        correctPeerListForDataRegion.put(consensusGroupId, peerList);
+      } else if (consensusGroupId.getType() == TConsensusGroupType.SchemaRegion) {
+        correctPeerListForSchemaRegion.put(consensusGroupId, peerList);
+      }
     }
-    try {
-      DataRegionConsensusImpl.getInstance().recordCorrectPeerList(correctPeerListBeforeStart);
-    } catch (ConsensusException e) {
-      logger.warn("Something wrong happened during recordCorrectPeerList", e);
-    }
+    DataRegionConsensusImpl.getInstance().recordCorrectPeerListBeforeStart(correctPeerListForDataRegion);
+    SchemaRegionConsensusImpl.getInstance().recordCorrectPeerListBeforeStart(correctPeerListForSchemaRegion);
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {

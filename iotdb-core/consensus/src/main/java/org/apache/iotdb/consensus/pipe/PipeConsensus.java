@@ -69,18 +69,19 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.consensus.iot.IoTConsensus.getConsensusGroupIdsFromDir;
 
 public class PipeConsensus implements IConsensus {
   private static final String CONSENSUS_PIPE_GUARDIAN_TASK_ID = "consensus_pipe_guardian";
@@ -103,7 +104,7 @@ public class PipeConsensus implements IConsensus {
   private final ConsensusPipeGuardian consensusPipeGuardian;
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
-  private final Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   public PipeConsensus(ConsensusConfig config, IStateMachine.Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -177,21 +178,30 @@ public class PipeConsensus implements IConsensus {
                     LOGGER.error("Failed to recover consensus from {}", storageDir, e);
                     return null;
                   });
-      try {
-        future.get();
-        correctPeerListBeforeStart.forEach(
-            ((consensusGroupId, peers) -> {
-              try {
-                resetPeerList(consensusGroupId, peers);
-              } catch (ConsensusGroupNotExistException ignore) {
 
-              } catch (Exception e) {
-                LOGGER.warn("Failed to reset peer list while start", e);
-              }
-            }));
-      } catch (Exception ignore) {
+      if (correctPeerListBeforeStart != null) {
+        try {
+          future.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
+          try {
+            resetPeerList(consensusGroupId, peers);
+          } catch (ConsensusGroupNotExistException ignore) {
 
+          } catch (Exception e) {
+            LOGGER.warn("Failed to reset peer list while start", e);
+          }
+        };
+        // make peers which are in list correct
+        correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+        // clear peers which are not in the list
+        stateMachineMap.keySet().stream()
+                .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+                .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
       }
+
     }
   }
 
@@ -432,8 +442,8 @@ public class PipeConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    this.correctPeerListBeforeStart.putAll(correctPeerList);
+  public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    this.correctPeerListBeforeStart = correctPeerList;
   }
 
   @Override
@@ -531,11 +541,6 @@ public class PipeConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
-  }
-
-  @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    return getConsensusGroupIdsFromDir(storageDir, LOGGER);
   }
 
   @Override

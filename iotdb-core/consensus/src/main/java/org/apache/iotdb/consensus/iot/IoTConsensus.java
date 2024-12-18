@@ -81,6 +81,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 public class IoTConsensus implements IConsensus {
 
@@ -100,7 +101,7 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
-  private final Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -183,16 +184,23 @@ public class IoTConsensus implements IConsensus {
         }
       }
     }
-    correctPeerListBeforeStart.forEach(
-        ((consensusGroupId, peers) -> {
-          try {
-            resetPeerList(consensusGroupId, peers);
-          } catch (ConsensusGroupNotExistException ignore) {
+    if (correctPeerListBeforeStart != null) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
+        try {
+          resetPeerList(consensusGroupId, peers);
+        } catch (ConsensusGroupNotExistException ignore) {
 
-          } catch (Exception e) {
-            logger.warn("Failed to reset peer list while start", e);
-          }
-        }));
+        } catch (Exception e) {
+          logger.warn("Failed to reset peer list while start", e);
+        }
+      };
+      // make peers which are in list correct
+      correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+      // clear peers which are not in the list
+      stateMachineMap.keySet().stream()
+              .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+              .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+    }
     stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
 
@@ -448,36 +456,6 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    return getConsensusGroupIdsFromDir(storageDir, logger);
-  }
-
-  public static List<ConsensusGroupId> getConsensusGroupIdsFromDir(File storageDir, Logger logger) {
-    if (!storageDir.exists()) {
-      return Collections.emptyList();
-    }
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-      for (Path path : stream) {
-        try {
-          String[] items = path.getFileName().toString().split("_");
-          ConsensusGroupId consensusGroupId =
-              ConsensusGroupId.Factory.create(
-                  Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          consensusGroupIds.add(consensusGroupId);
-        } catch (Exception e) {
-          logger.info(
-              "The directory {} is not a group directory;" + " ignoring it. ",
-              path.getFileName().toString());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get all consensus group ids from disk", e);
-    }
-    return consensusGroupIds;
-  }
-
-  @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(storageDir, groupId);
   }
@@ -496,8 +474,8 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    this.correctPeerListBeforeStart.putAll(correctPeerList);
+  public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    this.correctPeerListBeforeStart = correctPeerList;
   }
 
   @Override

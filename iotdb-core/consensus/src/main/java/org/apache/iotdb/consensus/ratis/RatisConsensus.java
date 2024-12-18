@@ -107,6 +107,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -145,6 +146,8 @@ class RatisConsensus implements IConsensus {
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
+
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead;
 
@@ -228,6 +231,7 @@ class RatisConsensus implements IConsensus {
                                 raftGroupId,
                                 this::onLeaderChanged))
                     .build());
+
   }
 
   @Override
@@ -235,6 +239,24 @@ class RatisConsensus implements IConsensus {
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.get().start();
     registerAndStartDiskGuardian();
+
+    if (correctPeerListBeforeStart != null) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
+        try {
+          resetPeerList(consensusGroupId, peers);
+        } catch (ConsensusGroupNotExistException ignore) {
+
+        } catch (Exception e) {
+          logger.warn("Failed to reset peer list while start", e);
+        }
+      };
+      // make peers which are in list correct
+      correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+      // clear peers which are not in the list
+      stateMachineMap.keySet().stream()
+              .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+              .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+    }
   }
 
   @Override
@@ -592,9 +614,8 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
-      throws ConsensusException {
-    throw new ConsensusException("RatisConsensus does not support record correct peer list");
+  public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    this.correctPeerListBeforeStart = correctPeerList;
   }
 
   @Override
@@ -795,30 +816,6 @@ class RatisConsensus implements IConsensus {
     } catch (IOException e) {
       return Collections.emptyList();
     }
-  }
-
-  @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    if (!storageDir.exists()) {
-      return Collections.emptyList();
-    }
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-      for (Path path : stream) {
-        try {
-          RaftGroupId raftGroupId =
-              RaftGroupId.valueOf(UUID.fromString(path.getFileName().toString()));
-          consensusGroupIds.add(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-        } catch (Exception e) {
-          logger.info(
-              "The directory {} is not a group directory;" + " ignoring it. ",
-              path.getFileName().toString());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get all consensus group ids from disk", e);
-    }
-    return consensusGroupIds;
   }
 
   @Override

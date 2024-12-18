@@ -146,8 +146,13 @@ public interface IConsensus {
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
-  void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
-      throws ConsensusException;
+  /**
+   * Record the correct peer list (likely got from the ConfigNode) for future use in resetPeerList.
+   * Only use this method if necessary.
+   * If it is called, it should be called before {@link #start()}.
+   * @param correctPeerList
+   */
+  void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList);
 
   /**
    * Reset the peer list of the corresponding consensus group. Currently only used in the automatic
@@ -229,17 +234,6 @@ public interface IConsensus {
    * @return consensusGroupId list
    */
   List<ConsensusGroupId> getAllConsensusGroupIds();
-
-  /**
-   * Return all consensus group ids from disk.
-   *
-   * <p>We need to parse all the RegionGroupIds from the disk directory before starting the
-   * consensus layer, and {@link #getAllConsensusGroupIds()} returns an empty list, so we need to
-   * add a new interface.
-   *
-   * @return consensusGroupId list
-   */
-  List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting();
 
   /**
    * Return the region directory of the corresponding consensus group.
