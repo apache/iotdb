@@ -61,6 +61,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -132,9 +133,10 @@ public class TestMatadata implements Metadata {
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
     if (name.getDatabaseName().equals(TREE_VIEW_DB)) {
-      return Optional.of(
-          new TreeDeviceViewSchema(
-              DEVICE_VIEW_TEST_TABLE,
+      TreeDeviceViewSchema treeDeviceViewSchema = Mockito.mock(TreeDeviceViewSchema.class);
+      Mockito.when(treeDeviceViewSchema.getTableName()).thenReturn(DEVICE_VIEW_TEST_TABLE);
+      Mockito.when(treeDeviceViewSchema.getColumns())
+          .thenReturn(
               ImmutableList.of(
                   ColumnSchema.builder(TIME_CM)
                       .setColumnCategory(TsTableColumnCategory.TIME)
@@ -146,9 +148,11 @@ public class TestMatadata implements Metadata {
                       .build(),
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                      .build()),
-              TREE_DB,
-              ImmutableMap.of(TAG1, "province", TAG2, "city")));
+                      .build()));
+      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB);
+      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+          .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
+      return Optional.of(treeDeviceViewSchema);
     }
 
     if (name.getDatabaseName().equals(INFORMATION_SCHEMA)) {

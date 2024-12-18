@@ -23,24 +23,17 @@ import java.util.List;
 import java.util.Map;
 
 public class TreeDeviceViewSchema extends TableSchema {
-  private final String treeDBName;
-  private final Map<String, String> measurementColumnNameMap;
 
-  public TreeDeviceViewSchema(
-      String tableName,
-      List<ColumnSchema> columns,
-      String treeDBName,
-      Map<String, String> measurementColumnNameMap) {
+  public TreeDeviceViewSchema(String tableName, List<ColumnSchema> columns) {
     super(tableName, columns);
-    this.treeDBName = treeDBName;
-    this.measurementColumnNameMap = measurementColumnNameMap;
   }
 
+  // TODO
   public String getTreeDBName() {
-    return treeDBName;
+    return null;
   }
 
   public Map<String, String> getMeasurementColumnNameMap() {
-    return measurementColumnNameMap;
+    return null;
   }
 }
