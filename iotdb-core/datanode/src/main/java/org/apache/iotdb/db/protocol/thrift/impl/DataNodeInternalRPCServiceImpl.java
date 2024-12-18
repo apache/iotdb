@@ -290,6 +290,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -303,6 +304,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1702,6 +1704,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TDeviceViewResp getTreeDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
     final TDeviceViewResp resp = new TDeviceViewResp();
     resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
+    final Map<String, Map<String, Map<TSDataType, Integer>>> databaseMeasurementMap =
+        new ConcurrentHashMap<>();
     final TSStatus status =
         executeInternalSchemaTask(
             regionIds,
@@ -1743,9 +1747,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                 Math.max(
                                     info.getMaxLength(),
                                     result.getPartialPath().getNodeLength() - finalDBLength));
-                            info.getMeasurements().add(result.getSchema().getMeasurementName());
                             return info;
                           });
+                  databaseMeasurementMap.compute(
+                      database,
+                      (db, measurementMap) -> {
+                        final IMeasurementSchema schema = result.getSchema();
+                        if (Objects.isNull(measurementMap)) {
+                          final Map<String, Map<TSDataType, Integer>> resultMap = new HashMap<>();
+                          final Map<TSDataType, Integer> typeMap = new EnumMap<>(TSDataType.class);
+                          typeMap.put(schema.getType(), 1);
+                          resultMap.put(schema.getMeasurementName(), typeMap);
+                          return resultMap;
+                        }
+                        return null;
+                      });
                 }
               } catch (final Exception e) {
                 LOGGER.warn(e.getMessage(), e);
