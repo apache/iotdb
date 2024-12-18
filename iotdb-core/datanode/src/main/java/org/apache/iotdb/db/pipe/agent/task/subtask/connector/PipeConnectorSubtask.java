@@ -202,7 +202,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       final long startTime = System.currentTimeMillis();
       outputPipeConnector.close();
       LOGGER.info(
-          "Pipe: connector subtask {} was closed {} within {} ms",
+          "Pipe: connector subtask {} ({}) was closed within {} ms",
           taskID,
           outputPipeConnector,
           System.currentTimeMillis() - startTime);
