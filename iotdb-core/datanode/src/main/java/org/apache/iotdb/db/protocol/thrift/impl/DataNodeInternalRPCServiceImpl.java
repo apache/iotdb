@@ -1770,6 +1770,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               }
               return RpcUtils.SUCCESS_STATUS;
             });
+    databaseMeasurementMap.forEach(
+        (db, measurementMap) -> {
+          final Map<String, Byte> measurementDataTypeMap = new HashMap<>();
+          resp.getDeviewViewUpdateMap()
+              .computeIfAbsent(db, database -> new TSchemaRegionViewInfo())
+              .setMeasurementsDataTypeMap(measurementDataTypeMap);
+          measurementMap.forEach(
+              (measurement, typeMap) ->
+                  measurementDataTypeMap.put(
+                      measurement,
+                      typeMap.entrySet().stream()
+                          .reduce(
+                              (type1Entry, type2Entry) ->
+                                  type1Entry.getValue() > type2Entry.getValue()
+                                      ? type1Entry
+                                      : type2Entry)
+                          .orElseThrow(
+                              () ->
+                                  new RuntimeException(
+                                      String.format(
+                                          "The type of the measurement %s is not specified.",
+                                          measurement)))
+                          .getKey()
+                          .serialize()));
+        });
+
     return resp.setStatus(status);
   }
 
