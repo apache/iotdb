@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.COUNT_ALL;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
@@ -167,6 +168,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
+      case COUNT_ALL:
+        return new CountAllAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
       case SUM:

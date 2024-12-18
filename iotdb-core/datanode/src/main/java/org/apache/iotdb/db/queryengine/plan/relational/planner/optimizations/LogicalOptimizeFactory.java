@@ -208,6 +208,7 @@ public class LogicalOptimizeFactory {
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
+        new TransformQuantifiedComparisonApplyToCorrelatedJoin(metadata),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
