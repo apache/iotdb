@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
@@ -103,7 +104,8 @@ public enum TableBuiltinAggregationFunction {
       case "min":
         return originalArgumentTypes.get(0);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+        // default is UDAF
+        return BLOB;
     }
   }
 

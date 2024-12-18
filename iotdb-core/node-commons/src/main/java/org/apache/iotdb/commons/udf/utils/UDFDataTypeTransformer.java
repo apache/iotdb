@@ -23,11 +23,15 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,37 +55,6 @@ public class UDFDataTypeTransformer {
         : tsDataTypeList.stream()
             .map(UDFDataTypeTransformer::transformToUDFDataType)
             .collect(Collectors.toList());
-  }
-
-  public static TSDataType transformReadTypeToTSDataType(
-      org.apache.tsfile.read.common.type.Type type) {
-    if (type == null) {
-      return null;
-    }
-    switch (type.getTypeEnum()) {
-      case BOOLEAN:
-        return TSDataType.BOOLEAN;
-      case INT32:
-        return TSDataType.INT32;
-      case INT64:
-        return TSDataType.INT64;
-      case FLOAT:
-        return TSDataType.FLOAT;
-      case DOUBLE:
-        return TSDataType.DOUBLE;
-      case TEXT:
-        return TSDataType.TEXT;
-      case TIMESTAMP:
-        return TSDataType.TIMESTAMP;
-      case DATE:
-        return TSDataType.DATE;
-      case BLOB:
-        return TSDataType.BLOB;
-      case STRING:
-        return TSDataType.STRING;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + type);
-    }
   }
 
   public static Type transformReadTypeToUDFDataType(org.apache.tsfile.read.common.type.Type type) {
@@ -122,19 +95,23 @@ public class UDFDataTypeTransformer {
       case BOOLEAN:
         return BooleanType.BOOLEAN;
       case INT32:
-      case DATE:
         return IntType.INT32;
+      case DATE:
+        return DateType.DATE;
       case INT64:
-      case TIMESTAMP:
         return LongType.INT64;
+      case TIMESTAMP:
+        return TimestampType.TIMESTAMP;
       case FLOAT:
         return FloatType.FLOAT;
       case DOUBLE:
         return DoubleType.DOUBLE;
       case TEXT:
-      case BLOB:
-      case STRING:
         return BinaryType.TEXT;
+      case BLOB:
+        return BlobType.BLOB;
+      case STRING:
+        return StringType.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

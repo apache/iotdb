@@ -62,8 +62,6 @@ public class Util {
               resolvedFunction.getSignature().getArgumentTypes());
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
-      // TODO put symbol and its type to TypeProvide or later process: add all map contents of
-      // SymbolAllocator to the TypeProvider
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
           "Aggregate with ORDER BY does not support partial aggregation");

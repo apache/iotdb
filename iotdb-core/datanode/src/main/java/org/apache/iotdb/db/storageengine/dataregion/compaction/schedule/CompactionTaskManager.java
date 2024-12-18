@@ -118,11 +118,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public synchronized void start() {
-    if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
-        && (config.isEnableSeqSpaceCompaction()
-            || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction())) {
+    if (!init) {
       initThreadPool();
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
@@ -130,6 +126,10 @@ public class CompactionTaskManager implements IService {
       init = true;
     }
     logger.info("Compaction task manager started.");
+  }
+
+  public boolean isInit() {
+    return this.init;
   }
 
   private void initThreadPool() {
@@ -222,6 +222,7 @@ public class CompactionTaskManager implements IService {
     }
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
+    init = false;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
