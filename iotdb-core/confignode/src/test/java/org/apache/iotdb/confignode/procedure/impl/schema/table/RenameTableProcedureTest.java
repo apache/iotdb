@@ -34,7 +34,7 @@ public class RenameTableProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final RenameTableProcedure renameTableProcedure =
-        new RenameTableProcedure("root.database1", "table1", "0", "newName");
+        new RenameTableProcedure("database1", "table1", "0", "newName");
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
