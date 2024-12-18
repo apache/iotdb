@@ -82,7 +82,7 @@ public class MemAlignedChunkReader implements IChunkReader {
               tsBlockSupplier,
               timeValuePairIterator,
               pageOffsetsList.get(i),
-              i + 1 < timeStatistics.size() ? pageOffsetsList.get(i + 1) : null,
+              pageOffsetsList.get(i + 1),
               tsDataTypes,
               timeStatistics.get(i),
               valuesStatistics.get(i),
