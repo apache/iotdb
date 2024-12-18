@@ -37,6 +37,8 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
 
   private final int outputColumnNum;
 
+  private boolean rightHasNullValue = false;
+
   public MergeSortSemiJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
@@ -83,25 +85,25 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
       appendAllLeftBlock();
       return true;
     }
+
+    // skip all NULL values in right, because NULL value will not match the left value
+    while (currentRightHasNullValue()) {
+      rightHasNullValue = true;
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // all the join keys in rightTsBlock are less than leftTsBlock, just skip right
     if (allRightLessThanLeft()) {
       resetRightBlockList();
       return true;
     }
 
-    // all the join Keys in leftTsBlock are less than rightTsBlock, just append the left value with
-    // match flag as false
+    // all the join Keys in leftTsBlock are less than rightTsBlock, just append the left value
     if (allLeftLessThanRight()) {
       appendAllLeftBlock();
       resetLeftBlock();
       return true;
-    }
-
-    // skip all NULL values in right, because NULL value will not match the left value
-    while (currentRightHasNullValue()) {
-      if (rightFinishedWithIncIndex()) {
-        return true;
-      }
     }
 
     // continue right < left, until right >= left
@@ -136,8 +138,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
         rightBlockList.get(rightBlockListIdx),
         rightJoinKeyPositions,
         rightIndex)) {
-      // current left won't match any right, append left with false SemiJoin result
-      appendValueToResult(false);
+      appendWhenNotMatch();
       leftIndex++;
       if (leftIndex >= leftBlock.getPositionCount()) {
         resetLeftBlock();
@@ -162,36 +163,50 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
             rightBlockList.get(rightBlockListIdx),
             rightJoinKeyPositions,
             rightIndex);
-    appendValueToResult(matches);
+    if (matches) {
+      appendValueToResult(true);
+    } else {
+      appendWhenNotMatch();
+    }
+
     return matches;
+  }
+
+  private void appendWhenNotMatch() {
+    // current left won't match any right, append left with false SemiJoin result
+    if (!rightHasNullValue) {
+      appendValueToResult(false);
+    } else {
+      // if right has null value, append null to result. This behaves like MySQL and Trino.
+      appendNullValueToResult();
+    }
   }
 
   private void appendValueToResult(boolean matches) {
     appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
-    appendSemiJoinOutput(matches);
-    resultBuilder.declarePosition();
-  }
-
-  private void appendSemiJoinOutput(boolean value) {
     ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
-    columnBuilder.writeBoolean(value);
+    columnBuilder.writeBoolean(matches);
+    resultBuilder.declarePosition();
   }
 
   private void appendNullValueToResult() {
     appendLeftBlockData(leftOutputSymbolIdx, resultBuilder, leftBlock, leftIndex);
-    appendNullToSemiJoinOutput();
+    ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
+    columnBuilder.appendNull();
     resultBuilder.declarePosition();
   }
 
-  private void appendNullToSemiJoinOutput() {
-    ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(outputColumnNum - 1);
-    columnBuilder.appendNull();
-  }
-
   private void appendAllLeftBlock() {
-    while (leftBlockNotEmpty()) {
-      appendValueToResult(false);
-      leftIndex++;
+    if (rightHasNullValue) {
+      while (leftBlockNotEmpty()) {
+        appendNullValueToResult();
+        leftIndex++;
+      }
+    } else {
+      while (leftBlockNotEmpty()) {
+        appendValueToResult(false);
+        leftIndex++;
+      }
     }
   }
 

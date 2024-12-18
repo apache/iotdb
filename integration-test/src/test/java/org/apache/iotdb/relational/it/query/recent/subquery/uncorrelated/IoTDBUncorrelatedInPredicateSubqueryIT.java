@@ -152,9 +152,15 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
     }
 
     // Test case: where s in (subquery), s contains null value
-    sql = "SELECT s1 FROM table3 WHERE device_id = 'd_null' and s1 in (SELECT (s1) from table3)";
+    sql = "SELECT s1 FROM table3 WHERE device_id = 'd_null' and s1 in (SELECT s1 from table3)";
     expectedHeader = new String[] {"s1"};
     retArray = new String[] {"30,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // Test case: where s not in (subquery), s contains null value, the resutl should be empty
+    sql = "SELECT s1 FROM table3 WHERE device_id = 'd_null' and s1 not in (SELECT s1 from table3)";
+    expectedHeader = new String[] {"s1"};
+    retArray = new String[] {};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -257,6 +263,20 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
     sql = "SELECT s1 in (SELECT s1 from table3) from table3 where device_id = 'd_null'";
     expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"true,", "null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // Test case: select s in (subquery), s contains null value. The result should also be null when
+    // s is null.
+    sql = "SELECT s1 not in (SELECT s1 from table3) from table3 where device_id = 'd_null'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,", "null,"};
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // Test case: select s in (subquery), s contains null value. 36 not in(30, 40, null) returns
+    // null
+    sql = "SELECT s1 not in (SELECT s1 from table3) from table1 where device_id = 'd02'";
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,", "false,", "null,"};
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 

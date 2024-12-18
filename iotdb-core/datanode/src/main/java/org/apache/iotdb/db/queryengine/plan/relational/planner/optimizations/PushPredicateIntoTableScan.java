@@ -88,6 +88,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PART
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
@@ -839,7 +840,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       OrderingScheme filteringSourceOrderingScheme =
           new OrderingScheme(
               ImmutableList.of(node.getFilteringSourceJoinSymbol()),
-              ImmutableMap.of(node.getFilteringSourceJoinSymbol(), ASC_NULLS_LAST));
+              // NULL first is used to make sure that we can know if there's null value in the
+              // result set of right table.
+              // For x in (subquery), if subquery returns null and some value a,b, and x is not
+              // in(a,b), the result of SemiJoinOutput should be NULL.
+              ImmutableMap.of(node.getFilteringSourceJoinSymbol(), ASC_NULLS_FIRST));
       SortNode sourceSortNode =
           new SortNode(
               queryId.genPlanNodeId(), rewrittenSource, sourceOrderingScheme, false, false);
