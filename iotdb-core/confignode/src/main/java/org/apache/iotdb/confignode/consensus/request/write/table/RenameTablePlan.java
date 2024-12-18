@@ -31,11 +31,11 @@ public class RenameTablePlan extends AbstractTablePlan {
   private String newName;
 
   public RenameTablePlan() {
-    super(ConfigPhysicalPlanType.RenameTableColumn);
+    super(ConfigPhysicalPlanType.RenameTable);
   }
 
   public RenameTablePlan(final String database, final String tableName, final String newName) {
-    super(ConfigPhysicalPlanType.RenameTableColumn, database, tableName);
+    super(ConfigPhysicalPlanType.RenameTable, database, tableName);
     this.newName = newName;
   }
 

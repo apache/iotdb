@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -1127,6 +1128,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus renameTable(final RenameTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      // TODO
+      return RpcUtils.SUCCESS_STATUS;
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

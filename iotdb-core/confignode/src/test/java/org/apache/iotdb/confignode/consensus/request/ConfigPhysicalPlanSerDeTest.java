@@ -131,6 +131,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1287,6 +1288,18 @@ public class ConfigPhysicalPlanSerDeTest {
         commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
     Assert.assertEquals(
         commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
+  }
+
+  @Test
+  public void RenameTablePlanTest() throws IOException {
+    final RenameTablePlan renameTablePlan =
+        new RenameTablePlan("database1", "table1", "measurement");
+    final RenameTablePlan renameTablePlan1 =
+        (RenameTablePlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePlan.serializeToByteBuffer());
+    Assert.assertEquals(renameTablePlan.getDatabase(), renameTablePlan1.getDatabase());
+    Assert.assertEquals(renameTablePlan.getTableName(), renameTablePlan1.getTableName());
+    Assert.assertEquals(renameTablePlan.getNewName(), renameTablePlan1.getNewName());
   }
 
   @Test
