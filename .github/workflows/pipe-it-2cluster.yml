@@ -64,6 +64,7 @@ jobs:
             -DskipUTs \
             -DintegrationTest.forkCount=40 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
             -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+            -Dtest=IoTDBPipeMultiSchemaRegionIT -DfailIfNoTests=false \
             -pl integration-test \
             -am -PMultiClusterIT2ManualCreateSchema \
             -ntp
