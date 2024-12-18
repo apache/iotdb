@@ -28,45 +28,48 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.function.BiFunction;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+
 public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MergeSortFullOuterJoinOperator.class);
 
-  private final BiFunction<Column, Integer, TsBlock> updateLastMatchedRowFunction;
-
   // stores last row matched join criteria, only used in outer join
   private TsBlock lastMatchedRightBlock = null;
+  private final int[] lastMatchedBlockPositions;
+  private final List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions;
 
   public MergeSortFullOuterJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
-      int leftJoinKeyPosition,
+      int[] leftJoinKeyPositions,
       int[] leftOutputSymbolIdx,
       Operator rightChild,
-      int rightJoinKeyPosition,
+      int[] rightJoinKeyPositions,
       int[] rightOutputSymbolIdx,
-      JoinKeyComparator joinKeyComparator,
+      List<JoinKeyComparator> joinKeyComparators,
       List<TSDataType> dataTypes,
-      Type joinKeyType,
-      BiFunction<Column, Integer, TsBlock> updateLastMatchedRowFunction) {
+      List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions) {
     super(
         operatorContext,
         leftChild,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftOutputSymbolIdx,
         rightChild,
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightOutputSymbolIdx,
-        joinKeyComparator,
-        dataTypes,
-        joinKeyType);
-    this.updateLastMatchedRowFunction = updateLastMatchedRowFunction;
+        joinKeyComparators,
+        dataTypes);
+    lastMatchedBlockPositions = new int[joinKeyComparators.size()];
+    for (int i = 0; i < lastMatchedBlockPositions.length; i++) {
+      lastMatchedBlockPositions[i] = i;
+    }
+    this.updateLastMatchedRowFunctions = updateLastMatchedRowFunctions;
   }
 
   @Override
@@ -112,24 +115,31 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
+    // if exist NULL values in right, just output this row with empty left
+    while (currentRightHasNullValue()) {
+      appendOneRightRowWithEmptyLeft();
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue right < left, until right >= left
-    while (comparator.lessThan(
+    while (lessThan(
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex,
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex)) {
       if (lastMatchedRightBlock == null) {
         appendOneRightRowWithEmptyLeft();
       } else {
         // CurrentRight can only be greater than or equal to lastMatchedRight.
-        if (comparator.lessThan(
+        if (!equalsTo(
             lastMatchedRightBlock,
-            0,
+            lastMatchedBlockPositions,
             0,
             rightBlockList.get(rightBlockListIdx),
-            rightJoinKeyPosition,
+            rightJoinKeyPositions,
             rightIndex)) {
           appendOneRightRowWithEmptyLeft();
         }
@@ -143,18 +153,23 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       return true;
     }
 
+    // if exist NULL values in left, just output this row with empty right
+    while (currentLeftHasNullValue()) {
+      appendOneLeftRowWithEmptyRight();
+      if (leftFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue left < right, until left >= right
-    while (comparator.lessThan(
+    while (lessThan(
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex,
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex)) {
       appendOneLeftRowWithEmptyRight();
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
+      if (leftFinishedWithIncIndex()) {
         return true;
       }
     }
@@ -163,22 +178,19 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     }
 
     // has right value equals to current left, append to join result, inc leftIndex
-    if (hasMatchedRightValueToProbeLeft()) {
-      leftIndex++;
-
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        return true;
-      }
-    }
-
-    return false;
+    return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
   }
 
   @Override
   protected void recordsWhenDataMatches() {
-    lastMatchedRightBlock =
-        updateLastMatchedRowFunction.apply(leftBlock.getColumn(leftJoinKeyPosition), leftIndex);
+    Column[] valueColumns = new Column[leftJoinKeyPositions.length];
+    for (int i = 0; i < leftJoinKeyPositions.length; i++) {
+      valueColumns[i] =
+          updateLastMatchedRowFunctions
+              .get(i)
+              .apply(leftBlock.getColumn(leftJoinKeyPositions[i]), leftIndex);
+    }
+    lastMatchedRightBlock = new TsBlock(1, TIME_COLUMN_TEMPLATE, valueColumns);
   }
 
   private void buildUseRemainingBlocks() {
@@ -191,16 +203,21 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
     }
   }
 
+  /** This method will be invoked only when `allRightLessThanLeft` or `leftFinished`. */
   private void appendRightWithEmptyLeft() {
     while (rightBlockListIdx < rightBlockList.size()) {
 
+      // if `lastMatchedRightBlock` is not null, the value in `lastMatchedRightBlock` must not be
+      // NULL,
+      // if current right value is null, the right row with empty left will be appended in the join
+      // result.
       if (lastMatchedRightBlock == null
-          || comparator.lessThan(
+          || !equalsTo(
               lastMatchedRightBlock,
-              0,
+              lastMatchedBlockPositions,
               0,
               rightBlockList.get(rightBlockListIdx),
-              rightJoinKeyPosition,
+              rightJoinKeyPositions,
               rightIndex)) {
         for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
           ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);

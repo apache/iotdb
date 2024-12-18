@@ -26,7 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.annotations.TableModel;
+
+import org.apache.tsfile.annotations.TableModel;
 
 import java.util.Collections;
 import java.util.List;

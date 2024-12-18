@@ -532,6 +532,7 @@ public class SystemInfo {
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
+    WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
@@ -540,6 +541,7 @@ public class SystemInfo {
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
+    WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
   }
 
   public long getTotalMemTableSize() {

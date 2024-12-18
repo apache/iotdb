@@ -135,7 +135,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -265,6 +264,7 @@ import org.apache.iotdb.db.service.DataNodeInternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -541,7 +541,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 UDFExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -568,12 +567,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tCreateFunctionReq.setJarFile(jarFile);
         tCreateFunctionReq.setJarMD5(jarMd5);
         tCreateFunctionReq.setIsUsingURI(true);
-        tCreateFunctionReq.setJarName(
-            String.format(
-                "%s-%s.%s",
-                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
-                jarMd5,
-                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
+        int index = jarFileName.lastIndexOf(".");
+        if (index < 0) {
+          tCreateFunctionReq.setJarName(String.format("%s-%s", jarFileName, jarMd5));
+        } else {
+          tCreateFunctionReq.setJarName(
+              String.format(
+                  "%s-%s.%s",
+                  jarFileName.substring(0, index), jarMd5, jarFileName.substring(index + 1)));
+        }
       }
 
       FunctionType functionType = FunctionType.NONE;
@@ -728,7 +730,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 TriggerExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -894,7 +895,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           final String jarFilePathUnderTempDir =
               PipePluginExecutableManager.getInstance()
                       .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                  + File.separator
                   + jarFileName;
           // libRoot should be the path of the specified jar
           libRoot = jarFilePathUnderTempDir;
@@ -1142,11 +1142,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<String> ignoredConfigItems =
-        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+        ConfigurationFileUtils.filterInvalidConfigItems(req.getConfigs());
     TSStatus warningTsStatus = null;
     if (!ignoredConfigItems.isEmpty()) {
       warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      warningTsStatus.setMessage(
+          "ignored config items: "
+              + ignoredConfigItems
+              + " because they are immutable or undefined.");
       if (req.getConfigs().isEmpty()) {
         future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
         return future;
@@ -1195,12 +1198,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
-      IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-      if (!iotdbConfig.isEnableSeqSpaceCompaction()
-          || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+      if (!CompactionTaskManager.getInstance().isInit()) {
         future.setException(
             new IoTDBException(
-                "cannot start repair task because inner space compaction is not enabled",
+                "cannot start repair task because compaction is not enabled",
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
@@ -2433,7 +2434,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "",
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.setException(
           new IoTDBException(

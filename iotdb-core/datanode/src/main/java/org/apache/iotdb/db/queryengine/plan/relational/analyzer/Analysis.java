@@ -139,6 +139,7 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
   private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
+  private boolean containsSelectDistinct;
 
   private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
   private final Map<NodeRef<Join>, JoinUsingAnalysis> joinUsing = new LinkedHashMap<>();
@@ -420,7 +421,7 @@ public class Analysis implements IAnalysis {
   }
 
   public boolean containsAggregationQuery() {
-    return !groupingSets.isEmpty();
+    return !groupingSets.isEmpty() || containsSelectDistinct;
   }
 
   public GroupingSetAnalysis getGroupingSets(QuerySpecification node) {
@@ -500,6 +501,10 @@ public class Analysis implements IAnalysis {
 
   public List<SelectExpression> getSelectExpressions(Node node) {
     return selectExpressions.get(NodeRef.of(node));
+  }
+
+  public void setContainsSelectDistinct() {
+    this.containsSelectDistinct = true;
   }
 
   public void setHaving(QuerySpecification node, Expression expression) {

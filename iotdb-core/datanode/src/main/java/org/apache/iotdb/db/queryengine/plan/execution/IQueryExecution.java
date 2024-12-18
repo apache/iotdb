@@ -53,6 +53,8 @@ public interface IQueryExecution {
 
   boolean isQuery();
 
+  boolean isUserQuery();
+
   String getQueryId();
 
   long getStartExecutionTime();
