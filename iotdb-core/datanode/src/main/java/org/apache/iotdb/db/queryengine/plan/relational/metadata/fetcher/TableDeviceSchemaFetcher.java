@@ -200,8 +200,7 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata:  implement deduplicate during schemaRegion execution
     // TODO table metadata:  need further process on input predicates and transform them into
     // disjoint sets
-    final Set<AbstractDeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
-    return new ArrayList<>(set);
+    return new ArrayList<>(new LinkedHashSet<>(deviceEntryList));
   }
 
   // Used by show/count device and update device.
