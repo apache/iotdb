@@ -140,11 +140,9 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
                 try {
                   insert_data(1706659200000L);
                   Thread.sleep(1000);
-                } catch (IoTDBConnectionException e) {
-                  throw new RuntimeException(e);
-                } catch (StatementExecutionException e) {
-                  throw new RuntimeException(e);
-                } catch (InterruptedException e) {
+                } catch (IoTDBConnectionException
+                    | StatementExecutionException
+                    | InterruptedException e) {
                   throw new RuntimeException(e);
                 }
               }
@@ -156,7 +154,9 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
             () -> {
               try {
                 rowCount1.addAndGet(consume_tsfile(consumer, device));
-              } catch (InterruptedException e) {
+              } catch (InterruptedException
+                  | IoTDBConnectionException
+                  | StatementExecutionException e) {
                 throw new RuntimeException(e);
               }
             });
@@ -165,7 +165,9 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT extends AbstractSubscr
             () -> {
               try {
                 rowCount2.addAndGet(consume_tsfile(consumer2, device));
-              } catch (InterruptedException e) {
+              } catch (InterruptedException
+                  | IoTDBConnectionException
+                  | StatementExecutionException e) {
                 throw new RuntimeException(e);
               }
             });
