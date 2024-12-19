@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -68,18 +69,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or the permission already exists.
    */
-  void grantPrivilegeToUser(String userName, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToUser(String userName, PartialPath path, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToUser(String userName, String database, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToUser(
-      String userName, String databaseName, String table, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
+  void grantPrivilegeToUser(String userName, PrivilegeUnion union) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
@@ -88,16 +78,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or if the permission does not exist.
    */
-  void revokePrivilegeFromUser(String userName, PrivilegeType priv) throws AuthException;
-
-  void revokePrivilegeFromUser(String userName, PartialPath path, PrivilegeType priv)
-      throws AuthException;
-
-  void revokePrivilegeFromUser(String userName, String database, PrivilegeType priv)
-      throws AuthException;
-
-  void revokePrivilegeFromUser(String userName, String database, String table, PrivilegeType priv)
-      throws AuthException;
+  void revokePrivilegeFromUser(String userName, PrivilegeUnion union) throws AuthException;
 
   /**
    * Add a role.
@@ -122,18 +103,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege already exists.
    */
-  void grantPrivilegeToRole(String roleName, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToRole(String roleName, PartialPath path, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToRole(String roleName, String database, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
-
-  void grantPrivilegeToRole(
-      String roleName, String database, String table, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException;
+  void grantPrivilegeToRole(String roleName, PrivilegeUnion union) throws AuthException;
 
   /**
    * Remove a privilege on a seriesPath from a role.
@@ -142,16 +112,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege does not exists.
    */
-  void revokePrivilegeFromRole(String roleName, PrivilegeType priv) throws AuthException;
-
-  void revokePrivilegeFromRole(String roleName, PartialPath path, PrivilegeType priv)
-      throws AuthException;
-
-  void revokePrivilegeFromRole(String roleName, String database, PrivilegeType priv)
-      throws AuthException;
-
-  void revokePrivilegeFromRole(String roleName, String database, String table, PrivilegeType priv)
-      throws AuthException;
+  void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException;
 
   /**
    * Add a role to a user.
@@ -201,8 +162,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
-  boolean checkUserPrivileges(String username, PrivilegeType priv, Object... targets)
-      throws AuthException;
+  boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException;
 
   /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;
