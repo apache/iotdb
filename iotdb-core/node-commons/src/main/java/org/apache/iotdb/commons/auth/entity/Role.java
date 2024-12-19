@@ -174,7 +174,7 @@ public class Role {
     for (TDBPrivilege tdbPrivilege : info.values()) {
       DatabasePrivilege databasePrivilege = new DatabasePrivilege(tdbPrivilege.getDatabasename());
       for (Integer privId : tdbPrivilege.getPrivileges()) {
-        databasePrivilege.grantDBObjectPrivilege(PrivilegeType.values()[privId]);
+        databasePrivilege.grantDBPrivilege(PrivilegeType.values()[privId]);
       }
       for (Integer privId : tdbPrivilege.getGrantOpt()) {
         databasePrivilege.grantDBGrantOption(PrivilegeType.values()[privId]);
@@ -182,11 +182,11 @@ public class Role {
       if (tdbPrivilege.getTableinfoSize() != 0) {
         for (TTablePrivilege tablePrivilege : tdbPrivilege.getTableinfo().values()) {
           for (Integer privId : tablePrivilege.getPrivileges()) {
-            databasePrivilege.grantTableObjectPrivilege(
+            databasePrivilege.grantTablePrivilege(
                 tablePrivilege.getTablename(), PrivilegeType.values()[privId]);
           }
           for (Integer privId : tablePrivilege.getGrantOption()) {
-            databasePrivilege.grantTableObejctGrantOption(
+            databasePrivilege.grantTableGrantOption(
                 tablePrivilege.getTablename(), PrivilegeType.values()[privId]);
           }
         }
@@ -345,7 +345,7 @@ public class Role {
 
   public void grantDBPrivilege(String dbName, PrivilegeType priv, boolean grantOption) {
     DatabasePrivilege databasePrivilege = getObjectPrivilege(dbName);
-    databasePrivilege.grantDBObjectPrivilege(priv);
+    databasePrivilege.grantDBPrivilege(priv);
     if (grantOption) {
       databasePrivilege.grantDBGrantOption(priv);
     }
@@ -354,22 +354,22 @@ public class Role {
   public void grantTBPrivilege(
       String dbName, String tbName, PrivilegeType priv, boolean grantOption) {
     DatabasePrivilege databasePrivilege = getObjectPrivilege(dbName);
-    databasePrivilege.grantTableObjectPrivilege(tbName, priv);
+    databasePrivilege.grantTablePrivilege(tbName, priv);
     if (grantOption) {
-      databasePrivilege.grantTableObejctGrantOption(tbName, priv);
+      databasePrivilege.grantTableGrantOption(tbName, priv);
     }
   }
 
   public void revokeDBPrivilege(String dbName, PrivilegeType priv) {
     DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
-    databasePrivilege.revokeDBObjectPrivilege(priv);
-    databasePrivilege.revokeGrantOptionFromDB(priv);
+    databasePrivilege.revokeDBPrivilege(priv);
+    databasePrivilege.revokeDBGrantOption(priv);
   }
 
   public void revokeTBPrivilege(String dbName, String tbName, PrivilegeType priv) {
     DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
-    databasePrivilege.revokeTableObjectGrantOption(tbName, priv);
-    databasePrivilege.revokeTableObjectPrivilege(tbName, priv);
+    databasePrivilege.revokeTableGrantOption(tbName, priv);
+    databasePrivilege.revokeTablePrivilege(tbName, priv);
     if (databasePrivilege.getTablePrivilegeMap().isEmpty()) {
       this.objectPrivilegeMap.remove(dbName);
     }

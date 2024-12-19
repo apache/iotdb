@@ -48,6 +48,6 @@ public class UserTest {
         "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], "
             + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user1.toString());
-    Assert.assertTrue(user1.equals(user));
+    Assert.assertEquals(user1, user);
   }
 }
