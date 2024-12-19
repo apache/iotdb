@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -117,28 +118,34 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testTreePermission() throws AuthException {
     authorizer.createUser(userName, password);
-    authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.READ_DATA, false);
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     try {
-      authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.READ_DATA, false);
+      authorizer.grantPrivilegeToUser(
+          userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     } catch (AuthException e) {
       assertEquals("User user already has READ_DATA on root.laptop.d1", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser("error", nodeName, PrivilegeType.READ_DATA, false);
+      authorizer.grantPrivilegeToUser(
+          "error", new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     } catch (AuthException e) {
       assertEquals("No such user error", e.getMessage());
     }
 
     try {
-      authorizer.grantPrivilegeToUser("root", nodeName, PrivilegeType.READ_DATA, false);
+      authorizer.grantPrivilegeToUser(
+          "root", new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA, false));
     } catch (AuthException e) {
       Assert.assertEquals(
           "Invalid operation, administrator already has all privileges", e.getMessage());
     }
 
-    authorizer.revokePrivilegeFromUser(userName, nodeName, PrivilegeType.READ_DATA);
+    authorizer.revokePrivilegeFromUser(
+        userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA));
     try {
-      authorizer.revokePrivilegeFromUser(userName, nodeName, PrivilegeType.READ_DATA);
+      authorizer.revokePrivilegeFromUser(
+          userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA));
     } catch (AuthException e) {
       assertEquals("User user does not have READ_DATA on root.laptop.d1", e.getMessage());
     }
@@ -147,10 +154,14 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testRelationalPermission() throws AuthException {
     authorizer.createUser(userName, password);
-    authorizer.grantPrivilegeToUser(userName, database, PrivilegeType.SELECT, true);
-    authorizer.grantPrivilegeToUser(userName, database, PrivilegeType.ALTER, false);
-    authorizer.grantPrivilegeToUser(userName, database, table, PrivilegeType.INSERT, true);
-    authorizer.grantPrivilegeToUser(userName, database, table, PrivilegeType.DELETE, true);
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(database, PrivilegeType.SELECT, true));
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(database, PrivilegeType.ALTER, false));
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(database, table, PrivilegeType.INSERT, true));
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(database, table, PrivilegeType.DELETE, true));
     assertEquals(1, authorizer.getUser(userName).getObjectPrivilegeMap().size());
     assertEquals(
         1,
@@ -161,11 +172,15 @@ public class LocalFileAuthorizerTest {
             .getTablePrivilegeMap()
             .size());
 
-    assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.SELECT, database));
     assertTrue(
         authorizer.checkUserPrivileges(
-            userName, PrivilegeType.SELECT, database, table)); // db privilege
-    assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.DELETE, database, table));
+            userName, new PrivilegeUnion(database, PrivilegeType.SELECT)));
+    assertTrue(
+        authorizer.checkUserPrivileges(
+            userName, new PrivilegeUnion(database, table, PrivilegeType.SELECT))); // db privilege
+    assertTrue(
+        authorizer.checkUserPrivileges(
+            userName, new PrivilegeUnion(database, table, PrivilegeType.DELETE)));
   }
 
   @Test
@@ -173,8 +188,10 @@ public class LocalFileAuthorizerTest {
     authorizer.createUser(userName, password);
     authorizer.createRole(roleName);
     authorizer.grantRoleToUser(roleName, userName);
-    authorizer.grantPrivilegeToUser(userName, nodeName, PrivilegeType.WRITE_DATA, false);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, PrivilegeType.WRITE_SCHEMA, false);
+    authorizer.grantPrivilegeToUser(
+        userName, new PrivilegeUnion(nodeName, PrivilegeType.WRITE_DATA, false));
+    authorizer.grantPrivilegeToRole(
+        roleName, new PrivilegeUnion(nodeName, PrivilegeType.WRITE_SCHEMA, false));
 
     // a user can get all role permissions.
     Set<PrivilegeType> permissions = authorizer.getPrivileges(userName, nodeName);
@@ -196,9 +213,12 @@ public class LocalFileAuthorizerTest {
     assertFalse(revokeRolePermissions.contains(PrivilegeType.READ_SCHEMA));
 
     // check the users' permission again
-    Assert.assertTrue(authorizer.checkUserPrivileges(userName, PrivilegeType.WRITE_DATA, nodeName));
+    Assert.assertTrue(
+        authorizer.checkUserPrivileges(
+            userName, new PrivilegeUnion(nodeName, PrivilegeType.WRITE_DATA)));
     Assert.assertFalse(
-        authorizer.checkUserPrivileges(userName, PrivilegeType.READ_SCHEMA, nodeName));
+        authorizer.checkUserPrivileges(
+            userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_SCHEMA)));
 
     try {
       authorizer.grantRoleToUser("role1", userName);

@@ -34,6 +34,7 @@ import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -780,15 +781,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       case TREE:
         List<PartialPath> partialPaths =
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
-        return configManager.checkUserPrivileges(req.getUsername(), permission, partialPaths);
+        return configManager.checkUserPrivileges(
+            req.getUsername(), new PrivilegeUnion(partialPaths, permission));
       case SYSTEM:
-        return configManager.checkUserPrivileges(req.getUsername(), permission);
+        return configManager.checkUserPrivileges(req.getUsername(), new PrivilegeUnion(permission));
       case RELATIONAL:
         return configManager.checkUserPrivileges(
             req.getUsername(),
-            permission,
-            req.getDatabase(),
-            req.isSetTable() ? "" : req.getTable());
+            req.isSetTable()
+                ? new PrivilegeUnion(req.getDatabase(), permission)
+                : new PrivilegeUnion(req.getDatabase(), req.getTable(), permission));
       default:
         return AuthUtils.generateEmptyPermissionInfoResp();
     }

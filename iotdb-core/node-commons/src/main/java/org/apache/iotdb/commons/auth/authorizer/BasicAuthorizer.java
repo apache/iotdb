@@ -147,82 +147,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
+  public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(username, "Invalid operation, administrator already has all privileges");
-    if (priv.isSystemPrivilege()) {
-      userManager.grantPrivilegeToEntry(username, new PrivilegeUnion(priv, grantOpt));
-    } else {
-      userManager.grantPrivilegeToEntry(username, new PrivilegeUnion(priv, grantOpt, true));
-    }
+    userManager.grantPrivilegeToEntry(username, union);
   }
 
   @Override
-  public void grantPrivilegeToUser(
-      String userName, PartialPath path, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
-    checkAdmin(userName, "Invalid operation, administrator already has all privileges");
-    userManager.grantPrivilegeToEntry(userName, new PrivilegeUnion(path, priv, grantOpt));
-  }
-
-  @Override
-  public void grantPrivilegeToUser(
-      String userName, String database, PrivilegeType priv, Boolean grantOpt) throws AuthException {
-    checkAdmin(userName, "Invalid operation, administrator already has all privileges");
-    userManager.grantPrivilegeToEntry(userName, new PrivilegeUnion(database, priv, grantOpt));
-  }
-
-  @Override
-  public void grantPrivilegeToUser(
-      String userName, String database, String table, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
-    checkAdmin(userName, "Invalid operation, administrator already has all privileges");
-    userManager.grantPrivilegeToEntry(
-        userName, new PrivilegeUnion(database, table, priv, grantOpt));
-  }
-
-  @Override
-  public void revokePrivilegeFromUser(String username, PrivilegeType priv) throws AuthException {
+  public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(username, "Invalid operation, administrator must have all privileges");
-    if (!userManager.revokePrivilegeFromEntry(username, new PrivilegeUnion(priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("User %s does not have %s", username, priv));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromUser(String username, PartialPath path, PrivilegeType priv)
-      throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator must have all privileges");
-    if (!userManager.revokePrivilegeFromEntry(username, new PrivilegeUnion(path, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("User %s does not have %s on %s", username, priv, path.getFullPath()));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromUser(String username, String database, PrivilegeType priv)
-      throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator must have all privileges");
-    if (!userManager.revokePrivilegeFromEntry(username, new PrivilegeUnion(database, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("User %s does not have %s", username, priv));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromUser(
-      String username, String database, String table, PrivilegeType priv) throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator must have all privileges");
-    if (!userManager.revokePrivilegeFromEntry(
-        username, new PrivilegeUnion(database, table, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("User %s does not have %s", username, priv));
-    }
+    userManager.revokePrivilegeFromEntry(username, union);
   }
 
   @Override
@@ -259,71 +192,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToRole(String rolename, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
-    roleManager.grantPrivilegeToEntry(
-        rolename, new PrivilegeUnion(priv, grantOpt, priv.isRelationalPrivilege()));
+  public void grantPrivilegeToRole(String rolename, PrivilegeUnion union) throws AuthException {
+    roleManager.grantPrivilegeToEntry(rolename, union);
   }
 
   @Override
-  public void grantPrivilegeToRole(
-      String roleName, PartialPath path, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
-    roleManager.grantPrivilegeToEntry(roleName, new PrivilegeUnion(path, priv, grantOpt));
-  }
-
-  @Override
-  public void grantPrivilegeToRole(
-      String roleName, String database, PrivilegeType priv, Boolean grantOpt) throws AuthException {
-    roleManager.grantPrivilegeToEntry(roleName, new PrivilegeUnion(database, priv, grantOpt));
-  }
-
-  @Override
-  public void grantPrivilegeToRole(
-      String roleName, String database, String table, PrivilegeType priv, Boolean grantOpt)
-      throws AuthException {
-    roleManager.grantPrivilegeToEntry(
-        roleName, new PrivilegeUnion(database, table, priv, grantOpt));
-  }
-
-  @Override
-  public void revokePrivilegeFromRole(String roleName, PrivilegeType priv) throws AuthException {
-    if (!roleManager.revokePrivilegeFromEntry(roleName, new PrivilegeUnion(priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("Role %s does not have %s", roleName, priv));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromRole(String roleName, PartialPath path, PrivilegeType priv)
-      throws AuthException {
-    if (!roleManager.revokePrivilegeFromEntry(roleName, new PrivilegeUnion(path, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("Role %s does not have %s", roleName, priv));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromRole(String roleName, String database, PrivilegeType priv)
-      throws AuthException {
-    if (!roleManager.revokePrivilegeFromEntry(roleName, new PrivilegeUnion(database, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("Role %s does not have %s", roleName, priv));
-    }
-  }
-
-  @Override
-  public void revokePrivilegeFromRole(
-      String roleName, String database, String table, PrivilegeType priv) throws AuthException {
-    if (!roleManager.revokePrivilegeFromEntry(
-        roleName, new PrivilegeUnion(database, table, priv))) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format("Role %s does not have %s", roleName, priv));
-    }
+  public void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException {
+    roleManager.revokePrivilegeFromEntry(roleName, union);
   }
 
   @Override
@@ -395,25 +270,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  private boolean checkUserPrivilege(Role role, PrivilegeType priv, Object... targets) {
-    switch (targets.length) {
-      case 0:
-        return role.checkSysPrivilege(priv);
-      case 1:
-        if (targets[0] instanceof PartialPath) {
-          return role.checkPathPrivilege((PartialPath) targets[0], priv);
-        }
-        return role.checkDatabasePrivilege((String) targets[0], priv);
-      case 2:
-        return role.checkTablePrivilege((String) targets[0], (String) targets[1], priv);
-      default:
-        throw new IllegalArgumentException("Invalid number of arguments for privilege check");
-    }
-  }
-
   @Override
-  public boolean checkUserPrivileges(String username, PrivilegeType priv, Object... targets)
-      throws AuthException {
+  public boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException {
     if (isAdmin(username)) {
       return true;
     }
@@ -422,15 +280,32 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
-    if (checkUserPrivilege(user, priv, targets)) {
+    if (checkEntryPrivileges(user, union)) {
       return true;
     }
 
     for (String roleName : user.getRoleSet()) {
       Role role = roleManager.getEntry(roleName);
-      if (checkUserPrivilege(role, priv, targets)) {
+      if (checkEntryPrivileges(role, union)) {
         return true;
       }
+    }
+    return false;
+  }
+
+  private boolean checkEntryPrivileges(Role role, PrivilegeUnion union) {
+    switch (union.getModelType()) {
+      case TREE:
+        return role.checkPathPrivilege(union.getPath(), union.getPrivilegeType());
+      case RELATIONAL:
+        if (union.getTbName() == null) {
+          return role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType());
+        } else {
+          return role.checkTablePrivilege(
+              union.getDBName(), union.getTbName(), union.getPrivilegeType());
+        }
+      case SYSTEM:
+        return role.checkSysPrivilege(union.getPrivilegeType());
     }
     return false;
   }

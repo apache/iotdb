@@ -108,7 +108,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
             getNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
       }
 
-      switch (privilegeUnion.modelType()) {
+      switch (privilegeUnion.getModelType()) {
         case TREE:
           AuthUtils.validatePatternPath(privilegeUnion.getPath());
           role.grantPathPrivilege(
@@ -140,7 +140,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
           }
           break;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.modelType());
+          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entryName);
@@ -156,7 +156,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
         throw new AuthException(
             getNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
       }
-      switch (privilegeUnion.modelType()) {
+      switch (privilegeUnion.getModelType()) {
         case TREE:
           if (!role.hasPrivilegeToRevoke(
               privilegeUnion.getPath(), privilegeUnion.getPrivilegeType())) {
@@ -192,7 +192,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
           role.revokeSysPrivilege(privilegeUnion.getPrivilegeType());
           break;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.modelType());
+          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entryName);

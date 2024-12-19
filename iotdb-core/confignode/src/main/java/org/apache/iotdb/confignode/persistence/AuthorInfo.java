@@ -26,7 +26,9 @@ import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -118,20 +120,17 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // if All paths fail, return No permission
-  // if some paths fail, return SUCCESS and failed index list
-  // if all path success, return success and empty index list
-  public TPermissionInfoResp checkUserPrivileges(
-      String username, PrivilegeType permission, Object... targets) {
+  public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     boolean status = true;
     TPermissionInfoResp result = new TPermissionInfoResp();
     List<Integer> failedList = new ArrayList<>();
     try {
-      if (permission.isPathPrivilege()) {
-        List<PartialPath> list = (List<PartialPath>) targets[0];
+      if (union.getModelType() == PrivilegeModelType.TREE) {
+        List<? extends PartialPath> list = union.getPaths();
         int pos = 0;
         for (PartialPath path : list) {
-          if (!checkOnePath(username, path, permission)) {
+          if (!authorizer.checkUserPrivileges(
+              username, new PrivilegeUnion(path, union.getPrivilegeType()))) {
             failedList.add(pos);
           }
           pos++;
@@ -140,7 +139,7 @@ public class AuthorInfo implements SnapshotProcessor {
           status = false;
         }
       } else {
-        status = authorizer.checkUserPrivileges(username, permission, targets);
+        status = authorizer.checkUserPrivileges(username, union);
       }
     } catch (AuthException e) {
       status = false;
@@ -160,19 +159,6 @@ public class AuthorInfo implements SnapshotProcessor {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
     }
     return result;
-  }
-
-  private boolean checkOnePath(String username, PartialPath path, PrivilegeType permission)
-      throws AuthException {
-    try {
-      if (authorizer.checkUserPrivileges(username, permission, path)) {
-        return true;
-      }
-    } catch (AuthException e) {
-      LOGGER.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e.getCode(), e);
-    }
-    return false;
   }
 
   public TSStatus authorNonQuery(AuthorPlan authorPlan) {
@@ -216,11 +202,11 @@ public class AuthorInfo implements SnapshotProcessor {
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];
             if (priv.isSystemPrivilege()) {
-              authorizer.grantPrivilegeToRole(roleName, priv, grantOpt);
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToRole(roleName, path, priv, grantOpt);
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
@@ -228,11 +214,11 @@ public class AuthorInfo implements SnapshotProcessor {
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];
             if (priv.isSystemPrivilege()) {
-              authorizer.grantPrivilegeToUser(userName, priv, grantOpt);
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToUser(userName, path, priv, grantOpt);
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
@@ -243,11 +229,12 @@ public class AuthorInfo implements SnapshotProcessor {
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];
             if (priv.isSystemPrivilege()) {
-              authorizer.revokePrivilegeFromUser(userName, priv);
+              authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromUser(userName, path, priv);
+              authorizer.revokePrivilegeFromUser(
+                  userName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
@@ -255,11 +242,12 @@ public class AuthorInfo implements SnapshotProcessor {
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];
             if (priv.isSystemPrivilege()) {
-              authorizer.revokePrivilegeFromRole(roleName, priv);
+              authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromRole(roleName, path, priv);
+              authorizer.revokePrivilegeFromRole(
+                  roleName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
@@ -313,43 +301,49 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RGrantRoleSysPri:
         case RGrantRoleAny:
-          authorizer.grantPrivilegeToRole(roleName, priv, grantOpt);
+          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RGrantUserSysPri:
         case RGrantUserAny:
-          authorizer.grantPrivilegeToUser(userName, priv, grantOpt);
+          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RGrantRoleDBPriv:
-          authorizer.grantPrivilegeToRole(roleName, database, priv, grantOpt);
+          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(database, priv, grantOpt));
           break;
         case RGrantUserDBPriv:
-          authorizer.grantPrivilegeToUser(userName, database, priv, grantOpt);
+          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(database, priv, grantOpt));
           break;
         case RGrantRoleTBPriv:
-          authorizer.grantPrivilegeToRole(roleName, database, table, priv, grantOpt);
+          authorizer.grantPrivilegeToRole(
+              roleName, new PrivilegeUnion(database, table, priv, grantOpt));
           break;
         case RGrantUserTBPriv:
-          authorizer.grantPrivilegeToUser(userName, database, table, priv, grantOpt);
+          authorizer.grantPrivilegeToUser(
+              userName, new PrivilegeUnion(database, table, priv, grantOpt));
           break;
         case RRevokeRoleSysPri:
         case RRevokeRoleAny:
-          authorizer.revokePrivilegeFromRole(roleName, priv);
+          authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RRevokeUserSysPri:
         case RRevokeUserAny:
-          authorizer.revokePrivilegeFromUser(userName, priv);
+          authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RRevokeRoleDBPriv:
-          authorizer.revokePrivilegeFromRole(roleName, database, priv);
+          authorizer.revokePrivilegeFromRole(
+              roleName, new PrivilegeUnion(database, priv, grantOpt));
           break;
         case RRevokeUserDBPriv:
-          authorizer.revokePrivilegeFromUser(userName, database, priv);
+          authorizer.revokePrivilegeFromUser(
+              userName, new PrivilegeUnion(database, priv, grantOpt));
           break;
         case RRevokeRoleTBPriv:
-          authorizer.revokePrivilegeFromRole(roleName, database, table, priv);
+          authorizer.revokePrivilegeFromRole(
+              roleName, new PrivilegeUnion(database, table, priv, grantOpt));
           break;
         case RRevokeUserTBPriv:
-          authorizer.revokePrivilegeFromUser(userName, database, table, priv);
+          authorizer.revokePrivilegeFromUser(
+              userName, new PrivilegeUnion(database, table, priv, grantOpt));
           break;
         default:
           throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");

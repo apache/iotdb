@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
@@ -110,9 +110,8 @@ public class PermissionManager {
     return authorInfo.login(username, password);
   }
 
-  public TPermissionInfoResp checkUserPrivileges(
-      String username, PrivilegeType permission, Object... targets) {
-    return authorInfo.checkUserPrivileges(username, permission, targets);
+  public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
+    return authorInfo.checkUserPrivileges(username, union);
   }
 
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
