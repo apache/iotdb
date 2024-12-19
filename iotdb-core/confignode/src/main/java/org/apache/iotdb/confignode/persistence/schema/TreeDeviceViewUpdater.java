@@ -60,6 +60,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
   private final AtomicLong executedRounds = new AtomicLong(0);
   private TDeviceViewResp currentResp;
   private volatile TSStatus lastStatus;
+  private boolean hasError;
 
   public TreeDeviceViewUpdater(final ConfigManager configManager) {
     super(
@@ -72,6 +73,10 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
 
   @Override
   protected void executeTask() {
+    if (!hasError) {
+      lastStatus = StatusUtils.OK;
+    }
+    hasError = false;
     executor.execute();
     executedRounds.incrementAndGet();
   }
@@ -183,6 +188,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
         final Set<TDataNodeLocation> dataNodeLocationSet) {
       final String errorMsg = "Failed to update device view on region {}, skip this round";
       LOGGER.warn(errorMsg, consensusGroupId);
+      hasError = true;
       lastStatus = new TSStatus(TSStatusCode.METADATA_ERROR.getStatusCode()).setMessage(errorMsg);
       interruptTask();
     }
