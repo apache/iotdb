@@ -29,14 +29,14 @@ public class RowsFrame implements Frame {
         break;
       case PRECEDING:
         offset = (int) frameInfo.getStartOffset();
-        frameStart = Math.max(posInPartition - offset, 0);
+        frameStart = posInPartition - offset;
         break;
       case CURRENT_ROW:
         frameStart = posInPartition;
         break;
       case FOLLOWING:
         offset = (int) frameInfo.getStartOffset();
-        frameStart = Math.min(posInPartition + offset, partitionSize);
+        frameStart = posInPartition + offset;
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
@@ -47,14 +47,14 @@ public class RowsFrame implements Frame {
     switch (frameInfo.getEndType()) {
       case PRECEDING:
         offset = (int) frameInfo.getEndOffset();
-        frameEnd = Math.max(posInPartition - offset, 0);
+        frameEnd = posInPartition - offset;
         break;
       case CURRENT_ROW:
         frameEnd = posInPartition;
         break;
       case FOLLOWING:
         offset = (int) frameInfo.getEndOffset();
-        frameEnd = Math.min(posInPartition + offset, partitionSize - 1);
+        frameEnd = posInPartition + offset;
         break;
       case UNBOUNDED_FOLLOWING:
         frameEnd = partitionSize - 1;
@@ -64,6 +64,13 @@ public class RowsFrame implements Frame {
         throw new FrameTypeException(false);
     }
 
+    // Empty frame
+    if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
+      return new Range(-1, -1);
+    }
+
+    frameStart = Math.max(frameStart, 0);
+    frameEnd = Math.min(frameEnd, partitionSize - 1);
     return new Range(frameStart, frameEnd);
   }
 }
