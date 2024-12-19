@@ -690,7 +690,7 @@ public class ConfigPlanExecutor {
         .forEach(
             x -> {
               try {
-                long startTime = System.currentTimeMillis();
+                final long startTime = System.currentTimeMillis();
                 LOGGER.info(
                     "[ConfigNodeSnapshot] Start to load snapshot for {} from {}",
                     x.getClass().getName(),

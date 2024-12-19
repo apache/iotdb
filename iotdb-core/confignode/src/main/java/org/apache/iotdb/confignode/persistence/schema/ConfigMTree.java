@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.M
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -92,7 +95,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 public class ConfigMTree {
 
   private static final String TABLE_ERROR_MSG =
-      "Failed to recover configNode, because the mTree snapshot contains database from an older table model version.";
+      "Failed to recover configNode, because the tree model mTree snapshot contains databases from an older table model version, will shutdown soon.";
 
   private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
   private IConfigMNode root;
@@ -1042,8 +1045,10 @@ public class ConfigMTree {
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
     if (!isTableModel && databaseMNode.getAsMNode().getDatabaseSchema().isIsTableModel()) {
-      logger.error(TABLE_ERROR_MSG);
-      throw new RuntimeException();
+      final IoTDBException e =
+          new IoTDBException(TABLE_ERROR_MSG, TSStatusCode.START_UP_ERROR.getStatusCode());
+      logger.error(e.getMessage(), e);
+      new Thread(() -> ConfigNode.getInstance().stop()).start();
     }
     return databaseMNode.getAsMNode();
   }
