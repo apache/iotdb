@@ -299,8 +299,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         return role.checkPathPrivilege(union.getPath(), union.getPrivilegeType());
       case RELATIONAL:
         if (union.getTbName() == null) {
+          if (union.getPrivilegeType() == PrivilegeType.INVALID) {
+            return role.checkTBVisible(union.getDBName(), union.getTbName());
+          }
           return role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType());
         } else {
+          if (union.getPrivilegeType() == PrivilegeType.INVALID) {
+            return role.checkDBVisible(union.getDBName());
+          }
           return role.checkTablePrivilege(
               union.getDBName(), union.getTbName(), union.getPrivilegeType());
         }
