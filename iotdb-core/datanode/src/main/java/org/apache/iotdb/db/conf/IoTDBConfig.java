@@ -539,6 +539,9 @@ public class IoTDBConfig {
    */
   private volatile int minCrossCompactionUnseqFileLevel = 1;
 
+  /** The min size of candidate unseq file in one insertion compaction task */
+  private volatile long minInsertionCompactionUnseqFileSizeInByte = 100 * 1024 * 1024;
+
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
@@ -3128,6 +3131,15 @@ public class IoTDBConfig {
 
   public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
     this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
+  }
+
+  public long getMinInsertionCompactionUnseqFileSizeInByte() {
+    return minInsertionCompactionUnseqFileSizeInByte;
+  }
+
+  public void setMinInsertionCompactionUnseqFileSizeInByte(
+      long minInsertionCompactionUnseqFileSizeInByte) {
+    this.minInsertionCompactionUnseqFileSizeInByte = minInsertionCompactionUnseqFileSizeInByte;
   }
 
   public int getSubCompactionTaskNum() {
