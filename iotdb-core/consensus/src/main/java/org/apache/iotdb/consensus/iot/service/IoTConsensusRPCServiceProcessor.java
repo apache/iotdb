@@ -185,13 +185,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TBuildSyncLogChannelRes(status);
     }
     TSStatus responseStatus;
-    try {
-      impl.buildSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
-      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupModifyPeerException e) {
-      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      responseStatus.setMessage(e.getMessage());
-    }
+    impl.buildSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
+    responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     return new TBuildSyncLogChannelRes(responseStatus);
   }
 

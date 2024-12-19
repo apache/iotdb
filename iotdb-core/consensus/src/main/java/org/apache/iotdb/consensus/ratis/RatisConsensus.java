@@ -592,6 +592,12 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList)
+      throws ConsensusException {
+    throw new ConsensusException("RatisConsensus does not support record correct peer list");
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
     logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
