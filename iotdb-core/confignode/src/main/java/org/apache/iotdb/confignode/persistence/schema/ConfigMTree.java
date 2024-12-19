@@ -92,7 +92,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 public class ConfigMTree {
 
   private static final String TABLE_ERROR_MSG =
-      "Failed to recover configNode, because the version is from an older table model version.";
+      "Failed to recover configNode, because the mTree snapshot contains database from an older table model version.";
 
   private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
   private IConfigMNode root;
