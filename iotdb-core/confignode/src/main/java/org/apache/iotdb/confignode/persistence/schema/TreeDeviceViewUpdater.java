@@ -69,9 +69,13 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
     protected TreeDeviceUpdateTaskExecutor(
         final ConfigManager configManager,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
-        final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(configManager, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      super(
+          configManager,
+          targetRegionGroup,
+          false,
+          CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
+          dataNodeRequestGenerator);
     }
 
     @Override
