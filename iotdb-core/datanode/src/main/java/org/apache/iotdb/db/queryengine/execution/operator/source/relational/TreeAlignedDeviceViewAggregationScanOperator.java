@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -31,10 +33,24 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 import java.util.Set;
 
-public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(
-      OperatorContext context,
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator.getNthIdColumnValueForTree;
+
+public class TreeAlignedDeviceViewAggregationScanOperator
+    extends AbstractAggregationTableScanOperator {
+
+  // in iotdb, db level should at least be 2 level, like root.db
+  // if db level is 2, idColumnStartIndex is 0, and we use should treeDBLength to extract the first
+  // id column value
+  // if db level is larger than 2, idColumnStartIndex will be db level - 2
+  private final int idColumnStartIndex;
+
+  // only take effect, if db level is 2 level, for root.db.d1, IDeviceId will be [root.db.d1],
+  // treeDBLength will be 7 (root.db)
+  private final int treeDBLength;
+
+  public TreeAlignedDeviceViewAggregationScanOperator(
       PlanNodeId sourceId,
+      OperatorContext context,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
       List<DeviceEntry> deviceEntries,
@@ -43,10 +59,21 @@ public class TableScanOperator extends AbstractTableScanOperator {
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum) {
+      int maxTsBlockLineNum,
+      int measurementCount,
+      List<TableAggregator> tableAggregators,
+      List<ColumnSchema> groupingKeySchemas,
+      int[] groupingKeyIndex,
+      ITableTimeRangeIterator tableTimeRangeIterator,
+      boolean ascending,
+      long maxReturnSize,
+      boolean canUseStatistics,
+      List<Integer> aggArguments,
+      int idColumnStartIndex,
+      int treeDBLength) {
     super(
-        context,
         sourceId,
+        context,
         columnSchemas,
         columnsIndexArray,
         deviceEntries,
@@ -55,12 +82,23 @@ public class TableScanOperator extends AbstractTableScanOperator {
         measurementColumnNames,
         allSensors,
         measurementSchemas,
-        maxTsBlockLineNum);
+        maxTsBlockLineNum,
+        measurementCount,
+        tableAggregators,
+        groupingKeySchemas,
+        groupingKeyIndex,
+        tableTimeRangeIterator,
+        ascending,
+        maxReturnSize,
+        canUseStatistics,
+        aggArguments);
+    this.idColumnStartIndex = idColumnStartIndex;
+    this.treeDBLength = treeDBLength;
   }
 
   @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+    return getNthIdColumnValueForTree(
+        deviceEntry, idColumnIndex, this.idColumnStartIndex, this.treeDBLength);
   }
 }
