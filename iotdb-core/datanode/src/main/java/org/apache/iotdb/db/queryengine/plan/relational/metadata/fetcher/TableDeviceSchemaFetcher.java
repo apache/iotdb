@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -38,13 +39,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
@@ -56,6 +61,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -323,15 +329,17 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    return tryGetTableDeviceInCache(
-        deviceEntryList,
-        database,
-        tableInstance,
-        check,
-        attributeColumns,
-        fetchPaths,
-        isDirectDeviceQuery,
-        idValues);
+    return !TreeViewSchema.TREE_VIEW_DATABASE.equals(database)
+        ? tryGetTableDeviceInCache(
+            deviceEntryList,
+            database,
+            tableInstance,
+            check,
+            attributeColumns,
+            fetchPaths,
+            isDirectDeviceQuery,
+            idValues)
+        : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, fetchPaths, idValues);
   }
 
   private boolean tryGetTableDeviceInCache(
@@ -375,8 +383,24 @@ public class TableDeviceSchemaFetcher {
     return true;
   }
 
-  private boolean tryGetTreeDeviceInCache() {
-    return false;
+  private boolean tryGetTreeDeviceInCache(
+      final List<AbstractDeviceEntry> deviceEntryList,
+      final TsTable tableInstance,
+      final List<IDeviceID> fetchPaths,
+      final String[] idValues) {
+    final IDeviceID deviceID = TreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
+    final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
+    if (!(schema instanceof TreeDeviceNormalSchema)) {
+      if (Objects.nonNull(fetchPaths)) {
+        fetchPaths.add(deviceID);
+      }
+      return false;
+    }
+    deviceEntryList.add(
+        ((TreeDeviceNormalSchema) schema).isAligned()
+            ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
+            : new NonAlignedDeviceEntry(deviceID));
+    return true;
   }
 
   public static IDeviceID convertIdValuesToDeviceID(

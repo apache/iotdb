@@ -355,9 +355,12 @@ public class TableDeviceSchemaCache {
   }
 
   public IDeviceSchema getDeviceSchema(final String[] devicePath) {
-    final IDeviceID deviceID =
+    return getDeviceSchema(
         IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath));
+            StringArrayDeviceID.splitDeviceIdString(devicePath)));
+  }
+
+  public IDeviceSchema getDeviceSchema(final IDeviceID deviceID) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
