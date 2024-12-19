@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -32,6 +34,16 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class TreeViewSchemaUtils {
+
+  public static void checkDBNameInWrite(final String dbName) {
+    if (isTreeViewDatabase(dbName)) {
+      throw new SemanticException(
+          new IoTDBException(
+              "The database 'tree_view_db' only accepts rename table and rename column for write requests",
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+    }
+  }
+
   public static boolean isTreeViewDatabase(final String database) {
     return TreeViewSchema.TREE_VIEW_DATABASE.equals(database);
   }
