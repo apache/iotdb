@@ -81,7 +81,10 @@ public final class PartitionExecutor {
     }
 
     currentPosition = partitionStart;
-    updatePeerGroup();
+    needPeerGroup = windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup) || frameInfoList.stream().anyMatch(frameInfo -> frameInfo.getFrameType() != FrameInfo.FrameType.ROWS);
+    if (needPeerGroup) {
+      updatePeerGroup();
+    }
 
     for (int i = 0; i < frameInfoList.size(); i++) {
       Frame frame = null;
@@ -129,8 +132,6 @@ public final class PartitionExecutor {
       }
       frames.add(frame);
     }
-
-    needPeerGroup = windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup);
   }
 
   public boolean hasNext() {

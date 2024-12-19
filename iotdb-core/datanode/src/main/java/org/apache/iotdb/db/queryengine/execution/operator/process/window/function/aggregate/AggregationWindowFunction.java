@@ -36,8 +36,11 @@ public class AggregationWindowFunction implements WindowFunction {
       reset();
     } else if (frameStart == currentStart && frameEnd >= currentEnd) {
       // Frame expansion
-      Partition region = partition.getRegion(currentEnd + 1, frameEnd);
-      aggregator.addInput(region);
+      if (frameEnd != currentEnd) {
+        Partition region = partition.getRegion(currentEnd + 1, frameEnd);
+        aggregator.addInput(region);
+        currentEnd = frameEnd;
+      }
     } else {
       buildNewFrame(partition, frameStart, frameEnd);
     }

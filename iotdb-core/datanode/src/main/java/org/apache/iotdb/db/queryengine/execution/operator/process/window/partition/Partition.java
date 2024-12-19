@@ -107,13 +107,13 @@ public class Partition {
     List<TsBlock> tsBlockList = new ArrayList<>();
     int startTsBlockIndex = startPartitionIndex.getTsBlockIndex();
     int endTsBlockIndex = endPartitionIndex.getTsBlockIndex();
-    for (int i = startTsBlockIndex; i < endTsBlockIndex; i++) {
+    for (int i = startTsBlockIndex; i <= endTsBlockIndex; i++) {
       tsBlockList.add(tsBlocks.get(i));
     }
 
     int startIndexInFirstBlock = startPartitionIndex.getOffsetInTsBlock();
     int endIndexInLastBlock = endPartitionIndex.getOffsetInTsBlock();
-    return new Partition(tsBlockList, startIndexInFirstBlock, endIndexInLastBlock);
+    return new Partition(tsBlockList, startIndexInFirstBlock, endIndexInLastBlock + 1);
   }
 
   // rowIndex is index within partition
