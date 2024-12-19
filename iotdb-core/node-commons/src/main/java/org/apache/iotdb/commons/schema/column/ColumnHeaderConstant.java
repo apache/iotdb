@@ -200,8 +200,8 @@ public class ColumnHeaderConstant {
 
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
-  public static final String SQL_DIALECT = "sql_dialect";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";

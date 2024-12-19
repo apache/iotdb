@@ -35,13 +35,13 @@ public enum InformationSchemaTable {
           "queries",
           ImmutableList.of(
               new MeasurementColumnSchema(
-                  ColumnHeaderConstant.TIME,
-                  TSDataType.TIMESTAMP,
+                  ColumnHeaderConstant.QUERY_ID_TABLE_MODEL,
+                  TSDataType.STRING,
                   TSEncoding.PLAIN,
                   CompressionType.UNCOMPRESSED),
               new MeasurementColumnSchema(
-                  ColumnHeaderConstant.QUERY_ID_TABLE_MODEL,
-                  TSDataType.STRING,
+                  ColumnHeaderConstant.START_TIME_TABLE_MODEL,
+                  TSDataType.TIMESTAMP,
                   TSEncoding.PLAIN,
                   CompressionType.UNCOMPRESSED),
               new MeasurementColumnSchema(
@@ -56,11 +56,6 @@ public enum InformationSchemaTable {
                   CompressionType.UNCOMPRESSED),
               new MeasurementColumnSchema(
                   ColumnHeaderConstant.STATEMENT,
-                  TSDataType.STRING,
-                  TSEncoding.PLAIN,
-                  CompressionType.UNCOMPRESSED),
-              new MeasurementColumnSchema(
-                  ColumnHeaderConstant.SQL_DIALECT,
                   TSDataType.STRING,
                   TSEncoding.PLAIN,
                   CompressionType.UNCOMPRESSED))));
