@@ -25,6 +25,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -34,7 +35,7 @@ import java.io.File;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-abstract class AbstractPipeDualManualIT {
+abstract class AbstractPipeDualManualIT extends AbstractSubscriptionIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
