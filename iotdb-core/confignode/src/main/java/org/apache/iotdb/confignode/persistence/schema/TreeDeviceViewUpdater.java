@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -67,12 +67,11 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
       extends DataNodeRegionTaskExecutor<Q, TDeviceViewResp> {
 
     protected TreeDeviceUpdateTaskExecutor(
-        final String taskName,
-        final ConfigNodeProcedureEnv env,
+        final ConfigManager configManager,
         final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
         final CnToDnAsyncRequestType dataNodeRequestType,
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(env, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      super(configManager, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
     }
 
     @Override
