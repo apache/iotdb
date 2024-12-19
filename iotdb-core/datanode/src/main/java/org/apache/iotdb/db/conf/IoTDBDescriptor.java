@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -199,13 +200,13 @@ public class IoTDBDescriptor {
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    Properties commonProperties = new Properties();
+    Properties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
-        Properties properties = new Properties();
+        Properties properties = new TrimProperties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
@@ -2070,7 +2071,7 @@ public class IoTDBDescriptor {
       return;
     }
 
-    Properties commonProperties = new Properties();
+    Properties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
