@@ -161,6 +161,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
@@ -1053,9 +1055,21 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus startPipeExtended(TStartPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.startPipeExtended(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus stopPipe(String pipeName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.stopPipe(pipeName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopPipeExtended(TStopPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopPipeExtended(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
