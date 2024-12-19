@@ -88,8 +88,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils.generateTsFileResource;
-
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -668,6 +666,9 @@ public class PipeConsensusReceiver {
           consensusPipeName,
           filePath);
     }
+    // record replicated progressIndex
+    Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
+        .ifPresent(impl -> impl.recordTsFileProgressOnFollowerReplica(progressIndex));
     return RpcUtils.SUCCESS_STATUS;
   }
 
