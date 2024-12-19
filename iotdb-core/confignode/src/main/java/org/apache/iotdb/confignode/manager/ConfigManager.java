@@ -1592,7 +1592,7 @@ public class ConfigManager implements IManager {
               file,
               properties,
               mergedProps -> {
-                ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+                ConfigNodeDescriptor.getInstance().loadHotModifiedProps(mergedProps);
               });
         } catch (Exception e) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
