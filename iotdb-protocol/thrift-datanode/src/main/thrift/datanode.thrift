@@ -404,7 +404,7 @@ struct TDeviceViewResp {
 
 struct TSchemaRegionViewInfo {
   1: required i32 maxLength
-  2: required map<string, byte> measurementsDataTypeMap
+  2: required map<string, map<byte, i32>> measurementsDataTypeCountMap
 }
 
 struct TLoadResp {

@@ -1703,7 +1703,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TDeviceViewResp getTreeDeviceViewInfo(final List<TConsensusGroupId> regionIds) {
     final TDeviceViewResp resp = new TDeviceViewResp();
-    resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
+    final ConcurrentHashMap<String, Integer> maxLengthMap = new ConcurrentHashMap<>();
     final Map<String, Map<String, Map<TSDataType, Integer>>> databaseMeasurementMap =
         new ConcurrentHashMap<>();
     final TSStatus status =
@@ -1736,19 +1736,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   schemaSource.getSchemaReader(schemaRegion)) {
                 while (schemaReader.hasNext()) {
                   final ITimeSeriesSchemaInfo result = schemaReader.next();
-                  resp.getDeviewViewUpdateMap()
-                      .compute(
-                          database,
-                          (db, info) -> {
-                            if (Objects.isNull(info)) {
-                              info = new TSchemaRegionViewInfo();
-                            }
-                            info.setMaxLength(
-                                Math.max(
-                                    info.getMaxLength(),
-                                    result.getPartialPath().getNodeLength() - finalDBLength));
-                            return info;
-                          });
+                  maxLengthMap.compute(
+                      database,
+                      (db, length) -> {
+                        if (Objects.isNull(length)) {
+                          length = 0;
+                        }
+                        length =
+                            Math.max(
+                                length, result.getPartialPath().getNodeLength() - finalDBLength);
+                        return length;
+                      });
                   databaseMeasurementMap.compute(
                       database,
                       (db, measurementMap) -> {
@@ -1770,33 +1768,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               }
               return RpcUtils.SUCCESS_STATUS;
             });
-    databaseMeasurementMap.forEach(
-        (db, measurementMap) -> {
-          final Map<String, Byte> measurementDataTypeMap = new HashMap<>();
-          resp.getDeviewViewUpdateMap()
-              .computeIfAbsent(db, database -> new TSchemaRegionViewInfo())
-              .setMeasurementsDataTypeMap(measurementDataTypeMap);
-          measurementMap.forEach(
-              (measurement, typeMap) ->
-                  measurementDataTypeMap.put(
-                      measurement,
-                      typeMap.entrySet().stream()
-                          .reduce(
-                              (type1Entry, type2Entry) ->
-                                  type1Entry.getValue() > type2Entry.getValue()
-                                      ? type1Entry
-                                      : type2Entry)
-                          .orElseThrow(
-                              () ->
-                                  new RuntimeException(
-                                      String.format(
-                                          "The type of the measurement %s is not specified.",
-                                          measurement)))
-                          .getKey()
-                          .serialize()));
-        });
 
-    return resp.setStatus(status);
+    return resp.setStatus(status)
+        .setDeviewViewUpdateMap(
+            databaseMeasurementMap.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        dbMeasurementMapEntry ->
+                            new TSchemaRegionViewInfo()
+                                .setMaxLength(maxLengthMap.get(dbMeasurementMapEntry.getKey()))
+                                .setMeasurementsDataTypeCountMap(
+                                    dbMeasurementMapEntry.getValue().entrySet().stream()
+                                        .collect(
+                                            Collectors.toMap(
+                                                Map.Entry::getKey,
+                                                measurementTypeMapEntry ->
+                                                    measurementTypeMapEntry
+                                                        .getValue()
+                                                        .entrySet()
+                                                        .stream()
+                                                        .collect(
+                                                            Collectors.toMap(
+                                                                typeEntry ->
+                                                                    typeEntry.getKey().serialize(),
+                                                                Map.Entry::getValue))))))));
   }
 
   @Override
