@@ -150,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -294,6 +295,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    InformationSchemaUtils.checkDBNameInWrite(node.getDbName().getValue());
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
     return new DropDBTask(node);
@@ -309,7 +311,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             accessControl.checkCanShowOrUseDatabase(
                 context.getSession().getUserName(), databaseName);
             return true;
-          } catch (AccessControlException e) {
+          } catch (final AccessControlException e) {
             return false;
           }
         });
@@ -376,7 +378,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
 
     final TsTable table = new TsTable(databaseTablePair.getRight());
 
@@ -423,7 +425,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
 
     final String oldName = databaseTablePair.getRight();
     final String newName = node.getTarget().getValue();
@@ -442,7 +444,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
 
     final ColumnDefinition definition = node.getColumn();
     return new AlterTableAddColumnTask(
@@ -461,7 +463,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
 
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();
@@ -482,7 +484,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
 
     return new AlterTableDropColumnTask(
         databaseTablePair.getLeft(),
@@ -497,7 +499,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetProperties(
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
 
     return new AlterTableSetPropertiesTask(
         databaseTablePair.getLeft(),
@@ -508,6 +510,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
+    InformationSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
     if (dbName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
@@ -521,13 +524,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
+  public Pair<String, String> splitQualifiedName(final QualifiedName name, final boolean isWrite) {
     String database = clientSession.getDatabaseName();
     if (name.getPrefix().isPresent()) {
       database = name.getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    if (isWrite) {
+      InformationSchemaUtils.checkDBNameInWrite(database);
     }
     return new Pair<>(database, name.getSuffix());
   }
@@ -572,7 +578,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
     return new DropTableTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),
@@ -611,17 +617,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDescribeTable(
       final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    String database = clientSession.getDatabaseName();
-    if (node.getTable().getPrefix().isPresent()) {
-      database = node.getTable().getPrefix().get().toString();
-    }
-    if (database == null) {
-      throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
-    final String tableName = node.getTable().getSuffix();
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), false);
     return node.isDetails()
-        ? new DescribeTableDetailsTask(database, tableName)
-        : new DescribeTableTask(database, tableName);
+        ? new DescribeTableDetailsTask(databaseTablePair.getLeft(), databaseTablePair.getRight())
+        : new DescribeTableTask(databaseTablePair.getLeft(), databaseTablePair.getRight());
   }
 
   @Override
