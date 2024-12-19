@@ -1,6 +1,6 @@
 {
     "dependencies": [
-        "net.bytebuddy:byte-buddy",
+        "cglib:cglib",
         "ch.qos.logback:logback-classic",
         "ch.qos.logback:logback-core",
         "ch.qos.reload4j:reload4j",
