@@ -72,6 +72,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,6 +100,7 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
+  private final Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -178,10 +180,20 @@ public class IoTConsensus implements IConsensus {
                   syncClientManager,
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
-          consensus.start();
         }
       }
     }
+    correctPeerListBeforeStart.forEach(
+        ((consensusGroupId, peers) -> {
+          try {
+            resetPeerList(consensusGroupId, peers);
+          } catch (ConsensusGroupNotExistException ignore) {
+
+          } catch (Exception e) {
+            logger.warn("Failed to reset peer list while start", e);
+          }
+        }));
+    stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
 
   @Override
@@ -484,9 +496,13 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerList(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    this.correctPeerListBeforeStart.putAll(correctPeerList);
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
@@ -501,26 +517,32 @@ public class IoTConsensus implements IConsensus {
     }
 
     synchronized (impl) {
+      // remove invalid peer
       ImmutableList<Peer> currentMembers = ImmutableList.copyOf(impl.getConfiguration());
       String previousPeerListStr = currentMembers.toString();
       for (Peer peer : currentMembers) {
         if (!correctPeers.contains(peer)) {
           if (!impl.removeSyncLogChannel(peer)) {
-            logger.error(
-                "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
-                peer,
-                groupId);
+            logger.error("[RESET PEER LIST] Failed to remove sync channel with: {}", peer);
+          } else {
+            logger.info("[RESET PEER LIST] Remove sync channel with: {}", peer);
           }
         }
       }
-      logger.info(
-          "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
-          previousPeerListStr,
-          impl.getConfiguration());
+      // add correct peer
       for (Peer peer : correctPeers) {
         if (!impl.getConfiguration().contains(peer)) {
-          logger.warn("[RESET PEER LIST] \"Correct peer\" {} is not in local peer list", peer);
+          impl.buildSyncLogChannel(peer);
+          logger.info("[RESET PEER LIST] Build sync channel with: {}", peer);
         }
+      }
+      // show result
+      String newPeerListStr = impl.getConfiguration().toString();
+      if (!previousPeerListStr.equals(newPeerListStr)) {
+        logger.info(
+            "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
+            previousPeerListStr,
+            newPeerListStr);
       }
     }
   }

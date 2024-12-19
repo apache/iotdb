@@ -42,6 +42,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher.PIPE_NOT_EXIST_MSG;
+
 public class PipeTaskCoordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinator.class);
@@ -198,8 +200,7 @@ public class PipeTaskCoordinator {
         ? status
         : RpcUtils.getStatus(
             TSStatusCode.PIPE_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+            String.format("Failed to drop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG));
   }
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {

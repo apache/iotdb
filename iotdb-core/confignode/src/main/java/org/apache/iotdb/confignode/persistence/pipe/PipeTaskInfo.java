@@ -78,6 +78,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher.PIPE_ALREADY_EXIST_MSG;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -179,8 +180,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe %s, the pipe with the same name has been created",
-            createPipeRequest.getPipeName());
+            "Failed to create pipe %s, %s",
+            createPipeRequest.getPipeName(), PIPE_ALREADY_EXIST_MSG);
     LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }
