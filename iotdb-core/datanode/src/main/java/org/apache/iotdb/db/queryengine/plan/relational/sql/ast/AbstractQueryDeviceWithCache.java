@@ -46,8 +46,9 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(location, table, rawExpression);
   }
 
-  protected AbstractQueryDeviceWithCache(final String database, final String tableName) {
-    super(database, tableName);
+  protected AbstractQueryDeviceWithCache(
+      final String database, final String tableName, final boolean isTreeViewQuery) {
+    super(database, tableName, isTreeViewQuery);
   }
 
   public boolean parseRawExpression(

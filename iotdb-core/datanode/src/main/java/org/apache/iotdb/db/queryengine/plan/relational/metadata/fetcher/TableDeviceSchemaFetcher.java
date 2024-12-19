@@ -181,15 +181,14 @@ public class TableDeviceSchemaFetcher {
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
+    final boolean isTreeViewQuery = TreeViewSchemaUtils.isTreeViewDatabase(database);
     final ShowDevice statement =
         new ShowDevice(
-            TreeViewSchemaUtils.isTreeViewDatabase(database)
-                ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance)
-                : database,
-            table);
+            isTreeViewQuery ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance) : database,
+            table,
+            isTreeViewQuery);
 
     if (parseFilter4TraverseDevice(
-        database,
         tableInstance,
         expressionList,
         statement,
@@ -210,7 +209,6 @@ public class TableDeviceSchemaFetcher {
   // Used by show/count device and update device.
   // Update device will not access cache
   public boolean parseFilter4TraverseDevice(
-      final String database,
       final TsTable tableInstance,
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
@@ -267,13 +265,14 @@ public class TableDeviceSchemaFetcher {
       for (final int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
-            database,
+            statement.getDatabase(),
             tableInstance,
             index2FilterMapList.get(index),
             check,
             attributeColumns,
             fetchPaths,
-            isDirectDeviceQuery)) {
+            isDirectDeviceQuery,
+            statement.isTreeViewQuery())) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -324,7 +323,8 @@ public class TableDeviceSchemaFetcher {
       final Predicate<AlignedDeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
-      final boolean isDirectDeviceQuery) {
+      final boolean isDirectDeviceQuery,
+      final boolean isTreeViewQuery) {
     final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
@@ -332,7 +332,7 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    return !TreeViewSchemaUtils.isTreeViewDatabase(database)
+    return isTreeViewQuery
         ? tryGetTableDeviceInCache(
             deviceEntryList,
             database,
@@ -342,11 +342,7 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             idValues)
-        : tryGetTreeDeviceInCache(
-            deviceEntryList,
-            TreeViewSchemaUtils.getOriginalDatabase(tableInstance),
-            fetchPaths,
-            idValues);
+        : tryGetTreeDeviceInCache(deviceEntryList, database, fetchPaths, idValues);
   }
 
   private boolean tryGetTableDeviceInCache(

@@ -45,8 +45,8 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     this.limit = limit;
   }
 
-  public ShowDevice(final String database, final String tableName) {
-    super(database, tableName);
+  public ShowDevice(final String database, final String tableName, final boolean isTreeViewQuery) {
+    super(database, tableName, isTreeViewQuery);
   }
 
   public Offset getOffset() {

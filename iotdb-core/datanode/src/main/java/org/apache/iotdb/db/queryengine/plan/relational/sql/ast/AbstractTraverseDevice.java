@@ -46,7 +46,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String database;
 
   protected String tableName;
-
+  private boolean isTreeViewQuery;
   // Temporary
   private Table table;
 
@@ -79,10 +79,12 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.where = where;
   }
 
-  protected AbstractTraverseDevice(final String database, final String tableName) {
+  protected AbstractTraverseDevice(
+      final String database, final String tableName, final boolean isTreeViewQuery) {
     super(null);
     this.database = database;
     this.tableName = tableName;
+    this.isTreeViewQuery = isTreeViewQuery;
   }
 
   public void parseTable(final SessionInfo sessionInfo) {
@@ -111,6 +113,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     return Optional.ofNullable(where);
   }
 
+  public boolean isTreeViewQuery() {
+    return isTreeViewQuery;
+  }
+
   public void setWhere(final Expression where) {
     this.where = where;
   }
@@ -126,7 +132,6 @@ public abstract class AbstractTraverseDevice extends Statement {
     where = ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(where);
     return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
-            database,
             tableInstance,
             (where instanceof LogicalExpression
                     && ((LogicalExpression) where).getOperator() == LogicalExpression.Operator.AND)
