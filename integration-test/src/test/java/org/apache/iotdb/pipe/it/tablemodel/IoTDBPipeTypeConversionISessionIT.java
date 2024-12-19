@@ -84,7 +84,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       ITableSession session, List<IMeasurementSchema> measurementSchemas, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select ";
-    StringBuffer param = new StringBuffer();
+    StringBuilder param = new StringBuilder();
     for (IMeasurementSchema schema : measurementSchemas) {
       param.append(schema.getMeasurementName());
       param.append(',');
@@ -96,28 +96,26 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
   }
 
   private void prepareTypeConversionTest(
-      CheckedTriConsumer<ITableSession, ITableSession, Tablet, Exception> consumer,
+      CheckedTriConsumer<ITableSession, ITableSession, Tablet, Exception> executeDataWriteOperation,
       boolean isTsFile) {
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
     Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "test");
-    createTimeSeries(measurementSchemas, true, tablet.getColumnTypes(), senderEnv);
-    createTimeSeries(measurementSchemas, false, tablet.getColumnTypes(), receiverEnv);
+    createDatabaseAndTable(measurementSchemas, true, tablet.getColumnTypes(), senderEnv);
+    createDatabaseAndTable(measurementSchemas, false, tablet.getColumnTypes(), receiverEnv);
     try (ITableSession senderSession = senderEnv.getTableSessionConnection();
         ITableSession receiverSession = receiverEnv.getTableSessionConnection()) {
 
       if (isTsFile) {
         // Send TsFile data to receiver
-        consumer.accept(senderSession, receiverSession, tablet);
-        Thread.sleep(2000);
+        executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
         createDataPipe(true);
       } else {
         // Send Tablet data to receiver
         createDataPipe(false);
-        Thread.sleep(2000);
         // The actual implementation logic of inserting data
-        consumer.accept(senderSession, receiverSession, tablet);
+        executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
       }
 
@@ -138,20 +136,16 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                       expectedValues,
                       tablet.timestamps);
                 } catch (Exception e) {
-                  e.printStackTrace();
-                  fail();
+                  fail(e.getMessage());
                 }
               });
-      senderSession.close();
-      receiverSession.close();
       tablet.reset();
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private void createTimeSeries(
+  private void createDatabaseAndTable(
       List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas,
       boolean isLeft,
       List<Tablet.ColumnCategory> categories,
@@ -166,13 +160,13 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
               measurement.getMeasurementName(), measurement.getType(), categories.get(i).name()));
     }
     builder.deleteCharAt(builder.length() - 1);
-    String timeSeriesCreation =
+    String tableCreation =
         String.format("create table if not exists test (%s)", builder.toString());
     TestUtils.tryExecuteNonQueriesWithRetry(
         null,
         "table",
         env,
-        Arrays.asList("create database if not exists test", "use test", timeSeriesCreation));
+        Arrays.asList("create database if not exists test", "use test", tableCreation));
   }
 
   private void createDataPipe(boolean isTSFile) {
