@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
@@ -82,6 +83,14 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualManualIT {
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+    } catch (final Throwable e) {
+      for (final ConfigNodeWrapper wrapper : senderEnv.getConfigNodeWrapperList()) {
+        wrapper.executeJstack(testName.getDisplayName());
+      }
+      for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
+        wrapper.executeJstack(testName.getDisplayName());
+      }
+      throw e;
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
