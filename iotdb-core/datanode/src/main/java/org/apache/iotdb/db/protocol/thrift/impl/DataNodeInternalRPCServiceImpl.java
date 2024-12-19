@@ -304,7 +304,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1703,9 +1702,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TDeviceViewResp getTreeDeviceViewInfo(final List<TConsensusGroupId> regionIds) {
     final TDeviceViewResp resp = new TDeviceViewResp();
-    final ConcurrentHashMap<String, Integer> maxLengthMap = new ConcurrentHashMap<>();
-    final Map<String, Map<String, Map<TSDataType, Integer>>> databaseMeasurementMap =
-        new ConcurrentHashMap<>();
+    resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final TSStatus status =
         executeInternalSchemaTask(
             regionIds,
@@ -1736,31 +1733,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   schemaSource.getSchemaReader(schemaRegion)) {
                 while (schemaReader.hasNext()) {
                   final ITimeSeriesSchemaInfo result = schemaReader.next();
-                  maxLengthMap.compute(
-                      database,
-                      (db, length) -> {
-                        if (Objects.isNull(length)) {
-                          length = 0;
-                        }
-                        length =
-                            Math.max(
-                                length, result.getPartialPath().getNodeLength() - finalDBLength);
-                        return length;
-                      });
-                  databaseMeasurementMap.compute(
-                      database,
-                      (db, measurementMap) -> {
-                        final IMeasurementSchema schema = result.getSchema();
-                        final Map<String, Map<TSDataType, Integer>> resultMap =
-                            Objects.nonNull(measurementMap) ? measurementMap : new HashMap<>();
-                        final Map<TSDataType, Integer> typeMap =
-                            resultMap.containsKey(schema.getMeasurementName())
-                                ? resultMap.get(schema.getMeasurementName())
-                                : new EnumMap<>(TSDataType.class);
-                        typeMap.compute(
-                            schema.getType(), (type, num) -> Objects.nonNull(num) ? num + 1 : 1);
-                        return resultMap;
-                      });
+                  resp.getDeviewViewUpdateMap()
+                      .compute(
+                          database,
+                          (db, info) -> {
+                            if (Objects.isNull(info)) {
+                              info = new TSchemaRegionViewInfo();
+                            }
+                            info.setMaxLength(
+                                Math.max(
+                                    info.getMaxLength(),
+                                    result.getPartialPath().getNodeLength() - finalDBLength));
+                            final IMeasurementSchema schema = result.getSchema();
+                            if (Objects.isNull(info.getMeasurementsDataTypeCountMap())) {
+                              info.setMeasurementsDataTypeCountMap(new HashMap<>());
+                            }
+                            info.getMeasurementsDataTypeCountMap()
+                                .computeIfAbsent(schema.getMeasurementName(), k -> new HashMap<>())
+                                .compute(
+                                    schema.getType().serialize(),
+                                    (type, num) -> Objects.nonNull(num) ? num + 1 : 1);
+                            return info;
+                          });
                 }
               } catch (final Exception e) {
                 LOGGER.warn(e.getMessage(), e);
@@ -1769,30 +1763,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               return RpcUtils.SUCCESS_STATUS;
             });
 
-    return resp.setStatus(status)
-        .setDeviewViewUpdateMap(
-            databaseMeasurementMap.entrySet().stream()
-                .collect(
-                    Collectors.toMap(
-                        Map.Entry::getKey,
-                        dbMeasurementMapEntry ->
-                            new TSchemaRegionViewInfo()
-                                .setMaxLength(maxLengthMap.get(dbMeasurementMapEntry.getKey()))
-                                .setMeasurementsDataTypeCountMap(
-                                    dbMeasurementMapEntry.getValue().entrySet().stream()
-                                        .collect(
-                                            Collectors.toMap(
-                                                Map.Entry::getKey,
-                                                measurementTypeMapEntry ->
-                                                    measurementTypeMapEntry
-                                                        .getValue()
-                                                        .entrySet()
-                                                        .stream()
-                                                        .collect(
-                                                            Collectors.toMap(
-                                                                typeEntry ->
-                                                                    typeEntry.getKey().serialize(),
-                                                                Map.Entry::getValue))))))));
+    return resp.setStatus(status);
   }
 
   @Override
