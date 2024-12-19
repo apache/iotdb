@@ -36,7 +36,6 @@ public class UDTFTimestampRepair implements UDTF {
   String intervalMethod;
   long interval;
   long intervalMode;
-  private static final String TIMESTAMP_PRECISION = "timestampPrecision";
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -47,20 +46,17 @@ public class UDTFTimestampRepair implements UDTF {
     String intervalString = validator.getParameters().getStringOrDefault("interval", null);
     if (intervalString != null) {
       try {
-        if (intervalString.matches("^\\d+$")) {
-          String timestampPrecision =
-              validator.getParameters().getSystemString(TIMESTAMP_PRECISION);
-          intervalString = intervalString + timestampPrecision;
+        interval = Long.parseLong(intervalString);
+      } catch (NumberFormatException e) {
+        try {
+          interval = Util.parseTime(intervalString, validator.getParameters());
+        } catch (Exception ex) {
+          throw new UDFException("Invalid time format for interval.");
         }
-
-        long parsedInterval = Util.parseTime(intervalString, validator.getParameters());
-
-        validator.validate(
-            x -> parsedInterval > 0,
-            "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
-      } catch (Exception e) {
-        throw new UDFException("Invalid time format for interval.");
       }
+      validator.validate(
+          x -> interval > 0,
+          "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
     }
   }
 
@@ -75,11 +71,11 @@ public class UDTFTimestampRepair implements UDTF {
     String intervalString = parameters.getStringOrDefault("interval", null);
 
     if (intervalString != null) {
-      if (intervalString.matches("^\\d+$")) {
-        String timestampPrecision = parameters.getSystemString(TIMESTAMP_PRECISION);
-        intervalString = intervalString + timestampPrecision;
+      try {
+        interval = Long.parseLong(intervalString);
+      } catch (NumberFormatException e) {
+        interval = Util.parseTime(intervalString, parameters);
       }
-      interval = Util.parseTime(intervalString, parameters);
     } else {
       interval = 0;
     }
