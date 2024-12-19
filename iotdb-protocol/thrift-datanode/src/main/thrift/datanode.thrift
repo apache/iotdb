@@ -1178,7 +1178,7 @@ service IDataNodeRPCService {
   /**
    * Get tree device view info for device view
    */
-  TDeviceViewResp getTreeDeviceViewInfos(list<common.TConsensusGroupId> regionIds)
+  TDeviceViewResp getTreeDeviceViewInfo(list<common.TConsensusGroupId> regionIds)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

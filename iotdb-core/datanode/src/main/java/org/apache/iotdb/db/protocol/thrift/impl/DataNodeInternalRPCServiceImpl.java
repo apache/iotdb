@@ -1701,7 +1701,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TDeviceViewResp getTreeDeviceViewInfos(final List<TConsensusGroupId> regionIds) {
+  public TDeviceViewResp getTreeDeviceViewInfo(final List<TConsensusGroupId> regionIds) {
     final TDeviceViewResp resp = new TDeviceViewResp();
     resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
     final Map<String, Map<String, Map<TSDataType, Integer>>> databaseMeasurementMap =
