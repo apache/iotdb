@@ -454,15 +454,6 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(conf.getTvListSortAlgorithm().toString())));
 
-    conf.setAvgSeriesPointNumberThreshold(
-        Integer.parseInt(
-            Optional.ofNullable(
-                    properties.getProperty(
-                        "avg_series_point_number_threshold",
-                        Integer.toString(conf.getAvgSeriesPointNumberThreshold())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
-
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
             Optional.ofNullable(
