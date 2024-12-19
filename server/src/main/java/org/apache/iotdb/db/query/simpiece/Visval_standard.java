@@ -148,7 +148,7 @@ public class Visval_standard {
     List<Polyline> polylineList = new ArrayList<>();
     Random rand = new Random();
     int n = 1000_000;
-    int p = 1000;
+    int p = 10;
     for (int i = 0; i < n; i += p) {
       Polyline polylineBatch = new Polyline();
       for (int j = i; j < Math.min(i + p, n); j++) {
@@ -158,30 +158,6 @@ public class Visval_standard {
       }
       polylineList.add(polylineBatch);
     }
-
-//    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842, 23089};
-//    for (int i = 0; i < vlist.length; i++) {
-//      polyline.addVertex(new vPoint(i, vlist[i]));
-//    }
-
-//    ArrayList<Double> v = new ArrayList<>();
-//    String filePath = "D://desktop//数据集//New York Stock Exchange//merged_prices.csv";
-//    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-//      String line;
-//      int count = 0;
-//      while ((line = br.readLine()) != null && count < 1000) {
-//        String[] columns = line.split(","); // 假设 CSV 文件以逗号分隔
-//        v.add(Double.parseDouble(columns[0])); // 读取第一列数据
-//        count++;
-//      }
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//    }
-//    // 打印数据长度
-//    System.out.println("Data length: " + v.size());
-//    for (int i = 0; i < v.size(); i++) {
-//      polyline.addVertex(new vPoint(i, v.get(i)));
-//    }
 
     System.out.println("---------------------------------");
     List<vPoint> results = new ArrayList<>();
@@ -227,5 +203,29 @@ public class Visval_standard {
     System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
 
   }
+
+//    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842, 23089};
+//    for (int i = 0; i < vlist.length; i++) {
+//      polyline.addVertex(new vPoint(i, vlist[i]));
+//    }
+
+//    ArrayList<Double> v = new ArrayList<>();
+//    String filePath = "D://desktop//数据集//New York Stock Exchange//merged_prices.csv";
+//    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+//      String line;
+//      int count = 0;
+//      while ((line = br.readLine()) != null && count < 1000) {
+//        String[] columns = line.split(","); // 假设 CSV 文件以逗号分隔
+//        v.add(Double.parseDouble(columns[0])); // 读取第一列数据
+//        count++;
+//      }
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
+//    // 打印数据长度
+//    System.out.println("Data length: " + v.size());
+//    for (int i = 0; i < v.size(); i++) {
+//      polyline.addVertex(new vPoint(i, v.get(i)));
+//    }
 }
 
