@@ -127,7 +127,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
   protected void onChunkGroup() throws IOException {
     FileLastTimeInfo fileNameLastTimePair =
         deviceEndTime.computeIfAbsent(currDeviceID, k -> new FileLastTimeInfo());
-    if (!currDeviceID.equals(EMPTY_DEVICE_ID)) {
+    if (!currDeviceID.equals(EMPTY_DEVICE_ID) && !resource.definitelyNotContains(currDeviceID)) {
       long endTime = resource.getEndTime(currDeviceID);
       // record the end time of last device in current file
       if (endTime > fileNameLastTimePair.lastTime) {

@@ -425,7 +425,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
-    if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+    if (!tsFileResource.definitelyNotContains(device)
+        && tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
 
@@ -662,7 +663,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         ModEntry ttlDeletion = null;
-        if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
+        if (!resource.definitelyNotContains(device)
+            && resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new TreeDeletionEntry(
                   new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
