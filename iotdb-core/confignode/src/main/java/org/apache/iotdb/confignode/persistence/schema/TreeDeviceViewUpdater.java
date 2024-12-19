@@ -50,21 +50,20 @@ import java.util.function.BiFunction;
 public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
-  private final Map<String, TsTable> newViewTables = new ConcurrentHashMap<>();
+  private final ConfigManager configManager;
   private TDeviceViewResp currentResp;
 
-  public TreeDeviceViewUpdater() {
+  public TreeDeviceViewUpdater(final ConfigManager configManager) {
     super(
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
         ConfigNodeDescriptor.getInstance().getConf().getTreeDeviceViewUpdateIntervalInMs());
+    this.configManager = configManager;
   }
 
   @Override
-  protected void executeTask() {}
+  protected void executeTask() {
 
-  public Map<String, TsTable> getNewViewTables() {
-    return newViewTables;
   }
 
   protected class TreeDeviceUpdateTaskExecutor<Q>

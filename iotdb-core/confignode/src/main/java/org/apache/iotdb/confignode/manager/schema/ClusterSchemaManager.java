@@ -72,7 +72,7 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
-import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -125,10 +125,10 @@ public class ClusterSchemaManager {
   private static final int SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
   private static final int DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
 
-  private final IManager configManager;
+  private final ConfigManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
-  private final TreeDeviceViewUpdater treeDeviceViewUpdater = new TreeDeviceViewUpdater();
+  private final TreeDeviceViewUpdater treeDeviceViewUpdater;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
@@ -138,12 +138,13 @@ public class ClusterSchemaManager {
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterSchemaManager(
-      IManager configManager,
+      ConfigManager configManager,
       ClusterSchemaInfo clusterSchemaInfo,
       ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
+    this.treeDeviceViewUpdater = new TreeDeviceViewUpdater(configManager);
   }
 
   // ======================================================
