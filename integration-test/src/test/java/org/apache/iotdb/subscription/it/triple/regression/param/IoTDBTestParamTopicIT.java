@@ -210,7 +210,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     dropDB(database);
   }
 
-  @Test(expected = SubscriptionIdentifierSemanticException.class) // drop non-existent topic
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testDropTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic(null);
   }
