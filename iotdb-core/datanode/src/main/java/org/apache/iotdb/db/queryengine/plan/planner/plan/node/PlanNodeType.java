@@ -122,7 +122,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -285,7 +287,9 @@ public enum PlanNodeType {
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
   INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
   TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
-  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
+  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1023),
+  TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
+  TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1025),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -649,6 +653,10 @@ public enum PlanNodeType {
         return TreeDeviceViewScanNode.deserialize(buffer);
       case 1023:
         return AggregationTreeDeviceViewScanNode.deserialize(buffer);
+      case 1024:
+        return TreeAlignedDeviceViewScanNode.deserialize(buffer);
+      case 1025:
+        return TreeNonAlignedDeviceViewScanNode.deserialize(buffer);
 
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);

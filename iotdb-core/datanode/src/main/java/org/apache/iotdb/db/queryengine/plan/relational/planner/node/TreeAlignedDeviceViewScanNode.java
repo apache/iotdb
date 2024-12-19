@@ -40,24 +40,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class TreeDeviceViewScanNode extends DeviceTableScanNode {
-  protected final String treeDBName;
-  protected final Map<String, String> measurementColumnNameMap;
+public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
-  public TreeDeviceViewScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap,
-      String treeDBName,
-      Map<String, String> measurementColumnNameMap) {
-    super(id, qualifiedObjectName, outputSymbols, assignments, idAndAttributeIndexMap);
-    this.treeDBName = treeDBName;
-    this.measurementColumnNameMap = measurementColumnNameMap;
-  }
-
-  public TreeDeviceViewScanNode(
+  public TreeAlignedDeviceViewScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -86,27 +71,19 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
-    this.treeDBName = treeDBName;
-    this.measurementColumnNameMap = measurementColumnNameMap;
-  }
-
-  public String getTreeDBName() {
-    return treeDBName;
-  }
-
-  public Map<String, String> getMeasurementColumnNameMap() {
-    return measurementColumnNameMap;
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTreeDeviceViewScan(this, context);
+    return visitor.visitTreeAlignedDeviceViewScan(this, context);
   }
 
   @Override
-  public TreeDeviceViewScanNode clone() {
-    return new TreeDeviceViewScanNode(
+  public TreeAlignedDeviceViewScanNode clone() {
+    return new TreeAlignedDeviceViewScanNode(
         getPlanNodeId(),
         qualifiedObjectName,
         outputSymbols,
@@ -126,7 +103,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TREE_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
+    PlanNodeType.TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
 
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
@@ -192,7 +169,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(stream);
+    PlanNodeType.TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(stream);
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
@@ -257,7 +234,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
     }
   }
 
-  public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
+  public static TreeAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
     String databaseName = null;
     if (hasDatabaseName) {
@@ -321,7 +298,7 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
-    return new TreeDeviceViewScanNode(
+    return new TreeAlignedDeviceViewScanNode(
         planNodeId,
         qualifiedObjectName,
         outputSymbols,

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 
@@ -35,10 +34,17 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTreeDeviceViewTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.streamSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeAlignedDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeDeviceViewTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeNonAlignedDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 
 public class TreeViewTest {
@@ -62,25 +68,40 @@ public class TreeViewTest {
 
     // column prune test
     logicalQueryPlan =
-        planTester.createPlan("select s1 from tree_view_db.\"root.test.device_view\"");
+        planTester.createPlan(
+            "select s1 from tree_view_db.\"root.test.device_view\" order by tag1");
     expectedPlanPattern =
         output(
-            treeDeviceViewTableScan(
-                "tree_view_db.\"root.test.device_view\"",
-                ImmutableList.of("s1"),
-                ImmutableSet.of("s1")));
+            project(
+                streamSort(
+                    treeDeviceViewTableScan(
+                        "tree_view_db.\"root.test.device_view\"",
+                        ImmutableList.of("tag1", "s1"),
+                        ImmutableSet.of("tag1", "s1")))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
-
-    PlanNode planNode = planTester.getFragmentPlan(0);
 
     // distributionPlan test
     assertPlan(
         planTester.getFragmentPlan(0),
         output(
-            treeDeviceViewTableScan(
-                "tree_view_db.\"root.test.device_view\"",
-                ImmutableList.of("s1"),
-                ImmutableSet.of("s1"))));
+            project(
+                mergeSort(
+                    exchange(),
+                    treeAlignedDeviceViewTableScan(
+                        "tree_view_db.\"root.test.device_view\"",
+                        ImmutableList.of("tag1", "s1"),
+                        ImmutableSet.of("tag1", "s1")),
+                    treeNonAlignedDeviceViewTableScan(
+                        "tree_view_db.\"root.test.device_view\"",
+                        ImmutableList.of("tag1", "s1"),
+                        ImmutableSet.of("tag1", "s1"))))));
+
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        treeAlignedDeviceViewTableScan(
+            "tree_view_db.\"root.test.device_view\"",
+            ImmutableList.of("tag1", "s1"),
+            ImmutableSet.of("tag1", "s1")));
   }
 
   @Test
@@ -119,5 +140,41 @@ public class TreeViewTest {
                     ImmutableList.of("tag1", "count_0"),
                     ImmutableSet.of("tag1", "s1"))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
+
+    // distributionPlan test
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            aggregation(
+                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_1"))),
+                FINAL,
+                mergeSort(
+                    exchange(),
+                    aggregation(
+                        ImmutableMap.of(
+                            "count_1", aggregationFunction("count", ImmutableList.of("count_0"))),
+                        INTERMEDIATE,
+                        aggregationTreeDeviceViewTableScan(
+                            singleGroupingSet("tag1"),
+                            ImmutableList.of("tag1"),
+                            Optional.empty(),
+                            PARTIAL,
+                            "tree_view_db.\"root.test.device_view\"",
+                            ImmutableList.of("tag1", "count_0"),
+                            ImmutableSet.of("tag1", "s1")))))));
+
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        aggregation(
+            ImmutableMap.of("count_1", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                "tree_view_db.\"root.test.device_view\"",
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"))));
   }
 }

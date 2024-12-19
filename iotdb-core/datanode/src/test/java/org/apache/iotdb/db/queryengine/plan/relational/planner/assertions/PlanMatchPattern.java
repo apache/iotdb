@@ -42,7 +42,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -137,6 +139,30 @@ public final class PlanMatchPattern {
       String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
     PlanMatchPattern pattern =
         node(TreeDeviceViewScanNode.class)
+            .with(
+                new DeviceTableScanMatcher(
+                    expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
+  }
+
+  public static PlanMatchPattern treeAlignedDeviceViewTableScan(
+      String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
+    PlanMatchPattern pattern =
+        node(TreeAlignedDeviceViewScanNode.class)
+            .with(
+                new DeviceTableScanMatcher(
+                    expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
+  }
+
+  public static PlanMatchPattern treeNonAlignedDeviceViewTableScan(
+      String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
+    PlanMatchPattern pattern =
+        node(TreeNonAlignedDeviceViewScanNode.class)
             .with(
                 new DeviceTableScanMatcher(
                     expectedTableName, Optional.empty(), outputSymbols, assignmentsKeys));
@@ -421,6 +447,10 @@ public final class PlanMatchPattern {
     JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
     handler.accept(builder);
     return builder.build();
+  }
+
+  public static PlanMatchPattern streamSort(PlanMatchPattern source) {
+    return node(StreamSortNode.class, source);
   }
 
   public static PlanMatchPattern sort(PlanMatchPattern source) {
