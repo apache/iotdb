@@ -242,6 +242,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
+    dataRegion.writeLock("deleteData");
     try {
       for (MeasurementPath path : node.getPathList()) {
         MeasurementPath databaseToDelete =
@@ -262,6 +263,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    } finally {
+      dataRegion.writeUnlock();
     }
   }
 
