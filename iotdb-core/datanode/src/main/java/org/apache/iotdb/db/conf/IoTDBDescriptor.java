@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -131,8 +132,10 @@ public class IoTDBDescriptor {
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
       LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
       Properties properties = loader.loadProperties();
+      TrimProperties trimProperties = new TrimProperties();
+      trimProperties.putAll(properties);
       try {
-        loadProperties(properties);
+        loadProperties(trimProperties);
       } catch (Exception e) {
         LOGGER.error(
             "Failed to reload properties from {}, reject DataNode startup.",
@@ -199,13 +202,13 @@ public class IoTDBDescriptor {
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    Properties commonProperties = new Properties();
+    TrimProperties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
-        Properties properties = new Properties();
+        Properties properties = new TrimProperties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
@@ -234,7 +237,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+  public void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -1095,13 +1098,13 @@ public class IoTDBDescriptor {
     loadPipeConsensusProps(properties);
   }
 
-  private void reloadConsensusProps(Properties properties) throws IOException {
+  private void reloadConsensusProps(TrimProperties properties) throws IOException {
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
-  private void loadIoTConsensusProps(Properties properties) throws IOException {
+  private void loadIoTConsensusProps(TrimProperties properties) throws IOException {
     conf.setMaxLogEntriesNumPerBatch(
         Integer.parseInt(
             properties
@@ -1144,7 +1147,7 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
+  private void loadPipeConsensusProps(TrimProperties properties) throws IOException {
     conf.setPipeConsensusPipelineSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1156,7 +1159,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadAuthorCache(Properties properties) {
+  private void loadAuthorCache(TrimProperties properties) {
     conf.setAuthorCacheSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1167,7 +1170,7 @@ public class IoTDBDescriptor {
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
-  private void loadWALProps(Properties properties) throws IOException {
+  private void loadWALProps(TrimProperties properties) throws IOException {
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
@@ -1199,7 +1202,7 @@ public class IoTDBDescriptor {
     loadWALHotModifiedProps(properties);
   }
 
-  private void loadCompactionHotModifiedProps(Properties properties)
+  private void loadCompactionHotModifiedProps(TrimProperties properties)
       throws InterruptedException, IOException {
     boolean compactionTaskConfigHotModified = loadCompactionTaskHotModifiedProps(properties);
     if (compactionTaskConfigHotModified) {
@@ -1240,7 +1243,7 @@ public class IoTDBDescriptor {
                 Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
-  private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {
+  private boolean loadCompactionTaskHotModifiedProps(TrimProperties properties) throws IOException {
     boolean configModified = false;
     // update merge_write_throughput_mb_per_sec
     int compactionWriteThroughput = conf.getCompactionWriteThroughputMbPerSec();
@@ -1426,7 +1429,7 @@ public class IoTDBDescriptor {
     return configModified;
   }
 
-  private boolean loadCompactionThreadCountHotModifiedProps(Properties properties)
+  private boolean loadCompactionThreadCountHotModifiedProps(TrimProperties properties)
       throws IOException {
     int newConfigCompactionThreadCount =
         Integer.parseInt(
@@ -1447,7 +1450,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private boolean loadCompactionSubTaskCountHotModifiedProps(Properties properties)
+  private boolean loadCompactionSubTaskCountHotModifiedProps(TrimProperties properties)
       throws IOException {
     int newConfigSubtaskNum =
         Integer.parseInt(
@@ -1465,7 +1468,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private boolean loadCompactionIsEnabledHotModifiedProps(Properties properties)
+  private boolean loadCompactionIsEnabledHotModifiedProps(TrimProperties properties)
       throws IOException {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
@@ -1500,7 +1503,7 @@ public class IoTDBDescriptor {
     return !isCompactionEnabled && compactionEnabledInNewConfig;
   }
 
-  private void loadWALHotModifiedProps(Properties properties) throws IOException {
+  private void loadWALHotModifiedProps(TrimProperties properties) throws IOException {
     long walAsyncModeFsyncDelayInMs =
         Long.parseLong(
             properties.getProperty(
@@ -1587,7 +1590,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private String getWalThrottleThreshold(Properties prop) throws IOException {
+  private String getWalThrottleThreshold(TrimProperties prop) throws IOException {
     String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
     if (old_throttleThreshold != null) {
       LOGGER.warn(
@@ -1628,7 +1631,7 @@ public class IoTDBDescriptor {
     return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
-  private void loadAutoCreateSchemaProps(Properties properties, boolean startUp)
+  private void loadAutoCreateSchemaProps(TrimProperties properties, boolean startUp)
       throws IOException {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(
@@ -1689,7 +1692,7 @@ public class IoTDBDescriptor {
             ConfigurationFileUtils.getConfigurationDefaultValue("default_text_encoding")));
   }
 
-  private void loadTsFileProps(Properties properties) throws IOException {
+  private void loadTsFileProps(TrimProperties properties) throws IOException {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setGroupSizeInByte(
@@ -1766,8 +1769,11 @@ public class IoTDBDescriptor {
   }
 
   // Mqtt related
-  private void loadMqttProps(Properties properties) {
-    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
+  private void loadMqttProps(TrimProperties properties) {
+    conf.setMqttDir(
+        Optional.ofNullable(properties.getProperty("mqtt_root_dir", conf.getMqttDir()))
+            .map(String::trim)
+            .orElse(conf.getMqttDir()));
 
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
@@ -1803,7 +1809,7 @@ public class IoTDBDescriptor {
   }
 
   // timed flush memtable
-  private void loadTimedService(Properties properties) throws IOException {
+  private void loadTimedService(TrimProperties properties) throws IOException {
     conf.setEnableTimedFlushSeqMemtable(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1876,7 +1882,7 @@ public class IoTDBDescriptor {
     return tierDataDirs;
   }
 
-  public synchronized void loadHotModifiedProps(Properties properties)
+  public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException {
     try {
       // update data dirs
@@ -2070,7 +2076,7 @@ public class IoTDBDescriptor {
       return;
     }
 
-    Properties commonProperties = new Properties();
+    TrimProperties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
@@ -2086,7 +2092,7 @@ public class IoTDBDescriptor {
     reloadMetricProperties(commonProperties);
   }
 
-  public void reloadMetricProperties(Properties properties) {
+  public void reloadMetricProperties(TrimProperties properties) {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
@@ -2103,7 +2109,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void initMemoryAllocate(Properties properties) {
+  private void initMemoryAllocate(TrimProperties properties) {
     String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
     if (memoryAllocateProportion == null) {
       memoryAllocateProportion =
@@ -2215,7 +2221,7 @@ public class IoTDBDescriptor {
   }
 
   @SuppressWarnings("java:S3518")
-  private void initStorageEngineAllocate(Properties properties) {
+  private void initStorageEngineAllocate(TrimProperties properties) {
     long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
     String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
@@ -2270,7 +2276,7 @@ public class IoTDBDescriptor {
   }
 
   @SuppressWarnings("squid:S3518")
-  private void initSchemaMemoryAllocate(Properties properties) {
+  private void initSchemaMemoryAllocate(TrimProperties properties) {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     String schemaMemoryPortionInput = properties.getProperty("schema_memory_proportion");
@@ -2328,7 +2334,7 @@ public class IoTDBDescriptor {
     LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
   }
 
-  private void loadLoadTsFileProps(Properties properties) {
+  private void loadLoadTsFileProps(TrimProperties properties) {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2406,7 +2412,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
+  private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -2447,7 +2453,7 @@ public class IoTDBDescriptor {
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
-  private void loadUDFProps(Properties properties) {
+  private void loadUDFProps(TrimProperties properties) {
     String initialByteArrayLengthForMemoryControl =
         properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
@@ -2490,7 +2496,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void initThriftSSL(Properties properties) {
+  private void initThriftSSL(TrimProperties properties) {
     conf.setEnableSSL(
         Boolean.parseBoolean(
             properties.getProperty("enable_thrift_ssl", Boolean.toString(conf.isEnableSSL()))));
@@ -2498,8 +2504,8 @@ public class IoTDBDescriptor {
     conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePath()).trim());
   }
 
-  private void loadTriggerProps(Properties properties) {
-    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()));
+  private void loadTriggerProps(TrimProperties properties) {
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
     conf.setRetryNumToFindStatefulTrigger(
         Integer.parseInt(
             properties.getProperty(
@@ -2545,8 +2551,11 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
-  private void loadPipeProps(Properties properties) {
-    conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
+  private void loadPipeProps(TrimProperties properties) {
+    conf.setPipeLibDir(
+        Optional.ofNullable(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()))
+            .map(String::trim)
+            .orElse(conf.getPipeLibDir()));
 
     conf.setPipeReceiverFileDirs(
         Arrays.stream(
@@ -2572,7 +2581,7 @@ public class IoTDBDescriptor {
             .toArray(String[]::new));
   }
 
-  private void loadCQProps(Properties properties) {
+  private void loadCQProps(TrimProperties properties) {
     conf.setContinuousQueryThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -2589,7 +2598,7 @@ public class IoTDBDescriptor {
             false));
   }
 
-  public void loadClusterProps(Properties properties) throws IOException {
+  public void loadClusterProps(TrimProperties properties) throws IOException {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
     if (configNodeUrls == null) {
       configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
@@ -2644,7 +2653,7 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  public void loadShuffleProps(Properties properties) {
+  public void loadShuffleProps(TrimProperties properties) {
     conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
