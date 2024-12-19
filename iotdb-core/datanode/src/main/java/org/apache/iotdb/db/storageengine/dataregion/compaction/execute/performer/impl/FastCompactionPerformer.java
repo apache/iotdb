@@ -139,7 +139,9 @@ public class FastCompactionPerformer
         long ttl = deviceIterator.getTTLForCurrentDevice();
         sortedSourceFiles.removeIf(
             x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
-        sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
         if (ttl != Long.MAX_VALUE) {
           ModEntry ttlDeletion =
               CompactionUtils.convertTtlToDeletion(

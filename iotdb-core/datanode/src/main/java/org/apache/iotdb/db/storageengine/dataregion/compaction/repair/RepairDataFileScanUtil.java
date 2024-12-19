@@ -63,6 +63,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
@@ -109,32 +110,44 @@ public class RepairDataFileScanUtil {
             resource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION)) {
-      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      TsFileDeviceIterator deviceInfileIterator = reader.getAllDevicesIteratorWithIsAligned();
       Set<IDeviceID> deviceIdsInTimeIndex =
           checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();
-      while (deviceIterator.hasNext()) {
-        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
-        IDeviceID device = deviceIsAlignedPair.getLeft();
+      while (deviceInfileIterator.hasNext()) {
+        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceInfileIterator.next();
+        IDeviceID deviceInfile = deviceIsAlignedPair.getLeft();
         if (checkTsFileResource) {
-          if (!deviceIdsInTimeIndex.contains(device)) {
+          if (!deviceIdsInTimeIndex.contains(deviceInfile)) {
             throw new CompactionStatisticsCheckFailedException(
-                device + " does not exist in the resource file");
+                deviceInfile + " does not exist in the resource file");
           }
-          deviceIdsInTimeIndex.remove(device);
+          deviceIdsInTimeIndex.remove(deviceInfile);
         }
         MetadataIndexNode metadataIndexNode =
-            deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
+            deviceInfileIterator.getFirstMeasurementNodeOfCurrentDevice();
+
+        Optional<Long> startTime = timeIndex.getStartTime(deviceInfile);
+        Optional<Long> endTime = timeIndex.getEndTime(deviceInfile);
+        if (!startTime.isPresent() || !endTime.isPresent()) {
+          continue;
+        }
         TimeRange deviceTimeRangeInResource =
-            checkTsFileResource
-                ? new TimeRange(timeIndex.getStartTime(device), timeIndex.getEndTime(device))
-                : null;
+            checkTsFileResource ? new TimeRange(startTime.get(), endTime.get()) : null;
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
           checkAlignedDeviceSeries(
-              reader, device, metadataIndexNode, deviceTimeRangeInResource, checkTsFileResource);
+              reader,
+              deviceInfile,
+              metadataIndexNode,
+              deviceTimeRangeInResource,
+              checkTsFileResource);
         } else {
           checkNonAlignedDeviceSeries(
-              reader, device, metadataIndexNode, deviceTimeRangeInResource, checkTsFileResource);
+              reader,
+              deviceInfile,
+              metadataIndexNode,
+              deviceTimeRangeInResource,
+              checkTsFileResource);
         }
       }
       if (!deviceIdsInTimeIndex.isEmpty()) {
@@ -413,6 +426,7 @@ public class RepairDataFileScanUtil {
     return isBrokenFile;
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static List<TsFileResource> checkTimePartitionHasOverlap(
       List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
@@ -433,8 +447,9 @@ public class RepairDataFileScanUtil {
       boolean fileHasOverlap = false;
       // check overlap
       for (IDeviceID device : devices) {
-        long deviceStartTimeInCurrentFile = deviceTimeIndex.getStartTime(device);
-        if (deviceStartTimeInCurrentFile > deviceTimeIndex.getEndTime(device)) {
+        // we are iterating the time index so the times are definitely present
+        long deviceStartTimeInCurrentFile = deviceTimeIndex.getStartTime(device).get();
+        if (deviceStartTimeInCurrentFile > deviceTimeIndex.getEndTime(device).get()) {
           continue;
         }
         if (!deviceEndTimeMap.containsKey(device)) {
@@ -457,7 +472,7 @@ public class RepairDataFileScanUtil {
       // update end time map
       if (!fileHasOverlap) {
         for (IDeviceID device : devices) {
-          deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device));
+          deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device).get());
         }
       }
     }

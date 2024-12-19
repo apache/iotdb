@@ -88,6 +88,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class CompactionCheckerUtils {
 
   public static void putOnePageChunks(
@@ -356,14 +357,14 @@ public class CompactionCheckerUtils {
         if (mergedFile.definitelyNotContains(device)) {
           continue;
         }
-        startTime = Math.min(startTime, mergedFile.getStartTime(device));
+        startTime = Math.min(startTime, mergedFile.getStartTime(device).get());
       }
       long endTime = Long.MIN_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
         if (mergedFile.definitelyNotContains(device)) {
           continue;
         }
-        endTime = Math.max(endTime, mergedFile.getEndTime(device));
+        endTime = Math.max(endTime, mergedFile.getEndTime(device).get());
       }
       assertEquals(statistics[0], startTime);
       assertEquals(statistics[1], endTime);

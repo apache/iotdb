@@ -115,7 +115,7 @@ public class LoadTsFileTableSchemaCache {
 
   public void autoCreateAndVerify(IDeviceID device) {
     try {
-      if (isDeviceDeletedByMods(device)) {
+      if (ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device)) {
         return;
       }
     } catch (IllegalPathException e) {
@@ -130,16 +130,6 @@ public class LoadTsFileTableSchemaCache {
     if (shouldFlushDevices()) {
       flush();
     }
-  }
-
-  private boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
-    return currentTimeIndex != null
-        && currentTimeIndex.checkDeviceIdExist(device)
-        && ModificationUtils.isAllDeletedByMods(
-            currentModifications,
-            device,
-            currentTimeIndex.getStartTime(device),
-            currentTimeIndex.getEndTime(device));
   }
 
   private void addDevice(final IDeviceID device) {

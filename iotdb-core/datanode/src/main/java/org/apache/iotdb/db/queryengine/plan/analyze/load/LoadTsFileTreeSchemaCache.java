@@ -188,13 +188,7 @@ public class LoadTsFileTreeSchemaCache {
   }
 
   public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
-    return currentTimeIndex != null
-        && currentTimeIndex.checkDeviceIdExist(device)
-        && ModificationUtils.isAllDeletedByMods(
-            currentModifications,
-            device,
-            currentTimeIndex.getStartTime(device),
-            currentTimeIndex.getEndTime(device));
+    return ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device);
   }
 
   public boolean isTimeseriesDeletedByMods(IDeviceID device, TimeseriesMetadata timeseriesMetadata)

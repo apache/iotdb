@@ -199,6 +199,7 @@ public class TsFileOverlapValidationAndRepairTool {
     return storageGroup + "-" + dataRegion + "-" + timePartition;
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static int checkTimePartitionHasOverlap(List<TsFileResource> resources) {
     int overlapTsFileNum = 0;
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
@@ -208,8 +209,9 @@ public class TsFileOverlapValidationAndRepairTool {
       boolean fileHasOverlap = false;
       // check overlap
       for (IDeviceID device : devices) {
-        long deviceStartTimeInCurrentFile = resource.getStartTime(device);
-        if (deviceStartTimeInCurrentFile > resource.getEndTime(device)) {
+        // iterating the index, must present
+        long deviceStartTimeInCurrentFile = resource.getStartTime(device).get();
+        if (deviceStartTimeInCurrentFile > resource.getEndTime(device).get()) {
           continue;
         }
         if (!deviceEndTimeMap.containsKey(device)) {
@@ -234,7 +236,7 @@ public class TsFileOverlapValidationAndRepairTool {
       // update end time map
       if (!fileHasOverlap) {
         for (IDeviceID device : devices) {
-          deviceEndTimeMap.put(device, resource.getEndTime(device));
+          deviceEndTimeMap.put(device, resource.getEndTime(device).get());
           deviceLastExistTsFileMap.put(device, resource);
         }
       }

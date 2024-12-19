@@ -43,7 +43,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -320,7 +320,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public void updateStartTime(IDeviceID deviceId, long time) {
     int index = getDeviceIndex(deviceId);
-    long startTime = getStartTime(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long startTime = getStartTime(deviceId).get();
     if (time < startTime) {
       startTimes[index] = time;
     }
@@ -330,7 +331,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public void updateEndTime(IDeviceID deviceId, long time) {
     int index = getDeviceIndex(deviceId);
-    long endTime = getEndTime(deviceId);
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // must present after getDeviceIndex
+    long endTime = getEndTime(deviceId).get();
     if (time > endTime) {
       endTimes[index] = time;
     }
@@ -352,19 +354,19 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      throw new NoSuchElementException(deviceId.toString());
+      return Optional.empty();
     }
-    return startTimes[deviceToIndex.get(deviceId)];
+    return Optional.of(startTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      throw new NoSuchElementException(deviceId.toString());
+      return Optional.empty();
     }
-    return endTimes[deviceToIndex.get(deviceId)];
+    return Optional.of(endTimes[deviceToIndex.get(deviceId)]);
   }
 
   @Override

@@ -85,21 +85,22 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return resource.getDevices().isEmpty();
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean needDecodeTsFile(
-      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher)
-      throws IOException {
+      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+          partitionFetcher) {
     List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()
         .forEach(
             o -> {
-              if (!resource.definitelyNotContains(o)) {
-                slotList.add(
-                    new Pair<>(
-                        o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o))));
-                slotList.add(
-                    new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o))));
-              }
+              // iterating the index, must present
+              slotList.add(
+                  new Pair<>(
+                      o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o).get())));
+              slotList.add(
+                  new Pair<>(
+                      o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o).get())));
             });
 
     if (slotList.isEmpty()) {

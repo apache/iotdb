@@ -46,7 +46,11 @@ public class TsFileDeviceStartEndTimeIterator {
 
   public DeviceStartEndTime next() {
     IDeviceID deviceID = currentDevice.next();
+    // iterating the index, must present
+    //noinspection OptionalGetWithoutIsPresent
     return new DeviceStartEndTime(
-        deviceID, deviceTimeIndex.getStartTime(deviceID), deviceTimeIndex.getEndTime(deviceID));
+        deviceID,
+        deviceTimeIndex.getStartTime(deviceID).get(),
+        deviceTimeIndex.getEndTime(deviceID).get());
   }
 }
