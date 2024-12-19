@@ -86,7 +86,7 @@ public class TsFilePlanRedoer {
     if (!node.hasValidMeasurements()) {
       return;
     }
-    if (tsFileResource != null && !tsFileResource.definitelyNotContains(node.getDeviceID())) {
+    if (tsFileResource != null) {
       // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
@@ -128,7 +128,7 @@ public class TsFilePlanRedoer {
       if (!node.hasValidMeasurements()) {
         continue;
       }
-      if (tsFileResource != null && !tsFileResource.definitelyNotContains(node.getDeviceID())) {
+      if (tsFileResource != null) {
         // orders of insert node is guaranteed by storage engine, just check time in the file
         // the last chunk group may contain the same data with the logs, ignore such logs in seq
         // file

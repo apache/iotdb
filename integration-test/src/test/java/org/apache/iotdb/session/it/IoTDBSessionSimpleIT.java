@@ -79,7 +79,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings("ThrowFromFinallyBlock")
+@SuppressWarnings({"ThrowFromFinallyBlock", "ResultOfMethodCallIgnored"})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionSimpleIT {
 
@@ -1925,7 +1925,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void loadMinMaxTimeTest()
+  public void loadMinMaxTimeNonAlignedTest()
       throws IoTDBConnectionException,
           StatementExecutionException,
           IOException,
@@ -1955,6 +1955,60 @@ public class IoTDBSessionSimpleIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("SELECT * FROM root.testLoadMinMax.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(Long.MIN_VALUE, record.getTimestamp());
+      record = dataSet.next();
+      assertEquals(Long.MAX_VALUE, record.getTimestamp());
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"true\"");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+      file.delete();
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void loadMinMaxTimeAlignedTest()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    File file = new File("target", "test.tsfile");
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.testLoadMinMaxAligned.d1");
+      writer.registerAlignedTimeseries(
+          deviceID, Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
+      TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
+      record.addPoint("s1", 1);
+      writer.writeRecord(record);
+      record.setTime(Long.MAX_VALUE);
+      writer.writeRecord(record);
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"timestamp_precision_check_enabled\"=\"false\"");
+      } catch (StatementExecutionException e) {
+        // run in IDE will trigger this, ignore it
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
+      }
+      session.executeNonQueryStatement("LOAD \"" + file.getAbsolutePath() + "\"");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM root.testLoadMinMaxAligned.d1");
       RowRecord record = dataSet.next();
       assertEquals(Long.MIN_VALUE, record.getTimestamp());
       record = dataSet.next();

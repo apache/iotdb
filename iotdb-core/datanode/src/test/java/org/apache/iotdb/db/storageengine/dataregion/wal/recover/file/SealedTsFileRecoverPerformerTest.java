@@ -55,6 +55,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class SealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";
   private static final IDeviceID DEVICE1_NAME =
@@ -113,10 +114,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -155,10 +156,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -192,11 +193,11 @@ public class SealedTsFileRecoverPerformerTest {
     assertNotNull(chunkMetadataList);
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
 
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(4, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -262,10 +263,10 @@ public class SealedTsFileRecoverPerformerTest {
     assertEquals(3, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
-    assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
-    assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
-    assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
-    assertEquals(3, tsFileResource.getEndTime(DEVICE2_NAME));
+    assertEquals(1, ((long) tsFileResource.getStartTime(DEVICE1_NAME).get()));
+    assertEquals(2, ((long) tsFileResource.getEndTime(DEVICE1_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getStartTime(DEVICE2_NAME).get()));
+    assertEquals(3, ((long) tsFileResource.getEndTime(DEVICE2_NAME).get()));
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());

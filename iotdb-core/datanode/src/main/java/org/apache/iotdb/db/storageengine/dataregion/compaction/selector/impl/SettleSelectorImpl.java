@@ -238,8 +238,10 @@ public class SettleSelectorImpl implements ISettleSelector {
             // overflow, like 100 - Long.MIN
             outdatedTimeDiff = Long.MAX_VALUE;
           }
+          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
           hasExpiredTooLong =
-              hasExpiredTooLong || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * ttl);
+              hasExpiredTooLong
+                  || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
         } // else hasExpiredTooLong unchanged
       }
 

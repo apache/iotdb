@@ -71,7 +71,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
     if (endTime <= startTime) {
       endTime = Long.MAX_VALUE;
     }
@@ -85,7 +85,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
     // its start time and end time.
     long pageStartTime = Long.MAX_VALUE, pageEndTime = Long.MIN_VALUE;
     for (int i = 0; i < times.length; i++) {
-      if (times[i] >= endTime) {
+      if (times[i] > endTime) {
         break;
       }
       if (times[i] >= startTime) {

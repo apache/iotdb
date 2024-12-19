@@ -63,11 +63,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class RepairDataFileScanUtil {
   private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
   private final TsFileResource resource;
@@ -110,11 +110,11 @@ public class RepairDataFileScanUtil {
             resource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION)) {
-      TsFileDeviceIterator deviceInfileIterator = reader.getAllDevicesIteratorWithIsAligned();
+      TsFileDeviceIterator deviceInFileIterator = reader.getAllDevicesIteratorWithIsAligned();
       Set<IDeviceID> deviceIdsInTimeIndex =
           checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();
-      while (deviceInfileIterator.hasNext()) {
-        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceInfileIterator.next();
+      while (deviceInFileIterator.hasNext()) {
+        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceInFileIterator.next();
         IDeviceID deviceInfile = deviceIsAlignedPair.getLeft();
         if (checkTsFileResource) {
           if (!deviceIdsInTimeIndex.contains(deviceInfile)) {
@@ -124,15 +124,15 @@ public class RepairDataFileScanUtil {
           deviceIdsInTimeIndex.remove(deviceInfile);
         }
         MetadataIndexNode metadataIndexNode =
-            deviceInfileIterator.getFirstMeasurementNodeOfCurrentDevice();
+            deviceInFileIterator.getFirstMeasurementNodeOfCurrentDevice();
 
-        Optional<Long> startTime = timeIndex.getStartTime(deviceInfile);
-        Optional<Long> endTime = timeIndex.getEndTime(deviceInfile);
-        if (!startTime.isPresent() || !endTime.isPresent()) {
-          continue;
-        }
+        // presence checked above
         TimeRange deviceTimeRangeInResource =
-            checkTsFileResource ? new TimeRange(startTime.get(), endTime.get()) : null;
+            checkTsFileResource
+                ? new TimeRange(
+                    timeIndex.getStartTime(deviceInfile).get(),
+                    timeIndex.getEndTime(deviceInfile).get())
+                : null;
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
           checkAlignedDeviceSeries(
