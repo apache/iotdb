@@ -1360,5 +1360,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   @TestOnly
   public void clear() {
     treeModelMTree.clear();
+    tableModelMTree.clear();
   }
 }
