@@ -57,7 +57,7 @@ public class ConfigMTreeTest {
 
   @Before
   public void setUp() throws Exception {
-    root = new ConfigMTree();
+    root = new ConfigMTree(false);
   }
 
   @After
@@ -272,7 +272,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree();
+    final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 
@@ -340,7 +340,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree();
+    final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 

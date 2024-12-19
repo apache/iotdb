@@ -91,17 +91,22 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 // MTreeStore.
 public class ConfigMTree {
 
-  private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
+  private static final String TABLE_ERROR_MSG =
+      "Failed to recover configNode, because the version is from an older table model version.";
 
+  private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
   private IConfigMNode root;
   // this store is only used for traverser invoking
   private final ConfigMTreeStore store;
 
   private final IMNodeFactory<IConfigMNode> nodeFactory = ConfigMNodeFactory.getInstance();
 
-  public ConfigMTree() throws MetadataException {
+  private final boolean isTableModel;
+
+  public ConfigMTree(final boolean isTableModel) throws MetadataException {
     store = new ConfigMTreeStore(nodeFactory);
     root = store.getRoot();
+    this.isTableModel = isTableModel;
   }
 
   public void clear() {
@@ -1022,20 +1027,24 @@ public class ConfigMTree {
     this.root = stack.peek().left;
   }
 
-  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    IConfigMNode basicMNode =
+  private IConfigMNode deserializeInternalMNode(final InputStream inputStream) throws IOException {
+    final IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     return basicMNode;
   }
 
-  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
-    IDatabaseMNode<IConfigMNode> databaseMNode =
+  private IConfigMNode deserializeDatabaseMNode(final InputStream inputStream) throws IOException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
+    if (!isTableModel && databaseMNode.getAsMNode().getDatabaseSchema().isIsTableModel()) {
+      logger.error(TABLE_ERROR_MSG);
+      throw new RuntimeException();
+    }
     return databaseMNode.getAsMNode();
   }
 

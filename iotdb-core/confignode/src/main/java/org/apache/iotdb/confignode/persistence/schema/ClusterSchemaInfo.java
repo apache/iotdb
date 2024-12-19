@@ -145,8 +145,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock = new ReentrantReadWriteLock();
 
     try {
-      treeModelMTree = new ConfigMTree();
-      tableModelMTree = new ConfigMTree();
+      treeModelMTree = new ConfigMTree(false);
+      tableModelMTree = new ConfigMTree(true);
       templateTable = new TemplateTable();
       templatePreSetTable = new TemplatePreSetTable();
     } catch (MetadataException e) {

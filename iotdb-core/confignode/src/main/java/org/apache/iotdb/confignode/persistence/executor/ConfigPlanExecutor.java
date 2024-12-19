@@ -677,7 +677,7 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
@@ -685,7 +685,7 @@ public class ConfigPlanExecutor {
       return;
     }
 
-    AtomicBoolean result = new AtomicBoolean(true);
+    final AtomicBoolean result = new AtomicBoolean(true);
     snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
@@ -700,7 +700,7 @@ public class ConfigPlanExecutor {
                     "[ConfigNodeSnapshot] Load snapshot for {} cost {} ms",
                     x.getClass().getName(),
                     System.currentTimeMillis() - startTime);
-              } catch (TException | IOException e) {
+              } catch (final TException | IOException e) {
                 result.set(false);
                 LOGGER.error("Load snapshot error", e);
               }
