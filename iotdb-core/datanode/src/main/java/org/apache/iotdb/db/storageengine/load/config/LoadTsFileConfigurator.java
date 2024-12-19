@@ -47,6 +47,9 @@ public class LoadTsFileConfigurator {
       case MODEL_KEY:
         validateModelParam(value);
         break;
+      case LOAD_WITH_MODS_KEY:
+        validateLoadWithModParam(value);
+        break;
       case DATABASE_NAME_KEY:
         break;
       default:
@@ -61,14 +64,14 @@ public class LoadTsFileConfigurator {
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {
     try {
-      int level = Integer.parseInt(databaseLevel);
+      final int level = Integer.parseInt(databaseLevel);
       if (level < DATABASE_LEVEL_MIN_VALUE) {
         throw new SemanticException(
             String.format(
                 "Given database level %d is less than the minimum value %d, please input a valid database level.",
                 level, DATABASE_LEVEL_MIN_VALUE));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new SemanticException(
           String.format(
               "Given database level %s is not a valid integer, please input a valid database level.",
@@ -133,5 +136,25 @@ public class LoadTsFileConfigurator {
 
   private LoadTsFileConfigurator() {
     throw new IllegalStateException("Utility class");
+  }
+
+  public static final String LOAD_WITH_MODS_KEY = "load-with-mods";
+  public static final boolean LOAD_WITH_MODS_DEFAULT_VALUE = true;
+
+  public static void validateLoadWithModParam(final String withModsStr) {
+    try {
+      Boolean.parseBoolean(withModsStr);
+    } catch (final Exception e) {
+      throw new SemanticException(
+          String.format(
+              "Given with mods params %s is not a boolean value, please input a boolean string.",
+              withModsStr));
+    }
+  }
+
+  public static boolean parseOrGetDefaultLoadWithMod(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            LOAD_WITH_MODS_KEY, String.valueOf(LOAD_WITH_MODS_DEFAULT_VALUE)));
   }
 }

@@ -45,6 +45,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.LOAD_WITH_MODS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 
@@ -56,6 +57,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+  private boolean loadWithMods;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
@@ -64,12 +66,13 @@ public class LoadTsFileStatement extends Statement {
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
-  public LoadTsFileStatement(String filePath) throws FileNotFoundException {
+  public LoadTsFileStatement(final String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.loadWithMods = true;
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
@@ -123,11 +126,11 @@ public class LoadTsFileStatement extends Statement {
     return tsFiles;
   }
 
-  private static void sortTsFiles(List<File> files) {
+  private static void sortTsFiles(final List<File> files) {
     files.sort(
         (o1, o2) -> {
-          String file1Name = o1.getName();
-          String file2Name = o2.getName();
+          final String file1Name = o1.getName();
+          final String file2Name = o2.getName();
           try {
             return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
           } catch (IOException e) {
@@ -136,27 +139,27 @@ public class LoadTsFileStatement extends Statement {
         });
   }
 
-  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+  public void setDeleteAfterLoad(final boolean deleteAfterLoad) {
     this.deleteAfterLoad = deleteAfterLoad;
   }
 
-  public void setDatabaseLevel(int databaseLevel) {
+  public void setDatabaseLevel(final int databaseLevel) {
     this.databaseLevel = databaseLevel;
   }
 
-  public void setDatabase(String database) {
+  public void setDatabase(final String database) {
     this.database = database;
   }
 
-  public void setModel(String model) {
+  public void setModel(final String model) {
     this.model = model;
   }
 
-  public void setVerifySchema(boolean verifySchema) {
+  public void setVerifySchema(final boolean verifySchema) {
     this.verifySchema = verifySchema;
   }
 
-  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
+  public void setAutoCreateDatabase(final boolean autoCreateDatabase) {
     this.autoCreateDatabase = autoCreateDatabase;
   }
 
@@ -170,6 +173,10 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isAutoCreateDatabase() {
     return autoCreateDatabase;
+  }
+
+  public boolean isLoadWithMods() {
+    return loadWithMods;
   }
 
   public int getDatabaseLevel() {
@@ -188,7 +195,7 @@ public class LoadTsFileStatement extends Statement {
     return tsFiles;
   }
 
-  public void addTsFileResource(TsFileResource resource) {
+  public void addTsFileResource(final TsFileResource resource) {
     resources.add(resource);
   }
 
@@ -196,11 +203,11 @@ public class LoadTsFileStatement extends Statement {
     return resources;
   }
 
-  public void addWritePointCount(long writePointCount) {
+  public void addWritePointCount(final long writePointCount) {
     writePointCountList.add(writePointCount);
   }
 
-  public long getWritePointCount(int resourceIndex) {
+  public long getWritePointCount(final int resourceIndex) {
     return writePointCountList.get(resourceIndex);
   }
 
@@ -216,6 +223,7 @@ public class LoadTsFileStatement extends Statement {
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
+    this.loadWithMods = LoadTsFileConfigurator.parseOrGetDefaultLoadWithMod(loadAttributes);
   }
 
   @Override
@@ -224,7 +232,7 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     // no need to check here, it will be checked in process phase
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -232,7 +240,7 @@ public class LoadTsFileStatement extends Statement {
   @TableModel
   @Override
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
-      MPPQueryContext context) {
+      final MPPQueryContext context) {
     loadAttributes = new HashMap<>();
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
     if (database != null) {
@@ -242,11 +250,12 @@ public class LoadTsFileStatement extends Statement {
     if (model != null) {
       loadAttributes.put(MODEL_KEY, model);
     }
+    loadAttributes.put(LOAD_WITH_MODS_KEY, String.valueOf(loadWithMods));
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
     return visitor.visitLoadFile(this, context);
   }
 
