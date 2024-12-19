@@ -319,12 +319,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        if (TemplatedAnalyze.canBuildPlanUseTemplate(
-            analysis, queryStatement, partitionFetcher, schemaTree, context)) {
+        List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
+
+        if (deviceList.size() > 1
+            && TemplatedAnalyze.canBuildPlanUseTemplate(
+                analysis, queryStatement, partitionFetcher, schemaTree, context, deviceList)) {
+          // when device size is less than 1, there is no need to use template optimization, i.e. no
+          // need to extract common variables
           return analysis;
         }
-
-        List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
