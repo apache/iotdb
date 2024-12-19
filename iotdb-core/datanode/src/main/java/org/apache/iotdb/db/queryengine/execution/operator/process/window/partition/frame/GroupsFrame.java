@@ -152,7 +152,6 @@ public class GroupsFrame implements Frame {
     if (currentGroup + offset > recentStartPeerGroup) {
       int count = currentGroup + offset - recentStartPeerGroup;
       for (int i = 0; i < count; i++) {
-        int prev = start;
         // Scan over current peer group
         start = scanPeerGroup(start);
         // Enter next peer group
