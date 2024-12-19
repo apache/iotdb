@@ -143,10 +143,9 @@ public final class Patterns {
       return typeOf(SampleNode.class);
   }*/
 
-  //  public static Pattern<SemiJoinNode> semiJoin()
-  //  {
-  //      return typeOf(SemiJoinNode.class);
-  //  }
+  public static Pattern<SemiJoinNode> semiJoin() {
+    return typeOf(SemiJoinNode.class);
+  }
 
   public static Pattern<GapFillNode> gapFill() {
     return typeOf(GapFillNode.class);
