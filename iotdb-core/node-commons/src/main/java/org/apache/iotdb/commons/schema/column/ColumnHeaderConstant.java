@@ -209,8 +209,8 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
   public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
   public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
-  public static final String SCHEMA_REGION_NUM_TABLE_MODEL = "schema_region_num";
-  public static final String DATA_REGION_NUM_TABLE_MODEL = "data_region_num";
+  public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
+  public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";

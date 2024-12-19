@@ -374,8 +374,8 @@ public class IoTDBDatabaseIT {
                   "schema_replication_factor,INT32,ATTRIBUTE,",
                   "data_replication_factor,INT32,ATTRIBUTE,",
                   "time_partition_interval,INT64,ATTRIBUTE,",
-                  "schema_region_num,INT32,ATTRIBUTE,",
-                  "data_region_num,INT64,ATTRIBUTE,")));
+                  "schema_region_group_num,INT32,ATTRIBUTE,",
+                  "data_region_group_num,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
