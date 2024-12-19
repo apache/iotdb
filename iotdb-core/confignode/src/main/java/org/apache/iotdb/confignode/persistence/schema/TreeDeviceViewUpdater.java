@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -43,12 +44,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.confignode.manager.ProcedureManager.PROCEDURE_WAIT_RETRY_TIMEOUT;
+import static org.apache.iotdb.confignode.manager.ProcedureManager.PROCEDURE_WAIT_TIME_OUT;
+import static org.apache.iotdb.confignode.manager.ProcedureManager.sleepWithoutInterrupt;
 
 public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
   private final TreeDeviceUpdateTaskExecutor executor;
+  private final AtomicLong executedRounds = new AtomicLong(0);
   private TDeviceViewResp currentResp;
+  private volatile TSStatus lastStatus;
 
   public TreeDeviceViewUpdater(final ConfigManager configManager) {
     super(
@@ -60,7 +68,20 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
 
   @Override
   protected void executeTask() {
+    lastStatus = StatusUtils.OK;
     executor.execute();
+    executedRounds.incrementAndGet();
+  }
+
+  public TSStatus notifyAndWait() {
+    final long startTime = System.currentTimeMillis();
+    final long currentRound = executedRounds.get();
+    advanceExecution();
+    while (executedRounds.get() == currentRound
+        && System.currentTimeMillis() - startTime < PROCEDURE_WAIT_TIME_OUT) {
+      sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
+    }
+    return lastStatus;
   }
 
   private class TreeDeviceUpdateTaskExecutor
@@ -155,7 +176,9 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
-      LOGGER.warn("Failed to update device view on region {}, skip this round", consensusGroupId);
+      final String errorMsg = "Failed to update device view on region {}, skip this round";
+      LOGGER.warn(errorMsg, consensusGroupId);
+      lastStatus = new TSStatus(TSStatusCode.METADATA_ERROR.getStatusCode()).setMessage(errorMsg);
       interruptTask();
     }
   }
