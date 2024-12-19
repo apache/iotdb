@@ -317,7 +317,7 @@ public class PartitionCache {
               final TSStatus status =
                   AuthorityChecker.getTSStatus(
                       AuthorityChecker.checkSystemPermission(
-                          userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                          userName, PrivilegeType.MANAGE_DATABASE),
                       PrivilegeType.MANAGE_DATABASE);
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 throw new RuntimeException(
@@ -375,8 +375,7 @@ public class PartitionCache {
         if (!AuthorityChecker.SUPER_USER.equals(userName)) {
           final TSStatus status =
               AuthorityChecker.getTSStatus(
-                  AuthorityChecker.checkSystemPermission(
-                      userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                  AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
                   PrivilegeType.MANAGE_DATABASE);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));

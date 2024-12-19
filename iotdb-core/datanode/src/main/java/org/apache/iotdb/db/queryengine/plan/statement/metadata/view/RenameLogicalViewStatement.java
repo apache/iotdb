@@ -75,7 +75,7 @@ public class RenameLogicalViewStatement extends Statement implements IConfigStat
     List<PartialPath> checkedPaths = ImmutableList.of(oldName, newName);
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
   }
