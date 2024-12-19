@@ -163,4 +163,8 @@ public interface CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes);
 
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    return this;
+  }
 }

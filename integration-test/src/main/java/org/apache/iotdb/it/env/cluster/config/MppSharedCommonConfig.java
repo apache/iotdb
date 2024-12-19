@@ -526,4 +526,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    return this;
+  }
 }

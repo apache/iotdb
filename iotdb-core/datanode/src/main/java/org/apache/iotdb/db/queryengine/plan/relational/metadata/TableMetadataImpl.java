@@ -538,6 +538,14 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
       }
       return TIMESTAMP;
+    } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and first argument must be char type.");
+      }
+      return STRING;
     }
 
     // builtin aggregation function
