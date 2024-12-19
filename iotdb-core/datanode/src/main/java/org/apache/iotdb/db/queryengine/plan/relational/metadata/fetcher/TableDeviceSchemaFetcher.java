@@ -428,7 +428,7 @@ public class TableDeviceSchemaFetcher {
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
     Set<Long> queryIdSet = null;
-    if (Objects.nonNull(statement.getPartitionKeyList())) {
+    if (!statement.isTreeViewQuery() && Objects.nonNull(statement.getPartitionKeyList())) {
       queryIdSet = attributeGuard.addFetchQueryId(queryId);
     }
 
