@@ -1039,7 +1039,8 @@ public class IoTDBDescriptor {
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-    loadAutoCreateSchemaProps(properties);
+    boolean startUp = true;
+    loadAutoCreateSchemaProps(properties, startUp);
 
     conf.setTsFileStorageFs(
         Optional.ofNullable(
@@ -2332,7 +2333,8 @@ public class IoTDBDescriptor {
     return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
-  private void loadAutoCreateSchemaProps(TrimProperties properties) throws IOException {
+  private void loadAutoCreateSchemaProps(TrimProperties properties, boolean startUp)
+      throws IOException {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(
@@ -2397,7 +2399,8 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(
                     ConfigurationFileUtils.getConfigurationDefaultValue(
-                        "default_storage_group_level"))));
+                        "default_storage_group_level"))),
+        startUp);
     conf.setDefaultBooleanEncoding(
         Optional.ofNullable(
                 properties.getProperty(
@@ -2726,7 +2729,8 @@ public class IoTDBDescriptor {
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
       // update params of creating schema automatically
-      loadAutoCreateSchemaProps(properties);
+      boolean startUp = false;
+      loadAutoCreateSchemaProps(properties, startUp);
 
       // update tsfile-format config
       loadTsFileProps(properties);
@@ -2881,6 +2885,14 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(
+              Optional.ofNullable(
+                      properties.getProperty(
+                          "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert())))
+                  .map(String::trim)
+                  .orElse(String.valueOf(conf.isEnablePartialInsert()))));
 
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);

@@ -170,20 +170,32 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   @Override
   public void close() {
+    boolean isInterrupted = false;
+
     while (true) {
       try {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
+            if (isInterrupted) {
+              LOGGER.warn("{} is released after thread interruption.", this);
+            }
             break;
           } finally {
             lock.unlock();
           }
         }
       } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
+        // Each time the close task is run, it means that the interrupt status left by the previous
+        // tryLock does not need to be retained. Otherwise, it will lead to an infinite loop.
+        isInterrupted = true;
         LOGGER.warn("Interrupted while waiting for the lock.", e);
       }
+    }
+
+    // Restore the interrupt status of the current thread
+    if (isInterrupted) {
+      Thread.currentThread().interrupt();
     }
   }
 }
