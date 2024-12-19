@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
@@ -354,6 +355,7 @@ public class AnalyzeUtils {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
+    TreeViewSchemaUtils.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);
 
     final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
