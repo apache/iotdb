@@ -1,13 +1,12 @@
 package org.apache.iotdb.db.query.simpiece;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 // adapted from the open source C++ code https://github.com/ofZach/Visvalingam-Whyatt/blob/master/src/testApp.cpp
 class Triangle {
@@ -146,15 +145,18 @@ public class Visval_standard {
 
   public static void main(String[] args) {
     Polyline polyline = new Polyline();
-//    polyline.addVertex(new ofPoint(0, 0));
-//    polyline.addVertex(new ofPoint(1, 0));
-//    polyline.addVertex(new ofPoint(1, 1));
-//    polyline.addVertex(new ofPoint(0, 1));
-
+    List<Polyline> polylineList = new ArrayList<>();
     Random rand = new Random();
-    int n = 10000;
-    for (int i = 0; i < n; i++) {
-      polyline.addVertex(new vPoint(i, rand.nextInt(1000)));
+    int n = 1000_000;
+    int p = 1000;
+    for (int i = 0; i < n; i += p) {
+      Polyline polylineBatch = new Polyline();
+      for (int j = i; j < Math.min(i + p, n); j++) {
+        double v = rand.nextInt(1000);
+        polyline.addVertex(new vPoint(j, v));
+        polylineBatch.addVertex(new vPoint(j, v));
+      }
+      polylineList.add(polylineBatch);
     }
 
 //    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842, 23089};
@@ -181,13 +183,11 @@ public class Visval_standard {
 //      polyline.addVertex(new vPoint(i, v.get(i)));
 //    }
 
+    System.out.println("---------------------------------");
     List<vPoint> results = new ArrayList<>();
-
     // 计算运行时间
     long startTime = System.currentTimeMillis();
-
     buildEffectiveArea(polyline, results);
-
     // 输出结果
     long endTime = System.currentTimeMillis();
     System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
@@ -197,6 +197,35 @@ public class Visval_standard {
 //      vPoint point = results.get(i);
 //      System.out.println("Point: (" + point.x + ", " + point.y + ", " + point.z + ")");
 //    }
+
+    System.out.println("---------------------------------");
+    List<List<vPoint>> resultsBatchList = new ArrayList<>();
+    // 计算运行时间
+    int cnt = 0;
+    startTime = System.currentTimeMillis();
+    for (Polyline polylineBatch : polylineList) {
+      List<vPoint> resultsBatch = new ArrayList<>();
+      buildEffectiveArea(polylineBatch, resultsBatch);
+      cnt += resultsBatch.size();
+      resultsBatchList.add(resultsBatch);
+    }
+    // 输出结果
+    endTime = System.currentTimeMillis();
+    System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+    System.out.println(cnt);
+
+    System.out.println("---------------------------------");
+    // 使用 Stream API 合并所有列表
+    List<vPoint> mergedList = resultsBatchList.stream().flatMap(List::stream)
+        .collect(Collectors.toList());
+    int sameCnt = 0;
+    for (int i = 0; i < mergedList.size(); i++) {
+      if (mergedList.get(i).z == results.get(i).z) {
+        sameCnt += 1;
+      }
+    }
+    System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
+
   }
 }
 
