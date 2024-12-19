@@ -66,12 +66,12 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -92,7 +92,7 @@ public class TableMetadataImpl implements Metadata {
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
@@ -102,11 +102,7 @@ public class TableMetadataImpl implements Metadata {
     final String databaseName = name.getDatabaseName();
     final String tableName = name.getObjectName();
 
-    // TODO Recover this line after put InformationSchema Table into cache
-    TsTable table =
-        databaseName.equals(INFORMATION_SCHEMA)
-            ? InformationSchemaTable.getTableFromStringValue(tableName)
-            : tableCache.getTable(databaseName, tableName);
+    TsTable table = tableCache.getTable(databaseName, tableName);
     if (table == null) {
       return Optional.empty();
     }

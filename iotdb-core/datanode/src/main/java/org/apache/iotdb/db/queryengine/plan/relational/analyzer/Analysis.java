@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -103,7 +104,6 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class Analysis implements IAnalysis {
 
@@ -781,7 +781,7 @@ public class Analysis implements IAnalysis {
   @Override
   public boolean needSetHighestPriority() {
     return root instanceof ShowStatement
-        && ((ShowStatement) root).getTableName().equals(QUERIES.getSchemaTableName());
+        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
   }
 
   @Override
