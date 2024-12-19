@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.it;
+package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -42,11 +43,17 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
@@ -64,6 +71,7 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db3");
     }
   }
 
@@ -71,6 +79,8 @@ public class IoTDBSessionRelationalIT {
   public void tearDown() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
+      session.executeNonQueryStatement("DROP DATABASE IF EXISTS db3");
     }
   }
 
@@ -401,11 +411,9 @@ public class IoTDBSessionRelationalIT {
             session.insert(tablet);
           } catch (StatementExecutionException e) {
             // a partial insertion should be reported
-            if (!e.getMessage()
-                .equals(
-                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
-              throw e;
-            }
+            assertEquals(
+                "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]",
+                e.getMessage());
           }
           tablet.reset();
         }
@@ -473,8 +481,25 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+
+      // partial insert is disabled
+      session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
+      int rowIndex = 0;
+      tablet.addTimestamp(rowIndex, timestamp + rowIndex);
+      tablet.addValue("id1", rowIndex, "id:" + rowIndex);
+      tablet.addValue("attr1", rowIndex, "attr:" + rowIndex);
+      tablet.addValue("m1", rowIndex, rowIndex * 1.0);
+      tablet.addValue("m2", rowIndex, rowIndex * 1.0);
+      try {
+        session.insert(tablet);
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals("616: Missing columns [m2].", e.getMessage());
+      }
+
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
         session.executeNonQueryStatement(
             "SET CONFIGURATION \"enable_auto_create_schema\"=\"true\"");
       }
@@ -1102,6 +1127,341 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(1, cnt);
+    }
+  }
+
+  private void testOneCastWithTablet(
+      TSDataType from, TSDataType to, int testNum, boolean partialInsert)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // create a column with type of "to"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table"
+              + testNum
+              + " (id1 string id,"
+              + "m1 "
+              + to.toString()
+              + " measurement)");
+      if (partialInsert) {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
+      } else {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
+      }
+
+      // insert a tablet with type of "from"
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", from));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.ID, ColumnCategory.MEASUREMENT);
+      Tablet tablet =
+          new Tablet(
+              "table" + testNum,
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      tablet.addTimestamp(0, 0);
+      tablet.addTimestamp(1, 1);
+      tablet.addValue(0, 0, "d1");
+      tablet.addValue(1, 0, "d1");
+      // the measurement in the first row is null
+      tablet.addValue("m1", 1, genValue(from, 1));
+      if (to.isCompatible(from)) {
+        // can cast, insert and check the result
+        session.insert(tablet);
+        // time, id1, m1
+        SessionDataSet dataSet =
+            session.executeQueryStatement("select * from table" + testNum + " order by time");
+        RowRecord rec = dataSet.next();
+        assertEquals(0, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        assertNull(rec.getFields().get(2).getDataType());
+        rec = dataSet.next();
+        assertEquals(1, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        if (to == TSDataType.BLOB) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+        } else if (to == TSDataType.DATE) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+        } else {
+          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+        }
+        assertFalse(dataSet.hasNext());
+      } else {
+        if (partialInsert) {
+          // cannot cast, but partial insert
+          try {
+            session.insert(tablet);
+            fail("Exception expected: from=" + from + ", to=" + to);
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
+                    + from
+                    + "/"
+                    + to
+                    + "]",
+                e.getMessage());
+          }
+          // time, id1, m1
+          SessionDataSet dataSet =
+              session.executeQueryStatement("select * from table" + testNum + " order by time");
+          RowRecord rec = dataSet.next();
+          assertEquals(0, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          rec = dataSet.next();
+          assertEquals(1, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          assertFalse(dataSet.hasNext());
+        } else {
+          // cannot cast, expect an exception
+          try {
+            session.insert(tablet);
+            fail("Exception expected");
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "614: Incompatible data type of column m1: " + from + "/" + to, e.getMessage());
+          }
+        }
+      }
+
+      session.executeNonQueryStatement("DROP TABLE table" + testNum);
+    }
+  }
+
+  private void testOneCastWithRow(
+      TSDataType from, TSDataType to, int testNum, boolean partialInsert)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // create a column with type of "to"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table"
+              + testNum
+              + " (id1 string id,"
+              + "m1 "
+              + to.toString()
+              + " measurement)");
+      if (partialInsert) {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
+      } else {
+        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
+      }
+
+      // insert a tablet with type of "from"
+      String sql =
+          String.format(
+              "INSERT INTO table"
+                  + testNum
+                  + " (time, id1, m1) VALUES (0, 'd1', null),(1,'d1', %s)",
+              genValue(from, 1));
+      if (to.isCompatible(from)) {
+        // can cast, insert and check the result
+        session.executeNonQueryStatement(sql);
+        // time, id1, m1
+        SessionDataSet dataSet =
+            session.executeQueryStatement("select * from table" + testNum + " order by time");
+        RowRecord rec = dataSet.next();
+        assertEquals(0, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        assertNull(rec.getFields().get(2).getDataType());
+        rec = dataSet.next();
+        assertEquals(1, rec.getFields().get(0).getLongV());
+        assertEquals("d1", rec.getFields().get(1).toString());
+        if (to == TSDataType.BLOB) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+        } else if (to == TSDataType.DATE) {
+          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+        } else {
+          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+        }
+        assertFalse(dataSet.hasNext());
+      } else {
+        if (partialInsert) {
+          // cannot cast, but partial insert
+          try {
+            session.executeNonQueryStatement(sql);
+            fail("Exception expected: from=" + from + ", to=" + to);
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
+                    + from
+                    + "/"
+                    + to
+                    + "]",
+                e.getMessage());
+          }
+          // time, id1, m1
+          SessionDataSet dataSet =
+              session.executeQueryStatement("select * from table" + testNum + " order by time");
+          RowRecord rec = dataSet.next();
+          assertEquals(0, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          rec = dataSet.next();
+          assertEquals(1, rec.getFields().get(0).getLongV());
+          assertEquals("d1", rec.getFields().get(1).toString());
+          assertNull(rec.getFields().get(2).getDataType());
+          assertFalse(dataSet.hasNext());
+        } else {
+          // cannot cast, expect an exception
+          try {
+            session.executeNonQueryStatement(sql);
+            fail("Exception expected");
+          } catch (StatementExecutionException e) {
+            assertEquals(
+                "614: Incompatible data type of column m1: " + from + "/" + to, e.getMessage());
+          }
+        }
+      }
+
+      session.executeNonQueryStatement("DROP TABLE table" + testNum);
+    }
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private Object genValue(TSDataType dataType, int i) {
+    switch (dataType) {
+      case INT32:
+        return i;
+      case DATE:
+        return LocalDate.ofEpochDay(i);
+      case TIMESTAMP:
+      case INT64:
+        return (long) i;
+      case BOOLEAN:
+        return i % 2 == 0;
+      case FLOAT:
+        return i * 1.0f;
+      case DOUBLE:
+        return i * 1.0;
+      case STRING:
+      case TEXT:
+      case BLOB:
+        return new Binary(Integer.toString(i), StandardCharsets.UTF_8);
+      case UNKNOWN:
+      case VECTOR:
+      default:
+        throw new IllegalArgumentException("Unsupported data type: " + dataType);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRelationalTabletWithAutoCastTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 14;
+    Set<TSDataType> dataTypes = new HashSet<>();
+    Collections.addAll(dataTypes, TSDataType.values());
+    dataTypes.remove(TSDataType.VECTOR);
+    dataTypes.remove(TSDataType.UNKNOWN);
+
+    for (TSDataType from : dataTypes) {
+      for (TSDataType to : dataTypes) {
+        System.out.println("from: " + from + ", to: " + to);
+        testOneCastWithTablet(from, to, testNum, false);
+        System.out.println("partial insert");
+        testOneCastWithTablet(from, to, testNum, true);
+      }
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void deleteTableAndWriteDifferentTypeTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 15;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+
+      session.executeNonQueryStatement("DROP TABLE table" + testNum);
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table" + testNum + " order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals("d2", rec.getFields().get(1).toString());
+      assertEquals(2.0, rec.getFields().get(2).getDoubleV(), 0.1);
+      assertFalse(dataSet.hasNext());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void dropTableOfTheSameNameTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 16;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+
+      session.executeNonQueryStatement(
+          "CREATE TABLE db2.table" + testNum + " (id1 string id, m1 double measurement)");
+      session.executeNonQueryStatement(
+          "INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+
+      session.executeNonQueryStatement("DROP TABLE db2.table" + testNum);
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.table" + testNum + " order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(1, rec.getFields().get(0).getLongV());
+      assertEquals("d1", rec.getFields().get(1).toString());
+      assertEquals(1, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      try {
+        session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
+        fail("expected exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRelationalRowWithAutoCastTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 17;
+    Set<TSDataType> dataTypes = new HashSet<>();
+    Collections.addAll(dataTypes, TSDataType.values());
+    dataTypes.remove(TSDataType.VECTOR);
+    dataTypes.remove(TSDataType.UNKNOWN);
+
+    for (TSDataType from : dataTypes) {
+      for (TSDataType to : dataTypes) {
+        System.out.println("from: " + from + ", to: " + to);
+        testOneCastWithTablet(from, to, testNum, false);
+        System.out.println("partial insert");
+        testOneCastWithTablet(from, to, testNum, true);
+      }
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
     }
   }
 }

@@ -865,8 +865,13 @@ enable_auto_create_schema=true
 # Database level when creating schema automatically is enabled
 # e.g. root.sg0.d1.s2
 #      we will set root.sg0 as the database if database level is 1
+# If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int
+# Range: [1, Integer.MAX_VALUE]
+# Default: 1
+# When illegal: report an error and change nothing during hot-reload; use the default value in
+# start-up
 default_storage_group_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
@@ -1149,7 +1154,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 

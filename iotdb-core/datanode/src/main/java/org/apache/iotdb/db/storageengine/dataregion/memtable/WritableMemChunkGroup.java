@@ -117,6 +117,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public boolean isEmpty() {
+    return memChunkMap.isEmpty();
+  }
+
+  @Override
   public long delete(ModEntry modEntry) {
     Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
     long deletedPointsNumber = 0;

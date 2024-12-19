@@ -901,6 +901,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 database, result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new PipeException("Auto create database failed because: " + e.getMessage());
     }
 

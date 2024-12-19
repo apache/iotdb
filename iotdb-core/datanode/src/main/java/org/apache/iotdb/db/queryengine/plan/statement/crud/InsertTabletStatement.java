@@ -191,9 +191,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      columns[columnIndex] =
-          CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
+      columns[columnIndex] = dataType.castFromArray(dataTypes[columnIndex], columns[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
