@@ -402,8 +402,7 @@ public class IoTDBDatabaseIT {
                   "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
-                  "statement,STRING,ATTRIBUTE,",
-                  "sql_dialect,STRING,ATTRIBUTE,")));
+                  "statement,STRING,ATTRIBUTE,")));
     }
   }
 }
