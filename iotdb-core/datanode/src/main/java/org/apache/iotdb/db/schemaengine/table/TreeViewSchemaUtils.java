@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -34,17 +35,29 @@ public class TreeViewSchemaUtils {
 
   public static void putAlignedToTreeCache() {}
 
-  public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
+  public static boolean isTreeViewDatabase(final String database) {
+    return TreeViewSchema.TREE_VIEW_DATABASE.equals(database);
+  }
+
+  public static String getOriginalDatabase(final TsTable table) {
+    return table
+        .getPropValue(TreeViewSchema.TREE_DATABASE)
+        .orElseThrow(
+            () ->
+                new SemanticException(
+                    String.format(
+                        "Failed to get the original database, because the %s is null for table %s",
+                        TreeViewSchema.TREE_DATABASE, table.getTableName())));
+  }
+
+  public static IDeviceID convertToIDeviceID(final String database, final String[] idValues) {
     final String[] databaseNodes;
     try {
-      databaseNodes =
-          new PartialPath(
-                  table
-                      .getPropValue(TreeViewSchema.TREE_DATABASE)
-                      .orElseThrow(() -> new IllegalPathException("Unknown tree model database")))
-              .getNodes();
+      databaseNodes = new PartialPath(database).getNodes();
     } catch (final IllegalPathException e) {
-      return null;
+      throw new SemanticException(
+          String.format(
+              "Failed to parse the tree database %s when convert to IDeviceID", database));
     }
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(

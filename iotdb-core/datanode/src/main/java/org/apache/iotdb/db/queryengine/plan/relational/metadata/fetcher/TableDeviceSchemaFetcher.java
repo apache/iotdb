@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -178,11 +177,16 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
     final List<AbstractDeviceEntry> deviceEntryList = new ArrayList<>();
-    final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
+    final ShowDevice statement =
+        new ShowDevice(
+            TreeViewSchemaUtils.isTreeViewDatabase(database)
+                ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance)
+                : database,
+            table);
 
     if (parseFilter4TraverseDevice(
         database,
@@ -328,7 +332,7 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    return !TreeViewSchema.TREE_VIEW_DATABASE.equals(database)
+    return !TreeViewSchemaUtils.isTreeViewDatabase(database)
         ? tryGetTableDeviceInCache(
             deviceEntryList,
             database,
@@ -338,7 +342,11 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             idValues)
-        : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, fetchPaths, idValues);
+        : tryGetTreeDeviceInCache(
+            deviceEntryList,
+            TreeViewSchemaUtils.getOriginalDatabase(tableInstance),
+            fetchPaths,
+            idValues);
   }
 
   private boolean tryGetTableDeviceInCache(
@@ -384,10 +392,10 @@ public class TableDeviceSchemaFetcher {
 
   private boolean tryGetTreeDeviceInCache(
       final List<AbstractDeviceEntry> deviceEntryList,
-      final TsTable tableInstance,
+      final String database,
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
-    final IDeviceID deviceID = TreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
+    final IDeviceID deviceID = TreeViewSchemaUtils.convertToIDeviceID(database, idValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       if (Objects.nonNull(fetchPaths)) {
