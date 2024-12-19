@@ -421,8 +421,6 @@ public class TableDeviceSchemaFetcher {
       final ShowDevice statement,
       final List<AbstractDeviceEntry> deviceEntryList,
       final MPPQueryContext mppQueryContext) {
-
-    final String table = tableInstance.getTableName();
     Throwable t = null;
 
     final long queryId = SessionManager.getInstance().requestQueryId();
@@ -456,8 +454,6 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength =
-          DataNodeTableCache.getInstance().getTable(statement.getDatabase(), table).getIdNums();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
@@ -470,24 +466,23 @@ public class TableDeviceSchemaFetcher {
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-        final Column[] columns = tsBlock.get().getValueColumns();
-        for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          String[] nodes = new String[idLength + 1];
-          final Map<String, Binary> attributeMap = new HashMap<>();
-          constructNodsArrayAndAttributeMap(
-              attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
-          final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
-          final AlignedDeviceEntry deviceEntry =
-              new AlignedDeviceEntry(
-                  deviceID,
-                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
-          mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
-          deviceEntryList.add(deviceEntry);
-          // Only cache those exact device query
-          // Fetch paths is null iff there are fuzzy queries related to id columns
-          if (Objects.nonNull(statement.getPartitionKeyList())) {
-            cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
-          }
+        if (!statement.isTreeViewQuery()) {
+          constructTableResults(
+              tsBlock.get(),
+              columnHeaderList,
+              tableInstance,
+              statement,
+              mppQueryContext,
+              attributeColumns,
+              deviceEntryList);
+        } else {
+          constructTreeResults(
+              tsBlock.get(),
+              columnHeaderList,
+              tableInstance,
+              statement,
+              mppQueryContext,
+              deviceEntryList);
         }
       }
     } catch (final Throwable throwable) {
@@ -499,6 +494,70 @@ public class TableDeviceSchemaFetcher {
         attributeGuard.tryUpdateCache();
       }
       coordinator.cleanupQueryExecution(queryId, null, t);
+    }
+  }
+
+  private void constructTableResults(
+      final TsBlock tsBlock,
+      final List<ColumnHeader> columnHeaderList,
+      final TsTable tableInstance,
+      final ShowDevice statement,
+      final MPPQueryContext mppQueryContext,
+      final List<String> attributeColumns,
+      final List<AbstractDeviceEntry> deviceEntryList) {
+    final Column[] columns = tsBlock.getValueColumns();
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      final String[] nodes = new String[tableInstance.getIdNums() + 1];
+      final Map<String, Binary> attributeMap = new HashMap<>();
+      constructNodsArrayAndAttributeMap(
+          attributeMap,
+          nodes,
+          tableInstance.getTableName(),
+          columnHeaderList,
+          columns,
+          tableInstance,
+          i);
+      final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
+      final AlignedDeviceEntry deviceEntry =
+          new AlignedDeviceEntry(
+              deviceID,
+              attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+      mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
+      deviceEntryList.add(deviceEntry);
+      // Only cache those exact device query
+      // Fetch paths is null iff there are fuzzy queries related to id columns
+      if (Objects.nonNull(statement.getPartitionKeyList())) {
+        cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
+      }
+    }
+  }
+
+  private void constructTreeResults(
+      final TsBlock tsBlock,
+      final List<ColumnHeader> columnHeaderList,
+      final TsTable tableInstance,
+      final ShowDevice statement,
+      final MPPQueryContext mppQueryContext,
+      final List<AbstractDeviceEntry> deviceEntryList) {
+    final Column[] columns = tsBlock.getValueColumns();
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      final String[] nodes = new String[tableInstance.getIdNums()];
+      constructNodsArrayAndAttributeMap(
+          Collections.emptyMap(),
+          nodes,
+          tableInstance.getTableName(),
+          columnHeaderList,
+          columns,
+          tableInstance,
+          i);
+      final IDeviceID deviceID =
+          TreeViewSchemaUtils.convertToIDeviceID(statement.getDatabase(), nodes);
+      final AbstractDeviceEntry deviceEntry =
+          columns[columns.length - 1].getBoolean(i)
+              ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
+              : new NonAlignedDeviceEntry(deviceID);
+      mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
+      deviceEntryList.add(deviceEntry);
     }
   }
 

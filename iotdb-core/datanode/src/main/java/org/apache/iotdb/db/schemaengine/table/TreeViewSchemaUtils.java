@@ -32,9 +32,6 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class TreeViewSchemaUtils {
-
-  public static void putAlignedToTreeCache() {}
-
   public static boolean isTreeViewDatabase(final String database) {
     return TreeViewSchema.TREE_VIEW_DATABASE.equals(database);
   }
