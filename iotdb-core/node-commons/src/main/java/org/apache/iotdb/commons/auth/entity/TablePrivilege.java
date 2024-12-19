@@ -27,7 +27,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -132,15 +135,17 @@ public class TablePrivilege {
 
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append(this.tableName).append(" {");
-    for (PrivilegeType type : privileges) {
+    builder.append(this.tableName).append("(");
+    List<PrivilegeType> privs = new ArrayList<>(this.privileges);
+    Collections.sort(privs);
+    for (PrivilegeType type : privs) {
       builder.append(type);
       if (grantOption.contains(type)) {
-        builder.append("_with_grant_option ");
+        builder.append("_with_grant_option");
       }
-      builder.append(" ");
+      builder.append(",");
     }
-    builder.append("}");
+    builder.append(")");
     return builder.toString();
   }
 

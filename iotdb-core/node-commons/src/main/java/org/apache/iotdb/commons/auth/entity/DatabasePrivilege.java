@@ -28,8 +28,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -99,24 +102,24 @@ public class DatabasePrivilege {
     return res;
   }
 
-  public void grantDBObjectPrivilege(PrivilegeType privilegeType) {
+  public void grantDBPrivilege(PrivilegeType privilegeType) {
     this.privilegeSet.add(privilegeType);
   }
 
-  public void revokeDBObjectPrivilege(PrivilegeType privilegeType) {
+  public void revokeDBPrivilege(PrivilegeType privilegeType) {
     this.privilegeSet.remove(privilegeType);
-    revokeGrantOptionFromDB(privilegeType);
+    revokeDBGrantOption(privilegeType);
   }
 
   public void grantDBGrantOption(PrivilegeType privilegeType) {
     this.grantOptionSet.add(privilegeType);
   }
 
-  public void revokeGrantOptionFromDB(PrivilegeType privilegeType) {
+  public void revokeDBGrantOption(PrivilegeType privilegeType) {
     this.grantOptionSet.remove(privilegeType);
   }
 
-  public void grantTableObjectPrivilege(String tableName, PrivilegeType privilegeType) {
+  public void grantTablePrivilege(String tableName, PrivilegeType privilegeType) {
     if (!this.tablePrivilegeMap.containsKey(tableName)) {
       TablePrivilege tablePrivilege = new TablePrivilege(tableName);
       tablePrivilege.grantPrivilege(privilegeType);
@@ -126,7 +129,7 @@ public class DatabasePrivilege {
     }
   }
 
-  public void revokeTableObjectPrivilege(String tableName, PrivilegeType privilegeType) {
+  public void revokeTablePrivilege(String tableName, PrivilegeType privilegeType) {
     if (this.tablePrivilegeMap.containsKey(tableName)) {
       TablePrivilege tablePrivilege = this.tablePrivilegeMap.get(tableName);
       tablePrivilege.revokePrivilege(privilegeType);
@@ -137,16 +140,14 @@ public class DatabasePrivilege {
     }
   }
 
-  boolean grantTableObejctGrantOption(String tableName, PrivilegeType privilegeType) {
+  public void grantTableGrantOption(String tableName, PrivilegeType privilegeType) {
     if (this.tablePrivilegeMap.containsKey(tableName)) {
       TablePrivilege tablePrivilege = this.tablePrivilegeMap.get(tableName);
       tablePrivilege.grantOption(privilegeType);
-      return true;
     }
-    return false;
   }
 
-  public void revokeTableObjectGrantOption(String tableName, PrivilegeType privilegeType) {
+  public void revokeTableGrantOption(String tableName, PrivilegeType privilegeType) {
     if (this.tablePrivilegeMap.containsKey(tableName)) {
       TablePrivilege tablePrivilege = this.tablePrivilegeMap.get(tableName);
       tablePrivilege.revokeGrantOption(privilegeType);
@@ -199,19 +200,22 @@ public class DatabasePrivilege {
 
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("Database: {").append(databaseName);
-    for (PrivilegeType type : privilegeSet) {
-      builder.append(" ").append(type);
+    builder.append("Database(").append(databaseName).append("):{");
+    List<PrivilegeType> list = new ArrayList<>(this.privilegeSet);
+    Collections.sort(list);
+    for (PrivilegeType type : list) {
+      builder.append(type);
       if (grantOptionSet.contains(type)) {
         builder.append("_with_grant_option");
       }
+      builder.append(",");
     }
-    builder.append(" Tables: {");
+    builder.append("; Tables: [");
 
     for (Map.Entry<String, TablePrivilege> tablePriv : this.tablePrivilegeMap.entrySet()) {
-      builder.append(tablePriv.getValue().toString());
+      builder.append(" ").append(tablePriv.getValue().toString());
     }
-    builder.append("}}");
+    builder.append("]}");
     return builder.toString();
   }
 
