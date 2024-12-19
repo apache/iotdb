@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -41,7 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
-public class PipeStatementPatternParseVisitorTest {
+public class PipeStatementTreePatternParseVisitorTest {
 
   private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
   private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
@@ -71,11 +71,11 @@ public class PipeStatementPatternParseVisitorTest {
 
     Assert.assertEquals(
         createTimeSeriesStatement,
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatement, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -116,7 +116,7 @@ public class PipeStatementPatternParseVisitorTest {
 
     Assert.assertEquals(
         expectedCreateAlignedTimeSeriesStatement,
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitCreateAlignedTimeseries(originalCreateAlignedTimeSeriesStatement, fullPathPattern)
             .orElseThrow(AssertionError::new));
   }
@@ -143,11 +143,11 @@ public class PipeStatementPatternParseVisitorTest {
 
     Assert.assertEquals(
         alterTimeSeriesStatement,
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatement, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -161,11 +161,11 @@ public class PipeStatementPatternParseVisitorTest {
 
     Assert.assertEquals(
         activateTemplateStatement,
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitActivateTemplate(activateTemplateStatement, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        new PipeStatementPatternParseVisitor()
+        new PipeStatementTreePatternParseVisitor()
             .visitActivateTemplate(activateTemplateStatementToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -181,7 +181,7 @@ public class PipeStatementPatternParseVisitorTest {
 
     final CreateLogicalViewStatement targetLogicalViewStatement =
         (CreateLogicalViewStatement)
-            new PipeStatementPatternParseVisitor()
+            new PipeStatementTreePatternParseVisitor()
                 .visitCreateLogicalView(createLogicalViewStatement, prefixPathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(

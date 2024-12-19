@@ -53,8 +53,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * The {@link PipePlanPatternParseVisitor} will transform the schema {@link PlanNode}s using {@link
- * IoTDBTreePattern}. Rule:
+ * The {@link PipePlanTreePatternParseVisitor} will transform the schema {@link PlanNode}s using
+ * {@link IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link PlanNode} will be the intersection of the original {@link
  * PlanNode}'s patterns and the given {@link IoTDBTreePattern}.
@@ -66,7 +66,8 @@ import java.util.stream.IntStream;
  * <p>4. The output {@link PlanNode} shall be a copied form of the original one because the original
  * one is used in the {@link PipeSchemaRegionWritePlanEvent} in {@link SchemaRegionListeningQueue}.
  */
-public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>, IoTDBTreePattern> {
+public class PipePlanTreePatternParseVisitor
+    extends PlanVisitor<Optional<PlanNode>, IoTDBTreePattern> {
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final IoTDBTreePattern pattern) {
     return Optional.of(node);

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -74,11 +75,13 @@ public class CreateTableProcedure
 
   private TsTable table;
 
-  public CreateTableProcedure() {
-    super();
+  public CreateTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public CreateTableProcedure(final String database, final TsTable table) {
+  public CreateTableProcedure(
+      final String database, final TsTable table, final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.database = database;
     this.table = table;
   }
@@ -283,7 +286,11 @@ public class CreateTableProcedure
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new CommitCreateTablePlan(database, table.getTableName()), env, LOGGER);
+            isGeneratedByPipe
+                ? new PipeEnrichedPlan(new CommitCreateTablePlan(database, table.getTableName()))
+                : new CommitCreateTablePlan(database, table.getTableName()),
+            env,
+            LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
@@ -380,7 +387,10 @@ public class CreateTableProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode()
+            : ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);

@@ -71,7 +71,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public void setParent(IMemMNode parent) {
+  public void setParent(final IMemMNode parent) {
     this.parent = parent;
   }
 
@@ -84,7 +84,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   String concatFullPath() {
-    StringBuilder builder = new StringBuilder();
+    final StringBuilder builder = new StringBuilder();
     builder.insert(0, getName());
     IMemMNode curr = this;
     while (curr.getParent() != null) {
@@ -95,13 +95,13 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public void setFullPath(String fullPath) {
+  public void setFullPath(final String fullPath) {
     this.fullPath = fullPath;
   }
 
   @Override
   public PartialPath getPartialPath() {
-    List<String> detachedPath = new ArrayList<>();
+    final List<String> detachedPath = new ArrayList<>();
     IMemMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
@@ -113,13 +113,13 @@ public class BasicMNode implements IMemMNode {
 
   /** check whether the MNode has a child with the name */
   @Override
-  public boolean hasChild(String name) {
+  public boolean hasChild(final String name) {
     return false;
   }
 
   /** get the child with the name */
   @Override
-  public IMemMNode getChild(String name) {
+  public IMemMNode getChild(final String name) {
     return null;
   }
 
@@ -131,7 +131,7 @@ public class BasicMNode implements IMemMNode {
    * @return the child of this node after addChild
    */
   @Override
-  public IMemMNode addChild(String name, IMemMNode child) {
+  public IMemMNode addChild(final String name, final IMemMNode child) {
     return null;
   }
 
@@ -147,13 +147,13 @@ public class BasicMNode implements IMemMNode {
    * @return return the MNode already added
    */
   @Override
-  public IMemMNode addChild(IMemMNode child) {
+  public IMemMNode addChild(final IMemMNode child) {
     return null;
   }
 
   /** delete a child */
   @Override
-  public IMemMNode deleteChild(String name) {
+  public IMemMNode deleteChild(final String name) {
     return null;
   }
 
@@ -163,7 +163,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IMemMNode> children) {}
+  public void setChildren(final IMNodeContainer<IMemMNode> children) {}
 
   @Override
   public boolean isAboveDatabase() {
@@ -211,7 +211,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final MNodeVisitor<R, C> visitor, final C context) {
     return visitor.visitBasicMNode(this, context);
   }
 
