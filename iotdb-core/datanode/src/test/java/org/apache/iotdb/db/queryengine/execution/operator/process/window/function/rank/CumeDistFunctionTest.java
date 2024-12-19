@@ -25,7 +25,7 @@ public class CumeDistFunctionTest {
 
   @Test
   public void testCumeDistFunction() {
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     CumeDistFunction function = new CumeDistFunction();
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);

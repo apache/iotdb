@@ -25,7 +25,7 @@ public class DenseRankFunctionTest {
 
   @Test
   public void testDenseRankFunction() {
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     DenseRankFunction function = new DenseRankFunction();
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);

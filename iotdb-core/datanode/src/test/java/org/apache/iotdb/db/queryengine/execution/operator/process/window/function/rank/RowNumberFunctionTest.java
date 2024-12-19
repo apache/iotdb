@@ -25,7 +25,7 @@ public class RowNumberFunctionTest {
 
   @Test
   public void testRowNumberFunction() {
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     RowNumberFunction function = new RowNumberFunction();
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 

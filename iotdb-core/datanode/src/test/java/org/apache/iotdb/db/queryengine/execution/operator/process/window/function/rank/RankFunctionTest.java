@@ -25,7 +25,7 @@ public class RankFunctionTest {
 
   @Test
   public void testRankFunction() {
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     RankFunction function = new RankFunction();
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);

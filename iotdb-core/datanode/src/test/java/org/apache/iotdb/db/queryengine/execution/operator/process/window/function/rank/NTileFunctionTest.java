@@ -26,7 +26,7 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3};
     int[] expected = {1, 2, 3};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
@@ -53,7 +53,7 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3, 4, 5, 6};
     int[] expected = {1, 1, 2, 2, 3, 3};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
@@ -80,7 +80,7 @@ public class NTileFunctionTest {
     int[] inputs = {1, 2, 3, 4, 5, 6, 7};
     int[] expected = {1, 1, 1, 2, 2, 3, 3};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForRankFunction(inputs);
+    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
