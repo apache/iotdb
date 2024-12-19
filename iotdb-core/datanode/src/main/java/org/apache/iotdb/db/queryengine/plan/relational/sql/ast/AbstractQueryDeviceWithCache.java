@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEn
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
@@ -55,6 +56,9 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
+    if (isTreeViewQuery) {
+      database = TreeViewSchemaUtils.getOriginalDatabase(tableInstance);
+    }
     if (Objects.isNull(where)) {
       return true;
     }

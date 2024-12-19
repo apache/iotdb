@@ -47,7 +47,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String database;
 
   protected String tableName;
-  private boolean isTreeViewQuery;
+  protected boolean isTreeViewQuery;
   // Temporary
   private Table table;
 
@@ -128,9 +128,6 @@ public abstract class AbstractTraverseDevice extends Statement {
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    if (isTreeViewQuery) {
-      database = TreeViewSchemaUtils.getOriginalDatabase(tableInstance);
-    }
     if (Objects.isNull(where)) {
       return true;
     }
