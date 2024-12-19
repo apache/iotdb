@@ -1048,7 +1048,7 @@ public class ConfigMTree {
       final IoTDBException e =
           new IoTDBException(TABLE_ERROR_MSG, TSStatusCode.START_UP_ERROR.getStatusCode());
       logger.error(e.getMessage(), e);
-      new Thread(() -> ConfigNode.getInstance().stop()).start();
+      Runtime.getRuntime().halt(-1);
     }
     return databaseMNode.getAsMNode();
   }
