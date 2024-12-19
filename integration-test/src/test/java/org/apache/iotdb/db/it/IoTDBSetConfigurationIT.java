@@ -169,7 +169,7 @@ public class IoTDBSetConfigurationIT {
     // Modify the config file manually because the datanode can not restart
     Properties properties = new Properties();
     properties.put("cluster_name", "xx");
-    ConfigurationFileUtils.updateConfigurationFile(getConfigFile(datanode), properties);
+    ConfigurationFileUtils.updateConfiguration(getConfigFile(datanode), properties, null);
     EnvFactory.getEnv().getDataNodeWrapper(0).stop();
     EnvFactory.getEnv().getDataNodeWrapper(0).start();
     // wait the datanode restart successfully (won't do any meaningful modification)
@@ -235,6 +235,14 @@ public class IoTDBSetConfigurationIT {
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
       }
+
+      // Failed updates will not change the files.
+      assertFalse(
+          checkConfigFileContains(
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=-1"));
+      assertTrue(
+          checkConfigFileContains(
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=3"));
     }
 
     // can start with an illegal value
