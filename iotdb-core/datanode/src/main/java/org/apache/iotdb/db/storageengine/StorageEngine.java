@@ -656,8 +656,8 @@ public class StorageEngine implements IService {
     if (newConfigItems.isEmpty()) {
       return tsStatus;
     }
-    TrimProperties properties = new TrimProperties();
-    properties.putAll(newConfigItems);
+    TrimProperties newConfigProperties = new TrimProperties();
+    newConfigProperties.putAll(newConfigItems);
 
     URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
@@ -667,28 +667,29 @@ public class StorageEngine implements IService {
       tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
       LOGGER.warn(msg);
       try {
-        IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
-        IoTDBDescriptor.getInstance().reloadMetricProperties(properties);
+        IoTDBDescriptor.getInstance().loadHotModifiedProps(newConfigProperties);
+        IoTDBDescriptor.getInstance().reloadMetricProperties(newConfigProperties);
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       return tsStatus;
     }
 
-    // 1. append new configuration properties to configuration file
     try {
-      ConfigurationFileUtils.updateConfigurationFile(new File(configFileUrl.getFile()), properties);
+      ConfigurationFileUtils.updateConfiguration(
+          new File(configFileUrl.getFile()),
+          newConfigProperties,
+          mergedProperties -> {
+            try {
+              IoTDBDescriptor.getInstance().loadHotModifiedProps(mergedProperties);
+            } catch (Exception e) {
+              throw new IllegalArgumentException(e);
+            }
+          });
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-
-    // 2. load hot modified properties
-    try {
-      IoTDBDescriptor.getInstance().loadHotModifiedProps();
-    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return tsStatus;
