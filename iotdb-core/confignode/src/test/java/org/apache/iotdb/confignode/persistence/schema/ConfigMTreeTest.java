@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -308,6 +309,8 @@ public class ConfigMTreeTest {
 
   @Test
   public void testTableSerialization() throws Exception {
+    root = new ConfigMTree(true);
+
     final PartialPath[] pathList =
         new PartialPath[] {
           new PartialPath("root.sg"),
@@ -320,6 +323,12 @@ public class ConfigMTreeTest {
       root.setStorageGroup(pathList[i]);
       final IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
+      storageGroupMNode
+          .getAsMNode()
+          .getDatabaseSchema()
+          .setName(
+              PathUtils.unQualifyDatabaseName(
+                  storageGroupMNode.getAsMNode().getDatabaseSchema().getName()));
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
