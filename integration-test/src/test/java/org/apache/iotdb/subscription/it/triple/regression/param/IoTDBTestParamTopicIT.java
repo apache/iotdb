@@ -79,9 +79,8 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     subs.getTopics().forEach(System.out::println);
   }
 
-  @Test
-  public void SubscriptionIdentifierSemanticException()
-      throws IoTDBConnectionException, StatementExecutionException {
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
+  public void testCreateTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic(null);
     printTopics("testCreateTopic_null");
   }
