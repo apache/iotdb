@@ -495,13 +495,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       waitForResourceEnough4Parsing(timeoutMs);
       return initEventParser().toTabletInsertionEvents();
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (final Exception e) {
       close();
 
+      // close() should be called before re-interrupting the thread
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+
       final String errorMsg =
-          String.format(
-              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
+          e instanceof InterruptedException
+              ? String.format(
+                  "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
+              : String.format(
+                  "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
@@ -539,7 +546,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
-        throw new InterruptedException(
+        throw new PipeException(
             String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
