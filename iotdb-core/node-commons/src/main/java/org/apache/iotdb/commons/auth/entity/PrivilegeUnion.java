@@ -21,10 +21,14 @@ package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
+import java.util.List;
+
 public class PrivilegeUnion {
   private String dbname;
   private String tbname;
   private PartialPath path;
+
+  private List<? extends PartialPath> paths;
 
   private boolean grantOption;
   private boolean forAny;
@@ -80,6 +84,21 @@ public class PrivilegeUnion {
     this.grantOption = grantOption;
   }
 
+  public PrivilegeUnion(
+      List<? extends PartialPath> paths, PrivilegeType type, boolean grantOption) {
+    this.paths = paths;
+    this.privilegeType = type;
+    this.modelType = PrivilegeModelType.TREE;
+    this.grantOption = grantOption;
+  }
+
+  public PrivilegeUnion(List<? extends PartialPath> paths, PrivilegeType type) {
+    this.paths = paths;
+    this.privilegeType = type;
+    this.modelType = PrivilegeModelType.TREE;
+    this.grantOption = false;
+  }
+
   public PrivilegeUnion(PrivilegeType type, boolean grantOption, boolean forAny) {
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.RELATIONAL;
@@ -93,7 +112,7 @@ public class PrivilegeUnion {
     this.grantOption = false;
   }
 
-  public PrivilegeModelType modelType() {
+  public PrivilegeModelType getModelType() {
     return this.modelType;
   }
 
@@ -111,6 +130,10 @@ public class PrivilegeUnion {
 
   public PrivilegeType getPrivilegeType() {
     return this.privilegeType;
+  }
+
+  public List<? extends PartialPath> getPaths() {
+    return this.paths;
   }
 
   public boolean isGrantOption() {

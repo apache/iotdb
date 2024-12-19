@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -145,7 +146,10 @@ public class AuthorInfoTest {
     }
 
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", PrivilegeType.MANAGE_USER).getStatus();
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+            .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     // drop user
@@ -258,7 +262,7 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
         authorInfo
-            .checkUserPrivileges("user0", PrivilegeType.READ_DATA, nodeNameList)
+            .checkUserPrivileges("user0", new PrivilegeUnion(nodeNameList, PrivilegeType.READ_DATA))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -270,10 +274,16 @@ public class AuthorInfoTest {
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        authorInfo.checkUserPrivileges("user0", PrivilegeType.MANAGE_ROLE).getStatus().getCode(),
+        authorInfo
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+            .getStatus()
+            .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", PrivilegeType.MANAGE_ROLE).getStatus();
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+            .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
@@ -600,7 +610,9 @@ public class AuthorInfoTest {
 
     // check user privileges
     status =
-        authorInfo.checkUserPrivileges("user0", PrivilegeType.WRITE_DATA, userPaths).getStatus();
+        authorInfo
+            .checkUserPrivileges("user0", new PrivilegeUnion(userPaths, PrivilegeType.WRITE_DATA))
+            .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
@@ -695,7 +707,10 @@ public class AuthorInfoTest {
     checkAuthorNonQueryReturn(plan);
 
     // check user permission
-    status = authorInfo.checkUserPrivileges("user", PrivilegeType.MANAGE_USER).getStatus();
+    status =
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+            .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     plan =
@@ -769,29 +784,34 @@ public class AuthorInfoTest {
 
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        authorInfo.checkUserPrivileges("user", PrivilegeType.MANAGE_USER).getStatus().getCode());
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.DELETE, "testdb")
+            .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus()
             .getCode());
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.DELETE, "testdb", "testtb")
+            .checkUserPrivileges("user", new PrivilegeUnion("testdb", PrivilegeType.DELETE))
             .getStatus()
             .getCode());
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.SELECT, "testdb", "testtb")
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("testdb", "testtb", PrivilegeType.DELETE))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("testdb", "testtb", PrivilegeType.SELECT))
             .getStatus()
             .getCode());
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.SELECT, "testdb")
+            .checkUserPrivileges("user", new PrivilegeUnion("testdb", PrivilegeType.SELECT))
             .getStatus()
             .getCode());
 
@@ -826,14 +846,15 @@ public class AuthorInfoTest {
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.MANAGE_DATABASE)
+            .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
             .getStatus()
             .getCode());
 
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user", PrivilegeType.ALTER, "database2", "testtb")
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("database2", "testtb", PrivilegeType.ALTER))
             .getStatus()
             .getCode());
 
