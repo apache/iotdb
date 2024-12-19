@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -29,10 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,52 +39,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-public class DeviceTableScanNode extends TableScanNode {
+public class TreeAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
-  protected List<DeviceEntry> deviceEntries;
-
-  // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
-  // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
-  // `idAndAttributeIndexMap` will
-  // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
-  protected final Map<Symbol, Integer> idAndAttributeIndexMap;
-
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  protected Ordering scanOrder = Ordering.ASC;
-
-  // extracted time filter expression in where clause
-  // case 1: where s1 > 1 and time >= 0 and time <= 10, time predicate will be time >= 0 and time <=
-  // 10, pushDownPredicate will be s1 > 1
-  // case 2: where s1 > 1 or time < 10, time predicate will be null, pushDownPredicate will be s1 >
-  // 1 or time < 10
-  @Nullable protected Expression timePredicate;
-
-  protected Filter timeFilter;
-
-  // pushLimitToEachDevice == true means that each device in DeviceTableScanNode need to return
-  // `pushDownLimit` row number
-  // pushLimitToEachDevice == false means that all devices in DeviceTableScanNode totally need to
-  // return
-  // `pushDownLimit` row number
-  protected boolean pushLimitToEachDevice = false;
-
-  protected boolean containsNonAlignedDevice;
-
-  public DeviceTableScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> idAndAttributeIndexMap) {
-    super(id, qualifiedObjectName, outputSymbols, assignments);
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
-  }
-
-  public DeviceTableScanNode(
+  public TreeAlignedDeviceViewScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -99,32 +55,35 @@ public class DeviceTableScanNode extends TableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       boolean pushLimitToEachDevice,
-      boolean containsNonAlignedDevice) {
+      boolean containsNonAlignedDevice,
+      String treeDBName,
+      Map<String, String> measurementColumnNameMap) {
     super(
         id,
         qualifiedObjectName,
         outputSymbols,
         assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
         pushDownPredicate,
         pushDownLimit,
-        pushDownOffset);
-    this.deviceEntries = deviceEntries;
-    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
-    this.scanOrder = scanOrder;
-    this.timePredicate = timePredicate;
-    this.pushDownPredicate = pushDownPredicate;
-    this.pushLimitToEachDevice = pushLimitToEachDevice;
-    this.containsNonAlignedDevice = containsNonAlignedDevice;
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceTableScan(this, context);
+    return visitor.visitTreeAlignedDeviceViewScan(this, context);
   }
 
   @Override
-  public DeviceTableScanNode clone() {
-    return new DeviceTableScanNode(
+  public TreeAlignedDeviceViewScanNode clone() {
+    return new TreeAlignedDeviceViewScanNode(
         getPlanNodeId(),
         qualifiedObjectName,
         outputSymbols,
@@ -137,12 +96,14 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(byteBuffer);
+    PlanNodeType.TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
 
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
@@ -163,7 +124,11 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(byteBuffer, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
+      entry.serialize(
+          byteBuffer,
+          entry instanceof AlignedDeviceEntry
+              ? DeviceEntry.DeviceEntryType.ALIGNED.ordinal()
+              : DeviceEntry.DeviceEntryType.NON_ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
@@ -193,11 +158,18 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
 
     ReadWriteIOUtils.write(containsNonAlignedDevice, byteBuffer);
+
+    ReadWriteIOUtils.write(treeDBName, byteBuffer);
+    ReadWriteIOUtils.write(measurementColumnNameMap.size(), byteBuffer);
+    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(stream);
+    PlanNodeType.TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(stream);
     if (qualifiedObjectName.getDatabaseName() != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
@@ -219,7 +191,11 @@ public class DeviceTableScanNode extends TableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(stream, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
+      entry.serialize(
+          stream,
+          entry instanceof AlignedDeviceEntry
+              ? DeviceEntry.DeviceEntryType.ALIGNED.ordinal()
+              : DeviceEntry.DeviceEntryType.NON_ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);
@@ -249,9 +225,16 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
 
     ReadWriteIOUtils.write(containsNonAlignedDevice, stream);
+
+    ReadWriteIOUtils.write(treeDBName, stream);
+    ReadWriteIOUtils.write(measurementColumnNameMap.size(), stream);
+    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
   }
 
-  public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
+  public static TreeAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
     boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
     String databaseName = null;
     if (hasDatabaseName) {
@@ -305,9 +288,17 @@ public class DeviceTableScanNode extends TableScanNode {
 
     boolean containsNonAlignedDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
+    String treeDBName = ReadWriteIOUtils.readString(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<String, String> measurementColumnNameMap = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      measurementColumnNameMap.put(
+          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
-    return new DeviceTableScanNode(
+    return new TreeAlignedDeviceViewScanNode(
         planNodeId,
         qualifiedObjectName,
         outputSymbols,
@@ -320,62 +311,8 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
-  }
-
-  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
-    this.deviceEntries = deviceEntries;
-  }
-
-  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
-    return this.idAndAttributeIndexMap;
-  }
-
-  public void setScanOrder(Ordering scanOrder) {
-    this.scanOrder = scanOrder;
-  }
-
-  public Ordering getScanOrder() {
-    return this.scanOrder;
-  }
-
-  public List<DeviceEntry> getDeviceEntries() {
-    return deviceEntries;
-  }
-
-  public void appendDeviceEntry(DeviceEntry deviceEntry) {
-    this.deviceEntries.add(deviceEntry);
-  }
-
-  public void setPushLimitToEachDevice(boolean pushLimitToEachDevice) {
-    this.pushLimitToEachDevice = pushLimitToEachDevice;
-  }
-
-  public boolean isPushLimitToEachDevice() {
-    return pushLimitToEachDevice;
-  }
-
-  public Optional<Expression> getTimePredicate() {
-    return Optional.ofNullable(timePredicate);
-  }
-
-  public void setTimePredicate(@Nullable Expression timePredicate) {
-    this.timePredicate = timePredicate;
-  }
-
-  public Filter getTimeFilter() {
-    return timeFilter;
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  public boolean containsNonAlignedDevice() {
-    return containsNonAlignedDevice;
-  }
-
-  public void setContainsNonAlignedDevice() {
-    this.containsNonAlignedDevice = true;
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
   }
 }

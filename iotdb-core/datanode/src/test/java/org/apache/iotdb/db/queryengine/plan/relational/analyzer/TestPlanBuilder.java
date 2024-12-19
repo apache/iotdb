@@ -85,7 +85,8 @@ public class TestPlanBuilder {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice) {
     this.root =
         new DeviceTableScanNode(
             new PlanNodeId(id),
@@ -99,7 +100,8 @@ public class TestPlanBuilder {
             pushDownPredicate,
             pushDownLimit,
             pushDownOffset,
-            pushLimitToEachDevice);
+            pushLimitToEachDevice,
+            containsNonAlignedDevice);
     return this;
   }
 }

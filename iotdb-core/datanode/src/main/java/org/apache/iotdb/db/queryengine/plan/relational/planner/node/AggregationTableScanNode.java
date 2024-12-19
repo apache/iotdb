@@ -59,13 +59,13 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_N
 
 public class AggregationTableScanNode extends DeviceTableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input
-  private final Assignments projection;
+  protected final Assignments projection;
 
-  private final Map<Symbol, AggregationNode.Aggregation> aggregations;
-  private final AggregationNode.GroupingSetDescriptor groupingSets;
-  private final List<Symbol> preGroupedSymbols;
-  private AggregationNode.Step step;
-  private final Optional<Symbol> groupIdSymbol;
+  protected final Map<Symbol, AggregationNode.Aggregation> aggregations;
+  protected final AggregationNode.GroupingSetDescriptor groupingSets;
+  protected final List<Symbol> preGroupedSymbols;
+  protected AggregationNode.Step step;
+  protected final Optional<Symbol> groupIdSymbol;
 
   public AggregationTableScanNode(
       PlanNodeId id,
@@ -80,6 +80,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice,
       Assignments projection,
       Map<Symbol, AggregationNode.Aggregation> aggregations,
       AggregationNode.GroupingSetDescriptor groupingSets,
@@ -98,7 +99,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        pushLimitToEachDevice);
+        pushLimitToEachDevice,
+        containsNonAlignedDevice);
     this.projection = projection;
 
     this.aggregations = new LinkedHashMap<>(aggregations.size());
@@ -237,6 +239,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
+        containsNonAlignedDevice,
         projection,
         aggregations,
         groupingSets,
@@ -255,6 +258,32 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode aggregationNode,
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode) {
+    if (tableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
+      return new AggregationTreeDeviceViewScanNode(
+          id,
+          tableScanNode.getQualifiedObjectName(),
+          tableScanNode.getOutputSymbols(),
+          tableScanNode.getAssignments(),
+          tableScanNode.getDeviceEntries(),
+          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getScanOrder(),
+          tableScanNode.getTimePredicate().orElse(null),
+          tableScanNode.getPushDownPredicate(),
+          tableScanNode.getPushDownLimit(),
+          tableScanNode.getPushDownOffset(),
+          tableScanNode.isPushLimitToEachDevice(),
+          tableScanNode.containsNonAlignedDevice(),
+          projectNode == null ? null : projectNode.getAssignments(),
+          aggregationNode.getAggregations(),
+          aggregationNode.getGroupingSets(),
+          aggregationNode.getPreGroupedSymbols(),
+          aggregationNode.getStep(),
+          aggregationNode.getGroupIdSymbol(),
+          treeDeviceViewScanNode.getTreeDBName(),
+          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+    }
+
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -268,6 +297,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        tableScanNode.containsNonAlignedDevice(),
         projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
@@ -282,6 +312,32 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode,
       AggregationNode.Step step) {
+    if (tableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
+      return new AggregationTreeDeviceViewScanNode(
+          id,
+          tableScanNode.getQualifiedObjectName(),
+          tableScanNode.getOutputSymbols(),
+          tableScanNode.getAssignments(),
+          tableScanNode.getDeviceEntries(),
+          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getScanOrder(),
+          tableScanNode.getTimePredicate().orElse(null),
+          tableScanNode.getPushDownPredicate(),
+          tableScanNode.getPushDownLimit(),
+          tableScanNode.getPushDownOffset(),
+          tableScanNode.isPushLimitToEachDevice(),
+          tableScanNode.containsNonAlignedDevice(),
+          projectNode == null ? null : projectNode.getAssignments(),
+          aggregationNode.getAggregations(),
+          aggregationNode.getGroupingSets(),
+          aggregationNode.getPreGroupedSymbols(),
+          step,
+          aggregationNode.getGroupIdSymbol(),
+          treeDeviceViewScanNode.getTreeDBName(),
+          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+    }
+
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -295,6 +351,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        tableScanNode.containsNonAlignedDevice(),
         projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
@@ -356,7 +413,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(byteBuffer);
+      entry.serialize(byteBuffer, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
@@ -384,6 +441,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
+
+    ReadWriteIOUtils.write(containsNonAlignedDevice, byteBuffer);
 
     if (projection != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
@@ -436,7 +495,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
     ReadWriteIOUtils.write(deviceEntries.size(), stream);
     for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(stream);
+      entry.serialize(stream, DeviceEntry.DeviceEntryType.ALIGNED.ordinal());
     }
 
     ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);
@@ -464,6 +523,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     ReadWriteIOUtils.write(pushDownLimit, stream);
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
+
+    ReadWriteIOUtils.write(containsNonAlignedDevice, stream);
 
     if (projection != null) {
       ReadWriteIOUtils.write(true, stream);
@@ -543,6 +604,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
+    boolean containsNonAlignedDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
     Assignments.Builder projection = Assignments.builder();
     boolean hasProjection = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasProjection) {
@@ -590,6 +653,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
+        containsNonAlignedDevice,
         projection.build(),
         aggregations,
         groupingSetDescriptor,
