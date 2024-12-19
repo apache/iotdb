@@ -507,6 +507,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    TreeViewSchemaUtils.checkDBNameInWrite(databaseTablePair.getLeft());
 
     return new AlterTableSetPropertiesTask(
         databaseTablePair.getLeft(),
