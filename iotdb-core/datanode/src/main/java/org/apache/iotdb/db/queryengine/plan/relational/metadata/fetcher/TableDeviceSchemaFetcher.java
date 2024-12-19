@@ -198,7 +198,7 @@ public class TableDeviceSchemaFetcher {
         queryContext,
         false)) {
       fetchMissingDeviceSchemaForQuery(
-          database, tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
+          tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
     }
 
     // TODO table metadata:  implement deduplicate during schemaRegion execution
@@ -420,7 +420,6 @@ public class TableDeviceSchemaFetcher {
   }
 
   private void fetchMissingDeviceSchemaForQuery(
-      final String database,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final ShowDevice statement,
@@ -461,7 +460,8 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
+      final int idLength =
+          DataNodeTableCache.getInstance().getTable(statement.getDatabase(), table).getIdNums();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
@@ -490,7 +490,7 @@ public class TableDeviceSchemaFetcher {
           // Only cache those exact device query
           // Fetch paths is null iff there are fuzzy queries related to id columns
           if (Objects.nonNull(statement.getPartitionKeyList())) {
-            cache.putAttributes(database, deviceID, attributeMap);
+            cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
           }
         }
       }
