@@ -323,6 +323,26 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
+    return tryGetTableDeviceInCache(
+        deviceEntryList,
+        database,
+        tableInstance,
+        check,
+        attributeColumns,
+        fetchPaths,
+        isDirectDeviceQuery,
+        idValues);
+  }
+
+  private boolean tryGetTableDeviceInCache(
+      final List<AbstractDeviceEntry> deviceEntryList,
+      final String database,
+      final TsTable tableInstance,
+      final Predicate<AlignedDeviceEntry> check,
+      final List<String> attributeColumns,
+      final List<IDeviceID> fetchPaths,
+      final boolean isDirectDeviceQuery,
+      final String[] idValues) {
     final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
@@ -353,6 +373,10 @@ public class TableDeviceSchemaFetcher {
       }
     }
     return true;
+  }
+
+  private boolean tryGetTreeDeviceInCache() {
+    return false;
   }
 
   public static IDeviceID convertIdValuesToDeviceID(
