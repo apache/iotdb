@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -53,6 +54,8 @@ import static org.apache.iotdb.confignode.manager.ProcedureManager.sleepWithoutI
 public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
+  private static final String UPDATE_TIMEOUT_MESSAGE =
+      "Timed out to wait for device view update. The procedure is still running.";
   private final TreeDeviceUpdateTaskExecutor executor;
   private final AtomicLong executedRounds = new AtomicLong(0);
   private TDeviceViewResp currentResp;
@@ -64,11 +67,11 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
         ConfigNodeDescriptor.getInstance().getConf().getTreeDeviceViewUpdateIntervalInMs());
     this.executor = new TreeDeviceUpdateTaskExecutor(configManager, Collections.emptyMap());
+    lastStatus = StatusUtils.OK;
   }
 
   @Override
   protected void executeTask() {
-    lastStatus = StatusUtils.OK;
     executor.execute();
     executedRounds.incrementAndGet();
   }
@@ -81,7 +84,9 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
         && System.currentTimeMillis() - startTime < PROCEDURE_WAIT_TIME_OUT) {
       sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
     }
-    return lastStatus;
+    return executedRounds.get() == currentRound
+        ? RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, UPDATE_TIMEOUT_MESSAGE)
+        : lastStatus;
   }
 
   private class TreeDeviceUpdateTaskExecutor
