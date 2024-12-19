@@ -163,6 +163,33 @@
                             </configOptions>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>generate-java-rest-codes-table-v1</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_table_v1.yaml</inputSpec>
+                            <output>${project.build.directory}/generated-sources/java</output>
+                            <apiPackage>org.apache.iotdb.db.protocol.rest.table.v1</apiPackage>
+                            <modelPackage>org.apache.iotdb.db.protocol.rest.table.v1.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.db.protocol.rest.table.v1.invoker</invokerPackage>
+                            <generatorName>jaxrs-jersey</generatorName>
+                            <groupId>org.apache.iotdb</groupId>
+                            <artifactId>iotdb-rest-service</artifactId>
+                            <artifactVersion>${project.version}</artifactVersion>
+                            <addCompileSourceRoot>true</addCompileSourceRoot>
+                            <configOptions>
+                                <licenseName>Apache License 2.0</licenseName>
+                                <groupId>org.apache.iotdb</groupId>
+                                <artifactId>iotdb-rest-service</artifactId>
+                                <artifactVersion>${project.version}</artifactVersion>
+                                <dateLibrary>java8</dateLibrary>
+                                <useGzipFeature>true</useGzipFeature>
+                            </configOptions>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
