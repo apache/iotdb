@@ -71,9 +71,6 @@ public class InformationSchema {
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.TIME_PARTITION_INTERVAL_TABLE_MODEL, TSDataType.INT64));
-    databaseTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.MODEL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
