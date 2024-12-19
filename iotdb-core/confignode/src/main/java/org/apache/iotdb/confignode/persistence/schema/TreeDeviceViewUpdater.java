@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -116,7 +117,43 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
     private void mergeDeviceViewResp(final TDeviceViewResp resp) {
       if (Objects.isNull(currentResp)) {
         currentResp = resp;
+        return;
       }
+
+      // The map is always nonnull in the resp
+      resp.getDeviewViewUpdateMap()
+          .forEach(
+              (db, info) -> {
+                final Map<String, TSchemaRegionViewInfo> currentUpdateMap =
+                    currentResp.getDeviewViewUpdateMap();
+                if (!currentUpdateMap.containsKey(db)) {
+                  currentUpdateMap.put(db, info);
+                  return;
+                }
+                final TSchemaRegionViewInfo currentInfo = currentUpdateMap.get(db);
+                currentInfo.setMaxLength(Math.max(currentInfo.getMaxLength(), info.getMaxLength()));
+
+                final Map<String, Map<Byte, Integer>> currentMeasurementTypeCountMap =
+                    currentInfo.getMeasurementsDataTypeCountMap();
+                info.getMeasurementsDataTypeCountMap()
+                    .forEach(
+                        (measurement, typeCountMap) -> {
+                          if (!currentMeasurementTypeCountMap.containsKey(measurement)) {
+                            currentMeasurementTypeCountMap.put(measurement, typeCountMap);
+                            return;
+                          }
+
+                          final Map<Byte, Integer> currentTypeCountMap =
+                              currentMeasurementTypeCountMap.get(measurement);
+                          typeCountMap.forEach(
+                              (type, count) ->
+                                  currentTypeCountMap.put(
+                                      type,
+                                      currentTypeCountMap.containsKey(type)
+                                          ? currentTypeCountMap.get(type) + count
+                                          : count));
+                        });
+              });
     }
 
     @Override

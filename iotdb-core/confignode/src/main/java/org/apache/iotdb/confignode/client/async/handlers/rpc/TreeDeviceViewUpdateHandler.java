@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -84,9 +85,12 @@ public class TreeDeviceViewUpdateHandler extends DataNodeAsyncRequestRPCHandler<
             + e.getMessage();
     LOGGER.warn(errorMsg, e);
 
-    final TDeviceViewResp resp = new TDeviceViewResp();
-    resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg));
-    responseMap.put(requestId, new TDeviceViewResp(resp));
+    // Ensure that the map is always non-null
+    responseMap.put(
+        requestId,
+        new TDeviceViewResp()
+            .setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg))
+            .setDeviewViewUpdateMap(new HashMap<>()));
 
     // Always CountDown
     countDownLatch.countDown();
