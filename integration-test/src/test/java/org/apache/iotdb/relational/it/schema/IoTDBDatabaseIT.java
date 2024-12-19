@@ -373,8 +373,7 @@ public class IoTDBDatabaseIT {
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "schema_replication_factor,INT32,ATTRIBUTE,",
                   "data_replication_factor,INT32,ATTRIBUTE,",
-                  "time_partition_interval,INT64,ATTRIBUTE,",
-                  "model,STRING,ATTRIBUTE,")));
+                  "time_partition_interval,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
