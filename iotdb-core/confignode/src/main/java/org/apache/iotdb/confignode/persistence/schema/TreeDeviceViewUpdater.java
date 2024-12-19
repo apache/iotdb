@@ -38,8 +38,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -48,6 +50,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
   private final Map<String, TsTable> newViewTables = new ConcurrentHashMap<>();
+  private TDeviceViewResp currentResp;
 
   public TreeDeviceViewUpdater() {
     super(
@@ -82,23 +85,38 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
     protected List<TConsensusGroupId> processResponseOfOneDataNode(
         final TDataNodeLocation dataNodeLocation,
         final List<TConsensusGroupId> consensusGroupIdList,
-        final TDeviceViewResp response) {
+        TDeviceViewResp response) {
       final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
       if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
+        mergeDeviceViewResp(response);
+        return Collections.emptyList();
       }
 
+      // If some regions have failed, the "maxSegmentNum" of database is still usable
+      // Though the measurement num may not be correct, we still assume that the difference
+      // of the measurement types is so large that the failure won't affect much
+      // We still apply the regions without failure to make the update more likely to
+      // succeed in large cluster with weak network
       if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         final List<TSStatus> subStatus = response.getStatus().getSubStatus();
         for (int i = 0; i < subStatus.size(); i++) {
           if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedRegionList.add(consensusGroupIdList.get(i));
+          } else if (Objects.nonNull(response)) {
+            mergeDeviceViewResp(response);
+            response = null;
           }
         }
       } else {
         failedRegionList.addAll(consensusGroupIdList);
       }
       return failedRegionList;
+    }
+
+    private void mergeDeviceViewResp(final TDeviceViewResp resp) {
+      if (Objects.isNull(currentResp)) {
+        currentResp = resp;
+      }
     }
 
     @Override
