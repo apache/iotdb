@@ -349,7 +349,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree(false);
+    final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 

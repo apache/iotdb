@@ -457,7 +457,6 @@ public class ClusterSchemaManager {
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all DatabaseSchemas
-    // TODO
     final Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames(null), null);
     if (databaseSchemaMap.isEmpty()) {
@@ -583,11 +582,13 @@ public class ClusterSchemaManager {
   }
 
   /**
-   * Only leader use this interface. Get all Databases name
+   * Only leader use this interface. Get all the databases' names under the specific model. For some
+   * common services on configNode, the input shall be {@code null} to extract the databases from
+   * both models.
    *
    * @param isTableModel {@link Boolean#TRUE} is only extract table model database, {@link
    *     Boolean#FALSE} is only extract tree model database, {@code null} is extract both.
-   * @return List<DatabaseName>, all Databases' name
+   * @return List{@literal <}DatabaseName{@literal >}, all Databases' name
    */
   public List<String> getDatabaseNames(final Boolean isTableModel) {
     return clusterSchemaInfo.getDatabaseNames(isTableModel).stream()
