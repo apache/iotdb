@@ -87,16 +87,16 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   protected final List<DeviceEntry> deviceEntries;
   protected final int deviceCount;
   private int currentDeviceIndex;
-  private List<String> measurementColumnNames;
-  private Set<String> allSensors;
-  private List<IMeasurementSchema> measurementSchemas;
-  private List<TSDataType> measurementColumnTSDataTypes;
-  private int measurementCount;
+  protected List<String> measurementColumnNames;
+  protected Set<String> allSensors;
+  protected List<IMeasurementSchema> measurementSchemas;
+  protected List<TSDataType> measurementColumnTSDataTypes;
+  protected int measurementCount;
 
-  private List<ColumnSchema> aggColumnSchemas;
-  private int[] aggColumnsIndexArray;
+  protected List<ColumnSchema> aggColumnSchemas;
+  protected int[] aggColumnsIndexArray;
 
-  private SeriesScanOptions seriesScanOptions;
+  protected SeriesScanOptions seriesScanOptions;
   private final boolean ascending;
   private final Ordering scanOrder;
   // Some special data types(like BLOB) cannot use statistics
@@ -105,11 +105,11 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
 
   // stores all inputChannels of tableAggregators,
   // e.g. for aggregation `last(s1), count(s2), count(s1)`, the inputChannels should be [0, 1, 0]
-  private List<Integer> aggregatorInputChannels;
+  protected List<Integer> aggregatorInputChannels;
 
   private QueryDataSource queryDataSource;
 
-  ITableTimeRangeIterator timeIterator;
+  protected ITableTimeRangeIterator timeIterator;
 
   private boolean allAggregatorsHasFinalResult = false;
 
@@ -256,7 +256,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     return resultTsBlock;
   }
 
-  private void constructAlignedSeriesScanUtil() {
+  protected void constructAlignedSeriesScanUtil() {
     DeviceEntry deviceEntry;
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {

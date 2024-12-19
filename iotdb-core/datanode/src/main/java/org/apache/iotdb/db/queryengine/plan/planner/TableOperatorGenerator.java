@@ -75,6 +75,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Info
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableLastQueryOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
@@ -1905,30 +1906,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
-    TableAggregationTableScanOperator aggTableScanOperator =
-        new TableAggregationTableScanOperator(
-            node.getPlanNodeId(),
-            operatorContext,
-            aggColumnSchemas,
-            aggColumnsIndexArray,
-            node.getDeviceEntries(),
-            seriesScanOptions,
-            measurementColumnNames,
-            allSensors,
-            measurementSchemas,
-            aggregators,
-            groupingKeySchemas,
-            groupingKeyIndex,
-            timeRangeIterator,
-            scanAscending,
-            canUseStatistic,
-            aggregatorInputChannels);
-
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
-
-    if (canUseLastCacheOptimize()) {
-      // context add TableLastQueryOperator
-    }
 
     for (int i = 0; i < node.getDeviceEntries().size(); i++) {
       AlignedFullPath alignedPath =
@@ -1942,7 +1919,51 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    return aggTableScanOperator;
+    if (canUseLastCacheOptimize()) {
+      // context add TableLastQueryOperator
+      TableLastQueryOperator lastQueryOperator =
+          new TableLastQueryOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              node.getDeviceEntries(),
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels,
+              node.getQualifiedObjectName());
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+      return lastQueryOperator;
+    } else {
+      TableAggregationTableScanOperator aggTableScanOperator =
+          new TableAggregationTableScanOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              node.getDeviceEntries(),
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels);
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
+      return aggTableScanOperator;
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
