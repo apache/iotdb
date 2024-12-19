@@ -59,7 +59,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
   private final TreeDeviceUpdateTaskExecutor executor;
   private final AtomicLong executedRounds = new AtomicLong(0);
   private TDeviceViewResp currentResp;
-  private volatile TSStatus lastStatus;
+  private volatile TSStatus lastStatus = StatusUtils.OK;
   private boolean hasError;
 
   public TreeDeviceViewUpdater(final ConfigManager configManager) {
