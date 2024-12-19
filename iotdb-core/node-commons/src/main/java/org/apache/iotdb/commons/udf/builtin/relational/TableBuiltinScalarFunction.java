@@ -64,6 +64,7 @@ public enum TableBuiltinScalarFunction {
   PI("pi"),
   E("e"),
   DATE_BIN("date_bin"),
+  FORMAT("format"),
   ;
 
   private final String functionName;

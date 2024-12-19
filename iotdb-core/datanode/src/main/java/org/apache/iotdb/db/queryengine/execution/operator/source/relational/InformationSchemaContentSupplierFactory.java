@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 
@@ -60,19 +61,20 @@ public class InformationSchemaContentSupplierFactory {
           while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
 
             IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
-            String[] splits = queryExecution.getQueryId().split("_");
-            int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
-            columnBuilders[0].writeLong(queryExecution.getStartExecutionTime());
-            columnBuilders[1].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
-            columnBuilders[2].writeInt(dataNodeId);
-            columnBuilders[3].writeFloat(
-                (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
-            columnBuilders[4].writeBinary(
-                BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
-            columnBuilders[5].writeBinary(BytesUtils.valueOf(queryExecution.getSQLDialect()));
-            resultBuilder.declarePosition();
+            if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+              String[] splits = queryExecution.getQueryId().split("_");
+              int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
+              columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
+              columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
+              columnBuilders[2].writeInt(dataNodeId);
+              columnBuilders[3].writeFloat(
+                  (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
+              columnBuilders[4].writeBinary(
+                  BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+              resultBuilder.declarePosition();
+            }
             nextConsumedIndex++;
           }
           TsBlock result =
