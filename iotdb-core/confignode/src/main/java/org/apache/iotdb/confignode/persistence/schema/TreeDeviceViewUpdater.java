@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -44,13 +43,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 
 public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
-  private final ConfigManager configManager;
+  private final TreeDeviceUpdateTaskExecutor executor;
   private TDeviceViewResp currentResp;
 
   public TreeDeviceViewUpdater(final ConfigManager configManager) {
@@ -58,27 +55,26 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
         ConfigNodeDescriptor.getInstance().getConf().getTreeDeviceViewUpdateIntervalInMs());
-    this.configManager = configManager;
+    this.executor = new TreeDeviceUpdateTaskExecutor(configManager, Collections.emptyMap());
   }
 
   @Override
   protected void executeTask() {
-
+    executor.execute();
   }
 
-  protected class TreeDeviceUpdateTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TDeviceViewResp> {
+  private class TreeDeviceUpdateTaskExecutor
+      extends DataNodeRegionTaskExecutor<List<TConsensusGroupId>, TDeviceViewResp> {
 
     protected TreeDeviceUpdateTaskExecutor(
         final ConfigManager configManager,
-        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
-        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup) {
       super(
           configManager,
           targetRegionGroup,
           false,
           CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
-          dataNodeRequestGenerator);
+          ((dataNodeLocation, consensusGroupIdList) -> consensusGroupIdList));
     }
 
     @Override
