@@ -1714,7 +1714,8 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "default_storage_group_level",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "default_storage_group_level"))));
+                    "default_storage_group_level"))),
+        startUp);
     conf.setDefaultBooleanEncoding(
         properties.getProperty(
             "default_boolean_encoding",
