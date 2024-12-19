@@ -70,6 +70,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.DataRegionTest.buildI
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
@@ -866,7 +867,7 @@ public class TsFileProcessorTest {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
     synchronized (resource) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        resource.updateEndTime(deviceId, resource.getStartTime(deviceId));
+        resource.updateEndTime(deviceId, resource.getStartTime(deviceId).get());
       }
       try {
         resource.close();

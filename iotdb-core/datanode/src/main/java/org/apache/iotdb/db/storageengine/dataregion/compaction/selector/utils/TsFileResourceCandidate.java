@@ -92,20 +92,28 @@ public class TsFileResourceCandidate {
         }
         ArrayDeviceTimeIndex timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         for (IDeviceID deviceId : timeIndex.getDevices()) {
+          // iterating the index, must present
+          //noinspection OptionalGetWithoutIsPresent
           deviceInfoMap.put(
               deviceId,
               new DeviceInfo(
-                  deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+                  deviceId,
+                  timeIndex.getStartTime(deviceId).get(),
+                  timeIndex.getEndTime(deviceId).get()));
         }
       } finally {
         resource.readUnlock();
       }
     } else {
       for (IDeviceID deviceId : resource.getDevices()) {
+        // iterating the index, must present
+        //noinspection OptionalGetWithoutIsPresent
         deviceInfoMap.put(
             deviceId,
             new DeviceInfo(
-                deviceId, resource.getStartTime(deviceId), resource.getEndTime(deviceId)));
+                deviceId,
+                resource.getStartTime(deviceId).get(),
+                resource.getEndTime(deviceId).get()));
       }
     }
     hasDetailedDeviceInfo = true;
