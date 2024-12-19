@@ -344,7 +344,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -1885,12 +1885,15 @@ public class IoTDBSessionSimpleIT {
 
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MIN_VALUE));
+                "INSERT INTO root.testInsertMinMax.d1(timestamp, s1) VALUES (%d, 1)",
+                Long.MIN_VALUE));
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO root.test.d1(timestamp, s1) VALUES (%d, 1)", Long.MAX_VALUE));
+                "INSERT INTO root.testInsertMinMax.d1(timestamp, s1) VALUES (%d, 1)",
+                Long.MAX_VALUE));
 
-        SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+        SessionDataSet dataSet =
+            session.executeQueryStatement("SELECT * FROM root.testInsertMinMax.d1");
         RowRecord record = dataSet.next();
         assertEquals(Long.MIN_VALUE, record.getTimestamp());
         record = dataSet.next();
@@ -1898,7 +1901,7 @@ public class IoTDBSessionSimpleIT {
         assertFalse(dataSet.hasNext());
 
         session.executeNonQueryStatement("FLUSH");
-        dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+        dataSet = session.executeQueryStatement("SELECT * FROM root.testInsertMinMax.d1");
         record = dataSet.next();
         assertEquals(Long.MIN_VALUE, record.getTimestamp());
         record = dataSet.next();
@@ -1929,7 +1932,7 @@ public class IoTDBSessionSimpleIT {
           WriteProcessException {
     File file = new File("target", "test.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
-      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.test.d1");
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.testLoadMinMax.d1");
       writer.registerTimeseries(deviceID, new MeasurementSchema("s1", TSDataType.INT32));
       TSRecord record = new TSRecord(deviceID, Long.MIN_VALUE);
       record.addPoint("s1", 1);
@@ -1950,7 +1953,8 @@ public class IoTDBSessionSimpleIT {
       }
       session.executeNonQueryStatement("LOAD \"" + file.getAbsolutePath() + "\"");
 
-      SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.test.d1");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM root.testLoadMinMax.d1");
       RowRecord record = dataSet.next();
       assertEquals(Long.MIN_VALUE, record.getTimestamp());
       record = dataSet.next();

@@ -140,6 +140,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
 
     fileNameLastTimePair = deviceEndTime.computeIfAbsent(currDeviceID, k -> new FileLastTimeInfo());
     if (!Boolean.TRUE.equals(hasCheckedDeviceOverlap.getOrDefault(currDeviceID, false))
+        && !resource.definitelyNotContains(currDeviceID)
         && resource.getStartTime(currDeviceID) <= fileNameLastTimePair.endTimeInLastFile) {
       // device overlap, find bad file
       recordDeviceOverlap(fileNameLastTimePair.lastFileName);

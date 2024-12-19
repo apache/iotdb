@@ -353,10 +353,16 @@ public class CompactionCheckerUtils {
       long[] statistics = deviceCountEntry.getValue();
       long startTime = Long.MAX_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
+        if (mergedFile.definitelyNotContains(device)) {
+          continue;
+        }
         startTime = Math.min(startTime, mergedFile.getStartTime(device));
       }
       long endTime = Long.MIN_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
+        if (mergedFile.definitelyNotContains(device)) {
+          continue;
+        }
         endTime = Math.max(endTime, mergedFile.getEndTime(device));
       }
       assertEquals(statistics[0], startTime);

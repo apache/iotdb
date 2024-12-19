@@ -353,6 +353,9 @@ public abstract class SeriesCompactionExecutor {
     List<FileElement> overlappedFiles = new ArrayList<>();
     long endTime = file.resource.getEndTime(deviceId);
     for (FileElement fileElement : fileList) {
+      if (fileElement.resource.definitelyNotContains(deviceId)) {
+        continue;
+      }
       if (fileElement.resource.getStartTime(deviceId) <= endTime) {
         if (!fileElement.isSelected) {
           overlappedFiles.add(fileElement);

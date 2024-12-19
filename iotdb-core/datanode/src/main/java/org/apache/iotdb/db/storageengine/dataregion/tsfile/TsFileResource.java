@@ -576,9 +576,7 @@ public class TsFileResource implements PersistentResource {
 
   public long getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null || !timeIndex.checkDeviceIdExist(deviceId)
-          ? getFileStartTime()
-          : timeIndex.getStartTime(deviceId);
+      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -592,9 +590,7 @@ public class TsFileResource implements PersistentResource {
   /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null || !timeIndex.checkDeviceIdExist(deviceId)
-          ? getFileEndTime()
-          : timeIndex.getEndTime(deviceId);
+      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -607,7 +603,7 @@ public class TsFileResource implements PersistentResource {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex && !definitelyNotContains(deviceId)) {
       return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
@@ -616,7 +612,11 @@ public class TsFileResource implements PersistentResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    if (!definitelyNotContains(deviceId)) {
+      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
   }
 
   @Override
