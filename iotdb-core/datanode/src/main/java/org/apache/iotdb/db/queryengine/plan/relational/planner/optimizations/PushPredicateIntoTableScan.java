@@ -437,16 +437,17 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       long startTime = System.nanoTime();
       List<AlignedDeviceEntry> deviceEntries =
-          metadata.indexScan(
-              tableScanNode.getQualifiedObjectName(),
-              metadataExpressions.stream()
-                  .map(
-                      expression ->
-                          ReplaceSymbolInExpression.transform(
-                              expression, tableScanNode.getAssignments()))
-                  .collect(Collectors.toList()),
-              attributeColumns,
-              queryContext);
+          (List<AlignedDeviceEntry>)
+              metadata.indexScan(
+                  tableScanNode.getQualifiedObjectName(),
+                  metadataExpressions.stream()
+                      .map(
+                          expression ->
+                              ReplaceSymbolInExpression.transform(
+                                  expression, tableScanNode.getAssignments()))
+                      .collect(Collectors.toList()),
+                  attributeColumns,
+                  queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
 
       long schemaFetchCost = System.nanoTime() - startTime;

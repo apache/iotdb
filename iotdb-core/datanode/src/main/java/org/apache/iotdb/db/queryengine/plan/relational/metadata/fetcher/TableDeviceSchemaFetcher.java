@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
@@ -164,13 +165,13 @@ public class TableDeviceSchemaFetcher {
     }
   }
 
-  public List<AlignedDeviceEntry> fetchDeviceSchemaForDataQuery(
+  public List<AbstractDeviceEntry> fetchDeviceSchemaForDataQuery(
       final String database,
       final String table,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
-    final List<AlignedDeviceEntry> deviceEntryList = new ArrayList<>();
+    final List<AbstractDeviceEntry> deviceEntryList = new ArrayList<>();
     final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
@@ -193,7 +194,7 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata:  implement deduplicate during schemaRegion execution
     // TODO table metadata:  need further process on input predicates and transform them into
     // disjoint sets
-    final Set<AlignedDeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
+    final Set<AbstractDeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
     return new ArrayList<>(set);
   }
 
@@ -204,7 +205,7 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
-      final List<AlignedDeviceEntry> deviceEntryList,
+      final List<AbstractDeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
       final boolean isDirectDeviceQuery) {
@@ -307,7 +308,7 @@ public class TableDeviceSchemaFetcher {
   // Return whether all of required info of current device is in cache
   @SuppressWarnings("squid:S107")
   private boolean tryGetDeviceInCache(
-      final List<AlignedDeviceEntry> deviceEntryList,
+      final List<AbstractDeviceEntry> deviceEntryList,
       final String database,
       final TsTable tableInstance,
       final Map<Integer, List<SchemaFilter>> idFilters,
@@ -368,7 +369,7 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final ShowDevice statement,
-      final List<AlignedDeviceEntry> deviceEntryList,
+      final List<AbstractDeviceEntry> deviceEntryList,
       final MPPQueryContext mppQueryContext) {
 
     final String table = tableInstance.getTableName();

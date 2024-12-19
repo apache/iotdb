@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
@@ -116,7 +116,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   }
 
   public boolean parseRawExpression(
-      final List<AlignedDeviceEntry> entries,
+      final List<AbstractDeviceEntry> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
