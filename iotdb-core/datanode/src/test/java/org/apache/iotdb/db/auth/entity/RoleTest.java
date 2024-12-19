@@ -68,9 +68,9 @@ public class RoleTest {
       } else if (item.isPathPrivilege()) {
         pathPri.grantPrivilege(item, true);
       } else if (item.isRelationalPrivilege()) {
-        databasePrivilege.grantDBObjectPrivilege(item);
+        databasePrivilege.grantDBPrivilege(item);
         databasePrivilege.grantDBGrantOption(item);
-        databasePrivilege.grantTableObjectPrivilege("testtb", item);
+        databasePrivilege.grantTablePrivilege("testtb", item);
       }
     }
     admin.getObjectPrivilegeMap().put("testdb", databasePrivilege);

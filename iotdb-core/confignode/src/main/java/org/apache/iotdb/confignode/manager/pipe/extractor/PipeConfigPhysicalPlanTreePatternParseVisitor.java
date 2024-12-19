@@ -198,9 +198,9 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
             .collect(Collectors.toList());
     final Set<Integer> permissions =
         !intersectedPaths.isEmpty()
-            ? pathRelatedAuthorPlan.getPermissions()
-            : pathRelatedAuthorPlan.getPermissions().stream()
-                .filter(permission -> !PrivilegeType.values()[permission].isPathRelevant())
+            ? plan.getPermissions()
+            : plan.getPermissions().stream()
+                .filter(permission -> !PrivilegeType.values()[permission].isPathPrivilege())
                 .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
