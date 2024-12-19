@@ -48,9 +48,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-
 public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISchemaRegionPlan {
 
   protected String database;
@@ -322,11 +319,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   @Override
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return new HashSet<>(
-            analysis
-                .getSchemaPartitionInfo()
-                .getSchemaPartitionMap()
-                .get(PATH_ROOT + PATH_SEPARATOR + database)
-                .values())
+            analysis.getSchemaPartitionInfo().getSchemaPartitionMap().get(database).values())
         .stream()
             .map(
                 replicaSet ->

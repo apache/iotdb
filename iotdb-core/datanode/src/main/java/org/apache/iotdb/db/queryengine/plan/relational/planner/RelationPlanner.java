@@ -681,8 +681,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
-  protected RelationalInsertRowNode fromInsertRowStatement(InsertRowStatement insertRowStatement) {
-    RelationalInsertRowNode insertNode =
+  protected RelationalInsertRowNode fromInsertRowStatement(
+      final InsertRowStatement insertRowStatement) {
+    final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),

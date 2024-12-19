@@ -72,7 +72,7 @@ public interface IAnalysis {
 
   void addEndPointToRedirectNodeList(TEndPoint endPoint);
 
-  TimePredicate getCovertedTimePredicate();
+  TimePredicate getConvertedTimePredicate();
 
   void setDatabaseName(String databaseName);
 

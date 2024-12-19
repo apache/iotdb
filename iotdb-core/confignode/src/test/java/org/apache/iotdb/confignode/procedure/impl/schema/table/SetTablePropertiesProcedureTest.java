@@ -36,7 +36,7 @@ public class SetTablePropertiesProcedureTest {
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final SetTablePropertiesProcedure setTablePropertiesProcedure =
         new SetTablePropertiesProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             new HashMap<String, String>() {

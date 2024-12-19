@@ -68,8 +68,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -742,25 +740,25 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
     return partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName) {
-    return partitionFetcher.getOrCreateSchemaPartition(
-        PATH_ROOT + PATH_SEPARATOR + database, deviceIDList, userName);
+      final String database, final List<IDeviceID> deviceIDList, final String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database, deviceIDList);
+  public SchemaPartition getSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDList) {
+    return partitionFetcher.getSchemaPartition(database, deviceIDList);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
+  public SchemaPartition getSchemaPartition(final String database) {
+    return partitionFetcher.getSchemaPartition(database, null);
   }
 
   @Override

@@ -231,7 +231,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
       }
 
       final AtomicInteger leaderPort = new AtomicInteger(-1);
-      final TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      final TShowRegionResp showRegionResp =
+          client.showRegion(new TShowRegionReq().setIsTableModel(true));
       showRegionResp
           .getRegionInfoList()
           .forEach(

@@ -24,9 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -50,6 +48,7 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,15 +147,7 @@ public class SchemaEngine {
         continue;
       }
 
-      final PartialPath database;
-      try {
-        database = PartialPath.getDatabasePath(file.getName());
-      } catch (IllegalPathException illegalPathException) {
-        // not a legal sg dir
-        continue;
-      }
-
-      final File sgDir = new File(config.getSchemaDir(), database.getFullPath());
+      final File sgDir = new File(config.getSchemaDir(), file.getName());
 
       if (!sgDir.exists()) {
         continue;
@@ -177,7 +168,7 @@ public class SchemaEngine {
         }
         schemaRegionIds.add(schemaRegionId);
       }
-      localSchemaPartitionTable.put(database.getFullPath(), schemaRegionIds);
+      localSchemaPartitionTable.put(file.getName(), schemaRegionIds);
     }
     return localSchemaPartitionTable;
   }
@@ -189,26 +180,19 @@ public class SchemaEngine {
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
-    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
             ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
     final List<Future<ISchemaRegion>> futures = new ArrayList<>();
     localSchemaRegionInfo.forEach(
-        (k, v) -> {
-          for (SchemaRegionId schemaRegionId : v) {
-            PartialPath database;
-            try {
-              database = PartialPath.getDatabasePath(k);
-            } catch (IllegalPathException e) {
-              logger.warn("Illegal database path: {}", k);
-              continue;
-            }
-            futures.add(
-                schemaRegionRecoverPools.submit(recoverSchemaRegionTask(database, schemaRegionId)));
-          }
-        });
+        (k, v) ->
+            v.forEach(
+                schemaRegionId ->
+                    futures.add(
+                        schemaRegionRecoverPools.submit(
+                            recoverSchemaRegionTask(k, schemaRegionId)))));
     for (final Future<ISchemaRegion> future : futures) {
       try {
         final ISchemaRegion schemaRegion = future.get();
@@ -263,7 +247,7 @@ public class SchemaEngine {
     ClusterTemplateManager.getInstance().clear();
   }
 
-  public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
+  public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {
     return schemaRegionMap.get(regionId);
   }
 
@@ -276,17 +260,17 @@ public class SchemaEngine {
   }
 
   public synchronized void createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+      final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
+    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      if (schemaRegion.getDatabaseFullPath().equals(storageGroup.getFullPath())) {
+      if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
         return;
       } else {
         throw new MetadataException(
             String.format(
                 "SchemaRegion [%s] is duplicated between [%s] and [%s], "
                     + "and the former one has been recovered.",
-                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup.getFullPath()));
+                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
       }
     }
     schemaRegionMap.put(
@@ -294,7 +278,7 @@ public class SchemaEngine {
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
+      final String storageGroup, final SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
@@ -305,24 +289,24 @@ public class SchemaEngine {
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
             "Recover [{}] spend: {} ms",
-            storageGroup.concatNode(schemaRegionId.toString()),
+            storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.error(
             String.format(
                 "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup.getFullPath()));
+                schemaRegionId.getId(), storageGroup));
         throw new RuntimeException(e);
       }
     };
   }
 
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
-      PartialPath database, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegionParams schemaRegionParams =
+      final String database, final SchemaRegionId schemaRegionId) throws MetadataException {
+    final ISchemaRegionParams schemaRegionParams =
         new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
-    ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
+    final ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
     schemaMetricManager.addSchemaRegionMetric(
         schemaRegionId.getId(), schemaRegion.getSchemaRegionMetric());
     return schemaRegion;

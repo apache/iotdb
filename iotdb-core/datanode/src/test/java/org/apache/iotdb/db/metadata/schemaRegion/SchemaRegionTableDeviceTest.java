@@ -52,7 +52,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
     final List<String[]> deviceIdList =
         Arrays.asList(
@@ -133,7 +133,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -204,7 +204,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -280,7 +280,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -325,7 +325,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName1 = "t1";
 
     final Map<String, String> attributeMap = new HashMap<>();

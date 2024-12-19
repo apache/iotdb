@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
@@ -121,6 +122,8 @@ public class PartitionInfo implements SnapshotProcessor {
   private final AtomicInteger nextRegionGroupId;
 
   // Map<DatabaseName, DatabasePartitionInfo>
+  // For tree model databases: The databaseName is a partial path's full path with "root."
+  // For table model databases: The databaseName is a full name without "root."
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
   /** For Region-Maintainer. */
@@ -169,9 +172,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the new DatabasePartitionTable is created
    *     successfully.
    */
-  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
-    String databaseName = plan.getSchema().getName();
-    DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
+  public TSStatus createDatabase(final DatabaseSchemaPlan plan) {
+    final String databaseName = plan.getSchema().getName();
+    final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(databaseName);
     databasePartitionTables.put(databaseName, databasePartitionTable);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -278,11 +281,11 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param preDeleteDatabasePlan PreDeleteStorageGroupPlan
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
-  public TSStatus preDeleteDatabase(PreDeleteDatabasePlan preDeleteDatabasePlan) {
+  public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
     final String database = preDeleteDatabasePlan.getStorageGroup();
-    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -299,7 +302,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean isDatabasePreDeleted(String database) {
+  public boolean isDatabasePreDeleted(final String database) {
     DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     return databasePartitionTable != null && !databasePartitionTable.isNotPreDeleted();
   }
@@ -309,7 +312,7 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param plan DeleteDatabasePlan
    */
-  public void deleteDatabase(DeleteDatabasePlan plan) {
+  public void deleteDatabase(final DeleteDatabasePlan plan) {
     // Clean the databaseTable cache
     databasePartitionTables.remove(plan.getName());
   }
@@ -320,10 +323,10 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetSchemaPartitionPlan plan) {
-    AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
+  public DataSet getSchemaPartition(final GetSchemaPartitionPlan plan) {
+    final AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
     // TODO: Replace this map with new SchemaPartition
-    Map<String, SchemaPartitionTable> schemaPartition = new ConcurrentHashMap<>();
+    final Map<String, SchemaPartitionTable> schemaPartition = new ConcurrentHashMap<>();
 
     if (plan.getPartitionSlotsMap().isEmpty()) {
       // Return all SchemaPartitions when the queried PartitionSlots are empty
@@ -457,7 +460,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param database The specified Database
    * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
    */
-  public boolean isDatabaseExisted(String database) {
+  public boolean isDatabaseExisted(final String database) {
     final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     return databasePartitionTable != null && databasePartitionTable.isNotPreDeleted();
   }
@@ -525,19 +528,25 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get Region information. */
-  public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
-    RegionInfoListResp regionResp = new RegionInfoListResp();
-    List<TRegionInfo> regionInfoList = new Vector<>();
+  public DataSet getRegionInfoList(final GetRegionInfoListPlan regionsInfoPlan) {
+    final RegionInfoListResp regionResp = new RegionInfoListResp();
+    final List<TRegionInfo> regionInfoList = new Vector<>();
     if (databasePartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       regionResp.setRegionInfoList(new ArrayList<>());
       return regionResp;
     }
-    TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+    final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
     final List<String> databases = showRegionReq != null ? showRegionReq.getDatabases() : null;
+    final Boolean isTableModel =
+        showRegionReq != null
+            ? showRegionReq.isSetIsTableModel() && showRegionReq.isIsTableModel()
+            : null;
     databasePartitionTables.forEach(
         (database, databasePartitionTable) -> {
-          if (databases != null && !databases.contains(database)) {
+          if (databases != null && !databases.contains(database)
+              || Boolean.TRUE.equals(isTableModel) && !PathUtils.isTableModelDatabase(database)
+              || Boolean.FALSE.equals(isTableModel) && PathUtils.isTableModelDatabase(database)) {
             return;
           }
           regionInfoList.addAll(databasePartitionTable.getRegionInfoList(regionsInfoPlan));
@@ -622,8 +631,8 @@ public class PartitionInfo implements SnapshotProcessor {
    *     partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterUnassignedSchemaPartitionSlots(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    Map<String, List<TSeriesPartitionSlot>> result = new ConcurrentHashMap<>();
+      final Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    final Map<String, List<TSeriesPartitionSlot>> result = new ConcurrentHashMap<>();
 
     partitionSlotsMap.forEach(
         (database, partitionSlots) -> {
@@ -809,7 +818,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return Number of Regions currently owned by the specific database
    * @throws DatabaseNotExistsException When the specific database doesn't exist
    */
-  public int getRegionGroupCount(String database, TConsensusGroupType type)
+  public int getRegionGroupCount(final String database, final TConsensusGroupType type)
       throws DatabaseNotExistsException {
     if (!isDatabaseExisted(database)) {
       throw new DatabaseNotExistsException(database);

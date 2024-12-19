@@ -24,12 +24,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 public class Flush extends WrappedStatement {
 
-  public Flush(Statement innerTreeStatement, MPPQueryContext context) {
+  public Flush(final Statement innerTreeStatement, final MPPQueryContext context) {
     super(innerTreeStatement, context);
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitFlush(this, context);
   }
 }

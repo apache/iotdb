@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -49,8 +48,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -151,8 +148,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateDatabaseCache(
-        storageGroups.stream().collect(Collectors.toMap(Function.identity(), k -> false)));
+    partitionCache.updateDatabaseCache(storageGroups);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
@@ -164,7 +160,7 @@ public class PartitionCacheTest {
   }
 
   @Test
-  public void testStorageGroupCache() throws DatabaseModelException {
+  public void testStorageGroupCache() {
     Map<String, List<IDeviceID>> storageGroupToDeviceMap;
     Map<IDeviceID, String> deviceToStorageGroupMap;
     // test devices in one database

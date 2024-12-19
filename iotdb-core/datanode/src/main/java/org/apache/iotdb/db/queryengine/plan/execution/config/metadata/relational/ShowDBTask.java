@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -87,7 +86,7 @@ public class ShowDBTask implements IConfigTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      final String dbName = PathUtils.unQualifyDatabaseName(entry.getKey());
+      final String dbName = entry.getKey();
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
         continue;
       }
@@ -127,7 +126,7 @@ public class ShowDBTask implements IConfigTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      final String dbName = entry.getKey().substring(5);
+      final String dbName = entry.getKey();
       if (!canSeenDB.test(dbName)) {
         continue;
       }
@@ -148,12 +147,8 @@ public class ShowDBTask implements IConfigTask {
       builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
       builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
-      builder
-          .getColumnBuilder(5)
-          .writeBinary(
-              new Binary(
-                  storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
-                  TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
+      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getDataRegionNum());
       builder.declarePosition();
     }
 

@@ -28,6 +28,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Map;
 
@@ -75,7 +77,7 @@ public interface IPartitionFetcher {
    * @param userName
    */
   DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
@@ -113,14 +115,6 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(final String database, final List<IDeviceID> deviceIDs);
-
-  /**
-   * For data query with partial device id conditions.
-   *
-   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
-   *
-   * <p>The device id shall be [table, seg1, ....]
-   */
-  SchemaPartition getSchemaPartition(final String database);
+  SchemaPartition getSchemaPartition(
+      final String database, final @Nullable List<IDeviceID> deviceIDs);
 }

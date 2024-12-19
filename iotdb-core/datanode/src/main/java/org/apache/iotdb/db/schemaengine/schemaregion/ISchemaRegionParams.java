@@ -20,12 +20,11 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 
 public interface ISchemaRegionParams {
 
-  PartialPath getDatabase();
+  String getDatabase();
 
   SchemaRegionId getSchemaRegionId();
 

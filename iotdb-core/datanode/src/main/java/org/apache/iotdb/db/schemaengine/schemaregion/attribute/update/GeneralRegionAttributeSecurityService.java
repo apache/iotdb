@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -93,9 +94,10 @@ public class GeneralRegionAttributeSecurityService implements IService {
   private volatile boolean allowSubmitListen = false;
 
   public void startBroadcast(final ISchemaRegion schemaRegion) {
-    if (schemaRegion instanceof SchemaRegionMemoryImpl) {
+    if (schemaRegion instanceof SchemaRegionMemoryImpl
+        && PathUtils.isTableModelDatabase(schemaRegion.getDatabaseFullPath())) {
       regionId2DatabaseMap.put(
-          schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath().substring(5));
+          schemaRegion.getSchemaRegionId(), schemaRegion.getDatabaseFullPath());
       regionLeaders.add(schemaRegion);
     }
   }

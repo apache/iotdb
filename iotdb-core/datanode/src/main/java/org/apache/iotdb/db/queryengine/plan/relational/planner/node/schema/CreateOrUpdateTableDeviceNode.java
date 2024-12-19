@@ -43,8 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.convertRawDeviceIDs2PartitionKeys;
 
 public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISchemaRegionPlan {
@@ -252,7 +250,6 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
-    final String dbNameForInvoke = PATH_ROOT + PATH_SEPARATOR + database;
     final Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     final List<IDeviceID> partitionKeyList = getPartitionKeyList();
     for (int i = 0; i < partitionKeyList.size(); i++) {
@@ -260,7 +257,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
       final TRegionReplicaSet regionReplicaSet =
           analysis
               .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(dbNameForInvoke, partitionKeyList.get(i));
+              .getSchemaRegionReplicaSet(database, partitionKeyList.get(i));
       splitMap.computeIfAbsent(regionReplicaSet, k -> new ArrayList<>()).add(i);
     }
     final List<WritePlanNode> result = new ArrayList<>(splitMap.size());

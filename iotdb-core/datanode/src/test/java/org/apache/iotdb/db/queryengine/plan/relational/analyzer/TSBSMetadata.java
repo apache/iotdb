@@ -451,11 +451,6 @@ public class TSBSMetadata implements Metadata {
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
         return SCHEMA_PARTITION;
       }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
-        return SCHEMA_PARTITION;
-      }
     };
   }
 }

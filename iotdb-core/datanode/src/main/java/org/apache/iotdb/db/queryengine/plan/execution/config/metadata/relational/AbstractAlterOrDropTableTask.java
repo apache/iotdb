@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
-
 abstract class AbstractAlterOrDropTableTask extends AbstractTableTask {
 
   protected final String queryId;
@@ -32,7 +30,7 @@ abstract class AbstractAlterOrDropTableTask extends AbstractTableTask {
       final String tableName,
       final String queryId,
       final boolean tableIfExists) {
-    super(PathUtils.qualifyDatabaseName(database), tableName);
+    super(database, tableName);
     this.queryId = queryId;
     this.tableIfExists = tableIfExists;
   }

@@ -71,31 +71,31 @@ public class PartitionBalancer {
    * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
-    Map<String, SchemaPartitionTable> result = new HashMap<>();
+    final Map<String, SchemaPartitionTable> result = new HashMap<>();
 
-    for (Map.Entry<String, List<TSeriesPartitionSlot>> slotsMapEntry :
+    for (final Map.Entry<String, List<TSeriesPartitionSlot>> slotsMapEntry :
         unassignedSchemaPartitionSlotsMap.entrySet()) {
       final String database = slotsMapEntry.getKey();
       final List<TSeriesPartitionSlot> unassignedPartitionSlots = slotsMapEntry.getValue();
 
       // Filter available SchemaRegionGroups and
       // sort them by the number of allocated SchemaPartitions
-      BalanceTreeMap<TConsensusGroupId, Integer> counter = new BalanceTreeMap<>();
-      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+      final BalanceTreeMap<TConsensusGroupId, Integer> counter = new BalanceTreeMap<>();
+      final List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
           getPartitionManager()
               .getSortedRegionGroupSlotsCounter(database, TConsensusGroupType.SchemaRegion);
-      for (Pair<Long, TConsensusGroupId> pair : regionSlotsCounter) {
+      for (final Pair<Long, TConsensusGroupId> pair : regionSlotsCounter) {
         counter.put(pair.getRight(), pair.getLeft().intValue());
       }
 
       // Enumerate SeriesPartitionSlot
-      Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
-      for (TSeriesPartitionSlot seriesPartitionSlot : unassignedPartitionSlots) {
+      final Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
+      for (final TSeriesPartitionSlot seriesPartitionSlot : unassignedPartitionSlots) {
         // Greedy allocation: allocate the unassigned SchemaPartition to
         // the RegionGroup whose allocated SchemaPartitions is the least
-        TConsensusGroupId consensusGroupId = counter.getKeyWithMinValue();
+        final TConsensusGroupId consensusGroupId = counter.getKeyWithMinValue();
         schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
         counter.put(consensusGroupId, counter.get(consensusGroupId) + 1);
       }

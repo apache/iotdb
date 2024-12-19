@@ -184,11 +184,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
-      Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
-    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
-    Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+      final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, final IAnalysis analysis) {
+    final Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    final Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
 
-    for (Map.Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
+    for (final Map.Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
       final IDeviceID deviceID = entry.getKey();
       final PartitionSplitInfo splitInfo = entry.getValue();
       final List<TRegionReplicaSet> replicaSets =
@@ -206,15 +206,15 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
               .get(0)
               .getClientRpcEndPoint());
       for (int i = 0; i < replicaSets.size(); i++) {
-        List<Integer> subRanges =
+        final List<Integer> subRanges =
             splitMap.computeIfAbsent(replicaSets.get(i), x -> new ArrayList<>());
         subRanges.add(splitInfo.ranges.get(2 * i));
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
+    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
     for (int i = 0; i < times.length; i++) {
-      IDeviceID deviceId = getDeviceID(i);
+      final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(endPointMap.get(deviceId));
     }
     analysis.setRedirectNodeList(redirectNodeList);

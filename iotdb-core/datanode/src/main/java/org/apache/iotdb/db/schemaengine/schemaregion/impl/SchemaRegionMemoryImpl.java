@@ -192,6 +192,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
+
+  // For table model db: without "root."
+  // For tree model db: with "root."
   private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
 
@@ -213,7 +216,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
@@ -265,7 +268,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              PartialPath.getDatabasePath(storageGroupFullPath),
+              PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -564,7 +567,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       deviceAttributeCacheUpdater =
-          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath.substring(5));
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
@@ -872,7 +875,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     schemaQuotaManager.check(
         (long)
                 DataNodeTableCache.getInstance()
-                    .getTable(storageGroupFullPath.substring(5), tableName)
+                    .getTable(storageGroupFullPath, tableName)
                     .getMeasurementNum()
             * notExistNum,
         notExistNum);
@@ -1394,7 +1397,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode node)
       throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
-      final String databaseName = storageGroupFullPath.substring(5);
+      final String databaseName = storageGroupFullPath;
       final String tableName = node.getTableName();
       final String[] deviceId =
           Arrays.stream(node.getDeviceIdList().get(i))

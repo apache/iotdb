@@ -105,12 +105,6 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
         builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
         builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
-        builder
-            .getColumnBuilder(11)
-            .writeBinary(
-                new Binary(
-                    storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
-                    TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -35,8 +34,7 @@ public class CreateTableTask implements IConfigTask {
 
   private final boolean ifNotExists;
 
-  public CreateTableTask(final TsTable table, String database, final boolean ifNotExists) {
-    database = PathUtils.qualifyDatabaseName(database);
+  public CreateTableTask(final TsTable table, final String database, final boolean ifNotExists) {
     this.table = table;
     this.database = database;
     this.ifNotExists = ifNotExists;
