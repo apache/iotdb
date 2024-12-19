@@ -68,7 +68,6 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
         ConfigNodeDescriptor.getInstance().getConf().getTreeDeviceViewUpdateIntervalInMs());
     this.executor = new TreeDeviceUpdateTaskExecutor(configManager, Collections.emptyMap());
-    lastStatus = StatusUtils.OK;
   }
 
   @Override
