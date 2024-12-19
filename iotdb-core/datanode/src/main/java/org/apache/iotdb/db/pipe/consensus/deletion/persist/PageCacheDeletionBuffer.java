@@ -152,7 +152,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void allocateBuffers() {
     try {
-      serializeBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
+      serializeBuffer = ByteBuffer.allocate(ONE_THIRD_WAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       LOGGER.error(
           "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.",
