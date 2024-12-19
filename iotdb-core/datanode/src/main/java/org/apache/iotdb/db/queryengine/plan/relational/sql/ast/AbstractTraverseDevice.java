@@ -49,7 +49,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String tableName;
   protected boolean isTreeViewQuery;
   // Temporary
-  private Table table;
+  protected Table table;
 
   protected Expression where;
 

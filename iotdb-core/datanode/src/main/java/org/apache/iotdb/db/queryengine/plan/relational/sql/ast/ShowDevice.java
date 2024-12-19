@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
@@ -31,6 +32,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
+  protected static final String ALIGNED_HEADER = "__aligned";
   private Offset offset;
   private Node limit;
 
@@ -55,6 +57,19 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   public Node getLimit() {
     return limit;
+  }
+
+  // This is only true for query related ShowDevice with tree device view
+  public boolean needAligned() {
+    return isTreeViewQuery && Objects.isNull(table);
+  }
+
+  @Override
+  public void setColumnHeaderList() {
+    super.setColumnHeaderList();
+    if (needAligned()) {
+      columnHeaderList.add(new ColumnHeader(ShowDevice.ALIGNED_HEADER, TSDataType.BOOLEAN));
+    }
   }
 
   @Override

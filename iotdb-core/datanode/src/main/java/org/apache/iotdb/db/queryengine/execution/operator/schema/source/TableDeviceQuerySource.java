@@ -52,18 +52,21 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
+  private final boolean needAligned;
 
   public TableDeviceQuerySource(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
-      final DevicePredicateFilter filter) {
+      final DevicePredicateFilter filter,
+      final boolean needAligned) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
     this.filter = filter;
+    this.needAligned = needAligned;
   }
 
   @Override
@@ -209,8 +212,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTableDeviceTsBlockColumns(
-        schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    if (!needAligned) {
+      transformToTableDeviceTsBlockColumns(
+          schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    } else {
+      transformToTreeDeviceTsBlockColumns(
+          schemaInfo, builder, database, tableName, columnHeaderList);
+    }
   }
 
   public static void transformToTableDeviceTsBlockColumns(
@@ -249,7 +257,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.declarePosition();
   }
 
-  public static void transformToTreeDeviceTsBlockColumns(
+  private static void transformToTreeDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final String database,

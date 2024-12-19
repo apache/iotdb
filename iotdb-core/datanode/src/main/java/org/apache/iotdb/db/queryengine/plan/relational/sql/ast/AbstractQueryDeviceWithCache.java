@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-
 import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;

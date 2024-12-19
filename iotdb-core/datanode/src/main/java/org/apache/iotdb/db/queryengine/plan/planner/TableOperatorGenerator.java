@@ -1434,7 +1434,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getTableName(),
                 node.getIdDeterminedFilterList(),
                 node.getColumnHeaderList(),
-                null));
+                null,
+                node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -1484,7 +1485,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     database,
                     tableName,
                     columnHeaderList)
-                : null));
+                : null,
+            false));
   }
 
   @Override
