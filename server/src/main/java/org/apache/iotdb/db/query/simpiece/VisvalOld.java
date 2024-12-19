@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.query.simpiece;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-public class Visval {
+public class VisvalOld {
 
   public static List<VisvalPoint> reducePoints(List<VisvalPoint> points, int targetCount) {
     if (points.size() <= targetCount) {
@@ -39,6 +41,8 @@ public class Visval {
     }
 
     while (points.size() > targetCount) {
+      // 这里有个问题：points remove和heap不对齐，因为有可能heap里有多个点的area相同就一起被remove了，但是points里还没有remove
+      System.out.println(points.size());
       VisvalPoint p = minHeap.pollFirstEntry().getValue();
       if (p == null) {
         return points;
@@ -66,5 +70,23 @@ public class Visval {
 
   private static double calculateArea(VisvalPoint a, VisvalPoint b, VisvalPoint c) {
     return Math.abs(a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) / 2.0;
+  }
+
+  public static void main(String[] args) {
+    List<VisvalPoint> points = new ArrayList<>();
+    // 添加点到列表 points 100万数据
+    Random rand = new Random();
+    int n = 10000;
+    int m = 1;
+    for (int i = 0; i < n; i++) {
+      points.add(new VisvalPoint(i, rand.nextInt(1000)));
+    }
+    // 计算运行时间
+    long startTime = System.currentTimeMillis();
+    List<VisvalPoint> reducedPoints = VisvalOld.reducePoints(points, m);
+    // 输出结果
+    System.out.println(reducedPoints.size());
+    long endTime = System.currentTimeMillis();
+    System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
   }
 }

@@ -32,7 +32,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.simpiece.TimeSeriesReader;
-import org.apache.iotdb.db.query.simpiece.Visval;
+import org.apache.iotdb.db.query.simpiece.VisvalOld;
 import org.apache.iotdb.db.query.simpiece.VisvalPoint;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
@@ -135,7 +135,7 @@ public class LocalGroupByExecutorTri_Visval implements GroupByExecutor {
     }
 
     // Visval
-    List<VisvalPoint> reducedPoints = Visval.reducePoints(points, m);
+    List<VisvalPoint> reducedPoints = VisvalOld.reducePoints(points, m);
 
     for (VisvalPoint p : reducedPoints) {
       series.append(p.y).append("[").append(p.x).append("]").append(",");
