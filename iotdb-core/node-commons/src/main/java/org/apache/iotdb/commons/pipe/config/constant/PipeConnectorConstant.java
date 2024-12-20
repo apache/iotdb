@@ -243,7 +243,7 @@ public class PipeConnectorConstant {
                   CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
 
   public static final String PIPE_ALREADY_EXIST_MSG =
-          "the pipe with the same name has been created";
+      "the pipe with the same name has been created";
   public static final String PIPE_NOT_EXIST_MGS = "the pipe does not exist";
 
   private PipeConnectorConstant() {

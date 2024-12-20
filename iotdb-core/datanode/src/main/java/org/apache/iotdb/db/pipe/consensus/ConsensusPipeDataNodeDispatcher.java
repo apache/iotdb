@@ -47,8 +47,6 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-
-
   @Override
   public void createPipe(
       String pipeName,

@@ -211,7 +211,8 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerListBeforeStarting(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+  public void recordCorrectPeerListBeforeStarting(
+      Map<ConsensusGroupId, List<Peer>> correctPeerList) {
     throw new UnsupportedOperationException(
         "SimpleConsensus does not support record correct peer list");
   }
