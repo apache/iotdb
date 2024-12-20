@@ -28,15 +28,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TreeDeviceViewScanNode extends DeviceTableScanNode {
-  protected final String treeDBName;
-  protected final Map<String, String> measurementColumnNameMap;
+  protected String treeDBName;
+  protected Map<String, String> measurementColumnNameMap;
 
   public TreeDeviceViewScanNode(
       PlanNodeId id,
@@ -85,6 +89,8 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
 
+  public TreeDeviceViewScanNode() {}
+
   public String getTreeDBName() {
     return treeDBName;
   }
@@ -118,6 +124,44 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         measurementColumnNameMap);
   }
 
+  protected static void serializeMemberVariables(
+      TreeDeviceViewScanNode node, ByteBuffer byteBuffer) {
+    DeviceTableScanNode.serializeMemberVariables(node, byteBuffer, true);
+
+    ReadWriteIOUtils.write(node.treeDBName, byteBuffer);
+    ReadWriteIOUtils.write(node.measurementColumnNameMap.size(), byteBuffer);
+    for (Map.Entry<String, String> entry : node.measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+    }
+  }
+
+  protected static void serializeMemberVariables(
+      TreeDeviceViewScanNode node, DataOutputStream stream) throws IOException {
+    DeviceTableScanNode.serializeMemberVariables(node, stream, true);
+
+    ReadWriteIOUtils.write(node.treeDBName, stream);
+    ReadWriteIOUtils.write(node.measurementColumnNameMap.size(), stream);
+    for (Map.Entry<String, String> entry : node.measurementColumnNameMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
+  }
+
+  protected static void deserializeMemberVariables(
+      ByteBuffer byteBuffer, TreeDeviceViewScanNode node) {
+    DeviceTableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+
+    node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<String, String> measurementColumnNameMap = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      measurementColumnNameMap.put(
+          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+    node.measurementColumnNameMap = measurementColumnNameMap;
+  }
+
   // We will transform this node into its sub-Class when generate DistributionPlan, so it will never
   // should be serialized or deserialized.
   @Override
@@ -135,5 +179,30 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
         "Unsupported to deserialize: " + TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TreeDeviceViewScanNode that = (TreeDeviceViewScanNode) o;
+    return Objects.equals(treeDBName, that.treeDBName)
+        && Objects.equals(measurementColumnNameMap, that.measurementColumnNameMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), treeDBName, measurementColumnNameMap);
+  }
+
+  public String toString() {
+    return "TreeDeviceViewScanNode-" + this.getPlanNodeId();
   }
 }

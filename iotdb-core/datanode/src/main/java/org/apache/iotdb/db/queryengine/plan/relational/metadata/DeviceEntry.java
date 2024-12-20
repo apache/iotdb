@@ -72,22 +72,30 @@ public abstract class DeviceEntry implements Accountable {
     return attributeColumnValues;
   }
 
-  public void serialize(final ByteBuffer byteBuffer, final int ordinal) {
+  public void serialize(final ByteBuffer byteBuffer) {
     deviceID.serialize(byteBuffer);
     write(attributeColumnValues.size(), byteBuffer);
     for (final Binary value : attributeColumnValues) {
       serializeBinary(byteBuffer, value);
     }
-    write(ordinal, byteBuffer);
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        byteBuffer);
   }
 
-  public void serialize(final DataOutputStream stream, final int ordinal) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     deviceID.serialize(stream);
     write(attributeColumnValues.size(), stream);
     for (final Binary value : attributeColumnValues) {
       serializeBinary(stream, value);
     }
-    write(ordinal, stream);
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        stream);
   }
 
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {

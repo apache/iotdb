@@ -285,10 +285,9 @@ public enum PlanNodeType {
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
   INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
-  TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
-  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1023),
-  TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
-  TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1025),
+  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
+  TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1023),
+  TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -649,12 +648,10 @@ public enum PlanNodeType {
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
-        throw new IllegalStateException("Unexpected deserialization");
-      case 1023:
         return AggregationTreeDeviceViewScanNode.deserialize(buffer);
-      case 1024:
+      case 1023:
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
-      case 1025:
+      case 1024:
         return TreeNonAlignedDeviceViewScanNode.deserialize(buffer);
 
       case 2000:
