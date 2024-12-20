@@ -255,6 +255,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3287,9 +3288,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       if (isDetails) {
-        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesDetailsTask.buildTsBlock(
+            resp.getTableInfoList(), future, TreeViewSchemaUtils.isTreeViewDatabase(database));
       } else {
-        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesTask.buildTsBlock(
+            resp.getTableInfoList(), future, TreeViewSchemaUtils.isTreeViewDatabase(database));
       }
     } catch (final Exception e) {
       future.setException(e);

@@ -55,7 +55,9 @@ public class ShowTablesDetailsTask implements IConfigTask {
   }
 
   public static void buildTsBlock(
-      final List<TTableInfo> tableInfoList, final SettableFuture<ConfigTaskResult> future) {
+      final List<TTableInfo> tableInfoList,
+      final SettableFuture<ConfigTaskResult> future,
+      final boolean isTreeViewDatabase) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTablesDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -70,9 +72,13 @@ public class ShowTablesDetailsTask implements IConfigTask {
           builder
               .getColumnBuilder(0)
               .writeBinary(new Binary(tableInfo.getTableName(), TSFileConfig.STRING_CHARSET));
-          builder
-              .getColumnBuilder(1)
-              .writeBinary(new Binary(tableInfo.getTTL(), TSFileConfig.STRING_CHARSET));
+          if (!isTreeViewDatabase) {
+            builder
+                .getColumnBuilder(1)
+                .writeBinary(new Binary(tableInfo.getTTL(), TSFileConfig.STRING_CHARSET));
+          } else {
+            builder.getColumnBuilder(1).appendNull();
+          }
           builder
               .getColumnBuilder(2)
               .writeBinary(
