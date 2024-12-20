@@ -53,11 +53,30 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  String[] expectedHeader;
+  String[] retArray;
+
+  @Test
+  public void singleDeviceTest() {
+    expectedHeader = new String[] {"Time,Device,precipitation"};
+    retArray = new String[] {"1668960000200,root.weather.London,1667492178318,"};
+    resultSetEqualTest(
+        "select precipitation from root.weather.London where precipitation>1667492178118 order by time offset 1 limit 1 align by device",
+        expectedHeader,
+        retArray);
+
+    retArray = new String[] {"1668960000200,root.weather.London,1667492178318,"};
+    resultSetEqualTest(
+        "select precipitation from root.weather.London where precipitation>1667492178118 order by precipitation offset 1 limit 1 align by device",
+        expectedHeader,
+        retArray);
+  }
+
   @Test
   public void orderByCanNotPushLimitTest() {
     // 1. value filter, can not push down LIMIT
-    String[] expectedHeader = new String[] {"Time,Device,s1"};
-    String[] retArray = new String[] {"3,root.db.d1,111,"};
+    expectedHeader = new String[] {"Time,Device,s1"};
+    retArray = new String[] {"3,root.db.d1,111,"};
     resultSetEqualTest(
         "SELECT * FROM root.db.** WHERE s1>40 ORDER BY TIME LIMIT 1 ALIGN BY DEVICE;",
         expectedHeader,

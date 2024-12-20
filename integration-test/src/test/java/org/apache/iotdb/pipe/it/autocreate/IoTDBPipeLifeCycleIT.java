@@ -648,7 +648,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       // Add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -691,7 +692,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       // Add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);
@@ -844,7 +846,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "1603: The scheme of URI is not set, please specify the scheme of URI.",
+        "701: Untrusted uri xxx",
         "test",
         "test123");
     tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");

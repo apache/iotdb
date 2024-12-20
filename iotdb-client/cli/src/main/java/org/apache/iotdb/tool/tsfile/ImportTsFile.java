@@ -64,6 +64,11 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
 
+  protected static String timestampPrecision = "ms";
+  private static final String TIMESTAMP_PRECISION_ARGS = "tp";
+  private static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
+  private static final String TIMESTAMP_PRECISION_ARGS_NAME = "timestamp precision (ms/us/ns)";
+
   private static String source;
 
   private static String successDir = "success/";
@@ -143,6 +148,16 @@ public class ImportTsFile extends AbstractTsFileTool {
             .desc("The number of threads used to import tsfile, default is 8.")
             .build();
     options.addOption(opThreadNum);
+
+    Option opTimestampPrecision =
+        Option.builder(TIMESTAMP_PRECISION_ARGS)
+            .longOpt(TIMESTAMP_PRECISION_NAME)
+            .argName(TIMESTAMP_PRECISION_ARGS_NAME)
+            .hasArg()
+            .desc("Timestamp precision (ms/us/ns) (optional)")
+            .build();
+
+    options.addOption(opTimestampPrecision);
   }
 
   public static void main(String[] args) {
@@ -181,6 +196,48 @@ public class ImportTsFile extends AbstractTsFileTool {
       System.exit(CODE_ERROR);
     }
 
+    try {
+      parseBasicParams(commandLine);
+      parseSpecialParams(commandLine);
+    } catch (Exception e) {
+      IOT_PRINTER.println(
+          "Encounter an error when parsing the provided options: " + e.getMessage());
+      System.exit(CODE_ERROR);
+    }
+
+    IOT_PRINTER.println(isRemoteLoad ? "Load remotely." : "Load locally.");
+    final int resultCode = importFromTargetPath();
+
+    ImportTsFileBase.printResult(startTime);
+    System.exit(resultCode);
+  }
+
+  private static void checkTimePrecision() {
+    String precision = null;
+    if (!isRemoteLoad) {
+      try {
+        precision = sessionPool.getTimestampPrecision();
+      } catch (Exception e) {
+        IOT_PRINTER.println(
+            "Encounter an error when get IoTDB server timestampPrecision : " + e.getMessage());
+        System.exit(CODE_ERROR);
+      }
+      if (!timestampPrecision.equalsIgnoreCase(precision)) {
+        IOT_PRINTER.println(
+            String.format(
+                "Encounter an error The time accuracy of the iotdb server is \"%s\", but the client time accuracy is %s",
+                precision, timestampPrecision));
+        System.exit(CODE_ERROR);
+      }
+    }
+  }
+
+  public static void importData(CommandLine commandLine) {
+    long startTime = System.currentTimeMillis();
+    createOptions();
+    final HelpFormatter helpFormatter = new HelpFormatter();
+    helpFormatter.setOptionComparator(null);
+    helpFormatter.setWidth(MAX_HELP_CONSOLE_WIDTH);
     try {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
@@ -239,6 +296,9 @@ public class ImportTsFile extends AbstractTsFileTool {
       IOT_PRINTER.println(
           "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use remote load.");
     }
+    if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
+      timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
+    }
   }
 
   public static boolean isFileStoreEquals(String pathString, File dir) {
@@ -293,14 +353,13 @@ public class ImportTsFile extends AbstractTsFileTool {
               .enableAutoFetch(false)
               .build();
       sessionPool.setEnableQueryRedirection(false);
-
+      checkTimePrecision();
       // set params
       processSetParams();
 
       ImportTsFileScanTool.traverseAndCollectFiles();
       ImportTsFileScanTool.addNoResourceOrModsToQueue();
 
-      IOT_PRINTER.println("Load file total number : " + ImportTsFileScanTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -344,7 +403,10 @@ public class ImportTsFile extends AbstractTsFileTool {
     final List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
       final Thread thread =
-          new Thread(isRemoteLoad ? new ImportTsFileRemotely() : new ImportTsFileLocally());
+          new Thread(
+              isRemoteLoad
+                  ? new ImportTsFileRemotely(timestampPrecision)
+                  : new ImportTsFileLocally());
       thread.start();
       list.add(thread);
     }

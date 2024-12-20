@@ -120,7 +120,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -280,7 +280,9 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     new SubscriptionPullConsumer(null).open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(
+      expected =
+          SubscriptionConnectionException.class) // connect to TEndPoint(ip:localhost, port:6667)
   public void testCreateConsumer_empty() {
     new SubscriptionPullConsumer(new Properties()).open();
   }
@@ -290,7 +292,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     new SubscriptionPullConsumer.Builder().buildPullConsumer().open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testSubscribe_null() {
     consumer.subscribe((String) null);
   }
@@ -320,7 +322,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     consumer1.close();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testUnSubscribe_null() {
     consumer.unsubscribe((String) null);
   }

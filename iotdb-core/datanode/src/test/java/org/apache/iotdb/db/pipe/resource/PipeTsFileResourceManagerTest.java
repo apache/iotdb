@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -37,6 +37,7 @@ import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -79,6 +80,9 @@ public class PipeTsFileResourceManagerTest {
 
     Schema schema = new Schema();
     String template = "template";
+    IMeasurementSchema s1 = new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE);
+    IMeasurementSchema s2 = new MeasurementSchema("sensor2", TSDataType.INT32, TSEncoding.TS_2DIFF);
+    IMeasurementSchema s3 = new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF);
     schema.extendTemplate(
         template, new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
@@ -87,56 +91,59 @@ public class PipeTsFileResourceManagerTest {
         template, new MeasurementSchema("sensor3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
+    tsFileWriter.registerDevice("root.lemming.device1", template);
+    tsFileWriter.registerDevice("root.lemming.device2", template);
+    tsFileWriter.registerDevice("root.lemming.device3", template);
 
     // construct TSRecord
-    TSRecord tsRecord = new TSRecord(1617206403001L, "root.lemming.device1");
+    TSRecord tsRecord = new TSRecord("root.lemming.device1", 1617206403001L);
     DataPoint dPoint1 = new FloatDataPoint("sensor1", 1.1f);
     DataPoint dPoint2 = new IntDataPoint("sensor2", 12);
     DataPoint dPoint3 = new IntDataPoint("sensor3", 13);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403002L, "root.lemming.device2");
+    tsRecord = new TSRecord("root.lemming.device2", 1617206403002L);
     dPoint2 = new IntDataPoint("sensor2", 22);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403003L, "root.lemming.device3");
+    tsRecord = new TSRecord("root.lemming.device3", 1617206403003L);
     dPoint1 = new FloatDataPoint("sensor1", 3.1f);
     dPoint2 = new IntDataPoint("sensor2", 32);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
-    tsRecord = new TSRecord(1617206403004L, "root.lemming.device1");
+    tsRecord = new TSRecord("root.lemming.device1", 1617206403004L);
     dPoint1 = new FloatDataPoint("sensor1", 4.1f);
     dPoint2 = new IntDataPoint("sensor2", 42);
     dPoint3 = new IntDataPoint("sensor3", 43);
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
-    tsFileWriter.write(tsRecord);
-    tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    tsFileWriter.writeRecord(tsRecord);
+    tsFileWriter.flush(); // flush above data to disk at once
 
     // close TsFile
     tsFileWriter.close();
   }
 
   private void creatModsFile(String modsFilePath) throws IllegalPathException {
-    Modification[] modifications =
-        new Modification[] {
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 2, 1),
-          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 3, 2, 5),
-          new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
+    ModEntry[] modifications =
+        new ModEntry[] {
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 1),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.device1.sensor1"), 2, 5),
+          new TreeDeletionEntry(new MeasurementPath("root.lemming.**"), 1, Long.MAX_VALUE)
         };
 
     try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
-      for (Modification mod : modifications) {
+      for (ModEntry mod : modifications) {
         mFile.write(mod);
       }
     } catch (IOException e) {

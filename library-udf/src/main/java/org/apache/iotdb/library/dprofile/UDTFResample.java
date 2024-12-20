@@ -34,19 +34,19 @@ import java.text.SimpleDateFormat;
 
 /** This function does upsample or downsample of input series. */
 public class UDTFResample implements UDTF {
-
   private static final String START_PARAM = "start";
   private Resampler resampler;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
+
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (long) x > 0,
             "gap should be a time period whose unit is ms, s, m, h, d.",
-            Util.parseTime(validator.getParameters().getString("every")))
+            Util.parseTime(validator.getParameters().getString("every"), validator.getParameters()))
         .validate(
             x ->
                 "min".equals(x)
@@ -80,7 +80,7 @@ public class UDTFResample implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    long newPeriod = Util.parseTime(parameters.getString("every"));
+    long newPeriod = Util.parseTime(parameters.getString("every"), parameters);
     String aggregator = parameters.getStringOrDefault("aggr", "mean").toLowerCase();
     String interpolator = parameters.getStringOrDefault("interp", "nan").toLowerCase();
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

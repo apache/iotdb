@@ -1,16 +1,22 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -22,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -84,18 +91,23 @@ public class SymbolMapper {
     return mappingFunction.apply(symbol);
   }
 
-  /*public ApplyNode.SetExpression map(ApplyNode.SetExpression expression)
-  {
-      return switch (expression) {
-          case ApplyNode.Exists exists -> exists;
-          case ApplyNode.In in -> new ApplyNode.In(map(in.value()), map(in.reference()));
-          case ApplyNode.QuantifiedComparison comparison -> new ApplyNode.QuantifiedComparison(
-                  comparison.operator(),
-                  comparison.quantifier(),
-                  map(comparison.value()),
-                  map(comparison.reference()));
-      };
-  }*/
+  public ApplyNode.SetExpression map(ApplyNode.SetExpression expression) {
+    if (expression instanceof ApplyNode.Exists) {
+      return expression;
+    } else if (expression instanceof ApplyNode.In) {
+      ApplyNode.In in = (ApplyNode.In) expression;
+      return new ApplyNode.In(map(in.getValue()), map(in.getReference()));
+    } else if (expression instanceof ApplyNode.QuantifiedComparison) {
+      ApplyNode.QuantifiedComparison comparison = (ApplyNode.QuantifiedComparison) expression;
+      return new ApplyNode.QuantifiedComparison(
+          comparison.getOperator(),
+          comparison.getQuantifier(),
+          map(comparison.getValue()),
+          map(comparison.getReference()));
+    } else {
+      throw new IllegalArgumentException("Unexpected value: " + expression);
+    }
+  }
 
   public List<Symbol> map(List<Symbol> symbols) {
     return symbols.stream().map(this::map).collect(toImmutableList());

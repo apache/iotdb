@@ -51,7 +51,7 @@ public class PipeMetaDeSerTest {
 
   @Test
   public void test() throws IOException {
-    PipeStaticMeta pipeStaticMeta =
+    final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "pipeName",
             123L,
@@ -67,8 +67,8 @@ public class PipeMetaDeSerTest {
               }
             },
             new HashMap<String, String>() {});
-    ByteBuffer staticByteBuffer = pipeStaticMeta.serialize();
-    PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
+    final ByteBuffer staticByteBuffer = pipeStaticMeta.serialize();
+    final PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
 
     HybridProgressIndex hybridProgressIndex =
@@ -82,8 +82,9 @@ public class PipeMetaDeSerTest {
             hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                 new IoTProgressIndex(3, 6L));
 
-    Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
-    ByteBuffer buffer;
+    final Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap =
+        new HashMap<>();
+    final ByteBuffer buffer;
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write("123", outputStream);
@@ -92,7 +93,7 @@ public class PipeMetaDeSerTest {
     timeSeries2TimestampWindowBufferPairMap.put("root.test.a1", new Pair<>(123L, buffer));
 
     final HybridProgressIndex finalHybridProgressIndex = hybridProgressIndex;
-    PipeRuntimeMeta pipeRuntimeMeta =
+    final PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
@@ -145,9 +146,9 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
-    PipeMeta pipeMeta = new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
-    ByteBuffer byteBuffer = pipeMeta.serialize();
-    PipeMeta pipeMeta1 = PipeMeta.deserialize(byteBuffer);
+    final PipeMeta pipeMeta = new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
+    final ByteBuffer byteBuffer = pipeMeta.serialize();
+    final PipeMeta pipeMeta1 = PipeMeta.deserialize4Coordinator(byteBuffer);
     Assert.assertEquals(pipeMeta, pipeMeta1);
   }
 }

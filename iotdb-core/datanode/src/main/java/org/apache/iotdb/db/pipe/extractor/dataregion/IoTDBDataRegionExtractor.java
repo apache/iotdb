@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionTsFileExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -167,7 +168,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                 PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
                 PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY,
                 PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
-                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY)) {
+                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY,
+                PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
+                PipeExtractorConstant.SOURCE_DATABASE_KEY,
+                PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
+                PipeExtractorConstant.SOURCE_TABLE_KEY)) {
       throw new PipeException(
           "The pipe cannot extract table model data when sql dialect is set to tree.");
     }
@@ -552,6 +557,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     // register metric after generating taskID
     PipeDataRegionExtractorMetrics.getInstance().register(this);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
   }
 
   @Override

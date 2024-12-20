@@ -302,3 +302,15 @@ enum TrainingState {
   FAILED,
   DROPPING
 }
+
+enum Model{
+  TREE=0,
+  TABLE=1
+}
+
+enum FunctionType{
+  NONE=0,
+  SCALAR=1,
+  AGGREGATE=2,
+  TABLE=3
+}

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class LastByDescAccumulator extends LastByAccumulator {
+
   public LastByDescAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
     super(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
@@ -30,5 +32,65 @@ public class LastByDescAccumulator extends LastByAccumulator {
   @Override
   public boolean hasFinalResult() {
     return initResult;
+  }
+
+  @Override
+  protected void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateIntLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateLongLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
+  }
+
+  @Override
+  protected void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
+        return;
+      }
+    }
   }
 }

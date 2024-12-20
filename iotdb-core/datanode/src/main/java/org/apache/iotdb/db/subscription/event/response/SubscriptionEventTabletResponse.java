@@ -21,6 +21,8 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.subscription.event.SubscriptionCommitContextSupplier;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -33,11 +35,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * The {@code SubscriptionEventTabletResponse} class extends {@link
@@ -53,37 +54,51 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private static final long READ_TABLET_BUFFER_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionReadTabletBufferSize();
 
+  private static final long PREFETCH_TABLET_BUFFER_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
+
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionCommitContext commitContext;
+  private final SubscriptionCommitContextSupplier commitContextSupplier;
 
-  private volatile LinkedList<Tablet> tablets;
-  private volatile int tabletsSize;
+  private volatile int totalTablets;
   private final AtomicInteger nextOffset = new AtomicInteger(0);
 
+  // use these variables to limit control for large message
+  private volatile long totalBufferSize;
+  private volatile boolean availableForNext = false;
+
   public SubscriptionEventTabletResponse(
-      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
+      final SubscriptionPipeTabletEventBatch batch,
+      final SubscriptionCommitContext commitContext,
+      final SubscriptionCommitContextSupplier commitContextSupplier) {
     this.batch = batch;
     this.commitContext = commitContext;
+    this.commitContextSupplier = commitContextSupplier;
 
-    init(batch);
+    init();
   }
 
   @Override
   public void prefetchRemainingResponses() {
-    if (hasNoMore) {
-      return;
-    }
-
-    offer(generateNextTabletResponse());
+    // do nothing
   }
 
   @Override
   public void fetchNextResponse(final long offset /* unused */) {
-    prefetchRemainingResponses();
+    offer(generateNextTabletResponse());
     if (Objects.isNull(poll())) {
       LOGGER.warn(
           "SubscriptionEventTabletResponse {} is empty when fetching next response (broken invariant)",
           this);
+    }
+  }
+
+  @Override
+  public synchronized void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
+    if (availableForNext) {
+      // generate next subscription event with the same batch
+      onCommittedHook.accept(new SubscriptionEvent(batch, commitContextSupplier));
     }
   }
 
@@ -93,22 +108,34 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       // do nothing if with complete tablets
       return;
     }
+
     cleanUp();
-    init(batch);
+
+    // should not reset the iterator of batch when init
+    // TODO: avoid completely rewinding the iterator
+    batch.resetIterator();
+    init();
   }
 
   @Override
   public synchronized void cleanUp() {
     super.cleanUp();
 
-    tablets = null;
-    tabletsSize = 0;
+    totalTablets = 0;
     nextOffset.set(0);
+
+    totalBufferSize = 0;
+    availableForNext = false;
+  }
+
+  @Override
+  public boolean isCommittable() {
+    return (availableForNext || hasNoMore) && size() == 1;
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private void init(final SubscriptionPipeTabletEventBatch batch) {
+  private void init() {
     if (!isEmpty()) {
       LOGGER.warn(
           "SubscriptionEventTabletResponse {} is not empty when initializing (broken invariant)",
@@ -116,42 +143,59 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       return;
     }
 
-    tablets = batch.moveTablets();
-    tabletsSize = tablets.size();
     offer(generateNextTabletResponse());
   }
 
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse() {
-    final List<Tablet> currentTablets = new ArrayList<>();
-    final AtomicLong currentTotalBufferSize = new AtomicLong();
+    if (availableForNext) {
+      return new CachedSubscriptionPollResponse(
+          SubscriptionPollResponseType.TABLETS.getType(),
+          new TabletsPayload(Collections.emptyList(), -totalTablets),
+          commitContext);
+    }
 
-    Tablet currentTablet;
-    while (!tablets.isEmpty() && Objects.nonNull(currentTablet = tablets.removeFirst())) {
-      final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(currentTablet);
+    final List<Tablet> currentTablets = new ArrayList<>();
+    long currentBufferSize = 0;
+
+    while (batch.hasNext()) {
+      final List<Tablet> tablets = batch.next();
+      if (Objects.isNull(tablets)) {
+        continue;
+      }
+
+      currentTablets.addAll(tablets);
+      final long bufferSize =
+          tablets.stream()
+              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+              .reduce(Long::sum)
+              .orElse(0L);
+      totalTablets += tablets.size();
+      totalBufferSize += bufferSize;
+
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        LOGGER.warn("Detect large tablet with {} byte(s).", bufferSize);
-        tablets.addAll(currentTablets); // re-enqueue previous tablets
-        currentTablets.clear();
-        currentTotalBufferSize.set(0);
+        // TODO: split tablets
+        LOGGER.warn("Detect large tablets with {} byte(s).", bufferSize);
         return new CachedSubscriptionPollResponse(
             SubscriptionPollResponseType.TABLETS.getType(),
-            new TabletsPayload(
-                Collections.singletonList(currentTablet), nextOffset.incrementAndGet()),
+            new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
             commitContext);
       }
-      if (currentTotalBufferSize.get() + bufferSize > READ_TABLET_BUFFER_SIZE) {
-        final CachedSubscriptionPollResponse response =
-            new CachedSubscriptionPollResponse(
-                SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
-                commitContext);
-        tablets.add(currentTablet); // re-enqueue current tablet
-        currentTablets.clear();
-        currentTotalBufferSize.set(0);
-        return response;
+
+      if (currentBufferSize + bufferSize > READ_TABLET_BUFFER_SIZE) {
+        // TODO: split tablets
+        return new CachedSubscriptionPollResponse(
+            SubscriptionPollResponseType.TABLETS.getType(),
+            new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
+            commitContext);
       }
-      currentTablets.add(currentTablet);
-      currentTotalBufferSize.addAndGet(bufferSize);
+
+      currentBufferSize += bufferSize;
+
+      // limit control for large message
+      if (totalBufferSize > PREFETCH_TABLET_BUFFER_SIZE && batch.hasNext()) {
+        availableForNext = true;
+        break;
+      }
     }
 
     final CachedSubscriptionPollResponse response;
@@ -159,7 +203,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       response =
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.TABLETS.getType(),
-              new TabletsPayload(Collections.emptyList(), -tabletsSize),
+              new TabletsPayload(Collections.emptyList(), -totalTablets),
               commitContext);
       hasNoMore = true;
     } else {
@@ -169,8 +213,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
               new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
               commitContext);
     }
-    currentTablets.clear();
-    currentTotalBufferSize.set(0);
+
     return response;
   }
 }

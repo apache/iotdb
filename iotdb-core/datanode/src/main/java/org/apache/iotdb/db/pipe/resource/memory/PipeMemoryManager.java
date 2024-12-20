@@ -499,6 +499,10 @@ public class PipeMemoryManager {
     return usedMemorySizeInBytes;
   }
 
+  public long getFreeMemorySizeInBytes() {
+    return TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes;
+  }
+
   public long getTotalMemorySizeInBytes() {
     return TOTAL_MEMORY_SIZE_IN_BYTES;
   }

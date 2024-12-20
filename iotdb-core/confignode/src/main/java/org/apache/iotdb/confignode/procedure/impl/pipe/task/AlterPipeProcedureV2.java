@@ -144,7 +144,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
               final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+                  env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
               final PipeTaskMeta currentPipeTaskMeta =
                   currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
               if (databaseName != null

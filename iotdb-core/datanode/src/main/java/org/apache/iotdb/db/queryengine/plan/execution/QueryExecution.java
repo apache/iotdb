@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -267,16 +268,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
   private IAnalysis analyze(MPPQueryContext context) {
-    final long startTime = System.nanoTime();
-    IAnalysis result;
-    try {
-      result = planner.analyze(context);
-    } finally {
-      long analyzeCost = System.nanoTime() - startTime;
-      context.setAnalyzeCost(analyzeCost);
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
-    }
-    return result;
+    return planner.analyze(context);
   }
 
   private void schedule() {
@@ -639,6 +631,7 @@ public class QueryExecution implements IQueryExecution {
 
     // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
     // not null. We should only return the failure status when QueryExecution is in Done state.
+    // a partial insert also returns an error code but the QueryState is FINISHED
     if (state.isDone() && stateMachine.getFailureStatus() != null) {
       tsstatus = stateMachine.getFailureStatus();
     }
@@ -648,9 +641,8 @@ public class QueryExecution implements IQueryExecution {
     // info to client
     if (!CONFIG.isEnable13DataInsertAdapt()
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
-      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus, statusCode);
+      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
     }
-
     return new ExecutionResult(context.getQueryId(), tsstatus);
   }
 
@@ -661,6 +653,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  @Override
+  public boolean isUserQuery() {
+    return context.isUserQuery();
   }
 
   @Override
@@ -691,6 +688,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return analysis.getStatementType();
+  }
+
+  @Override
+  public IClientSession.SqlDialect getSQLDialect() {
+    return context.getSession().getSqlDialect();
   }
 
   public MPPQueryContext getContext() {

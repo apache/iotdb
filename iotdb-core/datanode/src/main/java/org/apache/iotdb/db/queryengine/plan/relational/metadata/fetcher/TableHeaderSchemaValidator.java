@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -84,7 +85,10 @@ public class TableHeaderSchemaValidator {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable) {
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn) {
+    InformationSchemaUtils.checkDBNameInWrite(database);
+
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
@@ -118,6 +122,44 @@ public class TableHeaderSchemaValidator {
         }
       } else {
         throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
+      }
+    } else {
+      // If table with this name already exists and isStrictIdColumn is true, make sure the existing
+      // id columns are the prefix of the incoming id columns, or vice versa
+      if (isStrictIdColumn) {
+        final List<TsTableColumnSchema> realIdColumns = table.getIdColumnSchemaList();
+        final List<ColumnSchema> incomingIdColumns = tableSchema.getIdColumns();
+        if (realIdColumns.size() <= incomingIdColumns.size()) {
+          // When incoming table has more ID columns, the existing id columns
+          // should be the prefix of the incoming id columns (or equal)
+          for (int indexReal = 0; indexReal < realIdColumns.size(); indexReal++) {
+            final String idName = realIdColumns.get(indexReal).getColumnName();
+            final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
+            if (indexIncoming != indexReal) {
+              throw new SemanticException(
+                  String.format(
+                      "Can not create table because incoming table has no less id columns than existing table, "
+                          + "and the existing id columns are not the prefix of the incoming id columns. "
+                          + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
+          }
+        } else {
+          // When existing table has more ID columns, the incoming id columns
+          // should be the prefix of the existing id columns
+          for (int indexIncoming = 0; indexIncoming < incomingIdColumns.size(); indexIncoming++) {
+            final String idName = incomingIdColumns.get(indexIncoming).getName();
+            final int indexReal = table.getIdColumnOrdinal(idName);
+            if (indexReal != indexIncoming) {
+              throw new SemanticException(
+                  String.format(
+                      "Can not create table because existing table has more id columns than incoming table, "
+                          + "and the incoming id columns are not the prefix of the existing id columns. "
+                          + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
+          }
+        }
       }
     }
 

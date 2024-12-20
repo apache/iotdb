@@ -23,6 +23,10 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -43,9 +47,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
+import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -56,6 +64,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -70,6 +79,7 @@ import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -80,27 +90,28 @@ public class TableMetadataImpl implements Metadata {
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override
-  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
-    if (table == null) {
-      return Optional.empty();
-    }
-    List<ColumnSchema> columnSchemaList =
-        table.getColumnList().stream()
-            .map(
-                o ->
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory()))
-            .collect(Collectors.toList());
-    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+  public Optional<TableSchema> getTableSchema(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    return Objects.isNull(table)
+        ? Optional.empty()
+        : Optional.of(
+            new TableSchema(
+                table.getTableName(),
+                table.getColumnList().stream()
+                    .map(
+                        o ->
+                            new ColumnSchema(
+                                o.getColumnName(),
+                                TypeFactory.getType(o.getDataType()),
+                                false,
+                                o.getColumnCategory()))
+                    .collect(Collectors.toList())));
   }
 
   @Override
@@ -520,6 +531,14 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
       }
       return TIMESTAMP;
+    } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and first argument must be char type.");
+      }
+      return STRING;
     }
 
     // builtin aggregation function
@@ -534,7 +553,13 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneSupportedMathNumericType(argumentTypes)) {
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one argument", functionName));
+        }
+
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
@@ -617,9 +642,44 @@ public class TableMetadataImpl implements Metadata {
         // ignore
     }
 
-    // TODO scalar UDF function
-
-    // TODO UDAF
+    // User-defined scalar function
+    if (TableUDFUtils.isScalarFunction(functionName)) {
+      ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
+      FunctionParameters functionParameters =
+          new FunctionParameters(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        scalarFunction.validate(functionParameters);
+        ScalarFunctionConfig config = new ScalarFunctionConfig();
+        scalarFunction.beforeStart(functionParameters, config);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        scalarFunction.beforeDestroy();
+      }
+    } else if (TableUDFUtils.isAggregateFunction(functionName)) {
+      AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
+      FunctionParameters functionParameters =
+          new FunctionParameters(
+              argumentTypes.stream()
+                  .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+                  .collect(Collectors.toList()),
+              Collections.emptyMap());
+      try {
+        aggregateFunction.validate(functionParameters);
+        AggregateFunctionConfig config = new AggregateFunctionConfig();
+        aggregateFunction.beforeStart(functionParameters, config);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+      } catch (Exception e) {
+        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+      } finally {
+        aggregateFunction.beforeDestroy();
+      }
+    }
 
     throw new SemanticException("Unknown function: " + functionName);
   }
@@ -627,8 +687,9 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       final SessionInfo session, final String functionName, final AccessControl accessControl) {
-    return TableBuiltinAggregationFunction.getNativeFunctionNames()
-        .contains(functionName.toLowerCase(Locale.ENGLISH));
+    return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
+            .contains(functionName.toLowerCase(Locale.ENGLISH))
+        || TableUDFUtils.isAggregateFunction(functionName);
   }
 
   @Override
@@ -663,9 +724,14 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     return TableHeaderSchemaValidator.getInstance()
-        .validateTableHeaderSchema(database, tableSchema, context, allowCreateTable);
+        .validateTableHeaderSchema(
+            database, tableSchema, context, allowCreateTable, isStrictIdColumn);
   }
 
   @Override
@@ -780,6 +846,10 @@ public class TableMetadataImpl implements Metadata {
     return TIMESTAMP.equals(type);
   }
 
+  public static boolean isUnknownType(Type type) {
+    return UNKNOWN.equals(type);
+  }
+
   public static boolean isIntegerNumber(Type type) {
     return INT32.equals(type) || INT64.equals(type);
   }
@@ -795,7 +865,10 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
+    return (isNumericType(left) && isNumericType(right))
+        || (isCharType(left) && isCharType(right))
+        || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
+        || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
   }
 
   public static boolean isArithmeticType(Type type) {
@@ -813,6 +886,10 @@ public class TableMetadataImpl implements Metadata {
     }
     Type left = argumentTypes.get(0);
     Type right = argumentTypes.get(1);
+    if ((isUnknownType(left) && isArithmeticType(right))
+        || (isUnknownType(right) && isArithmeticType(left))) {
+      return true;
+    }
     return isArithmeticType(left) && isArithmeticType(right);
   }
 }

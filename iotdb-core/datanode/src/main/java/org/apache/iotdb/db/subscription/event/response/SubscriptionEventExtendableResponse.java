@@ -22,9 +22,6 @@ package org.apache.iotdb.db.subscription.event.response;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.db.subscription.event.cache.SubscriptionPollResponseCache;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Deque;
@@ -41,9 +38,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  */
 public abstract class SubscriptionEventExtendableResponse
     implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionEventTabletResponse.class);
 
   private final Deque<CachedSubscriptionPollResponse> responses;
   protected volatile boolean hasNoMore = false;

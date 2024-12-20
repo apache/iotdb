@@ -57,6 +57,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
+  private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
   private final LoadBalancer loadBalancer;
 
@@ -124,12 +125,27 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         return;
       }
     }
-    throw new PipeConnectionException(
-        String.format(
-            "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    final StringBuilder errorMessage =
+        new StringBuilder(
+            String.format(
+                "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
+      errorMessage
+          .append(" (")
+          .append(" host: ")
+          .append(entry.getKey().getIp())
+          .append(", port: ")
+          .append(entry.getKey().getPort())
+          .append(", because: ")
+          .append(entry.getValue())
+          .append(")");
+    }
+    throw new PipeConnectionException(errorMessage.toString());
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
+    endPoint2HandshakeErrorMessage.remove(endPoint);
+
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
 
     if (clientAndStatus.getLeft() != null) {
@@ -164,6 +180,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               trustStorePath,
               trustStorePwd));
     } catch (Exception e) {
+      endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
       throw new PipeConnectionException(
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,
@@ -210,6 +227,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             client.getIpAddress(),
             client.getPort(),
             resp.getStatus());
+        endPoint2HandshakeErrorMessage.put(client.getEndPoint(), resp.getStatus().getMessage());
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
@@ -225,6 +243,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           client.getPort(),
           e.getMessage(),
           e);
+      endPoint2HandshakeErrorMessage.put(client.getEndPoint(), e.getMessage());
     }
   }
 

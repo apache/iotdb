@@ -58,6 +58,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -717,7 +718,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(
                 SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0"),
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementName)
                 .collect(Collectors.toList()),
             new ArrayList<>(measurementSchemas));
 
@@ -747,7 +748,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, ascending, true),
+            initTimeRangeIterator(groupByTimeParameter, ascending, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);

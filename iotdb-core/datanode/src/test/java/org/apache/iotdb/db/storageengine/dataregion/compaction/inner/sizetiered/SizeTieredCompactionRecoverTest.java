@@ -103,7 +103,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -191,7 +191,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -223,7 +223,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -299,7 +299,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -331,7 +331,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -409,7 +409,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -439,9 +439,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
         SchemaTestUtils.getNonAlignedFullPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -513,9 +511,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFileManager.add(targetTsFileResource, true);
     path =
         SchemaTestUtils.getNonAlignedFullPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+            deviceIds[0] + PATH_SEPARATOR + measurementSchemas[0].getMeasurementName());
 
     tsFilesReader =
         new SeriesDataBlockReader(
@@ -566,7 +562,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -596,18 +592,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
     }
 
     // all mods file of each source file should exist
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
-      Assert.assertTrue(seqResources.get(i).getModFile().exists());
-      Assert.assertEquals(1, seqResources.get(i).getModFile().getModifications().size());
+      Assert.assertTrue(seqResources.get(i).anyModFileExists());
+      Assert.assertEquals(1, seqResources.get(i).getAllModEntries().size());
     }
 
     // mods file of the target file should not exist
-    Assert.assertFalse(targetResource.getModFile().exists());
+    Assert.assertFalse(targetResource.getTotalModSizeInByte() > 0);
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -638,7 +634,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -667,18 +663,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
     }
 
     // all mods file of each source file should exist
     for (int i = 0; i < seqResources.size(); i++) {
       seqResources.get(i).resetModFile();
-      Assert.assertTrue(seqResources.get(i).getModFile().exists());
-      Assert.assertEquals(1, seqResources.get(i).getModFile().getModifications().size());
+      Assert.assertTrue(seqResources.get(i).anyModFileExists());
+      Assert.assertEquals(1, seqResources.get(i).getAllModEntries().size());
     }
 
     // mods file of the target file should not exist
-    Assert.assertFalse(targetResource.getModFile().exists());
+    Assert.assertFalse(targetResource.anyModFileExists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -714,7 +710,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
-          deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
+          deviceIds[0] + "." + measurementSchemas[0].getMeasurementName(),
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
@@ -746,12 +742,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     // all compaction mods file and old mods file of each source file should not exist
     for (int i = 0; i < seqResources.size(); i++) {
-      Assert.assertFalse(seqResources.get(i).getCompactionModFile().exists());
-      Assert.assertFalse(seqResources.get(i).getModFile().exists());
+      Assert.assertFalse(seqResources.get(i).getCompactionModFile().getFileLength() > 0);
+      Assert.assertFalse(seqResources.get(i).getTotalModSizeInByte() > 0);
     }
 
     // mods file of the target file should exist
-    Assert.assertTrue(targetResource.getModFile().exists());
+    Assert.assertTrue(targetResource.anyModFileExists());
 
     // compaction log file should not exist
     Assert.assertFalse(logFile.exists());
@@ -770,7 +766,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -834,7 +830,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     TimeSeriesMetadataCache.getInstance().clear();
     ChunkCache.getInstance().clear();
     tsFilesReader =
@@ -868,7 +864,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -927,7 +923,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -960,7 +956,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1020,7 +1016,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
     tsFilesReader =
         new SeriesDataBlockReader(
@@ -1064,7 +1060,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1105,7 +1101,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1160,7 +1156,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         SchemaTestUtils.getNonAlignedFullPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[0].getMeasurementName());
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
@@ -1261,8 +1257,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getTotalModSizeInByte() > 0);
+      Assert.assertFalse(resource.getCompactionModFile().getFileLength() > 0);
     }
     // the target file should be deleted
     Assert.assertFalse(targetResources.get(0).getTsFile().exists());
@@ -1336,7 +1332,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the target file should be deleted
@@ -1404,7 +1400,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertTrue(resource.anyModFileExists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // tmp target file, target file and target resource file should be deleted after compaction

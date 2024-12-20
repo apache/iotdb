@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -322,7 +323,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
       // executed correctly
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();

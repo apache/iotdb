@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -75,7 +78,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
@@ -96,6 +101,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -579,7 +585,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDelete(Delete node, Integer indent) {
+    protected Void visitDelete(final Delete node, final Integer indent) {
       builder.append("DELETE FROM ").append(formatName(node.getTable().getName()));
 
       node.getWhere().ifPresent(where -> builder.append(" WHERE ").append(formatExpression(where)));
@@ -588,9 +594,9 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateDB(CreateDB node, Integer indent) {
+    protected Void visitCreateDB(final CreateDB node, final Integer indent) {
       builder.append("CREATE DATABASE ");
-      if (node.isSetIfNotExists()) {
+      if (node.exists()) {
         builder.append("IF NOT EXISTS ");
       }
       builder.append(node.getDbName()).append(" ");
@@ -601,7 +607,20 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropDB(DropDB node, Integer indent) {
+    protected Void visitAlterDB(final AlterDB node, final Integer indent) {
+      builder.append("ALTER DATABASE ");
+      if (node.exists()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getDbName()).append(" ");
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropDB(final DropDB node, final Integer indent) {
       builder.append("DROP DATABASE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
@@ -1055,6 +1074,8 @@ public final class SqlFormatter {
     protected Void visitShowPipes(ShowPipes node, Integer context) {
       builder.append("SHOW PIPES");
 
+      // TODO: consider pipeName and hasWhereClause in node
+
       return null;
     }
 
@@ -1092,6 +1113,69 @@ public final class SqlFormatter {
     @Override
     protected Void visitShowPipePlugins(ShowPipePlugins node, Integer context) {
       builder.append("SHOW PIPEPLUGINS");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreateTopic(CreateTopic node, Integer context) {
+      builder.append("CREATE TOPIC ");
+      if (node.hasIfNotExistsCondition()) {
+        builder.append("IF NOT EXISTS ");
+      }
+      builder.append(node.getTopicName());
+      builder.append(" \n");
+
+      if (!node.getTopicAttributes().isEmpty()) {
+        builder
+            .append("WITH (")
+            .append("\n")
+            .append(
+                node.getTopicAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropTopic(DropTopic node, Integer context) {
+      builder.append("DROP TOPIC ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getTopicName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitShowTopics(ShowTopics node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW TOPICS");
+      } else {
+        builder.append("SHOW TOPIC ").append(node.getTopicName());
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW SUBSCRIPTIONS");
+      } else {
+        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      }
 
       return null;
     }

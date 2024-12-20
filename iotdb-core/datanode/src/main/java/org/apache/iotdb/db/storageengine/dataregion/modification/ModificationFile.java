@@ -19,269 +19,313 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationWriter;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.GuardedBy;
-
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-/**
- * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
- * directory. Methods in this class are highly synchronized for concurrency safety.
- */
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static org.apache.iotdb.db.utils.ModificationUtils.sortAndMerge;
+
 public class ModificationFile implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
-  public static final String FILE_SUFFIX = ".mods";
+  public static final String FILE_SUFFIX = ".mods2";
+  public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods2";
   public static final String COMPACT_SUFFIX = ".settle";
-  public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods";
+  private static final Logger LOGGER = LoggerFactory.getLogger(ModificationFile.class);
 
-  // whether to verify the last line, it may be incomplete in extreme cases
-  private boolean needVerify = true;
-
-  private final ModificationWriter writer;
-  private final ModificationReader reader;
-  private String filePath;
-  private final SecureRandom random = new SecureRandom();
+  private final File file;
+  private FileChannel channel;
+  private OutputStream fileOutputStream;
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private static final long COMPACT_THRESHOLD = 1024 * 1024L;
-
   private boolean hasCompacted = false;
+  private boolean fileExists = false;
 
-  /**
-   * Construct a ModificationFile using a file as its storage.
-   *
-   * @param filePath the path of the storage file.
-   */
   public ModificationFile(String filePath) {
-    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(filePath);
-    this.writer = accessor;
-    this.reader = accessor;
-    this.filePath = filePath;
+    this(new File(filePath));
   }
 
-  /** Release resources such as streams and caches. */
+  public ModificationFile(File file) {
+    this.file = file;
+    fileExists = file.length() > 0;
+    if (fileExists) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(file.length());
+    }
+  }
+
+  @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
+  public void write(ModEntry entry) throws IOException {
+    lock.writeLock().lock();
+    long size = 0;
+    try {
+      if (fileOutputStream == null) {
+        fileOutputStream =
+            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+      }
+      size += entry.serialize(fileOutputStream);
+      fileOutputStream.flush();
+    } finally {
+      lock.writeLock().unlock();
+    }
+    if (!fileExists) {
+      fileExists = true;
+      FileMetrics.getInstance().increaseModFileNum(1);
+    }
+    FileMetrics.getInstance().increaseModFileSize(size);
+  }
+
+  @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
+  public void write(Collection<? extends ModEntry> entries) throws IOException {
+    lock.writeLock().lock();
+    long size = 0;
+    try {
+      if (fileOutputStream == null) {
+        fileOutputStream =
+            new BufferedOutputStream(Files.newOutputStream(file.toPath(), CREATE, APPEND));
+        channel = FileChannel.open(file.toPath(), CREATE, APPEND);
+      }
+      for (ModEntry entry : entries) {
+        size += entry.serialize(fileOutputStream);
+      }
+      fileOutputStream.flush();
+    } finally {
+      lock.writeLock().unlock();
+    }
+    if (!fileExists) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      fileExists = true;
+    }
+    FileMetrics.getInstance().increaseModFileSize(size);
+  }
+
+  public Iterator<ModEntry> getModIterator(long offset) throws IOException {
+    return new ModIterator(offset);
+  }
+
+  public List<ModEntry> getAllMods() throws IOException {
+    return getAllMods(0);
+  }
+
+  public List<ModEntry> getAllMods(long offset) throws IOException {
+    List<ModEntry> allMods = new ArrayList<>();
+    getModIterator(offset).forEachRemaining(allMods::add);
+    return allMods;
+  }
+
   @Override
   public void close() throws IOException {
-    synchronized (this) {
-      writer.close();
+    if (fileOutputStream == null) {
+      return;
+    }
+
+    lock.writeLock().lock();
+    try {
+      fileOutputStream.close();
+      fileOutputStream = null;
+      channel.force(true);
+      channel.close();
+      channel = null;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
-  /**
-   * Write a modification in this file. The modification will first be written to the persistent
-   * store then the memory cache.
-   *
-   * @param mod the modification to be written.
-   * @throws IOException if IOException is thrown when writing the modification to the store.
-   */
-  public void write(Modification mod) throws IOException {
-    synchronized (this) {
-      if (needVerify && new File(filePath).exists()) {
-        writer.mayTruncateLastLine();
-        needVerify = false;
+  public File getFile() {
+    return file;
+  }
+
+  public long getFileLength() {
+    lock.readLock().lock();
+    try {
+      return file.length();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public static String composeFileName(long levelNum, long modFileNum) {
+    return levelNum + "-" + modFileNum + FILE_SUFFIX;
+  }
+
+  public static long[] parseFileName(String name) {
+    name = name.substring(0, name.lastIndexOf(ModificationFile.FILE_SUFFIX));
+    String[] split = name.split("-");
+    long levelNum = Long.parseLong(split[0]);
+    long modNum = Long.parseLong(split[1]);
+    return new long[] {levelNum, modNum};
+  }
+
+  public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
+    private InputStream inputStream;
+    private ModEntry nextEntry;
+
+    public ModIterator(long offset) throws IOException {
+      if (!fileExists) {
+        return;
       }
-      writer.write(mod);
-    }
-  }
-
-  /**
-   * Write a modification in this file. The modification will first be written to the persistent
-   * store then the memory cache. Notice that this method does not synchronize to physical disk
-   * after
-   *
-   * @param mod the modification to be written.
-   * @throws IOException if IOException is thrown when writing the modification to the store.
-   */
-  public void writeWithoutSync(Modification mod) throws IOException {
-    synchronized (this) {
-      if (needVerify && new File(filePath).exists()) {
-        writer.mayTruncateLastLine();
-        needVerify = false;
+      this.inputStream = new BufferedInputStream(Files.newInputStream(file.toPath()), 64 * 1024);
+      long skipped = inputStream.skip(offset);
+      if (skipped != offset) {
+        LOGGER.warn(
+            "Fail to read Mod file {}, expecting offset {}, actually skipped {}",
+            file,
+            offset,
+            skipped);
       }
-      writer.writeWithOutSync(mod);
     }
-  }
 
-  @GuardedBy("TsFileResource-WriteLock")
-  public void truncate(long size) {
-    writer.truncate(size);
-  }
+    @Override
+    public void close() {
+      if (inputStream == null) {
+        return;
+      }
 
-  /**
-   * Get all modifications stored in this file.
-   *
-   * @return an ArrayList of modifications.
-   */
-  public Collection<Modification> getModifications() {
-    synchronized (this) {
-      return reader.read();
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.info("Cannot close mod file input stream of {}", file, e);
+      } finally {
+        inputStream = null;
+      }
     }
-  }
 
-  public Iterable<Modification> getModificationsIter() {
-    return reader::getModificationIterator;
-  }
+    @Override
+    public boolean hasNext() {
+      if (inputStream == null) {
+        return false;
+      }
+      if (nextEntry == null) {
+        try {
+          if (inputStream.available() == 0) {
+            close();
+            return false;
+          }
+          nextEntry = ModEntry.createFrom(inputStream);
+        } catch (EOFException e) {
+          close();
+        } catch (IOException e) {
+          LOGGER.info("Cannot read mod file input stream of {}", file, e);
+          close();
+        }
+      }
 
-  public String getFilePath() {
-    return filePath;
-  }
+      return nextEntry != null;
+    }
 
-  public void setFilePath(String filePath) {
-    this.filePath = filePath;
-  }
-
-  public void remove() throws IOException {
-    close();
-    boolean deleted = FSFactoryProducer.getFSFactory().getFile(filePath).delete();
-    if (!deleted) {
-      logger.warn("Delete ModificationFile {} failed.", filePath);
+    @Override
+    public ModEntry next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      ModEntry ret = nextEntry;
+      nextEntry = null;
+      return ret;
     }
   }
 
   public boolean exists() {
-    return new File(filePath).exists();
+    return fileExists;
   }
 
-  /**
-   * Create a hardlink for the modification file. The hardlink with have a suffix like
-   * ".{sysTime}_{randomLong}"
-   *
-   * @return a new ModificationFile with its path changed to the hardlink, or null if the origin
-   *     file does not exist or the hardlink cannot be created.
-   */
-  public ModificationFile createHardlink() {
-    if (!exists()) {
-      return null;
-    }
-
-    while (true) {
-      String hardlinkSuffix =
-          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
-      File hardlink = new File(filePath + hardlinkSuffix);
-
-      try {
-        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath));
-        return new ModificationFile(hardlink.getAbsolutePath());
-      } catch (FileAlreadyExistsException e) {
-        // retry a different name if the file is already created
-      } catch (IOException e) {
-        logger.error("Cannot create hardlink for {}", filePath, e);
-        return null;
-      }
-    }
+  public void remove() throws IOException {
+    close();
+    FileUtils.deleteFileOrDirectory(file);
+    FileMetrics.getInstance().decreaseModFileNum(1);
+    FileMetrics.getInstance().decreaseModFileSize(getFileLength());
+    fileExists = false;
   }
 
-  public static ModificationFile getNormalMods(TsFileResource tsFileResource) {
-    return new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+  public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
+    return new ModificationFile(new File(tsFileResource.getTsFilePath() + FILE_SUFFIX));
+  }
+
+  public static File getExclusiveMods(File tsFile) {
+    return new File(tsFile.getPath() + FILE_SUFFIX);
   }
 
   public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
-    return new ModificationFile(
-        tsFileResource.getTsFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+    return new ModificationFile(new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX));
   }
 
-  public long getSize() {
-    File file = new File(filePath);
-    if (file.exists()) {
-      return file.length();
-    } else {
-      return 0;
+  public static File getCompactionMods(File tsFile) {
+    return new File(tsFile.getPath() + COMPACTION_FILE_SUFFIX);
+  }
+
+  public void truncate(long size) throws IOException {
+    if (channel != null) {
+      channel.truncate(size);
     }
   }
 
-  public void compact() {
-    long originFileSize = getSize();
-    if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
-      Map<String, List<Modification>> pathModificationMap =
-          getModifications().stream().collect(Collectors.groupingBy(Modification::getPathString));
-      String newModsFileName = filePath + COMPACT_SUFFIX;
-      List<Modification> allSettledModifications = new ArrayList<>();
-      try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
-        Set<Map.Entry<String, List<Modification>>> modificationsEntrySet =
-            pathModificationMap.entrySet();
-        for (Map.Entry<String, List<Modification>> modificationEntry : modificationsEntrySet) {
-          List<Modification> settledModifications = sortAndMerge(modificationEntry.getValue());
-          for (Modification settledModification : settledModifications) {
-            compactedModificationFile.write(settledModification);
-          }
-          allSettledModifications.addAll(settledModifications);
-        }
-      } catch (IOException e) {
-        logger.error("compact mods file exception of {}", filePath, e);
-      }
+  @Override
+  public String toString() {
+    return "ModificationFile{" + "file=" + file + '}';
+  }
 
+  public void compact() throws IOException {
+    long originFileSize = getFileLength();
+    if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
       try {
+        Map<PartialPath, List<ModEntry>> pathModificationMap =
+            getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
+        String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
+        List<ModEntry> allSettledModifications = new ArrayList<>();
+        try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+          Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
+              pathModificationMap.entrySet();
+          for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
+            List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
+            compactedModificationFile.write(settledModifications);
+            allSettledModifications.addAll(settledModifications);
+          }
+        } catch (IOException e) {
+          LOGGER.error("compact mods file exception of {}", file, e);
+        }
         // remove origin mods file
         this.remove();
+        fileExists = true;
         // rename new mods file to origin name
-        Files.move(new File(newModsFileName).toPath(), new File(filePath).toPath());
-        logger.info("{} settle successful", filePath);
+        Files.move(new File(newModsFileName).toPath(), file.toPath());
+        LOGGER.info("{} settle successful", file);
 
-        if (getSize() > COMPACT_THRESHOLD) {
-          logger.warn(
+        if (getFileLength() > COMPACT_THRESHOLD) {
+          LOGGER.warn(
               "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
               originFileSize,
-              getSize());
+              getFileLength());
         }
       } catch (IOException e) {
-        logger.error("remove origin file or rename new mods file error.", e);
+        LOGGER.error("remove origin file or rename new mods file error.", e);
       }
       hasCompacted = true;
     }
-  }
-
-  public static List<Modification> sortAndMerge(List<Modification> modifications) {
-    modifications.sort(
-        (o1, o2) -> {
-          if (!o1.getType().equals(o2.getType())) {
-            return o1.getType().compareTo(o2.getType());
-          } else if (!o1.getPath().equals(o2.getPath())) {
-            return o1.getPath().compareTo(o2.getPath());
-          } else if (o1.getFileOffset() != o2.getFileOffset()) {
-            return (int) (o1.getFileOffset() - o2.getFileOffset());
-          } else {
-            if (o1.getType() == Modification.Type.DELETION) {
-              Deletion del1 = (Deletion) o1;
-              Deletion del2 = (Deletion) o2;
-              return del1.getTimeRange().compareTo(del2.getTimeRange());
-            }
-            throw new IllegalArgumentException();
-          }
-        });
-    List<Modification> result = new ArrayList<>();
-    if (!modifications.isEmpty()) {
-      Deletion current = ((Deletion) modifications.get(0)).clone();
-      for (int i = 1; i < modifications.size(); i++) {
-        Deletion del = (Deletion) modifications.get(i);
-        if (current.intersects(del)) {
-          current.merge(del);
-        } else {
-          result.add(current);
-          current = del.clone();
-        }
-      }
-      result.add(current);
-    }
-    return result;
   }
 }

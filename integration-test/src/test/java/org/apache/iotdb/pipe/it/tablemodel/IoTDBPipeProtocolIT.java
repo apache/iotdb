@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -38,6 +39,7 @@ import org.junit.runner.RunWith;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
@@ -83,8 +85,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
         .setDataReplicationFactor(dataRegionReplicationFactor);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
     receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
@@ -177,8 +179,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
         .setDataReplicationFactor(1);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3);
     receiverEnv.initClusterEnvironment(1, 1);
@@ -186,6 +188,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -222,7 +230,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -266,7 +274,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertCountData("test1", "test1", 100, senderEnv);
+      TableModelUtils.assertCountData("test1", "test1", 100, senderEnv, handleFailure);
     }
   }
 
@@ -275,6 +283,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
 
     try (final SyncConfigNodeIServiceClient client =
@@ -312,13 +326,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -327,7 +341,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
     }
   }
 
@@ -372,13 +386,19 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
         .setDataReplicationFactor(2);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(1, 1);
     receiverEnv.initClusterEnvironment(1, 3);
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
     boolean insertResult = true;
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
@@ -436,13 +456,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
 
       insertResult = TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 300, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
 
       extractorAttributes.replace("realtime.mode", "file");
 
@@ -460,7 +480,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       if (!insertResult) {
         return;
       }
-      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv);
+      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
     }
   }
 }

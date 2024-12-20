@@ -41,6 +41,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,6 +54,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
+
+  private final AtomicLong version = new AtomicLong(0);
 
   // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
@@ -175,6 +179,7 @@ public class DataNodeTableCache implements ITableCache {
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .put(tableName, preUpdateTableMap.get(database).get(tableName).getLeft());
       removeTableFromPreUpdateMap(database, tableName);
+      version.incrementAndGet();
       LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -188,6 +193,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       preUpdateTableMap.remove(database);
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -205,6 +211,7 @@ public class DataNodeTableCache implements ITableCache {
       if (preUpdateTableMap.containsKey(database)) {
         preUpdateTableMap.get(database).remove(tableName);
       }
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -228,9 +235,14 @@ public class DataNodeTableCache implements ITableCache {
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public long getVersion() {
+    return version.get();
   }
 
   public TsTable getTableInWrite(final String database, final String tableName) {
@@ -316,19 +328,23 @@ public class DataNodeTableCache implements ITableCache {
       final Map<String, Map<String, Long>> previousVersions) {
     readWriteLock.writeLock().lock();
     try {
+      final AtomicBoolean isUpdated = new AtomicBoolean(false);
       fetchedTables.forEach(
-          (database, tableInfoMap) -> {
+          (qualifiedDatabase, tableInfoMap) -> {
+            final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
             if (preUpdateTableMap.containsKey(database)) {
               tableInfoMap.forEach(
                   (tableName, tsTable) -> {
                     final Pair<TsTable, Long> existingPair =
                         preUpdateTableMap.get(database).get(tableName);
                     if (Objects.isNull(existingPair)
+                        || Objects.isNull(existingPair.getLeft())
                         || !Objects.equals(
                             existingPair.getRight(),
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    isUpdated.set(true);
                     LOGGER.info(
                         "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
                         database,
@@ -346,6 +362,9 @@ public class DataNodeTableCache implements ITableCache {
                   });
             }
           });
+      if (isUpdated.get()) {
+        version.incrementAndGet();
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -354,9 +373,13 @@ public class DataNodeTableCache implements ITableCache {
   private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return databaseTableMap.containsKey(database)
-          ? databaseTableMap.get(database).get(tableName)
-          : null;
+      final TsTable result =
+          databaseTableMap.containsKey(database)
+              ? databaseTableMap.get(database).get(tableName)
+              : null;
+      return Objects.nonNull(result)
+          ? result
+          : InformationSchemaUtils.mayGetTable(database, tableName);
     } finally {
       readWriteLock.readLock().unlock();
     }

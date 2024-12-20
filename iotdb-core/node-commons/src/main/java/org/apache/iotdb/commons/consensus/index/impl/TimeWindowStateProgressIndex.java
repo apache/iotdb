@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -46,6 +47,13 @@ import java.util.stream.Collectors;
  * as necessary to ensure the integrity and independence of the progress index instances.
  */
 public class TimeWindowStateProgressIndex extends ProgressIndex {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeWindowStateProgressIndex.class)
+          + ProgressIndex.LOCK_SIZE;
+  private static final long ENTRY_SIZE =
+      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+          + RamUsageEstimator.shallowSizeOfInstance(Pair.class);
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -291,5 +299,21 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
         + "timeSeries2TimeWindowBufferPairMap='"
         + timeSeries2TimestampWindowBufferPairMap
         + "'}";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + timeSeries2TimestampWindowBufferPairMap.size() * ENTRY_SIZE
+        + timeSeries2TimestampWindowBufferPairMap.entrySet().stream()
+            .map(
+                entry ->
+                    RamUsageEstimator.sizeOf(entry.getKey())
+                        + RamUsageEstimator.sizeOf(entry.getValue().getLeft())
+                        + (Objects.nonNull(entry.getValue().getRight())
+                            ? (RamUsageEstimator.shallowSizeOfInstance(ByteBuffer.class)
+                                + RamUsageEstimator.sizeOf(entry.getValue().getRight().array()))
+                            : 0))
+            .reduce(0L, Long::sum);
   }
 }

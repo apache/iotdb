@@ -35,7 +35,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -263,9 +266,12 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endFile();
     }
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath(deviceID, ""), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource1.getModFile().close();
+        .getModFileForWrite()
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
+                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
@@ -291,18 +297,18 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
       writer.endFile();
     }
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath(deviceID, "s0"), Long.MAX_VALUE, 11));
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s0"), 11));
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath(deviceID, "s1"), Long.MAX_VALUE, 11));
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s1"), 11));
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath(deviceID, "s2"), Long.MAX_VALUE, 11));
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s2"), 11));
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath(deviceID, "s3"), Long.MAX_VALUE, 11));
-    resource1.getModFile().close();
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s3"), 11));
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
