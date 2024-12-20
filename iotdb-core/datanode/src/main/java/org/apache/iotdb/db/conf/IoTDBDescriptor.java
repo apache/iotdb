@@ -770,14 +770,15 @@ public class IoTDBDescriptor {
                         "merge_interval_sec", Long.toString(conf.getMergeIntervalSec())))
                 .map(String::trim)
                 .orElse(Long.toString(conf.getMergeIntervalSec()))));
-    conf.setCompactionThreadCount(
+    int compactionThreadCount =
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
                         "compaction_thread_count",
                         Integer.toString(conf.getCompactionThreadCount())))
                 .map(String::trim)
-                .orElse(Integer.toString(conf.getCompactionThreadCount()))));
+                .orElse(Integer.toString(conf.getCompactionThreadCount())));
+    conf.setCompactionThreadCount(compactionThreadCount <= 0 ? 1 : compactionThreadCount);
     int maxConcurrentAlignedSeriesInCompaction =
         Integer.parseInt(
             Optional.ofNullable(
@@ -1038,7 +1039,8 @@ public class IoTDBDescriptor {
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-    loadAutoCreateSchemaProps(properties);
+    boolean startUp = true;
+    loadAutoCreateSchemaProps(properties, startUp);
 
     conf.setTsFileStorageFs(
         Optional.ofNullable(
@@ -1767,8 +1769,8 @@ public class IoTDBDescriptor {
 
     CompactionScheduleTaskManager.getInstance().checkAndMayApplyConfigurationChange();
     // hot load compaction task manager configurations
-    loadCompactionIsEnabledHotModifiedProps(properties);
-    boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
+    boolean restartCompactionTaskManager = loadCompactionIsEnabledHotModifiedProps(properties);
+    restartCompactionTaskManager |= loadCompactionThreadCountHotModifiedProps(properties);
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
@@ -2071,8 +2073,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "compaction_thread_count")));
     if (newConfigCompactionThreadCount <= 0) {
-      LOGGER.error("compaction_thread_count must greater than 0");
-      return false;
+      newConfigCompactionThreadCount = 1;
     }
     if (newConfigCompactionThreadCount == conf.getCompactionThreadCount()) {
       return false;
@@ -2105,8 +2106,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue(
                         "sub_compaction_thread_count")));
     if (newConfigSubtaskNum <= 0) {
-      LOGGER.error("sub_compaction_thread_count must greater than 0");
-      return false;
+      newConfigSubtaskNum = 1;
     }
     if (newConfigSubtaskNum == conf.getSubCompactionTaskNum()) {
       return false;
@@ -2115,7 +2115,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private void loadCompactionIsEnabledHotModifiedProps(TrimProperties properties)
+  private boolean loadCompactionIsEnabledHotModifiedProps(TrimProperties properties)
       throws IOException {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
@@ -2159,14 +2159,10 @@ public class IoTDBDescriptor {
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
-    if (!isCompactionEnabled && compactionEnabledInNewConfig) {
-      LOGGER.error("Compaction cannot start in current status.");
-      return;
-    }
-
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
+    return !isCompactionEnabled && compactionEnabledInNewConfig;
   }
 
   private void loadWALHotModifiedProps(TrimProperties properties) throws IOException {
@@ -2337,7 +2333,8 @@ public class IoTDBDescriptor {
     return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
-  private void loadAutoCreateSchemaProps(TrimProperties properties) throws IOException {
+  private void loadAutoCreateSchemaProps(TrimProperties properties, boolean startUp)
+      throws IOException {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(
@@ -2402,7 +2399,8 @@ public class IoTDBDescriptor {
                 .map(String::trim)
                 .orElse(
                     ConfigurationFileUtils.getConfigurationDefaultValue(
-                        "default_storage_group_level"))));
+                        "default_storage_group_level"))),
+        startUp);
     conf.setDefaultBooleanEncoding(
         Optional.ofNullable(
                 properties.getProperty(
@@ -2731,7 +2729,8 @@ public class IoTDBDescriptor {
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
       // update params of creating schema automatically
-      loadAutoCreateSchemaProps(properties);
+      boolean startUp = false;
+      loadAutoCreateSchemaProps(properties, startUp);
 
       // update tsfile-format config
       loadTsFileProps(properties);
@@ -2886,6 +2885,14 @@ public class IoTDBDescriptor {
       } else {
         BinaryAllocator.getInstance().close(true);
       }
+
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(
+              Optional.ofNullable(
+                      properties.getProperty(
+                          "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert())))
+                  .map(String::trim)
+                  .orElse(String.valueOf(conf.isEnablePartialInsert()))));
 
       // update query_sample_throughput_bytes_per_sec
       loadQuerySampleThroughput(properties);
@@ -3257,6 +3264,14 @@ public class IoTDBDescriptor {
                         String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex())))
                 .map(String::trim)
                 .orElse(String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
+    conf.setLoadChunkMetadataMemorySizeInBytes(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "load_chunk_metadata_memory_size_in_bytes",
+                        String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             Optional.ofNullable(

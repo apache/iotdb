@@ -161,6 +161,7 @@ public class ColumnHeaderConstant {
   public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
+  public static final String TSFILE_SIZE = "TsFileSize";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -198,9 +199,17 @@ public class ColumnHeaderConstant {
   public static final String STATEMENT = "Statement";
 
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
+  public static final String QUERY_ID_START_TIME_TABLE_MODEL = "start_time";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
-  public static final String SQL_DIALECT = "sql_dialect";
+
+  public static final String TABLE_NAME_TABLE_MODEL = "table_name";
+  public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
+
+  public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
+  public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
+  public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
@@ -353,7 +362,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(ROLE, TSDataType.TEXT),
-          new ColumnHeader(CREATE_TIME, TSDataType.TEXT));
+          new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showAINodesColumnHeaders =
       ImmutableList.of(

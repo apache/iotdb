@@ -62,35 +62,38 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   private Collection<TRegionReplicaSet> replicaSets;
 
-  public RelationalDeleteDataNode(PlanNodeId id, Delete delete) {
+  public RelationalDeleteDataNode(final PlanNodeId id, final Delete delete) {
     super(id);
     this.modEntries = delete.getTableDeletionEntries();
     this.replicaSets = delete.getReplicaSets();
   }
 
-  public RelationalDeleteDataNode(PlanNodeId id, TableDeletionEntry entry) {
+  public RelationalDeleteDataNode(final PlanNodeId id, final TableDeletionEntry entry) {
     super(id);
     this.modEntries = Collections.singletonList(entry);
   }
 
-  public RelationalDeleteDataNode(PlanNodeId id, List<TableDeletionEntry> entries) {
+  public RelationalDeleteDataNode(final PlanNodeId id, final List<TableDeletionEntry> entries) {
     super(id);
     this.modEntries = entries;
   }
 
-  public RelationalDeleteDataNode(PlanNodeId id, Delete delete, ProgressIndex progressIndex) {
+  public RelationalDeleteDataNode(
+      final PlanNodeId id, final Delete delete, final ProgressIndex progressIndex) {
     this(id, delete);
     this.progressIndex = progressIndex;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id, Delete delete, TRegionReplicaSet regionReplicaSet) {
+      final PlanNodeId id, final Delete delete, final TRegionReplicaSet regionReplicaSet) {
     this(id, delete);
     this.regionReplicaSet = regionReplicaSet;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id, TableDeletionEntry delete, TRegionReplicaSet regionReplicaSet) {
+      final PlanNodeId id,
+      final TableDeletionEntry delete,
+      final TRegionReplicaSet regionReplicaSet) {
     this(id, delete);
     this.regionReplicaSet = regionReplicaSet;
   }

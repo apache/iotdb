@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.db.it.udf.scalar;
+package org.apache.iotdb.relational.it.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBScalarFunctionIT {
+public class IoTDBUserDefinedScalarFunctionIT {
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE test",
@@ -66,13 +66,13 @@ public class IoTDBScalarFunctionIT {
       };
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public void tearDown() throws Exception {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

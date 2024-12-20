@@ -58,7 +58,7 @@ public interface AccessControl {
    * @param databaseName without `root.` prefix, like db
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanShowOrUseDatabase(String userName, String databaseName);
+  void checkCanShowOrUseDatabase(final String userName, final String databaseName);
 
   /**
    * Check if user is allowed to create the specified table.

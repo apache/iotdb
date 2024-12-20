@@ -796,8 +796,8 @@ public abstract class AbstractMemTable implements IMemTable {
       } else {
         pointDeleted += pair.right.delete(modEntry);
       }
-      if (pair.right.getMemChunkMap().isEmpty()) {
-        memTableMap.remove(pair.left);
+      if (pair.right.isEmpty()) {
+        memTableMap.remove(pair.left).release();
       }
     }
     return pointDeleted;

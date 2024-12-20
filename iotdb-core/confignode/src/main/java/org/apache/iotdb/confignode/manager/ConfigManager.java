@@ -2185,8 +2185,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
-    TSStatus status = confirmLeader();
+  public TSStatus alterLogicalView(final TAlterLogicalViewReq req) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.alterLogicalView(req);
     } else {

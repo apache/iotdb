@@ -62,8 +62,13 @@ public class MetaUtils {
   public static PartialPath getDatabasePathByLevel(PartialPath path, int level)
       throws MetadataException {
     String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(path.getFullPath());
+    if (nodeNames.length <= level) {
+      throw new IllegalPathException(
+          path.getFullPath(), "it is no longer than default sg level: " + level);
+    }
+    if (!nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(
+          path.getFullPath(), "it does not start with " + IoTDBConstant.PATH_ROOT);
     }
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);

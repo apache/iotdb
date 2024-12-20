@@ -135,6 +135,18 @@ public final class PlanMatchPattern {
                 dataNodeId));
   }
 
+  public static PlanMatchPattern infoSchemaTableScan(
+      String expectedTableName, Optional<Integer> dataNodeId, List<String> outputSymbols) {
+    return node(InformationSchemaTableScanNode.class)
+        .with(
+            new InformationSchemaTableScanMatcher(
+                expectedTableName,
+                Optional.empty(),
+                outputSymbols,
+                Collections.emptySet(),
+                dataNodeId));
+  }
+
   public static PlanMatchPattern treeDeviceViewTableScan(
       String expectedTableName, List<String> outputSymbols, Set<String> assignmentsKeys) {
     PlanMatchPattern pattern =
