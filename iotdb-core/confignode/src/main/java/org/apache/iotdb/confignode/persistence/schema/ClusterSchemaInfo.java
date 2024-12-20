@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -359,6 +360,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         schemaMap.put(
             path.getFullPath(),
             mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+      }
+      if (plan.isTableModel() && plan.isShowDatabasePlan() && !treeDeviceViewTableMap.isEmpty()) {
+        schemaMap.put(TreeViewSchema.TREE_VIEW_DATABASE, new TDatabaseSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

@@ -1868,7 +1868,10 @@ public class ConfigManager implements IManager {
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
       final GetDatabasePlan getDatabasePlan =
           new GetDatabasePlan(
-              req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+              req.getDatabasePathPattern(),
+              scope,
+              req.isSetIsTableModel() && req.isIsTableModel(),
+              true);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
