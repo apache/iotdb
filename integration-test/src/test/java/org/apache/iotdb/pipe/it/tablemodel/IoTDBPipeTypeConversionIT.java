@@ -214,8 +214,8 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelTestIT {
     String sourceTypeName = sourceType.name();
     String targetTypeName = targetType.name();
 
-    createTimeSeries(sourceTypeName, targetTypeName, sourceTypeName, senderEnv);
-    createTimeSeries(sourceTypeName, targetTypeName, targetTypeName, receiverEnv);
+    createDataBaseAndTable(sourceTypeName, targetTypeName, sourceTypeName, senderEnv);
+    createDataBaseAndTable(sourceTypeName, targetTypeName, targetTypeName, receiverEnv);
 
     List<Pair> pairs = createTestDataForType(sourceTypeName);
 
@@ -223,7 +223,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelTestIT {
     return pairs;
   }
 
-  private void createTimeSeries(
+  private void createDataBaseAndTable(
       String sourceTypeName, String targetTypeName, String dataType, BaseEnv env) {
     String timeSeriesCreationQuery =
         String.format(

@@ -81,7 +81,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
   }
 
   private SessionDataSet query(
-      ITableSession session, List<IMeasurementSchema> measurementSchemas, String deviceId)
+      ITableSession session, List<IMeasurementSchema> measurementSchemas, String tableName)
       throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select ";
     StringBuilder param = new StringBuilder();
@@ -90,7 +90,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       param.append(',');
     }
     sql = sql + param.substring(0, param.length() - 1);
-    sql = sql + " from " + deviceId + " ORDER BY time ASC";
+    sql = sql + " from " + tableName + " ORDER BY time ASC";
     session.executeNonQueryStatement("use test");
     return session.executeQueryStatement(sql);
   }
@@ -132,7 +132,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
               () -> {
                 try {
                   validateResultSet(
-                      query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
+                      query(receiverSession, tablet.getSchemas(), tablet.getTableName()),
                       expectedValues,
                       tablet.timestamps);
                 } catch (Exception e) {
@@ -416,8 +416,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
             columnTypes,
             generateDataSize);
     tablet.initBitMaps();
-    long[] timestamp = createTestDataForTimestamp();
-    tablet.timestamps = timestamp;
+    tablet.timestamps = createTestDataForTimestamp();
     for (int i = 0; i < pairs.size(); i++) {
       MeasurementSchema schema = pairs.get(i).left;
       switch (schema.getType()) {
