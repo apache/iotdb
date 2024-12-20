@@ -1681,7 +1681,12 @@ public class ConfigManager implements IManager {
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
-          ConfigurationFileUtils.updateConfigurationFile(file, properties);
+          ConfigurationFileUtils.updateConfiguration(
+              file,
+              properties,
+              mergedProps -> {
+                ConfigNodeDescriptor.getInstance().loadHotModifiedProps(mergedProps);
+              });
         } catch (Exception e) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
         }
@@ -1691,7 +1696,6 @@ public class ConfigManager implements IManager {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
         LOGGER.warn(msg);
       }
-      ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
       if (currentNodeId == req.getNodeId()) {
         return tsStatus;
       }
