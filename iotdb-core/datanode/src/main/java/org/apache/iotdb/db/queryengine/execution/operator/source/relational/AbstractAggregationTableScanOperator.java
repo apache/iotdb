@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -260,7 +261,7 @@ public abstract class AbstractAggregationTableScanOperator extends AbstractDataS
 
     if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
       // for device which is not exist
-      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
+      deviceEntry = new AlignedDeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
     } else {
       deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     }

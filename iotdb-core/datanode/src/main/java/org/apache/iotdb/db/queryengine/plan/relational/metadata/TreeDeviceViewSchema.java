@@ -17,21 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import java.util.List;
+import java.util.Map;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
-  protected SourceNode() {}
+public class TreeDeviceViewSchema extends TableSchema {
 
-  protected SourceNode(final PlanNodeId id) {
-    super(id);
+  public TreeDeviceViewSchema(String tableName, List<ColumnSchema> columns) {
+    super(tableName, columns);
   }
 
-  public abstract void open() throws Exception;
+  // TODO
+  public String getTreeDBName() {
+    return null;
+  }
 
-  public abstract void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet);
+  public Map<String, String> getMeasurementColumnNameMap() {
+    return null;
+  }
 }

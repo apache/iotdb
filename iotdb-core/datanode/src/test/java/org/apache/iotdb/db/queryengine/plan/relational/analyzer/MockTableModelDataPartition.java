@@ -41,14 +41,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_DB1;
+
 public class MockTableModelDataPartition {
 
   private static final SeriesPartitionExecutor EXECUTOR =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-
-  private static final String DB_NAME = "root.testdb";
 
   static final String DEVICE_1 = "table1.beijing.A1.ZZ";
   static final String DEVICE_2 = "table1.beijing.A2.XX";
@@ -132,7 +132,7 @@ public class MockTableModelDataPartition {
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_5), dataRegionMap3);
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_6), dataRegionMap3);
 
-    dbPartitionMap.put(DB_NAME, devicePartitionMap);
+    dbPartitionMap.put(TREE_DB1, devicePartitionMap);
     dataPartition.setDataPartitionMap(dbPartitionMap);
 
     return dataPartition;
@@ -161,7 +161,7 @@ public class MockTableModelDataPartition {
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_1), schemaRegion1);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_2), schemaRegion2);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_3), schemaRegion2);
-    schemaPartitionMap.put(DB_NAME, schemaRegionMap);
+    schemaPartitionMap.put(TREE_DB1, schemaRegionMap);
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     return schemaPartition;

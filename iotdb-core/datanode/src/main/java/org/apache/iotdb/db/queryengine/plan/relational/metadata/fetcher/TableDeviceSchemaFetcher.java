@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
@@ -338,7 +339,7 @@ public class TableDeviceSchemaFetcher {
     }
 
     final DeviceEntry deviceEntry =
-        new DeviceEntry(
+        new AlignedDeviceEntry(
             deviceID,
             attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
     // TODO table metadata: process cases that selected attr columns different from those used for
@@ -426,7 +427,7 @@ public class TableDeviceSchemaFetcher {
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
           final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
           final DeviceEntry deviceEntry =
-              new DeviceEntry(
+              new AlignedDeviceEntry(
                   deviceID,
                   attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
           mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
