@@ -54,7 +54,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.se
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDataPartition;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceToWhere;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewOutput;
-import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeFrom;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -68,7 +67,8 @@ public class TemplatedAggregationAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context,
-      Template template) {
+      Template template,
+      List<PartialPath> deviceList) {
 
     // not support order by expression and non-aligned template
     if (queryStatement.hasOrderByExpression() || !template.isDirectAligned()) {
@@ -76,8 +76,6 @@ public class TemplatedAggregationAnalyze {
     }
 
     analysis.setNoWhereAndAggregation(false);
-
-    List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
     if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
       // remove the device which won't appear in resultSet after limit/offset

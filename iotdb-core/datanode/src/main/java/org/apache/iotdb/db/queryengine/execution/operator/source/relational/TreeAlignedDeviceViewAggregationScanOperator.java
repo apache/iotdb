@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -51,47 +50,39 @@ public class TreeAlignedDeviceViewAggregationScanOperator
   public TreeAlignedDeviceViewAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
-      List<ColumnSchema> columnSchemas,
-      int[] columnsIndexArray,
+      List<ColumnSchema> aggColumnSchemas,
+      int[] aggColumnsIndexArray,
       List<DeviceEntry> deviceEntries,
-      Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum,
-      int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
       int[] groupingKeyIndex,
       ITableTimeRangeIterator tableTimeRangeIterator,
       boolean ascending,
-      long maxReturnSize,
       boolean canUseStatistics,
-      List<Integer> aggArguments,
+      List<Integer> aggregatorInputChannels,
       int idColumnStartIndex,
       int treeDBLength) {
     super(
         sourceId,
         context,
-        columnSchemas,
-        columnsIndexArray,
+        aggColumnSchemas,
+        aggColumnsIndexArray,
         deviceEntries,
-        scanOrder,
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
         measurementSchemas,
-        maxTsBlockLineNum,
-        measurementCount,
         tableAggregators,
         groupingKeySchemas,
         groupingKeyIndex,
         tableTimeRangeIterator,
         ascending,
-        maxReturnSize,
         canUseStatistics,
-        aggArguments);
+        aggregatorInputChannels);
     this.idColumnStartIndex = idColumnStartIndex;
     this.treeDBLength = treeDBLength;
   }

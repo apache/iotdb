@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -38,45 +37,37 @@ public class TableAggregationTableScanOperator extends AbstractAggregationTableS
   public TableAggregationTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
-      List<ColumnSchema> columnSchemas,
-      int[] columnsIndexArray,
+      List<ColumnSchema> aggColumnSchemas,
+      int[] aggColumnsIndexArray,
       List<DeviceEntry> deviceEntries,
-      Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum,
-      int measurementCount,
       List<TableAggregator> tableAggregators,
       List<ColumnSchema> groupingKeySchemas,
       int[] groupingKeyIndex,
       ITableTimeRangeIterator tableTimeRangeIterator,
       boolean ascending,
-      long maxReturnSize,
       boolean canUseStatistics,
-      List<Integer> aggArguments) {
+      List<Integer> aggregatorInputChannels) {
     super(
         sourceId,
         context,
-        columnSchemas,
-        columnsIndexArray,
+        aggColumnSchemas,
+        aggColumnsIndexArray,
         deviceEntries,
-        scanOrder,
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
         measurementSchemas,
-        maxTsBlockLineNum,
-        measurementCount,
         tableAggregators,
         groupingKeySchemas,
         groupingKeyIndex,
         tableTimeRangeIterator,
         ascending,
-        maxReturnSize,
         canUseStatistics,
-        aggArguments);
+        aggregatorInputChannels);
   }
 
   @Override
