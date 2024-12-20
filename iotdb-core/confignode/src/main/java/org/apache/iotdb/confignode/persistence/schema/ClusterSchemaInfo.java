@@ -90,6 +90,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +100,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -138,6 +141,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
+  private static final String TREE_VIEW_SNAPSHOT_FILENAME = "tree_view_schema.bin";
   private static final String ERROR_NAME = "Error Database name";
 
   private final TemplateTable templateTable;
@@ -689,14 +693,28 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(final File snapshotDir) throws IOException {
-    return processMTreeTakeSnapshot(snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree)
-        && processMTreeTakeSnapshot(snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree)
+    return processDatabaseSchemaSnapshot(
+            snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree::serialize)
+        && processDatabaseSchemaSnapshot(
+            snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree::serialize)
+        && processDatabaseSchemaSnapshot(
+            snapshotDir, TREE_VIEW_SNAPSHOT_FILENAME, this::serializeTreeView)
         && templateTable.processTakeSnapshot(snapshotDir)
         && templatePreSetTable.processTakeSnapshot(snapshotDir);
   }
 
-  public boolean processMTreeTakeSnapshot(
-      final File snapshotDir, final String snapshotFileName, final ConfigMTree mTree)
+  private void serializeTreeView(final OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(treeDeviceViewTableMap.size(), stream);
+    for (final Map.Entry<String, TsTable> entry : treeDeviceViewTableMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      entry.getValue().serialize(stream);
+    }
+  }
+
+  public boolean processDatabaseSchemaSnapshot(
+      final File snapshotDir,
+      final String snapshotFileName,
+      final SerDeFunction<OutputStream> function)
       throws IOException {
     final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
@@ -713,8 +731,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
       final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
-        // Take snapshot for MTree
-        mTree.serialize(outputStream);
+        function.apply(outputStream);
         outputStream.flush();
       } finally {
         outputStream.flush();
@@ -738,14 +755,37 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(final File snapshotDir) throws IOException {
-    processMTreeLoadSnapshot(snapshotDir, TREE_SNAPSHOT_FILENAME, treeModelMTree);
-    processMTreeLoadSnapshot(snapshotDir, TABLE_SNAPSHOT_FILENAME, tableModelMTree);
+    processMTreeLoadSnapshot(
+        snapshotDir,
+        TREE_SNAPSHOT_FILENAME,
+        stream -> {
+          treeModelMTree.clear();
+          treeModelMTree.deserialize(stream);
+        });
+    processMTreeLoadSnapshot(
+        snapshotDir,
+        TABLE_SNAPSHOT_FILENAME,
+        stream -> {
+          tableModelMTree.clear();
+          tableModelMTree.deserialize(stream);
+        });
+    processMTreeLoadSnapshot(snapshotDir, TREE_VIEW_SNAPSHOT_FILENAME, this::deserializeTreeView);
     templateTable.processLoadSnapshot(snapshotDir);
     templatePreSetTable.processLoadSnapshot(snapshotDir);
   }
 
+  private void deserializeTreeView(final InputStream stream) throws IOException {
+    final int size = ReadWriteIOUtils.readInt(stream);
+    treeDeviceViewTableMap.clear();
+    for (int i = 0; i < size; ++i) {
+      treeDeviceViewTableMap.put(ReadWriteIOUtils.readString(stream), TsTable.deserialize(stream));
+    }
+  }
+
   public void processMTreeLoadSnapshot(
-      final File snapshotDir, final String snapshotFileName, final ConfigMTree mTree)
+      final File snapshotDir,
+      final String snapshotFileName,
+      final SerDeFunction<InputStream> function)
       throws IOException {
     final File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
@@ -758,11 +798,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       // Load snapshot of MTree
-      mTree.clear();
-      mTree.deserialize(bufferedInputStream);
+      function.apply(bufferedInputStream);
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
+  }
+
+  @FunctionalInterface
+  public interface SerDeFunction<T> {
+    void apply(final T stream) throws IOException;
   }
 
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
