@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -1221,6 +1220,14 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (Objects.nonNull(originalTable.getColumnSchema(newName))) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_ALREADY_EXISTS,
+              "The new column name " + newName + " already exists"),
+          null);
+    }
+
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
 
     final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
@@ -1228,15 +1235,6 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
-          null);
-    }
-
-    if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_CATEGORY_MISMATCH,
-              "Currently we only support renaming for attribute columns, current category is "
-                  + schema.getColumnCategory()),
           null);
     }
 
