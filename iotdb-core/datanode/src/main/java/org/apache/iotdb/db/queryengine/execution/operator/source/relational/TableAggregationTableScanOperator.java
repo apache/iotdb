@@ -40,7 +40,7 @@ public class TableAggregationTableScanOperator extends AbstractAggregationTableS
       OperatorContext context,
       List<ColumnSchema> aggColumnSchemas,
       int[] aggColumnsIndexArray,
-      List<AlignedDeviceEntry> deviceEntries,
+      List<DeviceEntry> deviceEntries,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
