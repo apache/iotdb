@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
@@ -73,46 +75,60 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
       isFilteredByArrivalTime = true;
       compressionDeviation =
           parameters.getDoubleOrDefault(
-              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL,
-              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL_DEFAULT_VALUE);
+              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_VARIATION,
+              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_VARIATION_DEFAULT_VALUE);
       eventTimeMinInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL,
-              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant
+                      .PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
       eventTimeMaxInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL,
-              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant
+                      .PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
       arrivalTimeMinInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL,
-              PipeProcessorConstant
-                  .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant
+                      .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
       arrivalTimeMaxInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL,
-              PipeProcessorConstant
-                  .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant
+                      .PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
     } else {
       isFilteredByArrivalTime = false;
       compressionDeviation =
           parameters.getDoubleOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
-              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL_DEFAULT_VALUE);
+              PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_VARIATION_DEFAULT_VALUE);
       eventTimeMinInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
-              PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
       eventTimeMaxInterval =
           parameters.getLongOrDefault(
               PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
-              PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE);
+              TimestampPrecisionUtils.convertToCurrPrecision(
+                  PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE,
+                  TimeUnit.MILLISECONDS));
       // will not be used
       arrivalTimeMinInterval = 0;
       arrivalTimeMaxInterval = Long.MAX_VALUE;
     }
 
-    validatorTimeInterval(validator);
+    validateTimeInterval(validator);
     validator.validate(
         compressionDeviation -> (Double) compressionDeviation >= 0,
         String.format(
@@ -136,7 +152,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
       LOGGER.info(
           "ChangingPointSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}, {}: {}, {}: {}.",
           dataBaseNameWithPathSeparator,
-          PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_INTERVAL,
+          PipeProcessorConstant.PROCESSOR_CHANGING_POINT_VALUE_VARIATION,
           compressionDeviation,
           PipeProcessorConstant.PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL,
           arrivalTimeMinInterval,
@@ -157,8 +173,6 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
           PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
           eventTimeMaxInterval);
     }
-
-    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
@@ -180,7 +194,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
       AtomicReference<Exception> exception) {
     final PipeRemarkableRow remarkableRow = new PipeRemarkableRow((PipeRow) row);
     final long currentRowTime = row.getTime();
-    final long arrivalTime = System.currentTimeMillis();
+    final long arrivalTime = currentTime.apply();
 
     boolean hasNonNullMeasurements = false;
     for (int i = 0, size = row.size(); i < size; i++) {

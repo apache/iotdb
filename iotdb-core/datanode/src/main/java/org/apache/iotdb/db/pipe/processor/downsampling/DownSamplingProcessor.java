@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeE
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -37,6 +38,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
@@ -45,6 +47,26 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
+
+  protected static final CurrentTimeFunction currentTime;
+
+  @FunctionalInterface
+  protected interface CurrentTimeFunction {
+    long apply();
+  }
+
+  static {
+    switch (TimestampPrecisionUtils.currPrecision) {
+      case NANOSECONDS:
+        currentTime = System::nanoTime;
+        break;
+      case MICROSECONDS:
+        currentTime = () -> TimeUnit.NANOSECONDS.toMicros(System.nanoTime());
+        break;
+      default:
+        currentTime = System::currentTimeMillis;
+    }
+  }
 
   protected long memoryLimitInBytes;
 
@@ -91,9 +113,10 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
             "%s must be > 0, but got %s",
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY, memoryLimitInBytes),
         memoryLimitInBytes);
+    initPathLastObjectCache(memoryLimitInBytes);
   }
 
-  public void validatorTimeInterval(final PipeParameterValidator validator) throws Exception {
+  public void validateTimeInterval(final PipeParameterValidator validator) throws Exception {
     validator
         .validate(
             eventTimeMinInterval -> (long) eventTimeMinInterval >= 0,

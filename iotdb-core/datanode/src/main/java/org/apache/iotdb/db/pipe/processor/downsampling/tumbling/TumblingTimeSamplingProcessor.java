@@ -82,8 +82,6 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
         memoryLimitInBytes,
         PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
         shouldSplitFile);
-
-    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override

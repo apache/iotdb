@@ -32,6 +32,8 @@ public class SwingingDoorTrendingFilter extends DownSamplingFilter {
   private static final long estimatedMemory =
       RamUsageEstimator.shallowSizeOfInstance(SwingingDoorTrendingFilter.class);
 
+  private final long estimatedSize;
+
   /**
    * The maximum absolute difference the user set if the data's value is within
    * compressionDeviation, it will be compressed and discarded after compression, it will only store
@@ -69,6 +71,13 @@ public class SwingingDoorTrendingFilter extends DownSamplingFilter {
     super(arrivalTime, eventTime);
     this.lastStoredValue = firstValue;
     this.compressionDeviation = compressionDeviation;
+    if (lastStoredValue instanceof Binary) {
+      estimatedSize = estimatedMemory + SIZE_OF_BINARY;
+    } else if (lastStoredValue instanceof LocalDate) {
+      estimatedSize = estimatedMemory + SIZE_OF_DATE;
+    } else {
+      estimatedSize = estimatedMemory + SIZE_OF_LONG;
+    }
   }
 
   private void init(final long arrivalTime, final long firstTimestamp, final Object firstValue) {
@@ -144,13 +153,11 @@ public class SwingingDoorTrendingFilter extends DownSamplingFilter {
   }
 
   public void reset(final long arrivalTime, final long timestamp, final Object value) {
+    super.reset(arrivalTime, timestamp);
     upperDoor = Double.MIN_VALUE;
     lowerDoor = Double.MAX_VALUE;
 
-    lastPointEventTime = timestamp;
     lastStoredValue = value;
-
-    lastPointArrivalTime = arrivalTime;
   }
 
   public long estimatedMemory() {

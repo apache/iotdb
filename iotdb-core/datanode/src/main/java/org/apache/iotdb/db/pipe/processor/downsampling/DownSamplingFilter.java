@@ -19,7 +19,20 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.time.LocalDate;
+
 public abstract class DownSamplingFilter {
+
+  protected static final long SIZE_OF_DATE =
+      RamUsageEstimator.shallowSizeOfInstance(LocalDate.class);
+
+  protected static final long SIZE_OF_LONG = RamUsageEstimator.shallowSizeOfInstance(Long.class);
+
+  protected static final long SIZE_OF_BINARY =
+      RamUsageEstimator.shallowSizeOfInstance(Binary.class);
 
   protected boolean isFilteredByArrivalTime = true;
 

@@ -248,7 +248,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       extractorAttributes.put("source.realtime.mode", "log");
 
       processorAttributes.put("processor", "changing-point-sampling-processor");
-      processorAttributes.put("processor.changing-point.compression-deviation", "10");
+      processorAttributes.put("processor.changing-point.value-variation", "10");
       processorAttributes.put("processor.changing-point.arrival-time.min-interval", "10000");
       processorAttributes.put("processor.changing-point.arrival-time.max-interval", "30000");
       processorAttributes.put("processor.changing-point.event-time.min-interval", "10000");

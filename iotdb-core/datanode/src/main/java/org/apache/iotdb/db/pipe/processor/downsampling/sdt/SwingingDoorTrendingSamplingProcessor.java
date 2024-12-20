@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
@@ -67,24 +69,31 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
             Arrays.asList(
                 PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL,
                 PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY),
-            PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE,
+                TimeUnit.MILLISECONDS));
     eventTimeMaxInterval =
         parameters.getLongOrDefault(
             Arrays.asList(
                 PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL,
                 PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY),
-            PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE);
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE,
+                TimeUnit.MILLISECONDS));
     arrivalTimeMinInterval =
         parameters.getLongOrDefault(
             PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL,
-            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE);
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE,
+                TimeUnit.MILLISECONDS));
     arrivalTimeMaxInterval =
         parameters.getLongOrDefault(
             PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL,
-            PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE);
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                PipeProcessorConstant.PROCESSOR_SDT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE,
+                TimeUnit.MILLISECONDS));
 
-    validatorTimeInterval(validator);
-    initPathLastObjectCache(memoryLimitInBytes);
+    validateTimeInterval(validator);
   }
 
   @Override
@@ -105,8 +114,6 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         eventTimeMinInterval,
         PipeProcessorConstant.PROCESSOR_SDT_EVENT_TIME_MAX_INTERVAL,
         eventTimeMaxInterval);
-
-    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
@@ -128,7 +135,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
       AtomicReference<Exception> exception) {
     final PipeRemarkableRow remarkableRow = new PipeRemarkableRow((PipeRow) row);
     final long currentRowTime = row.getTime();
-    final long arrivalTime = System.currentTimeMillis();
+    final long arrivalTime = currentTime.apply();
 
     boolean hasNonNullMeasurements = false;
     for (int i = 0, size = row.size(); i < size; i++) {
@@ -153,7 +160,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         }
 
         // It will not be null
-        if (result) {
+        if (!result) {
           remarkableRow.markNull(i);
           continue;
         }

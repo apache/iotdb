@@ -32,6 +32,8 @@ public class ChangingPointFilter extends DownSamplingFilter {
   private static final long estimatedMemory =
       RamUsageEstimator.shallowSizeOfInstance(ChangingPointFilter.class);
 
+  private final long estimatedSize;
+
   /**
    * The maximum absolute difference the user set if the data's value is within
    * compressionDeviation, it will be compressed and discarded after compression
@@ -49,11 +51,18 @@ public class ChangingPointFilter extends DownSamplingFilter {
     super(arrivalTime, firstTimestamp, isFilterArrivalTime);
     lastStoredValue = firstValue;
     this.compressionDeviation = compressionDeviation;
+
+    if (lastStoredValue instanceof Binary) {
+      estimatedSize = estimatedMemory + SIZE_OF_BINARY;
+    } else if (lastStoredValue instanceof LocalDate) {
+      estimatedSize = estimatedMemory + SIZE_OF_DATE;
+    } else {
+      estimatedSize = estimatedMemory + SIZE_OF_LONG;
+    }
   }
 
-  private void init(final long arrivalTime, long firstTimestamp, final Object firstValue) {
-    lastPointArrivalTime = arrivalTime;
-    lastPointEventTime = firstTimestamp;
+  public void reset(final long arrivalTime, long firstTimestamp, final Object firstValue) {
+    reset(arrivalTime, firstTimestamp);
     lastStoredValue = firstValue;
   }
 
@@ -61,7 +70,7 @@ public class ChangingPointFilter extends DownSamplingFilter {
     try {
       return tryFilter(arrivalTime, timestamp, value);
     } catch (final Exception e) {
-      init(arrivalTime, timestamp, value);
+      reset(arrivalTime, timestamp, value);
       return true;
     }
   }
@@ -91,13 +100,7 @@ public class ChangingPointFilter extends DownSamplingFilter {
     return false;
   }
 
-  public void reset(final long arrivalTime, final long timestamp, final Object value) {
-    lastPointArrivalTime = arrivalTime;
-    lastPointEventTime = timestamp;
-    lastStoredValue = value;
-  }
-
   public long estimatedMemory() {
-    return estimatedMemory + 64;
+    return estimatedSize;
   }
 }

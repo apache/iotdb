@@ -95,13 +95,13 @@ public class PipeProcessorConstant {
       "processor.changing-point.event-time.min-interval";
   public static final String PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL =
       "processor.changing-point.event-time.max-interval";
-  public static final String PROCESSOR_CHANGING_POINT_VALUE_INTERVAL =
-      "processor.changing-point.value-interval";
+  public static final String PROCESSOR_CHANGING_POINT_VALUE_VARIATION =
+      "processor.changing-point.value-variation";
   public static final long PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
   public static final long PROCESSOR_CHANGING_POINT_ARRIVAL_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
   public static final long PROCESSOR_CHANGING_POINT_EVENT_TIME_MIN_INTERVAL_DEFAULT_VALUE = 0;
   public static final long PROCESSOR_CHANGING_POINT_EVENT_TIME_MAX_INTERVAL_DEFAULT_VALUE = 60000;
-  public static final double PROCESSOR_CHANGING_POINT_VALUE_INTERVAL_DEFAULT_VALUE = 0;
+  public static final double PROCESSOR_CHANGING_POINT_VALUE_VARIATION_DEFAULT_VALUE = 0;
 
   public static final String _PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
   public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output.series";
