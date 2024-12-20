@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -1298,6 +1299,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public DescTableResp descTable(final DescTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
+      if (TreeViewSchema.isTreeViewDatabase(plan.getDatabase())) {
+        return new DescTableResp(
+            StatusUtils.OK,
+            treeDeviceViewTableMap.values().stream()
+                .filter(table -> table.getTableName().equals(plan.getTableName()))
+                .findAny()
+                .orElseThrow(
+                    () -> new TableNotExistsException(plan.getDatabase(), plan.getTableName())),
+            Collections.emptySet());
+      }
       final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (plan.isDetails()) {
         final Pair<TsTable, Set<String>> pair =
