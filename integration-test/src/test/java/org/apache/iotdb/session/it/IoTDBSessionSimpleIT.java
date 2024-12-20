@@ -756,7 +756,7 @@ public class IoTDBSessionSimpleIT {
         LOGGER.error("", e);
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
       session.deleteStorageGroup(storageGroup);
