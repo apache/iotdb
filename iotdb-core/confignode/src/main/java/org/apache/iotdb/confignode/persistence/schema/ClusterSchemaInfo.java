@@ -113,6 +113,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -1278,9 +1279,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getFetchTableMap().entrySet()) {
         result.put(
             database2Tables.getKey(),
-            tableModelMTree.getSpecificTablesUnderSpecificDatabase(
-                getQualifiedDatabasePartialPath(database2Tables.getKey()),
-                database2Tables.getValue()));
+            TreeViewSchema.isTreeViewDatabase(database2Tables.getKey())
+                ? treeDeviceViewTableMap.values().stream()
+                    .collect(Collectors.toMap(TsTable::getTableName, Function.identity()))
+                : tableModelMTree.getSpecificTablesUnderSpecificDatabase(
+                    getQualifiedDatabasePartialPath(database2Tables.getKey()),
+                    database2Tables.getValue()));
       }
       return new FetchTableResp(StatusUtils.OK, result);
     } catch (final MetadataException e) {
