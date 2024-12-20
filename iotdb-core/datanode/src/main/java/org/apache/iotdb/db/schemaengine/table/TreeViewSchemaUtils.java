@@ -34,10 +34,9 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.Arrays;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
+import static org.apache.iotdb.commons.schema.table.TreeViewSchema.TREE_VIEW_DATABASE;
 
 public class TreeViewSchemaUtils {
 
@@ -59,15 +58,11 @@ public class TreeViewSchemaUtils {
     }
   }
 
-  public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
-    if (!canSeenDB.test(INFORMATION_DATABASE)) {
-      return;
-    }
+  public static void buildDatabaseTsBlock(final TsBlockBuilder builder, final boolean details) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder
         .getColumnBuilder(0)
-        .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));
+        .writeBinary(new Binary(TREE_VIEW_DATABASE, TSFileConfig.STRING_CHARSET));
     builder.getColumnBuilder(1).appendNull();
 
     builder.getColumnBuilder(2).appendNull();
@@ -81,7 +76,7 @@ public class TreeViewSchemaUtils {
   }
 
   public static boolean isTreeViewDatabase(final String database) {
-    return TreeViewSchema.TREE_VIEW_DATABASE.equals(database);
+    return TREE_VIEW_DATABASE.equals(database);
   }
 
   public static String getOriginalDatabase(final TsTable table) {

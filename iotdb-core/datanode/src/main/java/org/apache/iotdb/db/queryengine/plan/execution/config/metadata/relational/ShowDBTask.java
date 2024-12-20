@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -90,6 +91,10 @@ public class ShowDBTask implements IConfigTask {
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
         continue;
       }
+      if (TreeViewSchemaUtils.isTreeViewDatabase(dbName)) {
+        TreeViewSchemaUtils.buildDatabaseTsBlock(builder, false);
+        continue;
+      }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
@@ -128,6 +133,10 @@ public class ShowDBTask implements IConfigTask {
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       final String dbName = entry.getKey();
       if (!canSeenDB.test(dbName)) {
+        continue;
+      }
+      if (TreeViewSchemaUtils.isTreeViewDatabase(dbName)) {
+        TreeViewSchemaUtils.buildDatabaseTsBlock(builder, true);
         continue;
       }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
