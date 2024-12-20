@@ -23,7 +23,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.Objects;
 
 public class NonAlignedDeviceEntry extends DeviceEntry {
 
