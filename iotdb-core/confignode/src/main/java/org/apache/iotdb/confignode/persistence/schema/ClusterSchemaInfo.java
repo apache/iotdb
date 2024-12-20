@@ -1454,7 +1454,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private Optional<TsTable> getTreeViewTable(final String tableName) {
     return treeDeviceViewTableMap.values().stream()
-        .filter(table -> table.getTableName().equals(table))
+        .filter(table -> table.getTableName().equals(tableName))
         .findAny();
   }
 
