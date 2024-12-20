@@ -375,9 +375,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
+      final ConfigMTree mTree =
+          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (treeModelMTree.isDatabaseAlreadySet(path)) {
-        treeModelMTree
+      if (mTree.isDatabaseAlreadySet(path)) {
+        mTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -399,9 +401,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
+      final ConfigMTree mTree =
+          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (treeModelMTree.isDatabaseAlreadySet(path)) {
-        treeModelMTree
+      if (mTree.isDatabaseAlreadySet(path)) {
+        mTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -423,9 +427,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
+      final ConfigMTree mTree =
+          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (treeModelMTree.isDatabaseAlreadySet(path)) {
-        treeModelMTree
+      if (mTree.isDatabaseAlreadySet(path)) {
+        mTree
             .getDatabaseNodeByDatabasePath(path)
             .getAsMNode()
             .getDatabaseSchema()
@@ -456,7 +462,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       for (final Map.Entry<String, Pair<Integer, Integer>> entry :
           plan.getMaxRegionGroupNumMap().entrySet()) {
         final TDatabaseSchema databaseSchema =
-            treeModelMTree
+            (PathUtils.isTableModelDatabase(entry.getKey()) ? tableModelMTree : treeModelMTree)
                 .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(entry.getKey()))
                 .getAsMNode()
                 .getDatabaseSchema();
