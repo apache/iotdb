@@ -58,8 +58,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.function.Function;
 
 public class TsFileSplitter {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
@@ -419,8 +417,10 @@ public class TsFileSplitter {
     }
   }
 
-  private void handleModification(List<ModEntry> deletions) {
-    deletions.forEach(o -> consumer.apply(new DeletionData(o)));
+  private void handleModification(List<ModEntry> deletions) throws LoadFileException {
+    for (final ModEntry mod : deletions) {
+      consumer.apply(new DeletionData(mod));
+    }
   }
 
   private void consumeAllAlignedChunkData(

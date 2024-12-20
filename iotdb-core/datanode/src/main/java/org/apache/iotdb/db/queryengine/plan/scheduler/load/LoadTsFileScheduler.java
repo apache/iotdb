@@ -208,7 +208,8 @@ public class LoadTsFileScheduler implements IScheduler {
             long startTime = System.nanoTime();
             final boolean isFirstPhaseSuccess;
             try {
-              isFirstPhaseSuccess = firstPhase(node, true);
+              isFirstPhaseSuccess =
+                  firstPhaseWithRetry(node, CONFIG.getLoadTsFileRetryCountOnRegionChange());
             } finally {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
@@ -264,7 +265,30 @@ public class LoadTsFileScheduler implements IScheduler {
     }
   }
 
-  private boolean firstPhase(LoadSingleTsFileNode node, boolean shouldRetryOnce) {
+  private boolean firstPhaseWithRetry(LoadSingleTsFileNode node, int retryCountOnRegionChange) {
+    retryCountOnRegionChange = Math.max(0, retryCountOnRegionChange);
+    while (true) {
+      try {
+        return firstPhase(node);
+      } catch (RegionReplicaSetChangedException e) {
+        if (retryCountOnRegionChange > 0) {
+          LOGGER.warn(
+              "Region replica set changed during loading TsFile {}, maybe due to region migration, will retry for {} times.",
+              node.getTsFileResource(),
+              retryCountOnRegionChange);
+          retryCountOnRegionChange--;
+        } else {
+          stateMachine.transitionToFailed(e);
+          LOGGER.warn(
+              "Region replica set changed during loading TsFile {} after retry.",
+              node.getTsFileResource());
+          return false;
+        }
+      }
+    }
+  }
+
+  private boolean firstPhase(LoadSingleTsFileNode node) throws RegionReplicaSetChangedException {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
@@ -275,18 +299,7 @@ public class LoadTsFileScheduler implements IScheduler {
         return false;
       }
     } catch (RegionReplicaSetChangedException e) {
-      if (shouldRetryOnce) {
-        LOGGER.warn(
-            "Region replica set changed during loading TsFile {}, maybe due to region migration, will retry for once.",
-            node.getTsFileResource());
-        return firstPhase(node, false);
-      } else {
-        stateMachine.transitionToFailed(e);
-        LOGGER.warn(
-            "Region replica set changed during loading TsFile {} after retry.",
-            node.getTsFileResource());
-        return false;
-      }
+      throw e;
     } catch (IllegalStateException e) {
       stateMachine.transitionToFailed(e);
       LOGGER.warn(
