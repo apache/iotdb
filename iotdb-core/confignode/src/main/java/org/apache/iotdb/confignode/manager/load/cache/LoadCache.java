@@ -83,6 +83,8 @@ public class LoadCache {
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
+  // Map<NodeId, Map<RegionGroupId, RegionSize>>
+  private final Map<Integer, Map<Integer, Long>> regionSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -92,6 +94,7 @@ public class LoadCache {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
+    this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
@@ -304,6 +307,14 @@ public class LoadCache {
     // Only cache sample when the corresponding loadCache exists
     Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
         .ifPresent(group -> group.cacheHeartbeatSample(nodeId, sample, overwrite));
+  }
+
+  public RegionStatus getRegionCacheLastSampleStatus(TConsensusGroupId regionGroupId, int nodeId) {
+    return Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .map(regionGroupCache -> regionGroupCache.getRegionCache(nodeId))
+        .map(regionCache -> (RegionHeartbeatSample) regionCache.getLastSample())
+        .map(RegionHeartbeatSample::getStatus)
+        .orElse(RegionStatus.Unknown);
   }
 
   /**
@@ -755,5 +766,13 @@ public class LoadCache {
 
   public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
     return confirmedConfigNodeMap.get(dataNodeId);
+  }
+
+  public void updateRegionSizeMap(int dataNodeId, Map<Integer, Long> regionSizeMap) {
+    this.regionSizeMap.put(dataNodeId, regionSizeMap);
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
+    return regionSizeMap;
   }
 }

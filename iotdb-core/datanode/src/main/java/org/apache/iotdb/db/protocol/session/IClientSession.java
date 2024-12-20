@@ -56,7 +56,7 @@ public abstract class IClientSession {
 
   public abstract String getClientAddress();
 
-  abstract int getClientPort();
+  public abstract int getClientPort();
 
   abstract TSConnectionType getConnectionType();
 

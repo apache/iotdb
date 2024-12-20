@@ -203,6 +203,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     cnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     dnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
@@ -474,9 +481,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
-    cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    dnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
+    cnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
     return this;
   }
 
@@ -510,6 +517,13 @@ public class MppSharedCommonConfig implements CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes) {
     dnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    dnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    cnConfig.setQueryMemoryProportion(queryMemoryProportion);
     return this;
   }
 }

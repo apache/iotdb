@@ -27,7 +27,8 @@ import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteNodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
   private final AtomicInteger pipeTaskReferenceCount;
-  private final DeleteDataNode deleteDataNode;
+  private final AbstractDeleteDataNode deleteDataNode;
   private final ConsensusGroupId consensusGroupId;
   private volatile Status currentStatus;
 
@@ -56,7 +57,9 @@ public class DeletionResource implements PersistentResource {
   private volatile Exception cause;
 
   public DeletionResource(
-      DeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook, String regionId) {
+      AbstractDeleteDataNode deleteDataNode,
+      Consumer<DeletionResource> removeHook,
+      String regionId) {
     this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
@@ -135,7 +138,7 @@ public class DeletionResource implements PersistentResource {
     return 0;
   }
 
-  public DeleteDataNode getDeleteDataNode() {
+  public AbstractDeleteDataNode getDeleteDataNode() {
     return deleteDataNode;
   }
 
@@ -149,11 +152,11 @@ public class DeletionResource implements PersistentResource {
   public static DeletionResource deserialize(
       final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
       throws IOException {
-    DeleteDataNode node = DeleteDataNode.deserializeFromDAL(buffer);
+    AbstractDeleteDataNode node = DeleteNodeType.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook, regionId);
   }
 
-  public static boolean isDeleteNodeGeneratedInLocalByIoTV2(DeleteDataNode node) {
+  public static boolean isDeleteNodeGeneratedInLocalByIoTV2(AbstractDeleteDataNode node) {
     if (node.getProgressIndex() instanceof RecoverProgressIndex) {
       RecoverProgressIndex recoverProgressIndex = (RecoverProgressIndex) node.getProgressIndex();
       return recoverProgressIndex

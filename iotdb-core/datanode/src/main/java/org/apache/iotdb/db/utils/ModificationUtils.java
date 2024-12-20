@@ -22,6 +22,8 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -34,6 +36,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class ModificationUtils {
 
@@ -360,6 +363,23 @@ public class ModificationUtils {
     return extendedRightMin <= left.getMax();
   }
 
+  public static boolean canMerge(ModEntry left, ModEntry right) {
+    if (!Objects.equals(left.getClass(), right.getClass())
+        || !canMerge(left.getTimeRange(), right.getTimeRange())) {
+      return false;
+    }
+
+    if (left instanceof TreeDeletionEntry) {
+      return Objects.equals(
+          ((TreeDeletionEntry) left).getPathPattern(),
+          ((TreeDeletionEntry) right).getPathPattern());
+    } else if (left instanceof TableDeletionEntry) {
+      return Objects.equals(
+          ((TableDeletionEntry) left).getPredicate(), ((TableDeletionEntry) right).getPredicate());
+    }
+    return false;
+  }
+
   public static List<ModEntry> sortAndMerge(List<ModEntry> modifications) {
     modifications.sort(Comparator.comparing(ModEntry::getTimeRange));
     List<ModEntry> result = new ArrayList<>();
@@ -367,7 +387,7 @@ public class ModificationUtils {
       ModEntry current = modifications.get(0).clone();
       for (int i = 1; i < modifications.size(); i++) {
         ModEntry next = modifications.get(i);
-        if (canMerge(current.getTimeRange(), next.getTimeRange())) {
+        if (canMerge(current, next)) {
           current.getTimeRange().merge(next.getTimeRange());
         } else {
           result.add(current);

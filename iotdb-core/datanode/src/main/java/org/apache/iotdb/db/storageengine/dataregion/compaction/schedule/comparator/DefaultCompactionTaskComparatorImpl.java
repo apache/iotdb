@@ -88,8 +88,16 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
       return o1.getCompactionTaskType() == CompactionTaskType.REPAIR ? -1 : 1;
     }
 
-    // if the sum of compaction count of the selected files are different
-    // we prefer to execute task with smaller compaction count
+    // If the average file size of the two compaction tasks differs by more than 10%,
+    // we prefer to execute task with smaller avg file size
+    double avgFileSize1 = o1.getAvgFileSize();
+    double avgFileSize2 = o2.getAvgFileSize();
+    if (10 * Math.abs(avgFileSize1 - avgFileSize2) > Math.min(avgFileSize1, avgFileSize2)) {
+      return Double.compare(avgFileSize1, avgFileSize2);
+    }
+
+    // if the avg of compaction count of the selected files are different
+    // we prefer to execute task with smaller avg compaction count
     // this can reduce write amplification
     double avgCompactionCount1 = o1.getAvgCompactionCount();
     double avgCompactionCount2 = o2.getAvgCompactionCount();

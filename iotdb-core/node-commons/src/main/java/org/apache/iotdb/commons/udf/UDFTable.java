@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.udf;
 
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -28,90 +28,96 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+/**
+ * UDFTable is a table that stores UDF information. On DataNode, it stores all UDF information. On
+ * ConfigNode, it does not store built-in UDF information.
+ */
 public class UDFTable {
-  private final Map<String, UDFInformation> udfInformationMap;
 
-  /** maintain a map for creating instance */
-  private final Map<String, Class<?>> functionToClassMap;
+  /** model -> functionName -> information * */
+  private final Map<Model, Map<String, UDFInformation>> udfInformationMap;
+
+  /** maintain a map for creating instance, model -> functionName -> class */
+  private final Map<Model, Map<String, Class<?>>> functionToClassMap;
 
   public UDFTable() {
     udfInformationMap = new ConcurrentHashMap<>();
     functionToClassMap = new ConcurrentHashMap<>();
-    registerBuiltinTimeSeriesGeneratingFunctions();
-  }
-
-  private void registerBuiltinTimeSeriesGeneratingFunctions() {
-    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
-        BuiltinTimeSeriesGeneratingFunction.values()) {
-      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
-      udfInformationMap.put(
-          functionName,
-          new UDFInformation(
-              functionName.toUpperCase(),
-              builtinTimeSeriesGeneratingFunction.getClassName(),
-              true,
-              false));
-      functionToClassMap.put(
-          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
-    }
+    udfInformationMap.put(Model.TREE, new ConcurrentHashMap<>());
+    udfInformationMap.put(Model.TABLE, new ConcurrentHashMap<>());
+    functionToClassMap.put(Model.TREE, new ConcurrentHashMap<>());
+    functionToClassMap.put(Model.TABLE, new ConcurrentHashMap<>());
   }
 
   public void addUDFInformation(String functionName, UDFInformation udfInformation) {
-    udfInformationMap.put(functionName.toUpperCase(), udfInformation);
+    if (udfInformation.getUdfType().isTreeModel()) {
+      udfInformationMap.get(Model.TREE).put(functionName.toUpperCase(), udfInformation);
+    } else {
+      udfInformationMap.get(Model.TABLE).put(functionName.toUpperCase(), udfInformation);
+    }
   }
 
-  public void removeUDFInformation(String functionName) {
-    udfInformationMap.remove(functionName.toUpperCase());
+  public void removeUDFInformation(Model model, String functionName) {
+    udfInformationMap.get(model).remove(functionName.toUpperCase());
   }
 
-  public UDFInformation getUDFInformation(String functionName) {
-    return udfInformationMap.get(functionName.toUpperCase());
+  public UDFInformation getUDFInformation(Model model, String functionName) {
+    return udfInformationMap.get(model).get(functionName.toUpperCase());
   }
 
-  public void addFunctionAndClass(String functionName, Class<?> clazz) {
-    functionToClassMap.put(functionName.toUpperCase(), clazz);
+  public void addFunctionAndClass(Model model, String functionName, Class<?> clazz) {
+    functionToClassMap.get(model).put(functionName.toUpperCase(), clazz);
   }
 
-  public Class<?> getFunctionClass(String functionName) {
-    return functionToClassMap.get(functionName.toUpperCase());
+  public Class<?> getFunctionClass(Model model, String functionName) {
+    return functionToClassMap.get(model).get(functionName.toUpperCase());
   }
 
-  public void removeFunctionClass(String functionName) {
-    functionToClassMap.remove(functionName.toUpperCase());
+  public void removeFunctionClass(Model model, String functionName) {
+    functionToClassMap.get(model).remove(functionName.toUpperCase());
   }
 
   public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
       throws ClassNotFoundException {
     Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);
-    functionToClassMap.put(udfInformation.getFunctionName().toUpperCase(), functionClass);
+    if (udfInformation.getUdfType().isTreeModel()) {
+      functionToClassMap
+          .get(Model.TREE)
+          .put(udfInformation.getFunctionName().toUpperCase(), functionClass);
+    } else {
+      functionToClassMap
+          .get(Model.TABLE)
+          .put(udfInformation.getFunctionName().toUpperCase(), functionClass);
+    }
   }
 
-  public UDFInformation[] getAllUDFInformation() {
-    return udfInformationMap.values().toArray(new UDFInformation[0]);
+  public List<UDFInformation> getUDFInformationList(Model model) {
+    return new ArrayList<>(udfInformationMap.get(model).values());
   }
 
-  public List<UDFInformation> getAllNonBuiltInUDFInformation() {
+  public List<UDFInformation> getAllInformationList() {
     return udfInformationMap.values().stream()
-        .filter(udfInformation -> !udfInformation.isBuiltin())
+        .flatMap(map -> map.values().stream())
         .collect(Collectors.toList());
   }
 
-  public boolean containsUDF(String udfName) {
-    return udfInformationMap.containsKey(udfName);
+  public boolean containsUDF(Model model, String udfName) {
+    return udfInformationMap.get(model).containsKey(udfName.toUpperCase());
   }
 
   @TestOnly
-  public Map<String, UDFInformation> getTable() {
+  public Map<Model, Map<String, UDFInformation>> getTable() {
     return udfInformationMap;
   }
 
   public void serializeUDFTable(OutputStream outputStream) throws IOException {
-    List<UDFInformation> nonBuiltInUDFInformation = getAllNonBuiltInUDFInformation();
+    List<UDFInformation> nonBuiltInUDFInformation = getAllInformationList();
     ReadWriteIOUtils.write(nonBuiltInUDFInformation.size(), outputStream);
     for (UDFInformation udfInformation : nonBuiltInUDFInformation) {
       ReadWriteIOUtils.write(udfInformation.serialize(), outputStream);
@@ -122,18 +128,19 @@ public class UDFTable {
     int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
       UDFInformation udfInformation = UDFInformation.deserialize(inputStream);
-      udfInformationMap.put(udfInformation.getFunctionName(), udfInformation);
+      if (udfInformation.getUdfType().isTreeModel()) {
+        udfInformationMap.get(Model.TREE).put(udfInformation.getFunctionName(), udfInformation);
+      } else {
+        udfInformationMap.get(Model.TABLE).put(udfInformation.getFunctionName(), udfInformation);
+      }
       size--;
     }
   }
 
-  // only clear external UDFs
   public void clear() {
-    udfInformationMap.forEach(
-        (K, V) -> {
-          if (!V.isBuiltin()) {
-            udfInformationMap.remove(K);
-          }
-        });
+    udfInformationMap.get(Model.TREE).clear();
+    udfInformationMap.get(Model.TABLE).clear();
+    functionToClassMap.get(Model.TREE).clear();
+    functionToClassMap.get(Model.TABLE).clear();
   }
 }

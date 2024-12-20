@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 public class FirstByDescAccumulator extends FirstByAccumulator {
@@ -31,5 +32,59 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  @Override
+  protected void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
+  }
+
+  @Override
+  protected void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
+    for (int i = 0; i < yColumn.getPositionCount(); i++) {
+      if (!yColumn.isNull(i)) {
+        updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
+      }
+    }
   }
 }

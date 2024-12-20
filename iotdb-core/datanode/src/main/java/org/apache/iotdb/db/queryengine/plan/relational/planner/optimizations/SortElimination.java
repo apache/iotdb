@@ -22,23 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import java.util.Collections;
-
-import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
  *
  * <p>This optimize rule implement the rules below.
- * <li>When order by time and there is only one device entry in TableScanNode below, the SortNode
- *     can be eliminated.
+ * <li>When order by time and there is only one device entry in DeviceTableScanNode below, the
+ *     SortNode can be eliminated.
  * <li>When order by all IDColumns and time, the SortNode can be eliminated.
  * <li>When StreamSortIndex==OrderBy size()-1, remove this StreamSortNode
  */
@@ -71,7 +70,7 @@ public class SortElimination implements PlanOptimizer {
       OrderingScheme orderingScheme = node.getOrderingScheme();
       if (!context.hasSeenFill()
           && newContext.getTotalDeviceEntrySize() == 1
-          && TIMESTAMP_STR.equalsIgnoreCase(orderingScheme.getOrderBy().get(0).getName())) {
+          && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
         return child;
       }
       return !context.hasSeenFill() && node.isOrderByAllIdsAndTime()
@@ -93,8 +92,9 @@ public class SortElimination implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, Context context) {
+    public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       context.addDeviceEntrySize(node.getDeviceEntries().size());
+      context.setTimeColumnName(node.getTimeColumn().map(Symbol::getName).orElse(null));
       return node;
     }
 
@@ -125,6 +125,8 @@ public class SortElimination implements PlanOptimizer {
     // has seen linear fill, previous fill or gapfill
     private boolean hasSeenFill = false;
 
+    private String timeColumnName = null;
+
     Context() {}
 
     public void addDeviceEntrySize(int deviceEntrySize) {
@@ -141,6 +143,14 @@ public class SortElimination implements PlanOptimizer {
 
     public void setHasSeenFill(boolean hasSeenFill) {
       this.hasSeenFill = hasSeenFill;
+    }
+
+    public String getTimeColumnName() {
+      return timeColumnName;
+    }
+
+    public void setTimeColumnName(String timeColumnName) {
+      this.timeColumnName = timeColumnName;
     }
   }
 }

@@ -90,7 +90,7 @@ public class MNodeUtils {
       public N next() {
         IMeasurementSchema schema = schemas.next();
         return nodeFactor
-            .createMeasurementMNode(null, schema.getMeasurementId(), schema, null)
+            .createMeasurementMNode(null, schema.getMeasurementName(), schema, null)
             .getAsMNode();
       }
     };

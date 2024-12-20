@@ -133,9 +133,12 @@ public enum ConfigPhysicalPlanType {
 
   /** Function. */
   CreateFunction((short) 700),
-  DropFunction((short) 701),
+  DropTreeModelFunction((short) 701),
   GetFunctionTable((short) 702),
   GetFunctionJar((short) 703),
+  GetAllFunctionTable((short) 704),
+  UpdateFunction((short) 705),
+  DropTableModelFunction((short) 706),
 
   /** Template. */
   CreateSchemaTemplate((short) 800),

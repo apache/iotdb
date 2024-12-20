@@ -53,7 +53,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     for (int i = 0; i < valueSchemaList.size(); i++) {
       valueChunkWriterList.add(
           new ValueChunkWriter(
-              valueSchemaList.get(i).getMeasurementId(),
+              valueSchemaList.get(i).getMeasurementName(),
               valueSchemaList.get(i).getCompressor(),
               valueSchemaList.get(i).getType(),
               valueSchemaList.get(i).getEncodingType(),

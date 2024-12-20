@@ -1107,28 +1107,28 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String READ_CHUNK = "read_chunk";
   private static final String ALL = "all";
-  public static final String READ_CHUNK_ALL = READ_CHUNK + "_" + ALL;
+  public static final String READ_CHUNK_CACHE = READ_CHUNK + "_" + CACHE;
   public static final String READ_CHUNK_FILE = READ_CHUNK + "_" + FILE;
-  private Timer readChunkAllTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer readChunkCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer readChunkFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private void bindReadChunk(AbstractMetricService metricService) {
-    readChunkAllTimer =
+    readChunkCacheTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            READ_CHUNK,
+            READ_CHUNK_CACHE,
             Tag.TYPE.toString(),
             NULL,
             Tag.FROM.toString(),
-            ALL);
+            CACHE);
     readChunkFileTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            READ_CHUNK,
+            READ_CHUNK_FILE,
             Tag.TYPE.toString(),
             NULL,
             Tag.FROM.toString(),
@@ -1136,16 +1136,16 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindReadChunk(AbstractMetricService metricService) {
-    readChunkAllTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    readChunkCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     readChunkFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALL, FILE)
+    Arrays.asList(CACHE, FILE)
         .forEach(
             from ->
                 metricService.remove(
                     MetricType.TIMER,
                     Metric.SERIES_SCAN_COST.toString(),
                     Tag.STAGE.toString(),
-                    READ_CHUNK,
+                    READ_CHUNK + "_" + from,
                     Tag.TYPE.toString(),
                     NULL,
                     Tag.FROM.toString(),
@@ -1571,8 +1571,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       case READ_TIMESERIES_METADATA_FILE:
         readTimeseriesMetadataFileTimer.updateNanos(cost);
         break;
-      case READ_CHUNK_ALL:
-        readChunkAllTimer.updateNanos(cost);
+      case READ_CHUNK_CACHE:
+        readChunkCacheTimer.updateNanos(cost);
         break;
       case READ_CHUNK_FILE:
         readChunkFileTimer.updateNanos(cost);
