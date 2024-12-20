@@ -40,17 +40,4 @@ public class NonAlignedDeviceEntry extends DeviceEntry {
         + attributeColumnValues
         + '}';
   }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final NonAlignedDeviceEntry that = (NonAlignedDeviceEntry) obj;
-    return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
-  }
 }
