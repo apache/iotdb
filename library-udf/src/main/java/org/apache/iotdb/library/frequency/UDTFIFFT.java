@@ -42,6 +42,7 @@ public class UDTFIFFT implements UDTF {
   private final DoubleArrayList real = new DoubleArrayList();
   private final DoubleArrayList imag = new DoubleArrayList();
   private final IntArrayList time = new IntArrayList();
+
   private long start;
   private long interval;
 
@@ -53,7 +54,9 @@ public class UDTFIFFT implements UDTF {
         .validate(
             x -> (long) x > 0,
             "interval should be a time period whose unit is ms, s, m, h, d.",
-            Util.parseTime(validator.getParameters().getStringOrDefault("interval", "1s")));
+            Util.parseTime(
+                validator.getParameters().getStringOrDefault("interval", "1s"),
+                validator.getParameters()));
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
@@ -67,7 +70,7 @@ public class UDTFIFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"));
+    this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"), parameters);
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
     if (parameters.hasAttribute(START_PARAM)) {

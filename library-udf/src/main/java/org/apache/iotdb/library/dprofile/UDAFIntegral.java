@@ -27,7 +27,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /**
@@ -37,11 +36,7 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDAFIntegral implements UDTF {
 
   private static final String TIME_UNIT_KEY = "unit";
-  private static final String TIME_UNIT_MS = "1S";
   private static final String TIME_UNIT_S = "1s";
-  private static final String TIME_UNIT_M = "1m";
-  private static final String TIME_UNIT_H = "1H";
-  private static final String TIME_UNIT_D = "1d";
 
   long unitTime;
   long lastTime = -1;
@@ -53,41 +48,19 @@ public class UDAFIntegral implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validate(
-            unit ->
-                TIME_UNIT_D.equals(unit)
-                    || TIME_UNIT_H.equals(unit)
-                    || TIME_UNIT_M.equals(unit)
-                    || TIME_UNIT_S.equals(unit)
-                    || TIME_UNIT_MS.equals(unit),
-            "Unknown time unit input",
-            validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
+            x -> (long) x > 0,
+            "Unknown time unit input. Supported units are ns, us, ms, s, m, h, d.",
+            Util.parseTime(
+                validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S),
+                validator.getParameters()));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    switch (parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S)) {
-      case TIME_UNIT_MS:
-        unitTime = 1L;
-        break;
-      case TIME_UNIT_S:
-        unitTime = 1000L;
-        break;
-      case TIME_UNIT_M:
-        unitTime = 60000L;
-        break;
-      case TIME_UNIT_H:
-        unitTime = 3600000L;
-        break;
-      case TIME_UNIT_D:
-        unitTime = 3600000L * 24L;
-        break;
-      default:
-        throw new UDFException(
-            "Unknown time unit input: "
-                + parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
-    }
+    unitTime =
+        Util.parseTime(parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S), parameters);
   }
 
   @Override
