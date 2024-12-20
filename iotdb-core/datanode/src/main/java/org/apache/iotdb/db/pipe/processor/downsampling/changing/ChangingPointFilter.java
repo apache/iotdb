@@ -100,7 +100,7 @@ public class ChangingPointFilter extends DownSamplingFilter {
     return false;
   }
 
-  public long estimatedMemory() {
+  public long ramBytesUsed() {
     return estimatedSize;
   }
 }

@@ -160,7 +160,7 @@ public class SwingingDoorTrendingFilter extends DownSamplingFilter {
     lastStoredValue = value;
   }
 
-  public long estimatedMemory() {
-    return estimatedMemory + 64;
+  public long ramBytesUsed() {
+    return estimatedSize;
   }
 }

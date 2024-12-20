@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.time.LocalDate;
 
-public abstract class DownSamplingFilter {
+public abstract class DownSamplingFilter implements Accountable {
 
   protected static final long SIZE_OF_DATE =
       RamUsageEstimator.shallowSizeOfInstance(LocalDate.class);

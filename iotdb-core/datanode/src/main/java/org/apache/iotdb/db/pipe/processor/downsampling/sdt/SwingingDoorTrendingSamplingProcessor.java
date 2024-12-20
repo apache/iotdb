@@ -122,7 +122,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         new PartialPathLastObjectCache<SwingingDoorTrendingFilter>(memoryLimitInBytes) {
           @Override
           protected long calculateMemoryUsage(SwingingDoorTrendingFilter object) {
-            return object.estimatedMemory();
+            return object.ramBytesUsed();
           }
         };
   }

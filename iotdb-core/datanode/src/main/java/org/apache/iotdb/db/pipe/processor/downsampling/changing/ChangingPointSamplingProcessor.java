@@ -181,7 +181,7 @@ public class ChangingPointSamplingProcessor extends DownSamplingProcessor {
         new PartialPathLastObjectCache<ChangingPointFilter>(memoryLimitInBytes) {
           @Override
           protected long calculateMemoryUsage(ChangingPointFilter object) {
-            return object.estimatedMemory();
+            return object.ramBytesUsed();
           }
         };
   }
