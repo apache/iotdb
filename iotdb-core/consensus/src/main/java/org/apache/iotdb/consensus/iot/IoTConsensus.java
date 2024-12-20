@@ -481,6 +481,7 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("Record correct peer list: {}", correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 

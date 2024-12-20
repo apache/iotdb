@@ -447,6 +447,7 @@ public class PipeConsensus implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    LOGGER.info("Record correct peer list: {}", correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 

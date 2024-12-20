@@ -614,6 +614,7 @@ class RatisConsensus implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("Record correct peer list: {}", correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 
@@ -635,8 +636,12 @@ class RatisConsensus implements IConsensus {
                         peer.getNodeId(), peer.getEndpoint(), DEFAULT_PRIORITY))
             .anyMatch(
                 raftPeer ->
-                    myself.getId() == raftPeer.getId()
-                        && myself.getAddress().equals(raftPeer.getAddress()));
+                    myself.getId().equals(raftPeer.getId())
+                        && Utils.fromRaftPeerAddressToTEndPoint(myself.getAddress())
+                            .getIp()
+                            .equals(
+                                Utils.fromRaftPeerAddressToTEndPoint(raftPeer.getAddress())
+                                    .getIp()));
     if (!myselfInCorrectPeers) {
       logger.info(
           "[RESET PEER LIST] Local peer is not in the correct peer list, delete local peer {}",
