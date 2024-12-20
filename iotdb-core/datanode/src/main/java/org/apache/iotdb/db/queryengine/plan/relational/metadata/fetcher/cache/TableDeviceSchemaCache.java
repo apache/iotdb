@@ -489,46 +489,51 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  // This database is with "root"
-  void invalidateLastCache(final @Nonnull String qualifiedDatabase) {
-    final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
+  void invalidateLastCache(final @Nonnull String database) {
     readWriteLock.writeLock().lock();
 
     try {
-      dualKeyCache.update(
-          tableId ->
-              tableId.belongTo(database)
-                  || Objects.isNull(tableId.getDatabase())
-                      && tableId.getTableName().startsWith(qualifiedDatabase),
-          deviceID -> true,
-          entry -> -entry.invalidateLastCache());
-      dualKeyCache.update(
-          tableId ->
-              Objects.isNull(tableId.getDatabase())
-                  && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase),
-          entry -> -entry.invalidateLastCache());
+      if (PathUtils.isTableModelDatabase(database)) {
+        dualKeyCache.update(
+            tableId -> tableId.belongTo(database),
+            deviceID -> true,
+            entry -> -entry.invalidateLastCache());
+      } else {
+        dualKeyCache.update(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && tableId.getTableName().startsWith(database),
+            deviceID -> true,
+            entry -> -entry.invalidateLastCache());
+        dualKeyCache.update(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && database.startsWith(tableId.getTableName()),
+            deviceID -> deviceID.matchDatabaseName(database),
+            entry -> -entry.invalidateLastCache());
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  // This database is without "root"
   public void invalidate(final @Nonnull String database) {
-    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      dualKeyCache.invalidate(
-          tableId ->
-              tableId.belongTo(database)
-                  || Objects.isNull(tableId.getDatabase())
-                      && tableId.getTableName().startsWith(qualifiedDatabase),
-          deviceID -> true);
-      dualKeyCache.invalidate(
-          tableId ->
-              Objects.isNull(tableId.getDatabase())
-                  && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase));
+      if (PathUtils.isTableModelDatabase(database)) {
+        dualKeyCache.invalidate(tableId -> tableId.belongTo(database), deviceID -> true);
+      } else {
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && tableId.getTableName().startsWith(database),
+            deviceID -> true);
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && database.startsWith(tableId.getTableName()),
+            deviceID -> deviceID.matchDatabaseName(database));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

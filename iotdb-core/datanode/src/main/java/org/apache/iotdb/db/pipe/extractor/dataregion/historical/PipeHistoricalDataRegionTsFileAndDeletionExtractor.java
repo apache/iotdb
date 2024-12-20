@@ -321,9 +321,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
         isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName)
-                // The database name is prefixed with "root."
-                && tablePattern.coversDb(databaseName.substring(5));
+            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
       }
     }
 
@@ -660,8 +658,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
               return isTableModel
                   ? (tablePattern.isTableModelDataAllowedToBeCaptured()
-                      // The database name in resource is prefixed with "root."
-                      && tablePattern.matchesDatabase(resource.getDatabaseName().substring(5))
+                      && tablePattern.matchesDatabase(resource.getDatabaseName())
                       && tablePattern.matchesTable(deviceID.getTableName()))
                   : (treePattern.isTreeModelDataAllowedToBeCaptured()
                       && treePattern.mayOverlapWithDevice(deviceID));
@@ -678,7 +675,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     isDbNameCoveredByPattern =
         isTableModel
             ? tablePattern.isTableModelDataAllowedToBeCaptured()
-                && tablePattern.coversDb(databaseName.substring(5))
+                && tablePattern.coversDb(databaseName)
             : treePattern.isTreeModelDataAllowedToBeCaptured()
                 && treePattern.coversDb(databaseName);
   }

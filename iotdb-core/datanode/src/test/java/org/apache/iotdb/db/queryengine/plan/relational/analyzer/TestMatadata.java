@@ -126,7 +126,7 @@ public class TestMatadata implements Metadata {
   private static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
         && name.getObjectName().equalsIgnoreCase(TABLE1);
   }
@@ -163,7 +163,7 @@ public class TestMatadata implements Metadata {
       if (table == null) {
         return Optional.empty();
       }
-      List<ColumnSchema> columnSchemaList =
+      final List<ColumnSchema> columnSchemaList =
           table.getColumnList().stream()
               .map(
                   o ->
@@ -176,7 +176,7 @@ public class TestMatadata implements Metadata {
       return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
     }
 
-    List<ColumnSchema> columnSchemas =
+    final List<ColumnSchema> columnSchemas =
         Arrays.asList(
             ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
             ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
@@ -202,7 +202,8 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
+  public Type getOperatorReturnType(
+      final OperatorType operatorType, final List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
 
     switch (operatorType) {
@@ -243,24 +244,25 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
+  public Type getFunctionReturnType(
+      final String functionName, final List<? extends Type> argumentTypes) {
     return getFunctionType(functionName, argumentTypes);
   }
 
   @Override
   public boolean isAggregationFunction(
-      SessionInfo session, String functionName, AccessControl accessControl) {
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
     return BuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
   @Override
-  public Type getType(TypeSignature signature) throws TypeNotFoundException {
+  public Type getType(final TypeSignature signature) throws TypeNotFoundException {
     return typeManager.getType(signature);
   }
 
   @Override
-  public boolean canCoerce(Type from, Type to) {
+  public boolean canCoerce(final Type from, final Type to) {
     return true;
   }
 
@@ -271,10 +273,10 @@ public class TestMatadata implements Metadata {
 
   @Override
   public List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context) {
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
     if (tableName.getDatabaseName().equals(TREE_VIEW_DB)) {
       if (expressionList.isEmpty()) {
         return ImmutableList.of(
@@ -354,12 +356,13 @@ public class TestMatadata implements Metadata {
             new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
   }
 
-  private boolean compareEqualsMatch(Expression expression, String idOrAttr, String value) {
+  private boolean compareEqualsMatch(
+      final Expression expression, final String idOrAttr, final String value) {
     if (expression instanceof ComparisonExpression
         && ((ComparisonExpression) expression).getOperator()
             == ComparisonExpression.Operator.EQUAL) {
-      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
-      Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      final Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      final Expression rightExpression = ((ComparisonExpression) expression).getRight();
       if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
         return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
             && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
@@ -373,12 +376,13 @@ public class TestMatadata implements Metadata {
     return false;
   }
 
-  private boolean compareNotEqualsMatch(Expression expression, String idOrAttr, String value) {
+  private boolean compareNotEqualsMatch(
+      final Expression expression, final String idOrAttr, final String value) {
     if (expression instanceof ComparisonExpression
         && ((ComparisonExpression) expression).getOperator()
             == ComparisonExpression.Operator.NOT_EQUAL) {
-      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
-      Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      final Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      final Expression rightExpression = ((ComparisonExpression) expression).getRight();
       if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
         return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
             && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
@@ -394,45 +398,46 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database,
-      TableSchema tableSchema,
-      MPPQueryContext context,
-      boolean allowCreateTable,
-      boolean isStrictIdColumn) {
+      final String database,
+      final TableSchema tableSchema,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public void validateDeviceSchema(
-      ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
+      final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName) {
+      final String database, final List<IDeviceID> deviceIDList, final String userName) {
     return null;
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+  public SchemaPartition getSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDList) {
     return null;
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
+  public SchemaPartition getSchemaPartition(final String database) {
     return null;
   }
 
   @Override
   public DataPartition getDataPartition(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
@@ -503,11 +508,6 @@ public class TestMatadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
         return SCHEMA_PARTITION;
       }
     };

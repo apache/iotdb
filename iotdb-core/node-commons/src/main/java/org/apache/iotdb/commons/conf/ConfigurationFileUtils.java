@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.io.StringReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -247,19 +248,32 @@ public class ConfigurationFileUtils {
     return ignoredConfigItems;
   }
 
-  public static void updateConfigurationFile(File file, Properties newConfigItems)
+  public static void updateConfiguration(
+      File file, Properties newConfigItems, LoadHotModifiedPropsFunc loadHotModifiedPropertiesFunc)
       throws IOException, InterruptedException {
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
     try {
       // read configuration file
       List<String> lines = new ArrayList<>();
+      TrimProperties mergedProps = new TrimProperties();
       try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
         String line = null;
         while ((line = reader.readLine()) != null) {
           lines.add(line);
+          mergedProps.load(new StringReader(line));
         }
       }
+      // overwrite old configuration with new value
+      for (String key : newConfigItems.stringPropertyNames()) {
+        mergedProps.put(key, newConfigItems.getProperty(key));
+      }
+
+      // load hot modified properties
+      if (loadHotModifiedPropertiesFunc != null) {
+        loadHotModifiedPropertiesFunc.loadHotModifiedProperties(mergedProps);
+      }
+
       // generate new configuration file content in memory
       StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
       for (String currentLine : lines) {
@@ -340,5 +354,11 @@ public class ConfigurationFileUtils {
 
   private static void releaseFileLock(File file) throws IOException {
     Files.deleteIfExists(file.toPath());
+  }
+
+  @FunctionalInterface
+  public interface LoadHotModifiedPropsFunc {
+    void loadHotModifiedProperties(TrimProperties properties)
+        throws IOException, InterruptedException;
   }
 }

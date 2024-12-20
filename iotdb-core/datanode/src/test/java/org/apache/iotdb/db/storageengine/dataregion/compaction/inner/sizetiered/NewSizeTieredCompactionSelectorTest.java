@@ -717,6 +717,36 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertEquals(6, task2.getAllSourceTsFiles().size());
   }
 
+  @Test
+  public void testSelectLastSkippedFilesWithTotalFileNumLimit() throws IOException {
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTotalFileNumThreshold(10);
+    // TsFiles: [d0], [d1], [d2], [d3], [d3], [d3], [d3], [d3], [d3], [d3], [d3]
+    for (int i = 0; i < 11; i++) {
+      String device;
+      if (i >= 4) {
+        device = "d3";
+      } else {
+        device = "d" + i;
+      }
+      TsFileResource resource =
+          generateSingleNonAlignedSeriesFile(
+              String.format("%d-%d-%d-0.tsfile", i, i, 0),
+              new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
+              true,
+              device);
+      seqResources.add(resource);
+    }
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(
+        10, innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size());
+  }
+
   private TsFileResource generateSingleNonAlignedSeriesFile(
       String fileName, TimeRange[] chunkTimeRanges, boolean isSeq, String... devices)
       throws IOException {

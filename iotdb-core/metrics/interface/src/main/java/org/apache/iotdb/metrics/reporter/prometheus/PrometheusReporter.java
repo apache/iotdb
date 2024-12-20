@@ -80,7 +80,10 @@ public class PrometheusReporter implements Reporter {
                   routes ->
                       routes.get(
                           "/metrics",
-                          (request, response) -> response.sendString(Mono.just(scrape()))))
+                          (request, response) ->
+                              response
+                                  .addHeader("Content-Type", "text/plain")
+                                  .sendString(Mono.just(scrape()))))
               .bindNow();
     } catch (Throwable e) {
       // catch Throwable rather than Exception here because the code above might cause a

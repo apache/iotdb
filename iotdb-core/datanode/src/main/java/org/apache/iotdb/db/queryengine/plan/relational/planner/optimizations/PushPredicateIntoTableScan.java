@@ -421,15 +421,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        DeviceTableScanNode tableScanNode,
-        List<Expression> metadataExpressions,
+        final DeviceTableScanNode tableScanNode,
+        final List<Expression> metadataExpressions,
         String timeColumnName) {
 
-      List<String> attributeColumns = new ArrayList<>();
+      final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
+      for (final Map.Entry<Symbol, ColumnSchema> entry :
+          tableScanNode.getAssignments().entrySet()) {
+        final Symbol columnSymbol = entry.getKey();
+        final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
           tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
@@ -437,7 +438,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      List<DeviceEntry> deviceEntries =
+      final List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -454,7 +455,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         tableScanNode.setContainsNonAlignedDevice();
       }
 
-      long schemaFetchCost = System.nanoTime() - startTime;
+      final long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
       queryContext.setFetchSchemaCost(schemaFetchCost);
@@ -466,19 +467,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.setFinishQueryAfterAnalyze();
         }
       } else {
-        Filter timeFilter =
+        final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
                 .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);
-        String treeModelDatabase =
-            "root." + tableScanNode.getQualifiedObjectName().getDatabaseName();
 
         startTime = System.nanoTime();
-        DataPartition dataPartition =
-            fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
+        final DataPartition dataPartition =
+            fetchDataPartitionByDevices(
+                tableScanNode.getQualifiedObjectName().getDatabaseName(),
+                deviceEntries,
+                timeFilter);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
@@ -495,7 +497,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.upsertDataPartition(dataPartition);
         }
 
-        long fetchPartitionCost = System.nanoTime() - startTime;
+        final long fetchPartitionCost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, fetchPartitionCost);
         queryContext.setFetchPartitionCost(fetchPartitionCost);
@@ -757,8 +759,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private DataPartition fetchDataPartitionByDevices(
-        String database, List<DeviceEntry> deviceEntries, Filter globalTimeFilter) {
-      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        final String database,
+        final List<DeviceEntry> deviceEntries,
+        final Filter globalTimeFilter) {
+      final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);
 
       // there is no satisfied time range
@@ -769,7 +773,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             CONFIG.getSeriesPartitionSlotNum());
       }
 
-      List<DataPartitionQueryParam> dataPartitionQueryParams =
+      final List<DataPartitionQueryParam> dataPartitionQueryParams =
           deviceEntries.stream()
               .map(
                   deviceEntry ->
