@@ -165,7 +165,7 @@ public class PipeConsensus implements IConsensus {
                                 consensusPipeManager,
                                 syncClientManager);
                         stateMachineMap.put(consensusGroupId, consensus);
-                        consensus.start(true);
+                        checkPeerListAndStartIfEligible(consensusGroupId, consensus);
                       }
                     } catch (Exception e) {
                       LOGGER.error("Failed to recover consensus from {}", storageDir, e);
@@ -176,34 +176,35 @@ public class PipeConsensus implements IConsensus {
                     LOGGER.error("Failed to recover consensus from {}", storageDir, e);
                     return null;
                   });
+    }
+  }
 
-      if (correctPeerListBeforeStart != null) {
-        try {
-          future.get();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-        BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
-            (consensusGroupId, peers) -> {
-              try {
-                resetPeerList(consensusGroupId, peers);
-              } catch (ConsensusGroupNotExistException ignore) {
+  private void checkPeerListAndStartIfEligible(
+      ConsensusGroupId consensusGroupId, PipeConsensusServerImpl consensus) throws IOException {
+    BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+        (dataRegionId, peers) -> {
+          try {
+            resetPeerList(dataRegionId, peers);
+          } catch (ConsensusGroupNotExistException ignore) {
 
-              } catch (Exception e) {
-                LOGGER.warn("Failed to reset peer list while start", e);
-              }
-            };
+          } catch (Exception e) {
+            LOGGER.warn("Failed to reset peer list while start", e);
+          }
+        };
+
+    if (correctPeerListBeforeStart != null) {
+      if (correctPeerListBeforeStart.containsKey(consensusGroupId)) {
         // make peers which are in list correct
-        correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+        resetPeerListWithoutThrow.accept(
+            consensusGroupId, correctPeerListBeforeStart.get(consensusGroupId));
+        consensus.start(true);
+      } else {
         // clear peers which are not in the list
-        stateMachineMap.keySet().stream()
-            .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
-            // copy to a new list to avoid concurrent modification
-            .collect(Collectors.toList())
-            .forEach(
-                consensusGroupId ->
-                    resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+        resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList());
       }
+
+    } else {
+      consensus.start(true);
     }
   }
 

@@ -37,8 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_ALREADY_EXIST_MSG;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_NOT_EXIST_MGS;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
   private static final Logger LOGGER =
@@ -119,7 +119,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
         // ignore idempotence logic
-        if (status.getMessage().contains(PIPE_NOT_EXIST_MGS)) {
+        if (status.getMessage().contains(PIPE_NOT_EXIST_MSG)) {
           return;
         }
         throw new PipeException(status.getMessage());

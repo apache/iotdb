@@ -78,8 +78,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_ALREADY_EXIST_MSG;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_NOT_EXIST_MGS;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -206,7 +206,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
       final String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MGS);
+              "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -283,7 +283,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStartPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, %s", pipeName, PIPE_NOT_EXIST_MGS);
+          String.format("Failed to start pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -309,7 +309,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStopPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MGS);
+          String.format("Failed to stop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
