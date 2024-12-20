@@ -37,6 +37,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.PIPE_NOT_EXIST_MGS;
+
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
@@ -44,9 +47,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final String PIPE_ALREADY_EXIST_MSG =
-      "the pipe with the same name has been created";
-  private static final String PIPE_NOT_EXIST_MGS = "does not exist";
+
 
   @Override
   public void createPipe(
