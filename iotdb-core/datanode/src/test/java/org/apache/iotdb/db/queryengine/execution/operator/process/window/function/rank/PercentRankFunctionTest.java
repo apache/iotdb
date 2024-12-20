@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -21,7 +22,8 @@ public class PercentRankFunctionTest {
   private final List<TSDataType> inputDataTypes = Collections.singletonList(TSDataType.INT32);
   private final int[] inputs = {1, 1, 2, 2, 3};
 
-  private final List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
+  private final List<TSDataType> outputDataTypes =
+      Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
   private final double[] expected = {0, 0, 0.5, 0.5, 1};
 
   @Test
@@ -29,16 +31,17 @@ public class PercentRankFunctionTest {
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     PercentRankFunction function = new PercentRankFunction();
     List<Integer> sortedColumns = Collections.singletonList(0);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);

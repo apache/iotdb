@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.partit
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -42,7 +43,7 @@ public class FrameTestUtils {
   }
 
   public void processAllRows() {
-    for (int i = partitionStart; i < partitionEnd; i++ ) {
+    for (int i = partitionStart; i < partitionEnd; i++) {
       if (i == peerGroupEnd) {
         updatePeerGroup(i);
       }
@@ -88,12 +89,9 @@ public class FrameTestUtils {
     Frame frame;
     switch (frameInfo.getFrameType()) {
       case RANGE:
-        frame = new RangeFrame(
-            frameInfo,
-            partitionStart,
-            partitionEnd,
-            sortedColumns,
-            peerGroupComparator);
+        frame =
+            new RangeFrame(
+                frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
         break;
       case ROWS:
         frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);

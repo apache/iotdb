@@ -20,8 +20,7 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs) {
@@ -38,7 +37,6 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

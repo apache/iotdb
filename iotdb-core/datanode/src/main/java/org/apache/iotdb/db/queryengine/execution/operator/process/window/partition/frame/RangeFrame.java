@@ -5,7 +5,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.C
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -130,8 +129,8 @@ public class RangeFrame implements Frame {
     }
 
     if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
-      recentRange = new Range(Math.min(partitionEnd - partitionStart - 1, frameStart),
-          Math.max(0, frameEnd));
+      recentRange =
+          new Range(Math.min(partitionEnd - partitionStart - 1, frameStart), Math.max(0, frameEnd));
       return new Range(-1, -1);
     }
 
@@ -200,7 +199,9 @@ public class RangeFrame implements Frame {
       int recentStart = recentRange.getStart() + partitionStart;
 
       // Leave section of leading nulls
-      if (recentStart == partitionStart && frameInfo.getSortOrder().isNullsFirst() && column.isNull(partitionStart)) {
+      if (recentStart == partitionStart
+          && frameInfo.getSortOrder().isNullsFirst()
+          && column.isNull(partitionStart)) {
         // Then the frame starts with current row
         recentStart = index - partitionStart;
       }

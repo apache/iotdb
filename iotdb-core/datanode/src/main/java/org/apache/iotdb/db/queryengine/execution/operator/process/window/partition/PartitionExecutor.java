@@ -20,8 +20,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
-
 public final class PartitionExecutor {
   private final int partitionStart;
   private final int partitionEnd;
@@ -81,7 +79,10 @@ public final class PartitionExecutor {
     }
 
     currentPosition = partitionStart;
-    needPeerGroup = windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup) || frameInfoList.stream().anyMatch(frameInfo -> frameInfo.getFrameType() != FrameInfo.FrameType.ROWS);
+    needPeerGroup =
+        windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
+            || frameInfoList.stream()
+                .anyMatch(frameInfo -> frameInfo.getFrameType() != FrameInfo.FrameType.ROWS);
     if (needPeerGroup) {
       updatePeerGroup();
     }
@@ -92,12 +93,9 @@ public final class PartitionExecutor {
         FrameInfo frameInfo = frameInfoList.get(i);
         switch (frameInfo.getFrameType()) {
           case RANGE:
-            frame = new RangeFrame(
-                frameInfo,
-                partitionStart,
-                partitionEnd,
-                sortedColumns,
-                peerGroupComparator);
+            frame =
+                new RangeFrame(
+                    frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
             frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);

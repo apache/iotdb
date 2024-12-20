@@ -6,6 +6,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -31,18 +32,25 @@ public class AggregationWindowFunctionTest {
     double[] expected = {0, 1, 3, 6, 10, 15, 21, 28, 36, 45};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.CURRENT_ROW);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    AggregationWindowFunction function =
+        FunctionTestUtils.createAggregationWindowFunction(
+            TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING,
+            FrameInfo.FrameBoundType.CURRENT_ROW);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -58,18 +66,27 @@ public class AggregationWindowFunctionTest {
     int[] expected = {0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.MIN, TSDataType.INT32, TSDataType.INT32, true);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    AggregationWindowFunction function =
+        FunctionTestUtils.createAggregationWindowFunction(
+            TAggregationType.MIN, TSDataType.INT32, TSDataType.INT32, true);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
+            FrameInfo.FrameBoundType.FOLLOWING,
+            2);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -85,18 +102,27 @@ public class AggregationWindowFunctionTest {
     double[] expected = {3, 6, 10, 15, 20, 25, 30, 35, 30, 24};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    AggregationWindowFunction function =
+        FunctionTestUtils.createAggregationWindowFunction(
+            TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
+            FrameInfo.FrameBoundType.FOLLOWING,
+            2);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -115,18 +141,30 @@ public class AggregationWindowFunctionTest {
     double[] expected = {4, 4, 4, 4, 12, 12, 12, 12, 10, 10};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
-    AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.RANGE, FrameInfo.FrameBoundType.CURRENT_ROW, -1, FrameInfo.FrameBoundType.CURRENT_ROW, -1, 0, SortOrder.ASC_NULLS_FIRST);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo, Collections.singletonList(0));
+    AggregationWindowFunction function =
+        FunctionTestUtils.createAggregationWindowFunction(
+            TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.RANGE,
+            FrameInfo.FrameBoundType.CURRENT_ROW,
+            -1,
+            FrameInfo.FrameBoundType.CURRENT_ROW,
+            -1,
+            0,
+            SortOrder.ASC_NULLS_FIRST);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(
+            tsBlock, inputDataTypes, function, frameInfo, Collections.singletonList(0));
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);

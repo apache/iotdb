@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -19,7 +20,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 public class NTileFunctionTest {
   private final List<TSDataType> inputDataTypes = Collections.singletonList(TSDataType.INT32);
-  private final List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT64);
+  private final List<TSDataType> outputDataTypes =
+      Arrays.asList(TSDataType.INT32, TSDataType.INT64);
 
   @Test
   public void testNTileFunctionWhenNIsLarge() {
@@ -30,16 +32,17 @@ public class NTileFunctionTest {
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -57,16 +60,17 @@ public class NTileFunctionTest {
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -84,16 +88,17 @@ public class NTileFunctionTest {
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NTileFunction function = new NTileFunction(n);
     List<Integer> sortedColumns = Collections.singletonList(0);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);

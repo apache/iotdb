@@ -4,6 +4,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWi
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -23,7 +24,8 @@ public class NthValueFunctionTest {
   // Inputs element less than 0 means this pos is null
   private final int[] inputs = {0, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1};
 
-  private final List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT32);
+  private final List<TSDataType> outputDataTypes =
+      Arrays.asList(TSDataType.INT32, TSDataType.INT32);
 
   @Test
   public void testNthValueFunctionIgnoreNull() {
@@ -31,17 +33,24 @@ public class NthValueFunctionTest {
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NthValueFunction function = new NthValueFunction(3, 0, true);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
+            FrameInfo.FrameBoundType.FOLLOWING,
+            2);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -60,17 +69,24 @@ public class NthValueFunctionTest {
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NthValueFunction function = new NthValueFunction(3, 0, false);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
+            FrameInfo.FrameBoundType.FOLLOWING,
+            2);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(expected.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), expected.length);
@@ -87,17 +103,24 @@ public class NthValueFunctionTest {
   public void testNthValueFunctionNotIgnoreNullOutOfBounds() {
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     NthValueFunction function = new NthValueFunction(10, 0, false);
-    FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
-    PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
+    FrameInfo frameInfo =
+        new FrameInfo(
+            FrameInfo.FrameType.ROWS,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
+            FrameInfo.FrameBoundType.FOLLOWING,
+            2);
+    PartitionExecutor partitionExecutor =
+        FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(inputs.length, outputDataTypes);
     while (partitionExecutor.hasNext()) {
       partitionExecutor.processNextRow(tsBlockBuilder);
     }
 
-    TsBlock result = tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     Column column = result.getColumn(1);
 
     Assert.assertEquals(column.getPositionCount(), inputs.length);
