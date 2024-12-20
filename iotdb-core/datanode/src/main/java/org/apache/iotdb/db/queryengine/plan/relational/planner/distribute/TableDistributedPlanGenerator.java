@@ -529,20 +529,17 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
-    // left of pair if TreeAlignedDeviceViewScanNode, right is TreeNonAlignedDeviceViewScanNode
-    Map<TRegionReplicaSet, Pair<TreeDeviceViewScanNode, TreeDeviceViewScanNode>> tableScanNodeMap =
-        new HashMap<>();
+    Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
+        tableScanNodeMap = new HashMap<>();
 
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
-              deviceEntry.getDeviceID(),
-              node.getTimeFilter());
+              node.getTreeDBName(), deviceEntry.getDeviceID(), node.getTimeFilter());
 
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
-        Pair<TreeDeviceViewScanNode, TreeDeviceViewScanNode> pair =
+        Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair =
             tableScanNodeMap.get(regionReplicaSet);
 
         if (pair == null) {
@@ -551,7 +548,7 @@ public class TableDistributedPlanGenerator
         }
 
         if (pair.left == null && aligned) {
-          TreeDeviceViewScanNode scanNode =
+          TreeAlignedDeviceViewScanNode scanNode =
               new TreeAlignedDeviceViewScanNode(
                   queryId.genPlanNodeId(),
                   node.getQualifiedObjectName(),
@@ -610,10 +607,12 @@ public class TableDistributedPlanGenerator
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, Pair<TreeDeviceViewScanNode, TreeDeviceViewScanNode>> entry :
-        tableScanNodeMap.entrySet()) {
+    for (Map.Entry<
+            TRegionReplicaSet,
+            Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
+        entry : tableScanNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
-      Pair<TreeDeviceViewScanNode, TreeDeviceViewScanNode> pair = entry.getValue();
+      Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair = entry.getValue();
       int currentDeviceEntrySize = 0;
 
       if (pair.left != null) {
@@ -720,7 +719,9 @@ public class TableDistributedPlanGenerator
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
+              node instanceof AggregationTreeDeviceViewScanNode
+                  ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
+                  : node.getQualifiedObjectName().getDatabaseName(),
               deviceEntry.getDeviceID(),
               node.getTimeFilter());
       if (regionReplicaSets.size() > 1) {

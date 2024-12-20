@@ -123,7 +123,6 @@ public class TestMatadata implements Metadata {
   public static final String TABLE2 = "table2";
 
   private static final String TREE_VIEW_DB = "tree_view_db";
-  private static final String TREE_VIEW_DB_IN_TREE_MODEL = "root.tree_view_db";
   private static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
 
   @Override
@@ -422,26 +421,17 @@ public class TestMatadata implements Metadata {
   @Override
   public DataPartition getDataPartition(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    if (TREE_VIEW_DB_IN_TREE_MODEL.equals(database)) {
-      return TREE_VIEW_DATA_PARTITION;
-    }
     return DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    if (TREE_VIEW_DB_IN_TREE_MODEL.equals(database)) {
-      return TREE_VIEW_DATA_PARTITION;
-    }
     return DATA_PARTITION;
   }
 
   private static final DataPartition DATA_PARTITION =
-      MockTableModelDataPartition.constructDataPartition(TREE_DB1);
-
-  private static final DataPartition TREE_VIEW_DATA_PARTITION =
-      MockTableModelDataPartition.constructDataPartition(TREE_VIEW_DB_IN_TREE_MODEL);
+      MockTableModelDataPartition.constructDataPartition();
 
   private static final SchemaPartition SCHEMA_PARTITION =
       MockTableModelDataPartition.constructSchemaPartition();

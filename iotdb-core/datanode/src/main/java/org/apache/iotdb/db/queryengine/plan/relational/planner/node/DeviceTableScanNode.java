@@ -74,7 +74,7 @@ public class DeviceTableScanNode extends TableScanNode {
   // `pushDownLimit` row number
   protected boolean pushLimitToEachDevice = false;
 
-  protected boolean containsNonAlignedDevice;
+  protected transient boolean containsNonAlignedDevice;
 
   public DeviceTableScanNode(
       PlanNodeId id,
@@ -191,8 +191,6 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
-
-    ReadWriteIOUtils.write(containsNonAlignedDevice, byteBuffer);
   }
 
   @Override
@@ -247,8 +245,6 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(pushDownLimit, stream);
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
-
-    ReadWriteIOUtils.write(containsNonAlignedDevice, stream);
   }
 
   public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
@@ -303,8 +299,6 @@ public class DeviceTableScanNode extends TableScanNode {
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    boolean containsNonAlignedDevice = ReadWriteIOUtils.readBool(byteBuffer);
-
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new DeviceTableScanNode(
@@ -320,7 +314,7 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        false);
   }
 
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {

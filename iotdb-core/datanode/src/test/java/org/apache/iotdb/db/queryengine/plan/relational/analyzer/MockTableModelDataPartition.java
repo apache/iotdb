@@ -99,7 +99,7 @@ public class MockTableModelDataPartition {
    * device6(startTime:0): DataRegionGroup_2,
    * device6(startTime:100): DataRegionGroup_3,
    */
-  public static DataPartition constructDataPartition(String db) {
+  public static DataPartition constructDataPartition() {
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -132,7 +132,7 @@ public class MockTableModelDataPartition {
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_5), dataRegionMap3);
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_6), dataRegionMap3);
 
-    dbPartitionMap.put(db, devicePartitionMap);
+    dbPartitionMap.put(TREE_DB1, devicePartitionMap);
     dataPartition.setDataPartitionMap(dbPartitionMap);
 
     return dataPartition;

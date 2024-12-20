@@ -157,8 +157,6 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
 
-    ReadWriteIOUtils.write(containsNonAlignedDevice, byteBuffer);
-
     ReadWriteIOUtils.write(treeDBName, byteBuffer);
     ReadWriteIOUtils.write(measurementColumnNameMap.size(), byteBuffer);
     for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
@@ -224,8 +222,6 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
 
-    ReadWriteIOUtils.write(containsNonAlignedDevice, stream);
-
     ReadWriteIOUtils.write(treeDBName, stream);
     ReadWriteIOUtils.write(measurementColumnNameMap.size(), stream);
     for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
@@ -286,8 +282,6 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    boolean containsNonAlignedDevice = ReadWriteIOUtils.readBool(byteBuffer);
-
     String treeDBName = ReadWriteIOUtils.readString(byteBuffer);
     size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, String> measurementColumnNameMap = new HashMap<>(size);
@@ -311,7 +305,7 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice,
+        false,
         treeDBName,
         measurementColumnNameMap);
   }

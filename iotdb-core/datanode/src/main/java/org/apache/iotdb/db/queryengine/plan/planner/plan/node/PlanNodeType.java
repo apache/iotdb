@@ -123,7 +123,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
@@ -650,7 +649,7 @@ public enum PlanNodeType {
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
-        return TreeDeviceViewScanNode.deserialize(buffer);
+        throw new IllegalStateException("Unexpected deserialization");
       case 1023:
         return AggregationTreeDeviceViewScanNode.deserialize(buffer);
       case 1024:

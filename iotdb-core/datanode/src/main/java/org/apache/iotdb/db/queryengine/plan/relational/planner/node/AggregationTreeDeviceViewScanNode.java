@@ -185,8 +185,6 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
     ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
 
-    ReadWriteIOUtils.write(containsNonAlignedDevice, byteBuffer);
-
     if (projection != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
       ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
@@ -278,8 +276,6 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
     ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
 
-    ReadWriteIOUtils.write(containsNonAlignedDevice, stream);
-
     if (projection != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(projection.getMap().size(), stream);
@@ -365,8 +361,6 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
     long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
-    boolean containsNonAlignedDevice = ReadWriteIOUtils.readBool(byteBuffer);
-
     Assignments.Builder projection = Assignments.builder();
     boolean hasProjection = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasProjection) {
@@ -422,7 +416,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice,
+        false,
         projection.build(),
         aggregations,
         groupingSetDescriptor,
