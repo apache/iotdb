@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
@@ -288,7 +289,7 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public List<AlignedDeviceEntry> indexScan(
+  public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns,

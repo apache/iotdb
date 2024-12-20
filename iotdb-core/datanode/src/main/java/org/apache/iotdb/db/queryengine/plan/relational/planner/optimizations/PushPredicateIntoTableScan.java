@@ -35,10 +35,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -438,21 +438,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      final List<AlignedDeviceEntry> deviceEntries =
-          (List<AlignedDeviceEntry>)
-              metadata.indexScan(
-                  tableScanNode.getQualifiedObjectName(),
-                  metadataExpressions.stream()
-                      .map(
-                          expression ->
-                              ReplaceSymbolInExpression.transform(
-                                  expression, tableScanNode.getAssignments()))
-                      .collect(Collectors.toList()),
-                  attributeColumns,
-                  queryContext);
+      final List<DeviceEntry> deviceEntries =
+          metadata.indexScan(
+              tableScanNode.getQualifiedObjectName(),
+              metadataExpressions.stream()
+                  .map(
+                      expression ->
+                          ReplaceSymbolInExpression.transform(
+                              expression, tableScanNode.getAssignments()))
+                  .collect(Collectors.toList()),
+              attributeColumns,
+              queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
       if (deviceEntries.stream()
-          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedAlignedDeviceEntry)) {
+          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
         tableScanNode.setContainsNonAlignedDevice();
       }
 
@@ -761,7 +760,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     private DataPartition fetchDataPartitionByDevices(
         final String database,
-        final List<AlignedDeviceEntry> deviceEntries,
+        final List<DeviceEntry> deviceEntries,
         final Filter globalTimeFilter) {
       final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);

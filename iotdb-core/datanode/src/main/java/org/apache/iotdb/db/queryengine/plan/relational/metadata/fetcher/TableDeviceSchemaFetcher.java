@@ -37,12 +37,10 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AbstractDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
@@ -173,13 +171,13 @@ public class TableDeviceSchemaFetcher {
     }
   }
 
-  public List<AbstractDeviceEntry> fetchDeviceSchemaForDataQuery(
+  public List<DeviceEntry> fetchDeviceSchemaForDataQuery(
       final String database,
       final String table,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
-    final List<AbstractDeviceEntry> deviceEntryList = new ArrayList<>();
+    final List<DeviceEntry> deviceEntryList = new ArrayList<>();
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
@@ -215,7 +213,7 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
-      final List<AbstractDeviceEntry> deviceEntryList,
+      final List<DeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
       final boolean isDirectDeviceQuery) {
@@ -319,7 +317,7 @@ public class TableDeviceSchemaFetcher {
   // Return whether all of required info of current device is in cache
   @SuppressWarnings("squid:S107")
   private boolean tryGetDeviceInCache(
-      final List<AbstractDeviceEntry> deviceEntryList,
+      final List<DeviceEntry> deviceEntryList,
       final String database,
       final TsTable tableInstance,
       final Map<Integer, List<SchemaFilter>> idFilters,
@@ -349,7 +347,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   private boolean tryGetTableDeviceInCache(
-      final List<AbstractDeviceEntry> deviceEntryList,
+      final List<DeviceEntry> deviceEntryList,
       final String database,
       final TsTable tableInstance,
       final Predicate<AlignedDeviceEntry> check,
@@ -390,7 +388,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   private boolean tryGetTreeDeviceInCache(
-      final List<AbstractDeviceEntry> deviceEntryList,
+      final List<DeviceEntry> deviceEntryList,
       final String database,
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
@@ -405,7 +403,7 @@ public class TableDeviceSchemaFetcher {
     deviceEntryList.add(
         ((TreeDeviceNormalSchema) schema).isAligned()
             ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
-            : new NonAlignedDeviceEntry(deviceID));
+            : new NonAlignedDeviceEntry(deviceID, Collections.emptyList()));
     return true;
   }
 
@@ -422,7 +420,7 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final ShowDevice statement,
-      final List<AbstractDeviceEntry> deviceEntryList,
+      final List<DeviceEntry> deviceEntryList,
       final MPPQueryContext mppQueryContext) {
     Throwable t = null;
 
@@ -507,7 +505,7 @@ public class TableDeviceSchemaFetcher {
       final ShowDevice statement,
       final MPPQueryContext mppQueryContext,
       final List<String> attributeColumns,
-      final List<AbstractDeviceEntry> deviceEntryList) {
+      final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getIdNums() + 1];
@@ -541,7 +539,7 @@ public class TableDeviceSchemaFetcher {
       final TsTable tableInstance,
       final ShowDevice statement,
       final MPPQueryContext mppQueryContext,
-      final List<AbstractDeviceEntry> deviceEntryList) {
+      final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getIdNums()];
@@ -555,10 +553,10 @@ public class TableDeviceSchemaFetcher {
           i);
       final IDeviceID deviceID =
           TreeViewSchemaUtils.convertToIDeviceID(statement.getDatabase(), nodes);
-      final AbstractDeviceEntry deviceEntry =
+      final DeviceEntry deviceEntry =
           columns[columns.length - 1].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
-              : new NonAlignedDeviceEntry(deviceID);
+              : new NonAlignedDeviceEntry(deviceID, Collections.emptyList());
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryList.add(deviceEntry);
     }

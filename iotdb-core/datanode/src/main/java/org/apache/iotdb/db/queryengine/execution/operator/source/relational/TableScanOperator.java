@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -37,7 +37,7 @@ public class TableScanOperator extends AbstractTableScanOperator {
       PlanNodeId sourceId,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      List<AlignedDeviceEntry> deviceEntries,
+      List<DeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,

@@ -20,30 +20,37 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.Binary;
 
-import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
 
-public class NonAlignedDeviceEntry extends AbstractDeviceEntry {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NonAlignedDeviceEntry.class);
+public class NonAlignedDeviceEntry extends DeviceEntry {
 
-  public NonAlignedDeviceEntry(final IDeviceID deviceID) {
-    super(deviceID);
-  }
-
-  public static NonAlignedDeviceEntry deserialize(final ByteBuffer byteBuffer) {
-    return new NonAlignedDeviceEntry(StringArrayDeviceID.deserialize(byteBuffer));
+  public NonAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
+    super(deviceID, attributeColumnValues);
   }
 
   @Override
   public String toString() {
-    return "NonAlignedDeviceEntry{" + "deviceID=" + deviceID + '}';
+    return "NonAlignedDeviceEntry{"
+        + "deviceID="
+        + deviceID
+        + ", attributeColumnValues="
+        + attributeColumnValues
+        + '}';
   }
 
   @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE + super.ramBytesUsed();
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final NonAlignedDeviceEntry that = (NonAlignedDeviceEntry) obj;
+    return Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
   }
 }

@@ -34,9 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -150,7 +151,7 @@ public class TestMatadata implements Metadata {
                       .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
                       .build()));
       Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
-      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }
@@ -283,7 +284,7 @@ public class TestMatadata implements Metadata {
                 new StringArrayDeviceID(DEVICE_3.split("\\.")), ImmutableList.of()),
             new AlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_5.split("\\.")), ImmutableList.of()),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_4.split("\\.")), ImmutableList.of()));
       }
 

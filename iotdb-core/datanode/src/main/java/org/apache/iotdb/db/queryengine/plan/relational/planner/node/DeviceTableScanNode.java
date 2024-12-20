@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -45,7 +46,7 @@ import java.util.Optional;
 
 public class DeviceTableScanNode extends TableScanNode {
 
-  protected List<AlignedDeviceEntry> deviceEntries;
+  protected List<DeviceEntry> deviceEntries;
 
   // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
@@ -93,7 +94,7 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      List<AlignedDeviceEntry> deviceEntries,
+      List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
@@ -248,7 +249,7 @@ public class DeviceTableScanNode extends TableScanNode {
     return node;
   }
 
-  public void setDeviceEntries(List<AlignedDeviceEntry> deviceEntries) {
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
   }
 
@@ -264,11 +265,11 @@ public class DeviceTableScanNode extends TableScanNode {
     return this.scanOrder;
   }
 
-  public List<AlignedDeviceEntry> getDeviceEntries() {
+  public List<DeviceEntry> getDeviceEntries() {
     return deviceEntries;
   }
 
-  public void appendDeviceEntry(AlignedDeviceEntry deviceEntry) {
+  public void appendDeviceEntry(DeviceEntry deviceEntry) {
     this.deviceEntries.add(deviceEntry);
   }
 

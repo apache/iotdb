@@ -24,8 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
@@ -72,7 +72,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      List<AlignedDeviceEntry> deviceEntries,
+      List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> idAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,

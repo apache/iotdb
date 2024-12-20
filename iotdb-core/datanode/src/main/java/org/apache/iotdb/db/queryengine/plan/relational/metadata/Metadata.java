@@ -74,7 +74,7 @@ public interface Metadata {
    *     index scanning
    * @param attributeColumns attribute column names
    */
-  List<? extends AbstractDeviceEntry> indexScan(
+  List<DeviceEntry> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
