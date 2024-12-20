@@ -27,25 +27,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator.getNthIdColumnValueForTree;
-
 public class TreeAlignedDeviceViewAggregationScanOperator
     extends AbstractAggregationTableScanOperator {
 
-  // in iotdb, db level should at least be 2 level, like root.db
-  // if db level is 2, idColumnStartIndex is 0, and we use should treeDBLength to extract the first
-  // id column value
-  // if db level is larger than 2, idColumnStartIndex will be db level - 2
-  private final int idColumnStartIndex;
-
-  // only take effect, if db level is 2 level, for root.db.d1, IDeviceId will be [root.db.d1],
-  // treeDBLength will be 7 (root.db)
-  private final int treeDBLength;
+  private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
 
   public TreeAlignedDeviceViewAggregationScanOperator(
       PlanNodeId sourceId,
@@ -64,8 +55,7 @@ public class TreeAlignedDeviceViewAggregationScanOperator
       boolean ascending,
       boolean canUseStatistics,
       List<Integer> aggregatorInputChannels,
-      int idColumnStartIndex,
-      int treeDBLength) {
+      IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
     super(
         sourceId,
         context,
@@ -83,13 +73,11 @@ public class TreeAlignedDeviceViewAggregationScanOperator
         ascending,
         canUseStatistics,
         aggregatorInputChannels);
-    this.idColumnStartIndex = idColumnStartIndex;
-    this.treeDBLength = treeDBLength;
+    this.extractor = extractor;
   }
 
   @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    return getNthIdColumnValueForTree(
-        deviceEntry, idColumnIndex, this.idColumnStartIndex, this.treeDBLength);
+    return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 }
