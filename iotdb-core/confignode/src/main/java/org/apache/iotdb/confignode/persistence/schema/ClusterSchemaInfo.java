@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -1469,7 +1468,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         final TSchemaRegionViewInfo info =
             viewResp.getDeviewViewUpdateMap().get(tableEntry.getKey());
         final TsTable table = tableEntry.getValue();
-        final Map<String, TsTableColumnSchema> measurementSchemaMap =
+        final Map<String, MeasurementColumnSchema> measurementSchemaMap =
             table.getColumnList().stream()
                 .filter(
                     columnSchema ->
@@ -1483,20 +1482,31 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         .containsKey(TreeViewSchema.ORIGINAL_NAME)
                                 ? columnSchema.getColumnName()
                                 : columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME),
-                        Function.identity()));
+                        columnSchema -> (MeasurementColumnSchema) columnSchema));
         info.getMeasurementsDataTypeCountMap()
             .forEach(
                 (measurement, countMap) -> {
+                  table.removeColumnSchema(measurement);
                   final TSDataType newType =
                       TSDataType.getTsDataType(
                           countMap.entrySet().stream()
                               .reduce(
                                   (entry1, entry2) ->
                                       entry1.getValue() > entry2.getValue() ? entry1 : entry2)
-                              .orElse(TSDataType.UNKNOWN.serialize())
-                              .getKey());
+                              .map(Map.Entry::getKey)
+                              .orElse(TSDataType.UNKNOWN.serialize()));
                   if (!measurementSchemaMap.containsKey(measurement)) {
                     table.addColumnSchema(new MeasurementColumnSchema(measurement, newType));
+                  } else {
+                    final MeasurementColumnSchema originalSchema =
+                        measurementSchemaMap.get(measurement);
+                    table.addColumnSchema(
+                        new MeasurementColumnSchema(
+                            measurement,
+                            newType,
+                            originalSchema.getEncoding(),
+                            originalSchema.getCompressor(),
+                            originalSchema.getProps()));
                   }
                 });
       }
