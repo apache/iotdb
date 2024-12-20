@@ -48,7 +48,6 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.isession.SessionConfig;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -67,7 +66,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.checkSingleTimeSeries;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.createTableDevice;
 
@@ -273,8 +271,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             new ColumnHeader("d_1", TSDataType.STRING));
     final String attributeName = "attr";
 
-    ISchemaRegion schemaRegion =
-        getSchemaRegion(ROOT + TsFileConstant.PATH_SEPARATOR + database, 0);
+    ISchemaRegion schemaRegion = getSchemaRegion(database, 0);
     createTableDevice(
         schemaRegion,
         tableName,

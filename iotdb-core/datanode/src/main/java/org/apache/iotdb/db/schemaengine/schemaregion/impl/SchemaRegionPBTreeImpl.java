@@ -182,7 +182,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionPBTreeImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
@@ -190,9 +190,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
-    this.metric =
-        new SchemaRegionCachedMetric(
-            regionStatistics, schemaRegionParams.getDatabase().getFullPath());
+    this.metric = new SchemaRegionCachedMetric(regionStatistics, schemaRegionParams.getDatabase());
     init();
   }
 

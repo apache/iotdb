@@ -35,7 +35,7 @@ public class DeleteDevicesProcedureTest {
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final DeleteDevicesProcedure deleteDevicesProcedure =
         new DeleteDevicesProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             new byte[] {0, 1, 2},

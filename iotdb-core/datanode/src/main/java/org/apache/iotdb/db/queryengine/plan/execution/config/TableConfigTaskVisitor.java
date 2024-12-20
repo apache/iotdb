@@ -180,9 +180,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
@@ -231,7 +229,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     accessControl.checkCanCreateDatabase(context.getSession().getUserName(), dbName);
 
-    schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
+    schema.setName(dbName);
 
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
@@ -524,7 +522,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     InformationSchemaUtils.checkDBNameInWrite(dbName);
     TreeViewSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
-    // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
         || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
@@ -645,7 +642,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitFlush(Flush node, MPPQueryContext context) {
+  protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
