@@ -193,25 +193,25 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new UnsetTemplateProcedure(false);
         break;
       case CREATE_TABLE_PROCEDURE:
-        procedure = new CreateTableProcedure();
+        procedure = new CreateTableProcedure(false);
         break;
       case ADD_TABLE_COLUMN_PROCEDURE:
-        procedure = new AddTableColumnProcedure();
+        procedure = new AddTableColumnProcedure(false);
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
-        procedure = new SetTablePropertiesProcedure();
+        procedure = new SetTablePropertiesProcedure(false);
         break;
       case RENAME_TABLE_COLUMN_PROCEDURE:
-        procedure = new RenameTableColumnProcedure();
+        procedure = new RenameTableColumnProcedure(false);
         break;
       case DROP_TABLE_COLUMN_PROCEDURE:
-        procedure = new DropTableColumnProcedure();
+        procedure = new DropTableColumnProcedure(false);
         break;
       case DROP_TABLE_PROCEDURE:
-        procedure = new DropTableProcedure();
+        procedure = new DropTableProcedure(false);
         break;
       case DELETE_DEVICES_PROCEDURE:
-        procedure = new DeleteDevicesProcedure();
+        procedure = new DeleteDevicesProcedure(false);
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -257,6 +257,27 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_PROCEDURE:
+        procedure = new CreateTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE:
+        procedure = new AddTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE:
+        procedure = new SetTablePropertiesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
+        procedure = new DropTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();

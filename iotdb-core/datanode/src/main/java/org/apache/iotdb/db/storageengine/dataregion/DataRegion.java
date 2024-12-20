@@ -2229,7 +2229,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId, databaseName, node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -2286,7 +2287,8 @@ public class DataRegion implements IDataRegionForQuery {
 
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId, databaseName, node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -2343,7 +2345,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionId, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId, databaseName, node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();

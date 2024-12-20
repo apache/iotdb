@@ -71,6 +71,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -324,20 +325,20 @@ public class AnalyzeUtils {
     analysis.setDataPartitionInfo(dataPartition);
   }
 
-  public static void analyzeDelete(Delete node, MPPQueryContext queryContext) {
+  public static void analyzeDelete(final Delete node, final MPPQueryContext queryContext) {
     queryContext.setQueryType(QueryType.WRITE);
     validateSchema(node, queryContext);
 
-    try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+    try (final ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // TODO: may use time and db/table to filter
-      TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
-      Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+      final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
+      final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
       latestRegionRouteMap.getRegionRouteMap().entrySet().stream()
           .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion)
           .forEach(e -> replicaSets.add(e.getValue()));
       node.setReplicaSets(replicaSets);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
     }
   }
@@ -361,7 +362,11 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    node.setTableDeletionEntries(parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    // Maybe set by pipe transfer
+    if (Objects.isNull(node.getTableDeletionEntries())) {
+      node.setTableDeletionEntries(
+          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    }
   }
 
   public static List<TableDeletionEntry> parseExpressions2ModEntries(

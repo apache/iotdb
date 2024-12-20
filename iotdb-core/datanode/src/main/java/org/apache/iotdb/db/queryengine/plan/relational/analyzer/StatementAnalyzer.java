@@ -282,10 +282,10 @@ public class StatementAnalyzer {
     private final Optional<UpdateKind> updateKind;
 
     private Visitor(
-        Optional<Scope> outerQueryScope,
-        WarningCollector warningCollector,
-        Optional<UpdateKind> updateKind,
-        boolean isTopLevel) {
+        final Optional<Scope> outerQueryScope,
+        final WarningCollector warningCollector,
+        final Optional<UpdateKind> updateKind,
+        final boolean isTopLevel) {
       this.outerQueryScope = requireNonNull(outerQueryScope, "outerQueryScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
       this.updateKind = requireNonNull(updateKind, "updateKind is null");
@@ -293,8 +293,11 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope process(final Node node, final Optional<Scope> scope) {
+    public Scope process(Node node, final Optional<Scope> scope) {
       final Scope returnScope = super.process(node, scope);
+      if (node instanceof PipeEnriched) {
+        node = ((PipeEnriched) node).getInnerStatement();
+      }
       if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
@@ -423,33 +426,37 @@ public class StatementAnalyzer {
               .collect(Collectors.toList()),
           queryContext);
 
-      final Set<SymbolReference> attributeNames = new HashSet<>();
-      node.setAssignments(
-          node.getAssignments().stream()
-              .map(
-                  assignment -> {
-                    final Expression parsedColumn =
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getName());
-                    if (!(parsedColumn instanceof SymbolReference)
-                        || table
-                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                .getColumnCategory()
-                            != TsTableColumnCategory.ATTRIBUTE) {
-                      throw new SemanticException("Update can only specify attribute columns.");
-                    }
-                    if (attributeNames.contains(parsedColumn)) {
-                      throw new SemanticException(
-                          "Update attribute shall specify a attribute only once.");
-                    }
-                    attributeNames.add((SymbolReference) parsedColumn);
+      // If node.location is absent, this is a pipe-transferred update, namely the assignments are
+      // already parsed at the sender
+      if (node.getLocation().isPresent()) {
+        final Set<SymbolReference> attributeNames = new HashSet<>();
+        node.setAssignments(
+            node.getAssignments().stream()
+                .map(
+                    assignment -> {
+                      final Expression parsedColumn =
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getName());
+                      if (!(parsedColumn instanceof SymbolReference)
+                          || table
+                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                  .getColumnCategory()
+                              != TsTableColumnCategory.ATTRIBUTE) {
+                        throw new SemanticException("Update can only specify attribute columns.");
+                      }
+                      if (attributeNames.contains(parsedColumn)) {
+                        throw new SemanticException(
+                            "Update attribute shall specify a attribute only once.");
+                      }
+                      attributeNames.add((SymbolReference) parsedColumn);
 
-                    return new UpdateAssignment(
-                        parsedColumn,
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getValue()));
-                  })
-              .collect(Collectors.toList()));
+                      return new UpdateAssignment(
+                          parsedColumn,
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getValue()));
+                    })
+                .collect(Collectors.toList()));
+      }
       return null;
     }
 
@@ -539,7 +546,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitDelete(Delete node, Optional<Scope> scope) {
+    protected Scope visitDelete(final Delete node, final Optional<Scope> scope) {
       if (true) {
         throw new SemanticException("Delete statement is not supported yet.");
       }
@@ -550,15 +557,15 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
-      Scope ret = node.getInnerStatement().accept(this, scope);
+    protected Scope visitPipeEnriched(final PipeEnriched node, final Optional<Scope> scope) {
+      final Scope ret = node.getInnerStatement().accept(this, scope);
       createAndAssignScope(node, scope);
       analysis.setScope(node, ret);
       return ret;
     }
 
     @Override
-    protected Scope visitLoadTsFile(LoadTsFile node, Optional<Scope> scope) {
+    protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.WRITE);
 
       final long startTime = System.nanoTime();
@@ -579,7 +586,7 @@ public class StatementAnalyzer {
       return createAndAssignScope(node, scope);
     }
 
-    private LoadTsFileAnalyzer getAnalyzer(LoadTsFile loadTsFile) {
+    private LoadTsFileAnalyzer getAnalyzer(final LoadTsFile loadTsFile) {
       if (Objects.equals(loadTsFile.getModel(), LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
         // Load to table-model
         if (Objects.isNull(loadTsFile.getDatabase())) {
@@ -2888,7 +2895,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(
+    protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       return null;

@@ -50,7 +50,7 @@ public class ConfignodeSnapshotParser {
     // Empty constructor
   }
 
-  private static Path getLatestSnapshotPath(List<Path> snapshotPathList) {
+  private static Path getLatestSnapshotPath(final List<Path> snapshotPathList) {
     if (snapshotPathList.isEmpty()) {
       return null;
     }
@@ -68,15 +68,15 @@ public class ConfignodeSnapshotParser {
   public static List<Pair<Pair<Path, Path>, CNSnapshotFileType>> getSnapshots() throws IOException {
     final List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPairList = new ArrayList<>();
     final String snapshotPath = CONF.getConsensusDir();
-    try (DirectoryStream<Path> stream =
+    try (final DirectoryStream<Path> stream =
         Files.newDirectoryStream(Paths.get(snapshotPath), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
       // In confignode there is only one consensus dir.
       // Get into confignode consensus dir
-      for (Path path : stream) {
-        try (DirectoryStream<Path> filestream =
+      for (final Path path : stream) {
+        try (final DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          ArrayList<Path> snapshotList = new ArrayList<>();
-          for (Path snapshotFolder : filestream) {
+          final ArrayList<Path> snapshotList = new ArrayList<>();
+          for (final Path snapshotFolder : filestream) {
             if (snapshotFolder.toFile().isDirectory()) {
               snapshotList.add(snapshotFolder);
             }
@@ -91,9 +91,10 @@ public class ConfignodeSnapshotParser {
                     + IoTDBConstant.SYSTEM_FOLDER_NAME
                     + File.separator
                     + "roles";
-            try (DirectoryStream<Path> roleStream = Files.newDirectoryStream(Paths.get(rolePath))) {
-              for (Path role : roleStream) {
-                Pair<Path, Path> roleFile = new Pair<>(role, null);
+            try (final DirectoryStream<Path> roleStream =
+                Files.newDirectoryStream(Paths.get(rolePath))) {
+              for (final Path role : roleStream) {
+                final Pair<Path, Path> roleFile = new Pair<>(role, null);
                 snapshotPairList.add(new Pair<>(roleFile, CNSnapshotFileType.ROLE));
               }
             }
@@ -104,10 +105,11 @@ public class ConfignodeSnapshotParser {
                     + IoTDBConstant.SYSTEM_FOLDER_NAME
                     + File.separator
                     + "users";
-            try (DirectoryStream<Path> userStream = Files.newDirectoryStream(Paths.get(userPath))) {
+            try (final DirectoryStream<Path> userStream =
+                Files.newDirectoryStream(Paths.get(userPath))) {
               final List<Path> userFilePath = new ArrayList<>();
               final List<Path> userRoleFilePath = new ArrayList<>();
-              for (Path user : userStream) {
+              for (final Path user : userStream) {
                 if (user.getFileName().toString().contains("_role.profile")) {
                   userRoleFilePath.add(user);
                 } else {
@@ -115,10 +117,10 @@ public class ConfignodeSnapshotParser {
                 }
               }
               // We should add user file firstly.
-              for (Path user : userFilePath) {
+              for (final Path user : userFilePath) {
                 snapshotPairList.add(new Pair<>(new Pair<>(user, null), CNSnapshotFileType.USER));
               }
-              for (Path roleList : userRoleFilePath) {
+              for (final Path roleList : userRoleFilePath) {
                 snapshotPairList.add(
                     new Pair<>(new Pair<>(roleList, null), CNSnapshotFileType.USER_ROLE));
               }
@@ -153,7 +155,7 @@ public class ConfignodeSnapshotParser {
   }
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
-      Path path1, Path path2, CNSnapshotFileType type) throws IOException {
+      final Path path1, final Path path2, final CNSnapshotFileType type) throws IOException {
     if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
       LOGGER.warn("Schema_template require schema info file and template file");
       return null;

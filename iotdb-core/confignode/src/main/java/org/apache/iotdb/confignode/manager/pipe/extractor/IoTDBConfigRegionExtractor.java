@@ -22,13 +22,17 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -48,8 +52,10 @@ import java.util.Set;
 
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
-  public static final PipeConfigPhysicalPlanPatternParseVisitor PATTERN_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanPatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTreePatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTablePatternParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
@@ -116,17 +122,54 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return PATTERN_PARSE_VISITOR
-        .process(((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), pipePattern)
+    return parseConfigPlan(
+            ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
+            treePattern,
+            tablePattern)
         .map(
             configPhysicalPlan ->
                 new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
   }
 
+  public static Optional<ConfigPhysicalPlan> parseConfigPlan(
+      final ConfigPhysicalPlan plan,
+      final IoTDBTreePattern treePattern,
+      final TablePattern tablePattern) {
+    Optional<ConfigPhysicalPlan> result = Optional.empty();
+    if (!(plan instanceof DatabaseSchemaPlan
+        && ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+      result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!(plan instanceof DatabaseSchemaPlan
+        && !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+      result = TABLE_PATTERN_PARSE_VISITOR.process(plan, tablePattern);
+    }
+    return result;
+  }
+
   @Override
   protected boolean isTypeListened(final PipeWritePlanEvent event) {
-    return listenedTypeSet.contains(
-        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
+    return isTypeListened(
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(),
+        listenedTypeSet,
+        treePattern,
+        tablePattern);
+  }
+
+  public static boolean isTypeListened(
+      final ConfigPhysicalPlan plan,
+      final Set<ConfigPhysicalPlanType> listenedTypeSet,
+      final IoTDBTreePattern treePattern,
+      final TablePattern tablePattern) {
+    return listenedTypeSet.contains(plan.getType())
+        && (!(plan instanceof DatabaseSchemaPlan)
+            || ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+                && tablePattern.isTableModelDataAllowedToBeCaptured()
+            || !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+                && treePattern.isTreeModelDataAllowedToBeCaptured());
   }
 
   @Override

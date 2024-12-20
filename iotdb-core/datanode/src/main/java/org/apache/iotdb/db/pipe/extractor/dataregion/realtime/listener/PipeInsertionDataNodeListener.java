@@ -57,7 +57,7 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionExtractor extractor) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
         .startAssignTo(extractor);
@@ -71,7 +71,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public synchronized void stopListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionExtractor extractor) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
     if (assigner == null) {
       return;
@@ -97,11 +97,11 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(
-      String dataRegionId,
-      String databaseName,
-      TsFileResource tsFileResource,
-      boolean isLoaded,
-      boolean isGeneratedByPipe) {
+      final String dataRegionId,
+      final String databaseName,
+      final TsFileResource tsFileResource,
+      final boolean isLoaded,
+      final boolean isGeneratedByPipe) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -119,11 +119,11 @@ public class PipeInsertionDataNodeListener {
   }
 
   public void listenToInsertNode(
-      String dataRegionId,
-      String databaseName,
-      WALEntryHandler walEntryHandler,
-      InsertNode insertNode,
-      TsFileResource tsFileResource) {
+      final String dataRegionId,
+      final String databaseName,
+      final WALEntryHandler walEntryHandler,
+      final InsertNode insertNode,
+      final TsFileResource tsFileResource) {
     if (listenToInsertNodeExtractorCount.get() == 0) {
       return;
     }
@@ -140,9 +140,8 @@ public class PipeInsertionDataNodeListener {
             databaseName, walEntryHandler, insertNode, tsFileResource));
   }
 
-  // TODO: record database name in enriched events?
   public DeletionResource listenToDeleteData(
-      final String regionId, final AbstractDeleteDataNode node) {
+      final String regionId, final String databaseName, final AbstractDeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
     if (assigner == null) {
@@ -164,12 +163,12 @@ public class PipeInsertionDataNodeListener {
       deletionResource = null;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(databaseName, node));
 
     return deletionResource;
   }
 
-  public void listenToHeartbeat(boolean shouldPrintMessage) {
+  public void listenToHeartbeat(final boolean shouldPrintMessage) {
     dataRegionId2Assigner.forEach(
         (key, value) ->
             value.publishToAssign(
