@@ -81,6 +81,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class IoTConsensus implements IConsensus {
 
@@ -199,6 +200,8 @@ public class IoTConsensus implements IConsensus {
       // clear peers which are not in the list
       stateMachineMap.keySet().stream()
           .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          // copy to a new list to avoid concurrent modification
+          .collect(Collectors.toList())
           .forEach(
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));

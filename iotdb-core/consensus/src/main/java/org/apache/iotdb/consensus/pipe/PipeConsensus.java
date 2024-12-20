@@ -198,6 +198,8 @@ public class PipeConsensus implements IConsensus {
         // clear peers which are not in the list
         stateMachineMap.keySet().stream()
             .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+                // copy to a new list to avoid concurrent modification
+                .collect(Collectors.toList())
             .forEach(
                 consensusGroupId ->
                     resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
