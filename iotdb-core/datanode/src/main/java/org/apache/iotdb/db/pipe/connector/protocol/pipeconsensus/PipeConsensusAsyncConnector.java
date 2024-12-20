@@ -406,8 +406,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // Transfer deletion
     if (event instanceof PipeDeleteDataNodeEvent) {
-      PipeDeleteDataNodeEvent deleteDataNodeEvent = (PipeDeleteDataNodeEvent) event;
-      boolean enqueueResult = addEvent2Buffer(deleteDataNodeEvent);
+      final PipeDeleteDataNodeEvent deleteDataNodeEvent = (PipeDeleteDataNodeEvent) event;
+      final boolean enqueueResult = addEvent2Buffer(deleteDataNodeEvent);
       if (!enqueueResult) {
         throw new PipeRuntimeConnectorRetryTimesConfigurableException(
             ENQUEUE_EXCEPTION_MSG, Integer.MAX_VALUE);

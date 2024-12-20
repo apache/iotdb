@@ -275,7 +275,7 @@ public class RepairDataFileScanUtil {
       actualDeviceStartTime =
           Math.min(actualDeviceStartTime, timeseriesMetadata.getStatistics().getStartTime());
       actualDeviceEndTime =
-          Math.max(actualDeviceStartTime, timeseriesMetadata.getStatistics().getEndTime());
+          Math.max(actualDeviceEndTime, timeseriesMetadata.getStatistics().getEndTime());
       checkSingleNonAlignedSeries(reader, device, timeseriesMetadata);
       previousTime = Long.MIN_VALUE;
     }

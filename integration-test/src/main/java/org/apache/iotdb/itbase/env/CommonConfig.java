@@ -72,6 +72,8 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
+  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
+
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
@@ -148,7 +150,7 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
-  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+  CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
   CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
       int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
@@ -159,4 +161,10 @@ public interface CommonConfig {
 
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
+
+  CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    return this;
+  }
 }

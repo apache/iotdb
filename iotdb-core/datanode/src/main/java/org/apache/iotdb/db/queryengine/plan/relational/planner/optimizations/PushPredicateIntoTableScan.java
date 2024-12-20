@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -42,15 +41,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -67,6 +67,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -91,10 +92,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -106,15 +110,16 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLit
  * forms(CNF).
  *
  * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
- * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
+ * or pushed down into ScanOperators, or it can only be used in FilterNode above with
+ * DeviceTableScanNode.
  *
  * <ul>
  *   <li>For metadata query expressions, it will be used in {@code tableIndexScan} method to
- *       generate the deviceEntries and DataPartition used for TableScanNode.
- *   <li>For expressions which can be pushed into TableScanNode, we will execute {@code
+ *       generate the deviceEntries and DataPartition used for DeviceTableScanNode.
+ *   <li>For expressions which can be pushed into DeviceTableScanNode, we will execute {@code
  *       extractGlobalTimeFilter}, to extract the timePredicate and pushDownValuePredicate.
- *   <li>Expression which can not be pushed down into TableScanNode, will be used in the FilterNode
- *       above of TableScanNode.
+ *   <li>Expression which can not be pushed down into DeviceTableScanNode, will be used in the
+ *       FilterNode above of DeviceTableScanNode.
  * </ul>
  *
  * <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule need
@@ -199,7 +204,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       Expression predicate = combineConjuncts(node.getPredicate(), context.inheritedPredicate);
 
-      // when exist diff function, predicate can not be pushed down into TableScanNode
+      // when exist diff function, predicate can not be pushed down into DeviceTableScanNode
       if (containsDiffFunction(predicate)) {
         node.setChild(node.getChild().accept(this, new RewriteContext()));
         node.setPredicate(predicate);
@@ -300,7 +305,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode tableScanNode, RewriteContext context) {
+    public PlanNode visitDeviceTableScan(
+        DeviceTableScanNode tableScanNode, RewriteContext context) {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
@@ -312,7 +318,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
-    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+    public PlanNode combineFilterAndScan(DeviceTableScanNode tableScanNode, Expression predicate) {
       SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
@@ -323,7 +329,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 ? expressions.get(0)
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions);
 
-        // extract global time filter and set it to TableScanNode
+        // extract global time filter and set it to DeviceTableScanNode
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
         if (resultPair.left != null) {
@@ -362,7 +368,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return tableScanNode;
     }
 
-    private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
+    private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
       Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;
@@ -414,13 +420,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions, String timeColumnName) {
+        final DeviceTableScanNode tableScanNode,
+        final List<Expression> metadataExpressions,
+        String timeColumnName) {
 
-      List<String> attributeColumns = new ArrayList<>();
+      final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
+      for (final Map.Entry<Symbol, ColumnSchema> entry :
+          tableScanNode.getAssignments().entrySet()) {
+        final Symbol columnSymbol = entry.getKey();
+        final ColumnSchema columnSchema = entry.getValue();
         if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
           attributeColumns.add(columnSchema.getName());
           tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
@@ -428,7 +437,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       long startTime = System.nanoTime();
-      List<DeviceEntry> deviceEntries =
+      final List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
               metadataExpressions.stream()
@@ -441,7 +450,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
 
-      long schemaFetchCost = System.nanoTime() - startTime;
+      final long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
       queryContext.setFetchSchemaCost(schemaFetchCost);
@@ -453,19 +462,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.setFinishQueryAfterAnalyze();
         }
       } else {
-        Filter timeFilter =
+        final Filter timeFilter =
             tableScanNode
                 .getTimePredicate()
                 .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
                 .orElse(null);
 
         tableScanNode.setTimeFilter(timeFilter);
-        String treeModelDatabase =
-            "root." + tableScanNode.getQualifiedObjectName().getDatabaseName();
 
         startTime = System.nanoTime();
-        DataPartition dataPartition =
-            fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
+        final DataPartition dataPartition =
+            fetchDataPartitionByDevices(
+                tableScanNode.getQualifiedObjectName().getDatabaseName(),
+                deviceEntries,
+                timeFilter);
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
@@ -482,7 +492,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           analysis.upsertDataPartition(dataPartition);
         }
 
-        long fetchPartitionCost = System.nanoTime() - startTime;
+        final long fetchPartitionCost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, fetchPartitionCost);
         queryContext.setFetchPartitionCost(fetchPartitionCost);
@@ -531,7 +541,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           newJoinPredicate = joinPredicate;
           break;
         default:
-          throw new IllegalStateException("Only support INNER JOIN in current version");
+          throw new IllegalStateException(
+              "Only support INNER JOIN and FULL OUTER JOIN in current version");
       }
 
       // newJoinPredicate = simplifyExpression(newJoinPredicate);
@@ -551,14 +562,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
       for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
-        if (joinEqualityExpression(
-            conjunct,
-            node.getLeftChild().getOutputSymbols(),
-            node.getRightChild().getOutputSymbols())) {
+        if (joinEqualityExpressionOnOneColumn(conjunct, node)) {
           ComparisonExpression equality = (ComparisonExpression) conjunct;
 
           boolean alignedComparison =
-              node.getLeftChild().getOutputSymbols().containsAll(extractUnique(equality.getLeft()));
+              new HashSet<>(node.getLeftChild().getOutputSymbols())
+                  .containsAll(extractUnique(equality.getLeft()));
           Expression leftExpression = alignedComparison ? equality.getLeft() : equality.getRight();
           Expression rightExpression = alignedComparison ? equality.getRight() : equality.getLeft();
 
@@ -574,17 +583,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
+          if (node.getJoinType() == FULL) {
+            throw new UnsupportedOperationException(FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN);
+          }
           joinFilterBuilder.add(conjunct);
         }
       }
-
-      List<Expression> joinFilter = joinFilterBuilder.build();
-      //      DynamicFiltersResult dynamicFiltersResult = createDynamicFilters(node,
-      // equiJoinClauses, joinFilter, session, idAllocator);
-      //      Map<DynamicFilterId, Symbol> dynamicFilters =
-      // dynamicFiltersResult.getDynamicFilters();
-      // leftPredicate = combineConjuncts(metadata, leftPredicate, combineConjuncts(metadata,
-      // dynamicFiltersResult.getPredicates()));
 
       PlanNode leftSource;
       PlanNode rightSource;
@@ -602,30 +606,43 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         rightSource = node.getRightChild().accept(this, new RewriteContext(rightPredicate));
       }
 
+      Cardinality leftCardinality = extractCardinality(leftSource);
+      Cardinality rightCardinality = extractCardinality(rightSource);
+      if (leftCardinality.isAtMostScalar() || rightCardinality.isAtMostScalar()) {
+        // if cardinality of left or right equals to 1, use NestedLoopJoin
+        equiJoinClauses.forEach(
+            equiJoinClause -> joinFilterBuilder.add(equiJoinClause.toExpression()));
+        equiJoinClauses.clear();
+      }
+
+      List<Expression> joinFilter = joinFilterBuilder.build();
       Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
-      if (newJoinFilter.get().equals(TRUE_LITERAL)) {
+      if (TRUE_LITERAL.equals(newJoinFilter.get())) {
         newJoinFilter = Optional.empty();
       }
 
-      if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
-        throw new IllegalStateException("INNER JOIN only support equiJoinClauses");
+      if (node.getJoinType() == INNER && newJoinFilter.isPresent()
+      // && equiJoinClauses.isEmpty()
+      ) {
         // if we do not have any equi conjunct we do not pushdown non-equality condition into
         // inner join, so we plan execution as nested-loops-join followed by filter instead
         // hash join.
-        // postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
-        // newJoinFilter = Optional.empty();
+        postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
+        newJoinFilter = Optional.empty();
       }
 
       boolean filtersEquivalent =
-          newJoinFilter.isPresent() == node.getFilter().isPresent() && (!newJoinFilter.isPresent());
-      // areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
+          newJoinFilter.isPresent() == node.getFilter().isPresent()
+              && (!newJoinFilter.isPresent()
+              // || areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
+              );
 
       PlanNode output = node;
       if (leftSource != node.getLeftChild()
           || rightSource != node.getRightChild()
           || !filtersEquivalent
-          // !dynamicFilters.equals(node.getDynamicFilters()) ||
           || !equiJoinClausesUnmodified) {
+        // this branch is always executed in current version
         leftSource =
             new ProjectNode(
                 queryContext.getQueryId().genPlanNodeId(), leftSource, leftProjections.build());
@@ -646,40 +663,16 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
-      if (((JoinNode) output).isCrossJoin()) {
-        throw new SemanticException(
-            "Cross join is not supported in current version, each table must have at least one equiJoinClause");
+      JoinNode outputJoinNode = (JoinNode) output;
+      if (!((JoinNode) output).isCrossJoin()) {
+        // inner join or full join, use MergeSortJoinNode
+        appendSortNodeForMergeSortJoin(outputJoinNode);
       }
 
-      JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
-      OrderingScheme leftOrderingScheme =
-          new OrderingScheme(
-              Collections.singletonList(joinCriteria.getLeft()),
-              Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
-      OrderingScheme rightOrderingScheme =
-          new OrderingScheme(
-              Collections.singletonList(joinCriteria.getRight()),
-              Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
-      SortNode leftSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getLeftChild(),
-              leftOrderingScheme,
-              false,
-              false);
-      SortNode rightSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getRightChild(),
-              rightOrderingScheme,
-              false,
-              false);
-      ((JoinNode) output).setLeftChild(leftSortNode);
-      ((JoinNode) output).setRightChild(rightSortNode);
-
-      if (!postJoinPredicate.equals(TRUE_LITERAL)) {
+      if (!TRUE_LITERAL.equals(postJoinPredicate)) {
         output =
-            new FilterNode(queryContext.getQueryId().genPlanNodeId(), output, postJoinPredicate);
+            new FilterNode(
+                queryContext.getQueryId().genPlanNodeId(), outputJoinNode, postJoinPredicate);
       }
 
       if (!node.getOutputSymbols().equals(output.getOutputSymbols())) {
@@ -693,13 +686,60 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return output;
     }
 
+    private boolean joinEqualityExpressionOnOneColumn(Expression conjunct, JoinNode node) {
+      if (!joinEqualityExpression(
+          conjunct,
+          node.getLeftChild().getOutputSymbols(),
+          node.getRightChild().getOutputSymbols())) {
+        return false;
+      }
+
+      // conjunct must be a comparison expression
+      ComparisonExpression equality = (ComparisonExpression) conjunct;
+
+      // After Optimization, some subqueries are transformed into Join.
+      // For now, Users can only use join on time. And the join is implemented using MergeSortJoin.
+      // However, it's assumed that use Filter + NestedLoopJoin is better than MergeSortJoin
+      // for scalar subquery, since sorting the left table is not necessary.
+      // So, we want to find out whether the join is on time column. If it is not on time column, we
+      // will use Filter + NestedLoopJoin instead.
+      // Attention: For now, join on time column is assumed to hold the following condition: left
+      // and right both contains the substring time.
+      Expression left = equality.getLeft();
+      Expression right = equality.getRight();
+      return (left instanceof SymbolReference && right instanceof SymbolReference);
+    }
+
     private Symbol symbolForExpression(Expression expression) {
       if (expression instanceof SymbolReference) {
         return Symbol.from(expression);
       }
 
-      // TODO(beyyes) verify the rightness of type
       return symbolAllocator.newSymbol(expression, analysis.getType(expression));
+    }
+
+    private void appendSortNodeForMergeSortJoin(JoinNode joinNode) {
+      int size = joinNode.getCriteria().size();
+      List<Symbol> leftOrderBy = new ArrayList<>(size);
+      List<Symbol> rightOrderBy = new ArrayList<>(size);
+      Map<Symbol, SortOrder> leftOrderings = new HashMap<>(size);
+      Map<Symbol, SortOrder> rightOrderings = new HashMap<>(size);
+      for (JoinNode.EquiJoinClause equiJoinClause : joinNode.getCriteria()) {
+        leftOrderBy.add(equiJoinClause.getLeft());
+        leftOrderings.put(equiJoinClause.getLeft(), ASC_NULLS_LAST);
+        rightOrderBy.add(equiJoinClause.getRight());
+        rightOrderings.put(equiJoinClause.getRight(), ASC_NULLS_LAST);
+      }
+      OrderingScheme leftOrderingScheme = new OrderingScheme(leftOrderBy, leftOrderings);
+      OrderingScheme rightOrderingScheme = new OrderingScheme(rightOrderBy, rightOrderings);
+      SortNode leftSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(), joinNode.getLeftChild(), leftOrderingScheme, false, false);
+      SortNode rightSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(), joinNode.getRightChild(), rightOrderingScheme, false, false);
+      joinNode.setLeftChild(leftSortNode);
+      joinNode.setRightChild(rightSortNode);
     }
 
     @Override
@@ -714,8 +754,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private DataPartition fetchDataPartitionByDevices(
-        String database, List<DeviceEntry> deviceEntries, Filter globalTimeFilter) {
-      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        final String database,
+        final List<DeviceEntry> deviceEntries,
+        final Filter globalTimeFilter) {
+      final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
           getTimePartitionSlotList(globalTimeFilter, queryContext);
 
       // there is no satisfied time range
@@ -726,7 +768,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             CONFIG.getSeriesPartitionSlotNum());
       }
 
-      List<DataPartitionQueryParam> dataPartitionQueryParams =
+      final List<DataPartitionQueryParam> dataPartitionQueryParams =
           deviceEntries.stream()
               .map(
                   deviceEntry ->

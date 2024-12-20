@@ -73,16 +73,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final LoadBalancer loadBalancer;
 
+  private volatile boolean isClosed = false;
+
   public IoTDBDataNodeAsyncClientManager(
-      List<TEndPoint> endPoints,
+      final List<TEndPoint> endPoints,
       /* The following parameters are used locally. */
-      boolean useLeaderCache,
-      String loadBalanceStrategy,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      String username,
-      String password,
-      boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy) {
+      final String username,
+      final String password,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy) {
     super(
         endPoints,
         useLeaderCache,
@@ -135,7 +137,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return loadBalancer.borrowClient();
   }
 
-  public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) throws Exception {
+  public AsyncPipeDataTransferServiceClient borrowClient(final String deviceId) throws Exception {
     if (!useLeaderCache || Objects.isNull(deviceId)) {
       return borrowClient();
     }
@@ -143,7 +145,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return borrowClient(LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
   }
 
-  public AsyncPipeDataTransferServiceClient borrowClient(TEndPoint endPoint) throws Exception {
+  public AsyncPipeDataTransferServiceClient borrowClient(final TEndPoint endPoint)
+      throws Exception {
     if (!useLeaderCache || Objects.isNull(endPoint)) {
       return borrowClient();
     }
@@ -153,7 +156,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (handshakeIfNecessary(endPoint, client)) {
         return client;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "failed to borrow client {}:{} for cached leader.",
           endPoint.getIp(),
@@ -173,7 +176,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
    * @throws Exception if an error occurs.
    */
   private boolean handshakeIfNecessary(
-      TEndPoint targetNodeUrl, AsyncPipeDataTransferServiceClient client) throws Exception {
+      final TEndPoint targetNodeUrl, final AsyncPipeDataTransferServiceClient client)
+      throws Exception {
     if (client.isHandshakeFinished()) {
       return true;
     }
@@ -185,7 +189,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     final AsyncMethodCallback<TPipeTransferResp> callback =
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
-          public void onComplete(TPipeTransferResp response) {
+          public void onComplete(final TPipeTransferResp response) {
             resp.set(response);
 
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -215,7 +219,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           }
 
           @Override
-          public void onError(Exception e) {
+          public void onError(final Exception e) {
             LOGGER.warn(
                 "Handshake error with receiver {}:{}.",
                 targetNodeUrl.getIp(),
@@ -281,18 +285,24 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return false;
   }
 
-  private void waitHandshakeFinished(AtomicBoolean isHandshakeFinished) {
+  private void waitHandshakeFinished(final AtomicBoolean isHandshakeFinished) {
     try {
+      final long startTime = System.currentTimeMillis();
       while (!isHandshakeFinished.get()) {
+        if (isClosed
+            || System.currentTimeMillis() - startTime
+                > PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs() * 2L) {
+          throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
+        }
         Thread.sleep(10);
       }
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new PipeException("Interrupted while waiting for handshake response.", e);
     }
   }
 
-  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
+  public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
     if (!useLeaderCache || deviceId == null || endPoint == null) {
       return;
     }
@@ -306,6 +316,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   }
 
   public void close() {
+    isClosed = true;
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(
           receiverAttributes,
@@ -316,7 +327,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               if (clientManager != null) {
                 try {
                   clientManager.close();
-                } catch (Exception e) {
+                } catch (final Exception e) {
                   LOGGER.warn("Failed to close client manager.", e);
                 }
               }

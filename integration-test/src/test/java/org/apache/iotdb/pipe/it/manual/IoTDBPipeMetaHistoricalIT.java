@@ -21,10 +21,10 @@ package org.apache.iotdb.pipe.it.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -74,8 +74,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         .setDataReplicationFactor(2);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -192,6 +192,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
+              "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to role `admin`;",
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
@@ -241,7 +242,16 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               + ColumnHeaderConstant.GRANT_OPTION
               + ",",
           new HashSet<>(
-              Arrays.asList("admin,root.**,READ_DATA,false,", "admin,root.**,READ_SCHEMA,false,")));
+              Arrays.asList(
+                  "admin,root.**,MANAGE_USER,false,",
+                  "admin,root.**,MANAGE_ROLE,false,",
+                  "admin,root.**,USE_TRIGGER,false,",
+                  "admin,root.**,USE_UDF,false,",
+                  "admin,root.**,USE_CQ,false,",
+                  "admin,root.**,USE_PIPE,false,",
+                  "admin,root.**,MANAGE_DATABASE,false,",
+                  "admin,root.**,READ_DATA,false,",
+                  "admin,root.**,READ_SCHEMA,false,")));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,

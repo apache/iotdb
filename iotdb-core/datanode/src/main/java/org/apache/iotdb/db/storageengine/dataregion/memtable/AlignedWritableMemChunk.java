@@ -561,7 +561,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return list.rowCount() == 0;
+    return list.rowCount() == 0 || measurementIndexMap.isEmpty();
   }
 
   @Override
@@ -603,5 +603,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   public List<IMeasurementSchema> getSchemaList() {
     return schemaList;
+  }
+
+  public boolean isAllDeleted() {
+    return list.isAllDeleted();
   }
 }

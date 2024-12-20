@@ -181,15 +181,15 @@ public class IoTDBFlushQueryTableIT {
   @Test
   @Ignore
   public void testFlushNotExistGroupNoData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.noexist.nodatagroup1");
       try {
         statement.execute(
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
-      } catch (SQLException sqe) {
+      } catch (final SQLException sqe) {
         String expectedMsg =
-            "322: 322: storageGroup root.notExistGroup1,root.notExistGroup2 does not exist";
+            "322: 322: Database root.notExistGroup1,root.notExistGroup2 does not exist";
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }

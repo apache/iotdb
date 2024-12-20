@@ -24,6 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMis
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIdentifierSemanticException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -78,13 +79,13 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     subs.getTopics().forEach(System.out::println);
   }
 
-  @Test // Will create a topic named null
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic(null);
     printTopics("testCreateTopic_null");
   }
 
-  @Test(expected = StatementExecutionException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_emptyString()
       throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic("");
@@ -98,7 +99,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     printTopics("testCreateTopic_dup");
   }
 
-  @Test(expected = StatementExecutionException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testCreateTopic_invalid()
       throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic("Topic-1");
@@ -209,12 +210,12 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     dropDB(database);
   }
 
-  @Test(expected = StatementExecutionException.class) // drop non-existent topic
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testDropTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic(null);
   }
 
-  @Test(expected = StatementExecutionException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testDropTopic_empty() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic("");
   }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -46,9 +45,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 /** It contains all tables' latest column schema */
 public class DataNodeTableCache implements ITableCache {
@@ -305,9 +301,7 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(
-                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
-                              entry -> entry.getValue().keySet())));
+                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
@@ -373,9 +367,13 @@ public class DataNodeTableCache implements ITableCache {
   private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return databaseTableMap.containsKey(database)
-          ? databaseTableMap.get(database).get(tableName)
-          : null;
+      final TsTable result =
+          databaseTableMap.containsKey(database)
+              ? databaseTableMap.get(database).get(tableName)
+              : null;
+      return Objects.nonNull(result)
+          ? result
+          : InformationSchemaUtils.mayGetTable(database, tableName);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -407,42 +405,5 @@ public class DataNodeTableCache implements ITableCache {
     } catch (final Exception e) {
       return null;
     }
-  }
-
-  /** Check whether the given path overlap with some table existence. */
-  public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(final PartialPath path) {
-    readWriteLock.writeLock().lock();
-    try {
-      final String pathString = path.getFullPath();
-      Pair<String, String> result = checkTableExistenceOnGivenPath(pathString, databaseTableMap);
-      if (result == null) {
-        result = checkTableExistenceOnGivenPath(pathString, preUpdateTableMap);
-      }
-      return result;
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
-  }
-
-  private Pair<String, String> checkTableExistenceOnGivenPath(
-      final String path, final Map<String, ? extends Map<String, ?>> tableMap) {
-    final int dbStartIndex = PATH_ROOT.length() + 1;
-    for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
-      final String database = dbEntry.getKey();
-      if (!(path.startsWith(database, dbStartIndex)
-          && path.length() > dbStartIndex + database.length()
-          && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
-        continue;
-      }
-      final int tableStartIndex = dbStartIndex + database.length() + 1;
-      for (final String tableName : dbEntry.getValue().keySet()) {
-        if (path.startsWith(tableName, tableStartIndex)
-            && path.length() > tableStartIndex + tableName.length()
-            && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
-          return new Pair<>(database, tableName);
-        }
-      }
-    }
-    return null;
   }
 }

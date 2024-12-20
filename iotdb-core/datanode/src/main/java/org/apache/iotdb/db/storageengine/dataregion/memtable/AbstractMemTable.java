@@ -771,8 +771,8 @@ public abstract class AbstractMemTable implements IMemTable {
       } else {
         pointDeleted += pair.right.delete(modEntry);
       }
-      if (pair.right.getMemChunkMap().isEmpty()) {
-        memTableMap.remove(pair.left);
+      if (pair.right.isEmpty()) {
+        memTableMap.remove(pair.left).release();
       }
     }
     return pointDeleted;
@@ -878,7 +878,6 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    // TODO:[WAL]
     WALWriteUtils.write(isSignalMemTable(), buffer);
     if (isSignalMemTable()) {
       return;

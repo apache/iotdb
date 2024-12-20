@@ -50,6 +50,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 
+  boolean isEmpty();
+
   long delete(ModEntry modEntry);
 
   long deleteTime(ModEntry modEntry);
