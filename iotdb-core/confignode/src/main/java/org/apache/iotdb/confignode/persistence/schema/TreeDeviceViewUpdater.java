@@ -81,6 +81,8 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
     }
     hasError = false;
     new TreeDeviceUpdateTaskExecutor(configManager, getLatestSchemaRegionMap()).execute();
+    configManager.getClusterSchemaManager().updateTreeViewTables(currentResp);
+    currentResp = null;
     executedRounds.incrementAndGet();
   }
 

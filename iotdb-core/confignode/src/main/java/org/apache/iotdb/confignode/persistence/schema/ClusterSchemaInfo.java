@@ -1482,7 +1482,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         .containsKey(TreeViewSchema.ORIGINAL_NAME)
                                 ? columnSchema.getColumnName()
                                 : columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME),
-                        columnSchema -> (MeasurementColumnSchema) columnSchema));
+                        MeasurementColumnSchema.class::cast));
         info.getMeasurementsDataTypeCountMap()
             .forEach(
                 (measurement, countMap) -> {

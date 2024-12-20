@@ -2690,7 +2690,7 @@ public class ConfigManager implements IManager {
   public TSStatus updateTreeView() {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.updateTreeView()
+        ? clusterSchemaManager.invokeTreeViewUpdate()
         : status;
   }
 

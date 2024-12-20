@@ -94,6 +94,7 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1127,7 +1128,11 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
   }
 
-  public TSStatus updateTreeView() {
+  public void updateTreeViewTables(final TDeviceViewResp resp) {
+    clusterSchemaInfo.updateTreeViewTables(resp);
+  }
+
+  public TSStatus invokeTreeViewUpdate() {
     return treeDeviceViewUpdater.notifyAndWait();
   }
 
