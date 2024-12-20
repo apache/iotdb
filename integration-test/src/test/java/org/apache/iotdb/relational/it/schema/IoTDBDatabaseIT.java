@@ -375,7 +375,7 @@ public class IoTDBDatabaseIT {
                   "data_replication_factor,INT32,ATTRIBUTE,",
                   "time_partition_interval,INT64,ATTRIBUTE,",
                   "schema_region_group_num,INT32,ATTRIBUTE,",
-                  "data_region_group_num,INT64,ATTRIBUTE,")));
+                  "data_region_group_num,INT32,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
@@ -430,6 +430,9 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("test", resultSet.getString(1));
         assertEquals(0, resultSet.getInt(5));
         assertEquals(0, resultSet.getInt(6));
