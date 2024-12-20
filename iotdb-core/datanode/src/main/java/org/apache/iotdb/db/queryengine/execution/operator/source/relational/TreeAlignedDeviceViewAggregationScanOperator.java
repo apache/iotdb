@@ -19,48 +19,65 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Set;
 
-public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(
-      OperatorContext context,
+public class TreeAlignedDeviceViewAggregationScanOperator
+    extends AbstractAggregationTableScanOperator {
+
+  private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
+
+  public TreeAlignedDeviceViewAggregationScanOperator(
       PlanNodeId sourceId,
-      List<ColumnSchema> columnSchemas,
-      int[] columnsIndexArray,
-      List<AlignedDeviceEntry> deviceEntries,
-      Ordering scanOrder,
+      OperatorContext context,
+      List<ColumnSchema> aggColumnSchemas,
+      int[] aggColumnsIndexArray,
+      List<DeviceEntry> deviceEntries,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum) {
+      List<TableAggregator> tableAggregators,
+      List<ColumnSchema> groupingKeySchemas,
+      int[] groupingKeyIndex,
+      ITableTimeRangeIterator tableTimeRangeIterator,
+      boolean ascending,
+      boolean canUseStatistics,
+      List<Integer> aggregatorInputChannels,
+      IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
     super(
-        context,
         sourceId,
-        columnSchemas,
-        columnsIndexArray,
+        context,
+        aggColumnSchemas,
+        aggColumnsIndexArray,
         deviceEntries,
-        scanOrder,
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
         measurementSchemas,
-        maxTsBlockLineNum);
+        tableAggregators,
+        groupingKeySchemas,
+        groupingKeyIndex,
+        tableTimeRangeIterator,
+        ascending,
+        canUseStatistics,
+        aggregatorInputChannels);
+    this.extractor = extractor;
   }
 
   @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+    return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 }

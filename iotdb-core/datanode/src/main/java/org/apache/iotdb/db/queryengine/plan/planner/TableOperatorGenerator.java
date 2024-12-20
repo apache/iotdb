@@ -427,6 +427,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
 
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
+      if (node.getDeviceEntries().get(i) == null) {
+        throw new IllegalStateException(
+            "Device entries of index " + i + " in DeviceTableScanNode is empty");
+      }
       AlignedFullPath alignedPath =
           constructAlignedPath(
               node.getDeviceEntries().get(i),
@@ -1909,6 +1913,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     allSensors.add(""); // for time column
 
     for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+      if (node.getDeviceEntries().get(i) == null) {
+        throw new IllegalStateException(
+            "Device entries of index " + i + " in AggregationTableScanNode is empty");
+      }
       AlignedFullPath alignedPath =
           constructAlignedPath(
               node.getDeviceEntries().get(i),

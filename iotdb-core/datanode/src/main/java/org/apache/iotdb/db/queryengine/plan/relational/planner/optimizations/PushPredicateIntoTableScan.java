@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -450,6 +451,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                   attributeColumns,
                   queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
+      if (deviceEntries.stream()
+          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedAlignedDeviceEntry)) {
+        tableScanNode.setContainsNonAlignedDevice();
+      }
 
       final long schemaFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()

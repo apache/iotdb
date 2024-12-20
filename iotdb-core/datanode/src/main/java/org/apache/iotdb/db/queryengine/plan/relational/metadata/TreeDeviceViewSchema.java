@@ -38,7 +38,7 @@ public class TreeDeviceViewSchema extends TableSchema {
   }
 
   // Notice: This will only return the renamed columns.
-  public Map<String, String> getColumn2OriginalNameMap() {
+  public Map<String, String> getMeasurementColumnNameMap() {
     return columns.stream()
         .filter(
             columnSchema ->

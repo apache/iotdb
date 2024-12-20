@@ -25,15 +25,15 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.Objects;
 
-public class AlignedDeviceEntry extends DeviceEntry {
+public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
 
-  public AlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
+  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
     super(deviceID, attributeColumnValues);
   }
 
   @Override
   public String toString() {
-    return "AlignedDeviceEntry{"
+    return "NonAlignedAlignedDeviceEntry{"
         + "deviceID="
         + deviceID
         + ", attributeColumnValues="
@@ -49,7 +49,7 @@ public class AlignedDeviceEntry extends DeviceEntry {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final AlignedDeviceEntry that = (AlignedDeviceEntry) obj;
+    final NonAlignedAlignedDeviceEntry that = (NonAlignedAlignedDeviceEntry) obj;
     return Objects.equals(deviceID, that.deviceID)
         && Objects.equals(attributeColumnValues, that.attributeColumnValues);
   }

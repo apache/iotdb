@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -200,6 +202,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
+
+    if (analysis.getTableHandle(table) instanceof TreeDeviceViewSchema) {
+      TreeDeviceViewSchema treeDeviceViewSchema =
+          (TreeDeviceViewSchema) analysis.getTableHandle(table);
+      return new RelationPlan(
+          new TreeDeviceViewScanNode(
+              idAllocator.genPlanNodeId(),
+              qualifiedObjectName,
+              outputSymbols,
+              tableColumnSchema,
+              idAndAttributeIndexMap,
+              treeDeviceViewSchema.getTreeDBName(),
+              treeDeviceViewSchema.getMeasurementColumnNameMap()),
+          scope,
+          outputSymbols,
+          outerContext);
+    }
+
     TableScanNode tableScanNode =
         qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)
             ? new InformationSchemaTableScanNode(

@@ -36,9 +36,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -51,11 +53,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -92,6 +97,7 @@ public class TestMatadata implements Metadata {
   private final TypeManager typeManager = new InternalTypeManager();
 
   public static final String DB1 = "testdb";
+  public static final String TREE_DB1 = "root.testdb";
   public static final String TABLE1 = "table1";
   public static final String TIME = "time";
   private static final String TAG1 = "tag1";
@@ -115,6 +121,9 @@ public class TestMatadata implements Metadata {
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
 
+  private static final String TREE_VIEW_DB = "tree_view_db";
+  private static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
+
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
@@ -123,6 +132,29 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
+    if (name.getDatabaseName().equals(TREE_VIEW_DB)) {
+      TreeDeviceViewSchema treeDeviceViewSchema = Mockito.mock(TreeDeviceViewSchema.class);
+      Mockito.when(treeDeviceViewSchema.getTableName()).thenReturn(DEVICE_VIEW_TEST_TABLE);
+      Mockito.when(treeDeviceViewSchema.getColumns())
+          .thenReturn(
+              ImmutableList.of(
+                  ColumnSchema.builder(TIME_CM)
+                      .setColumnCategory(TsTableColumnCategory.TIME)
+                      .build(),
+                  ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(S1_CM)
+                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .build(),
+                  ColumnSchema.builder(S2_CM)
+                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .build()));
+      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
+      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+          .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
+      return Optional.of(treeDeviceViewSchema);
+    }
+
     if (name.getDatabaseName().equals(INFORMATION_DATABASE)) {
       TsTable table =
           InformationSchemaUtils.mayGetTable(
@@ -239,11 +271,28 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public List<AlignedDeviceEntry> indexScan(
-      final QualifiedObjectName tableName,
-      final List<Expression> expressionList,
-      final List<String> attributeColumns,
-      final MPPQueryContext context) {
+  public List<DeviceEntry> indexScan(
+      QualifiedObjectName tableName,
+      List<Expression> expressionList,
+      List<String> attributeColumns,
+      MPPQueryContext context) {
+    if (tableName.getDatabaseName().equals(TREE_VIEW_DB)) {
+      if (expressionList.isEmpty()) {
+        return ImmutableList.of(
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_3.split("\\.")), ImmutableList.of()),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_5.split("\\.")), ImmutableList.of()),
+            new NonAlignedAlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_4.split("\\.")), ImmutableList.of()));
+      }
+
+      return ImmutableList.of(
+          new AlignedDeviceEntry(
+              new StringArrayDeviceID(DEVICE_3.split("\\.")), ImmutableList.of()),
+          new AlignedDeviceEntry(
+              new StringArrayDeviceID(DEVICE_5.split("\\.")), ImmutableList.of()));
+    }
 
     if (expressionList.size() == 2) {
       if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")

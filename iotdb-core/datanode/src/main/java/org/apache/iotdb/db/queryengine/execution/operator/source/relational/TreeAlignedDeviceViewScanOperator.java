@@ -22,28 +22,33 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Set;
 
-public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(
+public class TreeAlignedDeviceViewScanOperator extends AbstractTableScanOperator {
+
+  private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
+
+  public TreeAlignedDeviceViewScanOperator(
       OperatorContext context,
       PlanNodeId sourceId,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
-      List<AlignedDeviceEntry> deviceEntries,
+      List<DeviceEntry> deviceEntries,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
       List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum) {
+      int maxTsBlockLineNum,
+      IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
     super(
         context,
         sourceId,
@@ -56,11 +61,11 @@ public class TableScanOperator extends AbstractTableScanOperator {
         allSensors,
         measurementSchemas,
         maxTsBlockLineNum);
+    this.extractor = extractor;
   }
 
   @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+    return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 }
