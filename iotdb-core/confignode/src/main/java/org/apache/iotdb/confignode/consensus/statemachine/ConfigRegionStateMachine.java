@@ -262,6 +262,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getPartitionManager().stopRegionCleaner();
     configManager.getCQManager().stopCQScheduler();
     configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+    configManager.getClusterSchemaManager().stopTreeDeviceViewUpdate();
     // Remove Metric after leader change
     configManager.removeMetrics();
 
@@ -323,6 +324,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
                 .getSubscriptionManager()
                 .getSubscriptionCoordinator()
                 .startSubscriptionMetaSync());
+
+    threadPool.submit(() -> configManager.getClusterSchemaManager().startTreeDeviceViewUpdate());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.

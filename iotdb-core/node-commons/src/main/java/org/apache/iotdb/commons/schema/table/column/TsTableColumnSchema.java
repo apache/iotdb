@@ -55,6 +55,10 @@ public abstract class TsTableColumnSchema {
     return dataType;
   }
 
+  public Map<String, String> getProps() {
+    return props;
+  }
+
   public abstract TsTableColumnCategory getColumnCategory();
 
   void serialize(final OutputStream outputStream) throws IOException {

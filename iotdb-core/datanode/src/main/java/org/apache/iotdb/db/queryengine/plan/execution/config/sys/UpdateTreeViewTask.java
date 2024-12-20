@@ -17,11 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
-public enum RenameTableColumnState {
-  COLUMN_CHECK,
-  PRE_RELEASE,
-  RENAME_COLUMN,
-  COMMIT_RELEASE
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+public class UpdateTreeViewTask implements IConfigTask {
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.updateTreeView();
+  }
 }

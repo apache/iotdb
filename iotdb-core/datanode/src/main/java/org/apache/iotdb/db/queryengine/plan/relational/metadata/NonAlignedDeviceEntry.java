@@ -23,34 +23,20 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.Objects;
 
-public class NonAlignedAlignedDeviceEntry extends DeviceEntry {
+public class NonAlignedDeviceEntry extends DeviceEntry {
 
-  public NonAlignedAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
+  public NonAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
     super(deviceID, attributeColumnValues);
   }
 
   @Override
   public String toString() {
-    return "NonAlignedAlignedDeviceEntry{"
+    return "NonAlignedDeviceEntry{"
         + "deviceID="
         + deviceID
         + ", attributeColumnValues="
         + attributeColumnValues
         + '}';
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final NonAlignedAlignedDeviceEntry that = (NonAlignedAlignedDeviceEntry) obj;
-    return Objects.equals(deviceID, that.deviceID)
-        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
   }
 }

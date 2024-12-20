@@ -591,7 +591,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     final GetDatabasePlan plan =
         new GetDatabasePlan(
-            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+            req.getDatabasePathPattern(),
+            scope,
+            req.isSetIsTableModel() && req.isIsTableModel(),
+            false);
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
@@ -1325,5 +1328,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
+  }
+
+  @Override
+  public TSStatus updateTreeView() {
+    return configManager.updateTreeView();
   }
 }

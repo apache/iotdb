@@ -240,17 +240,13 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths(final Boolean isTableModel) {
+  public List<PartialPath> getAllDatabasePaths() {
     final List<PartialPath> res = new ArrayList<>();
     final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
       final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
-        if (Boolean.TRUE.equals(isTableModel) && !current.getDatabaseSchema().isIsTableModel()
-            || Boolean.FALSE.equals(isTableModel) && current.getDatabaseSchema().isIsTableModel()) {
-          continue;
-        }
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -753,7 +749,7 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {
-    return getAllDatabasePaths(true).stream()
+    return getAllDatabasePaths().stream()
         .collect(
             Collectors.toMap(
                 PartialPath::getFullPath,
@@ -770,7 +766,7 @@ public class ConfigMTree {
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
-    final List<PartialPath> databaseList = getAllDatabasePaths(true);
+    final List<PartialPath> databaseList = getAllDatabasePaths();
     for (final PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
@@ -803,15 +799,6 @@ public class ConfigMTree {
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
-  }
-
-  public void renameTableColumn(
-      final PartialPath database,
-      final String tableName,
-      final String oldName,
-      final String newName)
-      throws MetadataException {
-    getTable(database, tableName).renameColumnSchema(oldName, newName);
   }
 
   public void setTableProperties(

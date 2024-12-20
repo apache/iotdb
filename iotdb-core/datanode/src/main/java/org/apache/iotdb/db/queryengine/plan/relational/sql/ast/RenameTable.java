@@ -34,14 +34,6 @@ public class RenameTable extends Statement {
   private final boolean tableIfExists;
 
   public RenameTable(
-      final QualifiedName source, final Identifier target, final boolean tableIfExists) {
-    super(null);
-    this.source = requireNonNull(source, "source name is null");
-    this.target = requireNonNull(target, "target name is null");
-    this.tableIfExists = tableIfExists;
-  }
-
-  public RenameTable(
       final NodeLocation location,
       final QualifiedName source,
       final Identifier target,

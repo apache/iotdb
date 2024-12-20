@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -51,24 +52,28 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
+  private final boolean needAligned;
 
   public TableDeviceQuerySource(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final List<ColumnHeader> columnHeaderList,
-      final DevicePredicateFilter filter) {
+      final DevicePredicateFilter filter,
+      final boolean needAligned) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
     this.filter = filter;
+    this.needAligned = needAligned;
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
     final List<PartialPath> devicePatternList =
-        getDevicePatternList(database, tableName, idDeterminedPredicateList);
+        getDevicePatternList(
+            PathUtils.unQualifyDatabaseName(database), tableName, idDeterminedPredicateList);
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
@@ -207,10 +212,16 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    if (!needAligned) {
+      transformToTableDeviceTsBlockColumns(
+          schemaInfo, builder, database, tableName, columnHeaderList, 3);
+    } else {
+      transformToTreeDeviceTsBlockColumns(
+          schemaInfo, builder, database, tableName, columnHeaderList);
+    }
   }
 
-  public static void transformToTsBlockColumns(
+  public static void transformToTableDeviceTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo,
       final TsBlockBuilder builder,
       final String database,
@@ -243,6 +254,34 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       }
       resultIndex++;
     }
+    builder.declarePosition();
+  }
+
+  private static void transformToTreeDeviceTsBlockColumns(
+      final IDeviceSchemaInfo schemaInfo,
+      final TsBlockBuilder builder,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    int resultIndex = 0;
+    final String[] pathNodes = schemaInfo.getRawNodes();
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    TsTableColumnSchema columnSchema;
+    for (final ColumnHeader columnHeader : columnHeaderList) {
+      columnSchema = table.getColumnSchema(columnHeader.getColumnName());
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (pathNodes.length <= resultIndex + 2 || pathNodes[resultIndex + 2] == null) {
+          builder.getColumnBuilder(resultIndex).appendNull();
+        } else {
+          builder
+              .getColumnBuilder(resultIndex)
+              .writeBinary(new Binary(pathNodes[resultIndex + 2], TSFileConfig.STRING_CHARSET));
+        }
+        resultIndex++;
+      }
+    }
+    builder.getColumnBuilder(resultIndex).writeBoolean(schemaInfo.isAligned());
     builder.declarePosition();
   }
 

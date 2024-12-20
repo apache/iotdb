@@ -213,6 +213,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -260,6 +261,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -288,6 +290,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -307,6 +310,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1693,6 +1697,73 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DeleteTableDevicesInBlackListNode(
                         new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
+  }
+
+  @Override
+  public TDeviceViewResp getTreeDeviceViewInfo(final List<TConsensusGroupId> regionIds) {
+    final TDeviceViewResp resp = new TDeviceViewResp();
+    resp.setDeviewViewUpdateMap(new ConcurrentHashMap<>());
+    final TSStatus status =
+        executeInternalSchemaTask(
+            regionIds,
+            consensusGroupId -> {
+              final ISchemaRegion schemaRegion =
+                  schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+              final String database = schemaRegion.getDatabaseFullPath();
+
+              // Get database length
+              int databaseLength = 2;
+              try {
+                databaseLength = new PartialPath(database).getNodeLength();
+              } catch (final IllegalPathException e) {
+                // Should not happen, the tree model database's full path can always be parsed
+                LOGGER.warn(
+                    "Failed to get the schema region database length for device view schema", e);
+              }
+              final int finalDBLength = databaseLength;
+
+              final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                  SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                      SchemaConstant.ALL_MATCH_PATTERN,
+                      false,
+                      null,
+                      null,
+                      SchemaConstant.ALL_MATCH_SCOPE);
+              try (final ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                  schemaSource.getSchemaReader(schemaRegion)) {
+                while (schemaReader.hasNext()) {
+                  final ITimeSeriesSchemaInfo result = schemaReader.next();
+                  resp.getDeviewViewUpdateMap()
+                      .compute(
+                          database,
+                          (db, info) -> {
+                            if (Objects.isNull(info)) {
+                              info = new TSchemaRegionViewInfo();
+                            }
+                            info.setMaxLength(
+                                Math.max(
+                                    info.getMaxLength(),
+                                    result.getPartialPath().getNodeLength() - finalDBLength));
+                            final IMeasurementSchema schema = result.getSchema();
+                            if (Objects.isNull(info.getMeasurementsDataTypeCountMap())) {
+                              info.setMeasurementsDataTypeCountMap(new HashMap<>());
+                            }
+                            info.getMeasurementsDataTypeCountMap()
+                                .computeIfAbsent(schema.getMeasurementName(), k -> new HashMap<>())
+                                .compute(
+                                    schema.getType().serialize(),
+                                    (type, num) -> Objects.nonNull(num) ? num + 1 : 1);
+                            return info;
+                          });
+                }
+              } catch (final Exception e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              }
+              return RpcUtils.SUCCESS_STATUS;
+            });
+
+    return resp.setStatus(status);
   }
 
   @Override

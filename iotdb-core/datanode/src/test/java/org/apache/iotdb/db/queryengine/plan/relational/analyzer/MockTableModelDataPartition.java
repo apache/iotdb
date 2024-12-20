@@ -41,7 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_DB1;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_DB1;
 
 public class MockTableModelDataPartition {
 

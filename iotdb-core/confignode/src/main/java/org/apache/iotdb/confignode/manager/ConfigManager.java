@@ -1868,7 +1868,10 @@ public class ConfigManager implements IManager {
               : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
       final GetDatabasePlan getDatabasePlan =
           new GetDatabasePlan(
-              req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+              req.getDatabasePathPattern(),
+              scope,
+              req.isSetIsTableModel() && req.isIsTableModel(),
+              true);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -2626,6 +2629,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case RENAME_TABLE:
+          return procedureManager.renameTable(req);
         default:
           throw new IllegalArgumentException();
       }
@@ -2679,6 +2684,14 @@ public class ConfigManager implements IManager {
                     })
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
         : new TFetchTableResp(status);
+  }
+
+  @Override
+  public TSStatus updateTreeView() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.invokeTreeViewUpdate()
+        : status;
   }
 
   @Override

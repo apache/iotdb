@@ -23,12 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,62 +40,52 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class RenameTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<RenameTableColumnState> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableColumnProcedure.class);
-
-  private String oldName;
+public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<RenameTableState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableProcedure.class);
   private String newName;
 
-  public RenameTableColumnProcedure() {
+  public RenameTableProcedure() {
     super();
   }
 
-  public RenameTableColumnProcedure(
-      final String database,
-      final String tableName,
-      final String queryId,
-      final String oldName,
-      final String newName) {
+  public RenameTableProcedure(
+      final String database, final String tableName, final String queryId, final String newName) {
     super(database, tableName, queryId);
-    this.oldName = oldName;
     this.newName = newName;
   }
 
   @Override
-  protected Flow executeFromState(
-      final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final RenameTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when renaming column", database, tableName);
+          LOGGER.info("Column check for table {}.{} when renaming table", database, tableName);
           columnCheck(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
+          LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
           preRelease(env);
           break;
-        case RENAME_COLUMN:
+        case RENAME_TABLE:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
-          renameColumn(env);
+          renameTable(env);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
-              "Commit release info of table {}.{} when renaming column", database, tableName);
+              "Commit release info of table {}.{} when renaming table", database, tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized RenameTableColumnState " + state));
+          setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "RenameTableColumn-{}.{}-{} costs {}ms",
+          "RenameTable-{}.{}-{} costs {}ms",
           database,
           tableName,
           state,
@@ -108,7 +98,7 @@ public class RenameTableColumnProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
+              .tableColumnCheckForRenaming(database, tableName, newName);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -116,7 +106,7 @@ public class RenameTableColumnProcedure
         return;
       }
       table = result.getRight();
-      setNextState(RenameTableColumnState.PRE_RELEASE);
+      setNextState(RenameTableState.PRE_RELEASE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
@@ -125,33 +115,31 @@ public class RenameTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
-    setNextState(RenameTableColumnState.RENAME_COLUMN);
+    setNextState(RenameTableState.RENAME_TABLE);
   }
 
-  private void renameColumn(final ConfigNodeProcedureEnv env) {
+  private void renameTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTableColumnPlan(database, tableName, oldName, newName));
+            .executePlan(new RenameTablePlan(database, tableName, newName));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
-      setNextState(RenameTableColumnState.COMMIT_RELEASE);
+      setNextState(RenameTableState.COMMIT_RELEASE);
     }
   }
 
   @Override
-  protected void rollbackState(final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final RenameTableState state)
       throws IOException, InterruptedException, ProcedureException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case RENAME_COLUMN:
+        case RENAME_TABLE:
           LOGGER.info(
-              "Start rollback Renaming column to table {}.{} on configNode",
-              database,
-              table.getTableName());
-          rollbackRenameColumn(env);
+              "Start rollback Renaming table {}.{} on configNode", database, table.getTableName());
+          rollbackRenameTable(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
@@ -161,51 +149,48 @@ public class RenameTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          "Rollback RenameTableColumn-{} costs {}ms.",
-          state,
-          (System.currentTimeMillis() - startTime));
+          "Rollback RenameTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
     }
   }
 
-  private void rollbackRenameColumn(final ConfigNodeProcedureEnv env) {
+  private void rollbackRenameTable(final ConfigNodeProcedureEnv env) {
     if (table == null) {
       return;
     }
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTableColumnPlan(database, tableName, newName, oldName));
+            .executePlan(new RenameTablePlan(database, newName, tableName));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
   @Override
-  protected RenameTableColumnState getState(final int stateId) {
-    return RenameTableColumnState.values()[stateId];
+  protected RenameTableState getState(final int stateId) {
+    return RenameTableState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(final RenameTableColumnState state) {
+  protected int getStateId(final RenameTableState state) {
     return state.ordinal();
   }
 
   @Override
-  protected RenameTableColumnState getInitialState() {
-    return RenameTableColumnState.COLUMN_CHECK;
+  protected RenameTableState getInitialState() {
+    return RenameTableState.COLUMN_CHECK;
   }
 
   @Override
   protected String getActionMessage() {
-    return "rename table column";
+    return "rename table";
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(oldName, stream);
     ReadWriteIOUtils.write(newName, stream);
   }
 
@@ -213,19 +198,6 @@ public class RenameTableColumnProcedure
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.oldName = ReadWriteIOUtils.readString(byteBuffer);
     this.newName = ReadWriteIOUtils.readString(byteBuffer);
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    return super.equals(o)
-        && Objects.equals(oldName, ((RenameTableColumnProcedure) o).oldName)
-        && Objects.equals(newName, ((RenameTableColumnProcedure) o).newName);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), oldName, newName);
   }
 }

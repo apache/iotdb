@@ -17,26 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.database;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-
+import java.util.Collections;
 import java.util.List;
 
-public class GetDatabasePlan extends CountDatabasePlan {
-  private final boolean isShowDatabasePlan;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-  public GetDatabasePlan(
-      final List<String> storageGroupPathPattern,
-      final PathPatternTree scope,
-      final boolean isTableModel,
-      final boolean isShowDatabasePlan) {
-    super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern, scope, isTableModel);
-    this.isShowDatabasePlan = isShowDatabasePlan;
+public class UpdateTreeView extends Statement {
+  public UpdateTreeView(final NodeLocation location) {
+    super(location);
   }
 
-  public boolean isShowDatabasePlan() {
-    return isShowDatabasePlan;
+  @Override
+  public List<? extends Node> getChildren() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitUpdateTreeView(this, context);
+  }
+
+  @Override
+  public int hashCode() {
+    return 0;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    return this == obj || obj != null && getClass() == obj.getClass();
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).toString();
   }
 }

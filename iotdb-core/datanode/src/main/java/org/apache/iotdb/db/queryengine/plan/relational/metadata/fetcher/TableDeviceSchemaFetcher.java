@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -38,13 +39,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
@@ -56,6 +61,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -172,14 +178,18 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
-    final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
+    final boolean isTreeViewQuery = TreeViewSchema.isTreeViewDatabase(database);
+    final ShowDevice statement =
+        new ShowDevice(
+            isTreeViewQuery ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance) : database,
+            table,
+            isTreeViewQuery);
 
     if (parseFilter4TraverseDevice(
-        database,
         tableInstance,
         expressionList,
         statement,
@@ -188,20 +198,18 @@ public class TableDeviceSchemaFetcher {
         queryContext,
         false)) {
       fetchMissingDeviceSchemaForQuery(
-          database, tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
+          tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
     }
 
     // TODO table metadata:  implement deduplicate during schemaRegion execution
     // TODO table metadata:  need further process on input predicates and transform them into
     // disjoint sets
-    final Set<DeviceEntry> set = new LinkedHashSet<>(deviceEntryList);
-    return new ArrayList<>(set);
+    return new ArrayList<>(new LinkedHashSet<>(deviceEntryList));
   }
 
   // Used by show/count device and update device.
   // Update device will not access cache
   public boolean parseFilter4TraverseDevice(
-      final String database,
       final TsTable tableInstance,
       final List<Expression> expressionList,
       final AbstractTraverseDevice statement,
@@ -245,7 +253,7 @@ public class TableDeviceSchemaFetcher {
       final DeviceInCacheFilterVisitor filterVisitor =
           new DeviceInCacheFilterVisitor(attributeColumns);
 
-      final Predicate<DeviceEntry> check;
+      final Predicate<AlignedDeviceEntry> check;
       if (Objects.isNull(compactedIdFuzzyPredicate)) {
         check = o -> true;
       } else {
@@ -258,13 +266,14 @@ public class TableDeviceSchemaFetcher {
       for (final int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
-            database,
+            statement.getDatabase(),
             tableInstance,
             index2FilterMapList.get(index),
             check,
             attributeColumns,
             fetchPaths,
-            isDirectDeviceQuery)) {
+            isDirectDeviceQuery,
+            statement.isTreeViewQuery())) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -312,17 +321,40 @@ public class TableDeviceSchemaFetcher {
       final String database,
       final TsTable tableInstance,
       final Map<Integer, List<SchemaFilter>> idFilters,
-      final Predicate<DeviceEntry> check,
+      final Predicate<AlignedDeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
-      final boolean isDirectDeviceQuery) {
-    String[] idValues = new String[tableInstance.getIdNums()];
+      final boolean isDirectDeviceQuery,
+      final boolean isTreeViewQuery) {
+    final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
+    return isTreeViewQuery
+        ? tryGetTableDeviceInCache(
+            deviceEntryList,
+            database,
+            tableInstance,
+            check,
+            attributeColumns,
+            fetchPaths,
+            isDirectDeviceQuery,
+            idValues)
+        : tryGetTreeDeviceInCache(deviceEntryList, database, fetchPaths, idValues);
+  }
+
+  private boolean tryGetTableDeviceInCache(
+      final List<DeviceEntry> deviceEntryList,
+      final String database,
+      final TsTable tableInstance,
+      final Predicate<AlignedDeviceEntry> check,
+      final List<String> attributeColumns,
+      final List<IDeviceID> fetchPaths,
+      final boolean isDirectDeviceQuery,
+      final String[] idValues) {
     final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
@@ -338,7 +370,7 @@ public class TableDeviceSchemaFetcher {
       return false;
     }
 
-    final DeviceEntry deviceEntry =
+    final AlignedDeviceEntry deviceEntry =
         new AlignedDeviceEntry(
             deviceID,
             attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
@@ -355,6 +387,26 @@ public class TableDeviceSchemaFetcher {
     return true;
   }
 
+  private boolean tryGetTreeDeviceInCache(
+      final List<DeviceEntry> deviceEntryList,
+      final String database,
+      final List<IDeviceID> fetchPaths,
+      final String[] idValues) {
+    final IDeviceID deviceID = TreeViewSchemaUtils.convertToIDeviceID(database, idValues);
+    final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
+    if (!(schema instanceof TreeDeviceNormalSchema)) {
+      if (Objects.nonNull(fetchPaths)) {
+        fetchPaths.add(deviceID);
+      }
+      return false;
+    }
+    deviceEntryList.add(
+        ((TreeDeviceNormalSchema) schema).isAligned()
+            ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
+            : new NonAlignedDeviceEntry(deviceID, Collections.emptyList()));
+    return true;
+  }
+
   public static IDeviceID convertIdValuesToDeviceID(
       final String tableName, final String[] idValues) {
     // Convert to IDeviceID
@@ -365,20 +417,17 @@ public class TableDeviceSchemaFetcher {
   }
 
   private void fetchMissingDeviceSchemaForQuery(
-      final String database,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final ShowDevice statement,
       final List<DeviceEntry> deviceEntryList,
       final MPPQueryContext mppQueryContext) {
-
-    final String table = tableInstance.getTableName();
     Throwable t = null;
 
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
     Set<Long> queryIdSet = null;
-    if (Objects.nonNull(statement.getPartitionKeyList())) {
+    if (!statement.isTreeViewQuery() && Objects.nonNull(statement.getPartitionKeyList())) {
       queryIdSet = attributeGuard.addFetchQueryId(queryId);
     }
 
@@ -406,7 +455,6 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
@@ -419,24 +467,23 @@ public class TableDeviceSchemaFetcher {
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-        final Column[] columns = tsBlock.get().getValueColumns();
-        for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          String[] nodes = new String[idLength + 1];
-          final Map<String, Binary> attributeMap = new HashMap<>();
-          constructNodsArrayAndAttributeMap(
-              attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
-          final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
-          final DeviceEntry deviceEntry =
-              new AlignedDeviceEntry(
-                  deviceID,
-                  attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
-          mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
-          deviceEntryList.add(deviceEntry);
-          // Only cache those exact device query
-          // Fetch paths is null iff there are fuzzy queries related to id columns
-          if (Objects.nonNull(statement.getPartitionKeyList())) {
-            cache.putAttributes(database, deviceID, attributeMap);
-          }
+        if (!statement.isTreeViewQuery()) {
+          constructTableResults(
+              tsBlock.get(),
+              columnHeaderList,
+              tableInstance,
+              statement,
+              mppQueryContext,
+              attributeColumns,
+              deviceEntryList);
+        } else {
+          constructTreeResults(
+              tsBlock.get(),
+              columnHeaderList,
+              tableInstance,
+              statement,
+              mppQueryContext,
+              deviceEntryList);
         }
       }
     } catch (final Throwable throwable) {
@@ -448,6 +495,70 @@ public class TableDeviceSchemaFetcher {
         attributeGuard.tryUpdateCache();
       }
       coordinator.cleanupQueryExecution(queryId, null, t);
+    }
+  }
+
+  private void constructTableResults(
+      final TsBlock tsBlock,
+      final List<ColumnHeader> columnHeaderList,
+      final TsTable tableInstance,
+      final ShowDevice statement,
+      final MPPQueryContext mppQueryContext,
+      final List<String> attributeColumns,
+      final List<DeviceEntry> deviceEntryList) {
+    final Column[] columns = tsBlock.getValueColumns();
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      final String[] nodes = new String[tableInstance.getIdNums() + 1];
+      final Map<String, Binary> attributeMap = new HashMap<>();
+      constructNodsArrayAndAttributeMap(
+          attributeMap,
+          nodes,
+          tableInstance.getTableName(),
+          columnHeaderList,
+          columns,
+          tableInstance,
+          i);
+      final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(nodes);
+      final AlignedDeviceEntry deviceEntry =
+          new AlignedDeviceEntry(
+              deviceID,
+              attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
+      mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
+      deviceEntryList.add(deviceEntry);
+      // Only cache those exact device query
+      // Fetch paths is null iff there are fuzzy queries related to id columns
+      if (Objects.nonNull(statement.getPartitionKeyList())) {
+        cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
+      }
+    }
+  }
+
+  private void constructTreeResults(
+      final TsBlock tsBlock,
+      final List<ColumnHeader> columnHeaderList,
+      final TsTable tableInstance,
+      final ShowDevice statement,
+      final MPPQueryContext mppQueryContext,
+      final List<DeviceEntry> deviceEntryList) {
+    final Column[] columns = tsBlock.getValueColumns();
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      final String[] nodes = new String[tableInstance.getIdNums()];
+      constructNodsArrayAndAttributeMap(
+          Collections.emptyMap(),
+          nodes,
+          tableInstance.getTableName(),
+          columnHeaderList,
+          columns,
+          tableInstance,
+          i);
+      final IDeviceID deviceID =
+          TreeViewSchemaUtils.convertToIDeviceID(statement.getDatabase(), nodes);
+      final DeviceEntry deviceEntry =
+          columns[columns.length - 1].getBoolean(i)
+              ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
+              : new NonAlignedDeviceEntry(deviceID, Collections.emptyList());
+      mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
+      deviceEntryList.add(deviceEntry);
     }
   }
 

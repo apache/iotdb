@@ -55,6 +55,7 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
+    | updateViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -199,7 +200,9 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
-
+updateViewStatement
+    : UPDATE TREE VIEW
+    ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
@@ -1043,7 +1046,7 @@ DESCRIBE: 'DESCRIBE';
 DESCRIPTOR: 'DESCRIPTOR';
 DETAILS: 'DETAILS';
 DETERMINISTIC: 'DETERMINISTIC';
-DEVICES: 'DEVICES';
+DEVICES : 'DEVICES';
 DISTINCT: 'DISTINCT';
 DISTRIBUTED: 'DISTRIBUTED';
 DO: 'DO';
@@ -1283,6 +1286,7 @@ TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
+TREE: 'TREE';
 TRIM: 'TRIM';
 TRUE: 'TRUE';
 TRUNCATE: 'TRUNCATE';

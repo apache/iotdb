@@ -37,7 +37,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
-import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTableDeviceTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
@@ -93,7 +93,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     final TsBlockBuilder builder = new TsBlockBuilder(inputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
-            transformToTsBlockColumns(
+            transformToTableDeviceTsBlockColumns(
                 deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
 
     curBlock = builder.build();
