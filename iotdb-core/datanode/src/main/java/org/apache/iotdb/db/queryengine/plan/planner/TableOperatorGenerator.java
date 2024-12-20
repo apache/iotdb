@@ -74,6 +74,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperato
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortSemiJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
@@ -127,6 +128,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
@@ -188,6 +190,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
@@ -1359,6 +1362,60 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       default:
         throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
     }
+  }
+
+  @Override
+  public Operator visitSemiJoin(SemiJoinNode node, LocalExecutionPlanContext context) {
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    Operator leftChild = node.getLeftChild().accept(this, context);
+    Operator rightChild = node.getRightChild().accept(this, context);
+
+    ImmutableMap<Symbol, Integer> sourceColumnNamesMap =
+        makeLayoutFromOutputSymbols(node.getSource().getOutputSymbols());
+    List<Symbol> sourceOutputSymbols = node.getSource().getOutputSymbols();
+    int[] sourceOutputSymbolIdx = new int[node.getSource().getOutputSymbols().size()];
+    for (int i = 0; i < sourceOutputSymbolIdx.length; i++) {
+      Integer index = sourceColumnNamesMap.get(sourceOutputSymbols.get(i));
+      checkNotNull(index, "Source of SemiJoinNode doesn't contain sourceOutputSymbol.");
+      sourceOutputSymbolIdx[i] = index;
+    }
+
+    ImmutableMap<Symbol, Integer> filteringSourceColumnNamesMap =
+        makeLayoutFromOutputSymbols(node.getRightChild().getOutputSymbols());
+
+    Integer sourceJoinKeyPosition = sourceColumnNamesMap.get(node.getSourceJoinSymbol());
+    checkNotNull(sourceJoinKeyPosition, "Source of SemiJoinNode doesn't contain sourceJoinSymbol.");
+
+    Integer filteringSourceJoinKeyPosition =
+        filteringSourceColumnNamesMap.get(node.getFilteringSourceJoinSymbol());
+    checkNotNull(
+        filteringSourceJoinKeyPosition,
+        "FilteringSource of SemiJoinNode doesn't contain filteringSourceJoinSymbol.");
+
+    Type sourceJoinKeyType =
+        context.getTypeProvider().getTableModelType(node.getSourceJoinSymbol());
+
+    checkArgument(
+        sourceJoinKeyType
+            == context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()),
+        "Join key type mismatch.");
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MergeSortSemiJoinOperator.class.getSimpleName());
+    return new MergeSortSemiJoinOperator(
+        operatorContext,
+        leftChild,
+        sourceJoinKeyPosition,
+        sourceOutputSymbolIdx,
+        rightChild,
+        filteringSourceJoinKeyPosition,
+        JoinKeyComparatorFactory.getComparator(sourceJoinKeyType, true),
+        dataTypes);
   }
 
   @Override

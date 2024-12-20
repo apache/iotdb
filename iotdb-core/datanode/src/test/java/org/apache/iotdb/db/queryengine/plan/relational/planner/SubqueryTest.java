@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
@@ -45,9 +46,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.semiJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
@@ -223,5 +227,99 @@ public class SubqueryTest {
                     join(
                         JoinNode.JoinType.INNER,
                         builder -> builder.left(tableScan1).right(enforceSingleRow(any())))))));
+  }
+
+  @Test
+  public void testUncorrelatedInPredicateSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where s1 in (select s1 from table1)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    Expression filterPredicate = new SymbolReference("expr");
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
+    *               └──SemiJoinNode
+    *                   |──SortNode
+    *                   |   └──TableScanNode
+    *                   ├──SortNode
+    *                   │   └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
+
+    // Verify DistributionPlan
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    semiJoin(
+                        "s1",
+                        "s1_6",
+                        "expr",
+                        mergeSort(exchange(), sort(tableScan1), exchange()),
+                        mergeSort(exchange(), sort(tableScan2), exchange()))))));
+
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan1));
+
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan1));
+
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan2));
+
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan2));
+  }
+
+  @Test
+  public void testUncorrelatedNotInPredicateSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where s1 not in (select s1 from table1)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    Expression filterPredicate = new NotExpression(new SymbolReference("expr"));
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
+    *               └──SemiJoinNode
+    *                   |──SortNode
+    *                   |   └──TableScanNode
+    *                   ├──SortNode
+    *                   │   └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
   }
 }
