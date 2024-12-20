@@ -79,7 +79,7 @@ public class FrameTestUtils {
   }
 
   private List<ColumnList> tsBlockToColumnLists(TsBlock tsBlock) {
-    Column[] allColumns = tsBlock.getAllColumns();
+    Column[] allColumns = tsBlock.getValueColumns();
 
     List<ColumnList> columnLists = new ArrayList<>();
     for (Column column : allColumns) {
@@ -140,6 +140,24 @@ public class FrameTestUtils {
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       columnBuilders[0].writeInt(input);
+      tsBlockBuilder.declarePosition();
+    }
+
+    return tsBlockBuilder.build(
+        new RunLengthEncodedColumn(
+            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+  }
+
+  public static TsBlock createTsBlockWithIntsAndNulls(int[] inputs) {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    for (int input : inputs) {
+      if (input >= 0) {
+        columnBuilders[0].writeInt(input);
+      } else {
+        // Mimic null value
+        columnBuilders[0].appendNull();
+      }
       tsBlockBuilder.declarePosition();
     }
 

@@ -5,7 +5,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.C
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.List;
 
@@ -22,6 +24,7 @@ public class RangeFrame implements Frame {
 
   private final int partitionStart;
   private final int partitionEnd;
+  private final int partitionSize;
   private final RowComparator peerGroupComparator;
   private Range recentRange;
 
@@ -39,8 +42,9 @@ public class RangeFrame implements Frame {
     this.dataType = column.getDataType();
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
+    this.partitionSize = partitionEnd - partitionStart;
     this.peerGroupComparator = comparator;
-    this.recentRange = new Range(0, initialEnd);
+    this.recentRange = new Range(0, 0);
   }
 
   @Override
@@ -49,7 +53,7 @@ public class RangeFrame implements Frame {
     // Full partition
     if (frameInfo.getStartType() == UNBOUNDED_PRECEDING
         && frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-      return new Range(0, partitionEnd - partitionStart + 1);
+      return new Range(0, partitionEnd - partitionStart - 1);
     }
 
     // Peer group
@@ -57,8 +61,8 @@ public class RangeFrame implements Frame {
         || frameInfo.getStartType() == CURRENT_ROW && frameInfo.getEndType() == UNBOUNDED_FOLLOWING
         || frameInfo.getStartType() == UNBOUNDED_PRECEDING
             && frameInfo.getEndType() == CURRENT_ROW) {
-      if (currentPosition != 0
-          && !peerGroupComparator.equal(column, currentPosition - 1, currentPosition)) {
+      if (currentPosition == 0
+          || !peerGroupComparator.equal(column, currentPosition - 1, currentPosition)) {
         // New peer group
         int frameStart =
             frameInfo.getStartType() == CURRENT_ROW ? (peerGroupStart - partitionStart) : 0;
@@ -94,13 +98,13 @@ public class RangeFrame implements Frame {
         frameStart = 0;
         break;
       case PRECEDING:
-        frameStart = getPrecedingOffset(currentPosition, peerGroupStart, true);
+        frameStart = getPrecedingOffset(currentPosition, peerGroupStart, peerGroupEnd, true);
         break;
       case CURRENT_ROW:
         frameStart = peerGroupStart - partitionStart;
         break;
       case FOLLOWING:
-        frameStart = getFollowingOffset(currentPosition, peerGroupEnd, true);
+        frameStart = getFollowingOffset(currentPosition, peerGroupStart, peerGroupEnd, true);
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
@@ -110,13 +114,13 @@ public class RangeFrame implements Frame {
     int frameEnd;
     switch (frameInfo.getEndType()) {
       case PRECEDING:
-        frameEnd = getPrecedingOffset(currentPosition, peerGroupStart, false);
+        frameEnd = getPrecedingOffset(currentPosition, peerGroupStart, peerGroupEnd, false);
         break;
       case CURRENT_ROW:
         frameEnd = peerGroupEnd - partitionStart - 1;
         break;
       case FOLLOWING:
-        frameEnd = getFollowingOffset(currentPosition, peerGroupEnd, false);
+        frameEnd = getFollowingOffset(currentPosition, peerGroupStart, peerGroupEnd, false);
         break;
       case UNBOUNDED_FOLLOWING:
         frameEnd = partitionEnd - partitionStart - 1;
@@ -126,285 +130,256 @@ public class RangeFrame implements Frame {
         throw new FrameTypeException(false);
     }
 
-    // Special case
-    if (frameInfo.getStartType() == PRECEDING
-            && frameInfo.getEndType() == PRECEDING
-            && frameEnd == currentPosition
-        || frameInfo.getStartType() == FOLLOWING
-            && frameInfo.getEndType() == FOLLOWING
-            && frameEnd == currentPosition) {
-      frameEnd--;
-      // Empty frame
-      if (frameStart > frameEnd) {
-        return new Range(-1, -1);
-      }
+    if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
+      recentRange = new Range(Math.min(partitionEnd - partitionStart - 1, frameStart),
+          Math.max(0, frameEnd));
+      return new Range(-1, -1);
     }
 
+    frameStart = Math.max(frameStart, 0);
+    frameEnd = Math.min(frameEnd, partitionSize - 1);
     recentRange = new Range(frameStart, frameEnd);
     return recentRange;
   }
 
-  private int getPrecedingOffset(int currentPosition, int peerGroupStart, boolean isStart) {
-    // For non-numeric types
-    // Preceding offset is peer group start
-    if (!dataType.isNumeric()) {
-      return peerGroupStart;
-    }
+  private int getPrecedingOffset(int index, int peerGroupStart, int peerGroupEnd, boolean isStart) {
+    int offset;
+    if (isStart) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+        return peerGroupStart;
+      }
 
-    // Optimize with cached range
-    int recentStart = recentRange.getStart() + partitionStart;
+      double offsetStart = frameInfo.getStartOffset();
+      int recentStart = recentRange.getStart() + partitionStart;
 
-    // Recent start from NULL
-    // Which means current row is the first non-null row
-    if (frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentStart)) {
-      // Then the frame starts with current row
-      return currentPosition - partitionStart;
-    }
+      // Recent start from NULL
+      // Which means current row is the first non-null row
+      if (frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentStart)) {
+        // Then the frame starts with current row
+        return index - partitionStart;
+      }
 
-    if (frameInfo.getSortOrder().isAscending()) {
-      return getAscPrecedingOffset(currentPosition, recentStart, isStart) - partitionStart;
+      if (frameInfo.getSortOrder().isAscending()) {
+        offset = getAscFrameStartPreceding(index, recentStart, offsetStart);
+      } else {
+        offset = getDescFrameStartPreceding(index, recentStart, offsetStart);
+      }
     } else {
-      return getDescPrecedingOffset(currentPosition, recentStart, isStart) - partitionStart;
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+        return peerGroupEnd;
+      }
+
+      double offsetEnd = frameInfo.getEndOffset();
+      int recentEnd = recentRange.getEnd() + partitionStart;
+
+      // Leave section of leading nulls
+      if (frameInfo.getSortOrder().isNullsFirst()) {
+        while (recentEnd < partitionEnd && column.isNull(recentEnd)) {
+          recentEnd++;
+        }
+      }
+
+      if (frameInfo.getSortOrder().isAscending()) {
+        offset = getAscFrameEndPreceding(index, recentEnd, offsetEnd);
+      } else {
+        offset = getDescFrameEndPreceding(index, recentEnd, offsetEnd);
+      }
     }
+    offset -= partitionStart;
+
+    return offset;
   }
 
-  private int getFollowingOffset(int currentPosition, int peerGroupEnd, boolean isStart) {
-    // For non-numeric types
-    // Following offset is peer group end
-    if (!dataType.isNumeric()) {
-      return peerGroupEnd;
-    }
+  private int getFollowingOffset(int index, int peerGroupStart, int peerGroupEnd, boolean isStart) {
+    int offset;
+    if (isStart) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+        return peerGroupStart;
+      }
 
-    // Optimize with cached range
-    int recentEnd = recentRange.getEnd() + partitionStart;
+      double offsetStart = frameInfo.getStartOffset();
+      int recentStart = recentRange.getStart() + partitionStart;
 
-    if (!frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd)) {
-      // Then the frame starts with current row
-      return recentEnd - partitionStart;
-    }
+      // Leave section of leading nulls
+      if (recentStart == partitionStart && frameInfo.getSortOrder().isNullsFirst() && column.isNull(partitionStart)) {
+        // Then the frame starts with current row
+        recentStart = index - partitionStart;
+      }
 
-    if (frameInfo.getSortOrder().isAscending()) {
-      return getAscFollowingOffset(currentPosition, recentEnd, isStart) - partitionStart;
+      // Leave section of tailing nulls
+      if (!frameInfo.getSortOrder().isNullsFirst()) {
+        while (recentStart >= 0 && column.isNull(recentStart)) {
+          recentStart--;
+        }
+        if (recentStart < 0) {
+          return recentStart - partitionStart;
+        }
+      }
+
+      if (frameInfo.getSortOrder().isAscending()) {
+        offset = getAscFrameStartFollowing(index, recentStart, offsetStart);
+      } else {
+        offset = getDescFrameStartFollowing(index, recentStart, offsetStart);
+      }
     } else {
-      return getDescFollowingOffset(currentPosition, recentEnd, isStart) - partitionStart;
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+        return peerGroupEnd;
+      }
+
+      double offsetEnd = frameInfo.getEndOffset();
+      int recentEnd = recentRange.getEnd() + partitionStart;
+
+      // Leave section of leading nulls
+      if (frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd)) {
+        // Then the frame starts with current row
+        recentEnd = index - partitionStart;
+      }
+
+      if (frameInfo.getSortOrder().isAscending()) {
+        offset = getAscFrameEndFollowing(index, recentEnd, offsetEnd);
+      } else {
+        offset = getDescFrameEndFollowing(index, recentEnd, offsetEnd);
+      }
     }
+    offset -= partitionStart;
+
+    return offset;
   }
 
-  private int getAscPrecedingOffset(int currentPosition, int recentStart, boolean isStart) {
-    // Find first row which satisfy:
-    // precede >= current - offset
-    double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentStart < currentPosition) {
-      switch (column.getDataType()) {
-        case INT32:
-          {
-            int current = column.getInt(currentPosition);
-            int precede = column.getInt(recentStart);
-            if (precede >= current - offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case INT64:
-          {
-            long current = column.getLong(currentPosition);
-            long precede = column.getLong(recentStart);
-            if (precede >= current - offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case FLOAT:
-          {
-            float current = column.getFloat(currentPosition);
-            float precede = column.getFloat(recentStart);
-            if (precede >= current - offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case DOUBLE:
-          {
-            double current = column.getDouble(currentPosition);
-            double precede = column.getDouble(recentStart);
-            if (precede >= current - offset) {
-              return recentStart;
-            }
-            break;
-          }
-        default:
-          // Unreachable
-          break;
+  // Find first row which satisfy:
+  // follow >= current + offset
+  // And stop right there
+  private int getAscFrameStartFollowing(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double follow = getColumnValueAsDouble(column, recentIndex);
+      if (follow >= current + offset) {
+        return recentIndex;
       }
-      recentStart++;
+      recentIndex++;
     }
-
-    return recentStart;
+    return recentIndex;
   }
 
-  private int getDescPrecedingOffset(int currentPosition, int recentStart, boolean isStart) {
-    // Find first row which satisfy:
-    // precede <= current + offset
-    double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentStart < currentPosition) {
-      switch (column.getDataType()) {
-        case INT32:
-          {
-            int current = column.getInt(currentPosition);
-            int precede = column.getInt(recentStart);
-            if (precede <= current + offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case INT64:
-          {
-            long current = column.getLong(currentPosition);
-            long precede = column.getLong(recentStart);
-            if (precede <= current + offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case FLOAT:
-          {
-            float current = column.getFloat(currentPosition);
-            float precede = column.getFloat(recentStart);
-            if (precede <= current + offset) {
-              return recentStart;
-            }
-            break;
-          }
-        case DOUBLE:
-          {
-            double current = column.getDouble(currentPosition);
-            double precede = column.getDouble(recentStart);
-            if (precede <= current + offset) {
-              return recentStart;
-            }
-            break;
-          }
-        default:
-          // Unreachable
-          break;
+  // Find first row which satisfy:
+  // follow > current + offset
+  // And return its previous index
+  private int getAscFrameEndFollowing(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double follow = getColumnValueAsDouble(column, recentIndex);
+      if (follow > current + offset) {
+        return recentIndex - 1;
       }
-      recentStart++;
+      recentIndex++;
     }
-
-    return recentStart;
+    return recentIndex - 1;
   }
 
-  private int getAscFollowingOffset(int currentPosition, int recentEnd, boolean isStart) {
-    // Find first row which satisfy:
-    // follow <= current + offset
-    double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentEnd < partitionEnd && !column.isNull(recentEnd)) {
-      switch (column.getDataType()) {
-        case INT32:
-          {
-            int current = column.getInt(currentPosition);
-            int follow = column.getInt(recentEnd);
-            if (follow <= current + offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case INT64:
-          {
-            long current = column.getLong(currentPosition);
-            long follow = column.getLong(recentEnd);
-            if (follow <= current + offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case FLOAT:
-          {
-            float current = column.getFloat(currentPosition);
-            float follow = column.getFloat(recentEnd);
-            if (follow <= current + offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case DOUBLE:
-          {
-            double current = column.getDouble(currentPosition);
-            double follow = column.getDouble(recentEnd);
-            if (follow <= current + offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        default:
-          // Unreachable
-          break;
+  // Find first row which satisfy:
+  // precede >= current - offset
+  // And stop right there
+  private int getAscFrameStartPreceding(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < currentIndex) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double precede = getColumnValueAsDouble(column, recentIndex);
+      if (precede >= current - offset) {
+        return recentIndex;
       }
-      // Reach tail NULLs
-      if (!frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd + 1)) {
-        return recentEnd;
-      }
-      recentEnd++;
+      recentIndex++;
     }
-
-    // Inclusive
-    return recentEnd - 1;
+    return recentIndex;
   }
 
-  private int getDescFollowingOffset(int currentPosition, int recentEnd, boolean isStart) {
-    // Find first row which satisfy:
-    // follow >= current - offset
-    double offset = isStart ? frameInfo.getStartOffset() : frameInfo.getEndOffset();
-    while (recentEnd < partitionEnd && !column.isNull(recentEnd)) {
-      switch (column.getDataType()) {
-        case INT32:
-          {
-            int current = column.getInt(currentPosition);
-            int follow = column.getInt(recentEnd);
-            if (follow >= current - offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case INT64:
-          {
-            long current = column.getLong(currentPosition);
-            long follow = column.getLong(recentEnd);
-            if (follow >= current - offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case FLOAT:
-          {
-            float current = column.getFloat(currentPosition);
-            float follow = column.getFloat(recentEnd);
-            if (follow >= current - offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        case DOUBLE:
-          {
-            double current = column.getDouble(currentPosition);
-            double follow = column.getDouble(recentEnd);
-            if (follow >= current - offset) {
-              return recentEnd;
-            }
-            break;
-          }
-        default:
-          // Unreachable
-          break;
+  // Find first row which satisfy:
+  // precede > current - offset
+  // And return its previous index
+  private int getAscFrameEndPreceding(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double precede = getColumnValueAsDouble(column, recentIndex);
+      if (precede > current - offset) {
+        return recentIndex - 1;
       }
-      // Reach tail NULLs
-      if (!frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd + 1)) {
-        return recentEnd;
-      }
-      recentEnd++;
+      recentIndex++;
     }
+    return recentIndex - 1;
+  }
 
-    // Inclusive
-    return recentEnd - 1;
+  // Find first row which satisfy:
+  // follow <= current - offset
+  // And stop right there
+  private int getDescFrameStartFollowing(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double follow = getColumnValueAsDouble(column, recentIndex);
+      if (follow <= current - offset) {
+        return recentIndex;
+      }
+      recentIndex++;
+    }
+    return recentIndex;
+  }
+
+  // Find first row which satisfy:
+  // follow < current - offset
+  // And return its previous index
+  private int getDescFrameEndFollowing(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double follow = getColumnValueAsDouble(column, recentIndex);
+      if (follow < current - offset) {
+        return recentIndex - 1;
+      }
+      recentIndex++;
+    }
+    return recentIndex - 1;
+  }
+
+  // Find first row which satisfy:
+  // precede <= current + offset
+  // And stop right there
+  private int getDescFrameStartPreceding(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < currentIndex) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double precede = getColumnValueAsDouble(column, recentIndex);
+      if (precede <= current + offset) {
+        return recentIndex;
+      }
+      recentIndex++;
+    }
+    return recentIndex;
+  }
+
+  // Find first row which satisfy:
+  // precede < current + offset
+  // And return its previous index
+  private int getDescFrameEndPreceding(int currentIndex, int recentIndex, double offset) {
+    while (recentIndex < partitionEnd) {
+      double current = getColumnValueAsDouble(column, currentIndex);
+      double precede = getColumnValueAsDouble(column, recentIndex);
+      if (precede < current + offset) {
+        return recentIndex - 1;
+      }
+      recentIndex++;
+    }
+    return recentIndex - 1;
+  }
+
+  private double getColumnValueAsDouble(ColumnList column, int index) {
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        return column.getInt(index);
+      case INT64:
+        return column.getLong(index);
+      case FLOAT:
+        return column.getFloat(index);
+      case DOUBLE:
+        return column.getDouble(index);
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 }
