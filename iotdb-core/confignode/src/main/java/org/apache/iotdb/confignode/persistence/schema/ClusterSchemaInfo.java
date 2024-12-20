@@ -329,7 +329,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
       result.setCount(
           (plan.isTableModel() ? tableModelMTree : treeModelMTree)
-              .getDatabaseNum(patternPath, plan.getScope(), false));
+                  .getDatabaseNum(patternPath, plan.getScope(), false)
+              + ((plan.isTableModel() && !treeDeviceViewTableMap.isEmpty()) ? 1 : 0));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
