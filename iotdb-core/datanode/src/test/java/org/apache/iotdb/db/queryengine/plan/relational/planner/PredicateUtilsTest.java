@@ -40,7 +40,7 @@ public class PredicateUtilsTest {
   @Test
   public void extractGlobalTimePredicateTest() {
     String sql = "SELECT tag1 FROM table1 where time>1 and s1>1";
-    final Metadata metadata = new TestMatadata();
+    final Metadata metadata = new TestMetadata();
     final MPPQueryContext context =
         new MPPQueryContext(
             sql,

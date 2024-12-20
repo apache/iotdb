@@ -90,7 +90,7 @@ public class PlanTester {
       };
 
   public PlanTester() {
-    this(new TestMatadata());
+    this(new TestMetadata());
   }
 
   public PlanTester(Metadata metadata) {

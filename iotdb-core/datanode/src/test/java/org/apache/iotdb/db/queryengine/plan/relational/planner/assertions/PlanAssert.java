@@ -43,7 +43,7 @@ public final class PlanAssert {
   public static void assertPlan(LogicalQueryPlan actual, PlanMatchPattern pattern) {
     assertPlan(
         actual.getContext().getSession(),
-        new TestMatadata(),
+        new TestMetadata(),
         actual.getRootNode(),
         noLookup(),
         pattern);
@@ -58,7 +58,7 @@ public final class PlanAssert {
             IoTDBConstant.ClientVersion.V_1_0,
             "db",
             IClientSession.SqlDialect.TABLE),
-        new TestMatadata(),
+        new TestMetadata(),
         actual,
         noLookup(),
         pattern);

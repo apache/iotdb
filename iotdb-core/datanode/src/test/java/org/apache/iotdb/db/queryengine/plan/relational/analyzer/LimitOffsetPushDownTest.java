@@ -64,7 +64,7 @@ public class LimitOffsetPushDownTest {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
+  Metadata metadata = new TestMetadata();
   String sql;
   Analysis analysis;
   LogicalQueryPlan logicalQueryPlan;

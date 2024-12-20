@@ -64,7 +64,7 @@ import static org.junit.Assert.assertTrue;
 
 public class SortTest {
 
-  static Metadata metadata = new TestMatadata();
+  static Metadata metadata = new TestMetadata();
   String sql;
   Analysis analysis;
   MPPQueryContext context;
