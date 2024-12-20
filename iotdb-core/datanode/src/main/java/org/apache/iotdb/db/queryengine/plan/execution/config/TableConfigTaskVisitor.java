@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersion
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.UpdateTreeViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTask;
@@ -639,6 +640,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final UpdateTreeView node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    return new UpdateTreeViewTask();
   }
 
   @Override
