@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateTreeView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -634,6 +635,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return node.isDetails()
         ? new DescribeTableDetailsTask(databaseTablePair.getLeft(), databaseTablePair.getRight())
         : new DescribeTableTask(databaseTablePair.getLeft(), databaseTablePair.getRight());
+  }
+
+  @Override
+  protected IConfigTask visitUpdateTreeView(
+      final UpdateTreeView node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
   }
 
   @Override

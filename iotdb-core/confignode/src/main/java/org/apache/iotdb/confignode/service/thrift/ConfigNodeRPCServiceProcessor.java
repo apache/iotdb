@@ -1325,4 +1325,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
     return configManager.deleteDevice(req);
   }
+
+  @Override
+  public TSStatus updateTreeView() {
+    return configManager.updateTreeView();
+  }
 }

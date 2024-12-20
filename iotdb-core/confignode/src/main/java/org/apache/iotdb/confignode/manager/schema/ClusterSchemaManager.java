@@ -1125,6 +1125,10 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
   }
 
+  public TSStatus updateTreeView() {
+    return treeDeviceViewUpdater.notifyAndWait();
+  }
+
   // endregion
 
   /**

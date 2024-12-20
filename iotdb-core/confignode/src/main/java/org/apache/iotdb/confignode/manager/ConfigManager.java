@@ -2692,6 +2692,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus updateTreeView() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.updateTreeView()
+        : status;
+  }
+
+  @Override
   public DataSet registerAINode(TAINodeRegisterReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

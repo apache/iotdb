@@ -91,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateTreeView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
@@ -812,6 +813,12 @@ public final class SqlFormatter {
 
       builder.append(formatColumnDefinition(node.getColumn()));
 
+      return null;
+    }
+
+    @Override
+    protected Void visitUpdateTreeView(final UpdateTreeView node, final Integer indent) {
+      builder.append("UPDATE TREE VIEW ");
       return null;
     }
 

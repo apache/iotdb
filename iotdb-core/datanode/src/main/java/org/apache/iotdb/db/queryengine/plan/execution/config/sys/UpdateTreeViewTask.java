@@ -17,40 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
-import java.util.Collections;
-import java.util.List;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import com.google.common.util.concurrent.ListenableFuture;
 
-public class UpdateTreeView extends Statement {
-  public UpdateTreeView(final NodeLocation location) {
-    super(location);
-  }
-
+public class UpdateTreeViewTask implements IConfigTask {
   @Override
-  public List<? extends Node> getChildren() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitUpdateTreeView(this, context);
-  }
-
-  @Override
-  public int hashCode() {
-    return 0;
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    return this == obj || obj != null && getClass() == obj.getClass();
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this).toString();
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.updateTreeView();
   }
 }
