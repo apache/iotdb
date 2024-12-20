@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -1467,7 +1468,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         }
         final TSchemaRegionViewInfo info =
             viewResp.getDeviewViewUpdateMap().get(tableEntry.getKey());
+
         final TsTable table = tableEntry.getValue();
+        final long maxLength = info.getMaxLength();
+        if (maxLength > table.getIdNums()) {
+          for (int i = 0; i < maxLength - table.getIdNums(); ++i) {
+            table.addColumnSchema(
+                new IdColumnSchema(
+                    TreeViewSchema.DEFAULT_ID_PREFIX + (table.getIdNums() + 1), TSDataType.STRING));
+          }
+        } else if (maxLength < table.getIdNums()) {
+          for (int i = 0; i < table.getIdNums() - maxLength; ++i) {
+            table.getIdColumnSchemaList().stream()
+                .filter(schema -> table.getIdColumnOrdinal(schema.getColumnName()) >= maxLength)
+                .forEach(schema -> table.removeColumnSchema(schema.getColumnName()));
+          }
+        }
+
         final Map<String, MeasurementColumnSchema> measurementSchemaMap =
             table.getColumnList().stream()
                 .filter(

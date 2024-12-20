@@ -24,6 +24,7 @@ public class TreeViewSchema {
   public static final String DEVICE_VIEW_SUFFIX = ".device_view";
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_DATABASE = "__tree_database";
+  public static final String DEFAULT_ID_PREFIX = "tag_";
 
   public static boolean isTreeViewDatabase(final String database) {
     return TREE_VIEW_DATABASE.equals(database);

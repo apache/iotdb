@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
@@ -196,15 +195,14 @@ public class TsTable {
   public void removeColumnSchema(final String columnName) {
     readWriteLock.writeLock().lock();
     try {
-      final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
-      if (columnSchema != null
-          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
-      } else if (columnSchema != null) {
-        columnSchemaMap.remove(columnName);
-        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
-          measurementNum--;
-        }
+      final TsTableColumnSchema columnSchema = columnSchemaMap.remove(columnName);
+      if (Objects.isNull(columnSchema)) {
+        return;
+      }
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        idNums--;
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+        measurementNum--;
       }
     } finally {
       readWriteLock.writeLock().unlock();
