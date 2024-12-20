@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -149,13 +152,41 @@ public class TsTable {
     }
   }
 
-  // Currently only supports attribute column
   public void renameColumnSchema(final String oldName, final String newName) {
     readWriteLock.writeLock().lock();
     try {
       // Ensures idempotency
       if (columnSchemaMap.containsKey(oldName)) {
-        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+        final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+        Map<String, String> oldProps = schema.getProps();
+        if (Objects.isNull(oldProps)) {
+          oldProps = new HashMap<>();
+        }
+        oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+        switch (schema.getColumnCategory()) {
+          case ID:
+            columnSchemaMap.put(
+                newName, new IdColumnSchema(newName, schema.getDataType(), oldProps));
+            break;
+          case MEASUREMENT:
+            columnSchemaMap.put(
+                newName,
+                new MeasurementColumnSchema(
+                    newName,
+                    schema.getDataType(),
+                    ((MeasurementColumnSchema) schema).getEncoding(),
+                    ((MeasurementColumnSchema) schema).getCompressor(),
+                    oldProps));
+            break;
+          case ATTRIBUTE:
+            columnSchemaMap.put(
+                newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
+            break;
+          case TIME:
+          default:
+            // Do nothing
+            columnSchemaMap.put(oldName, schema);
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();

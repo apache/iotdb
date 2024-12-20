@@ -41,6 +41,6 @@ public class TreeDeviceViewSchema extends TableSchema {
         .collect(
             Collectors.toMap(
                 ColumnSchema::getName,
-                columnSchema -> columnSchema.getProps().get(TreeViewSchema.ORIGINAL_COLUMN)));
+                columnSchema -> columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME)));
   }
 }

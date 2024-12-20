@@ -979,19 +979,19 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus extendSchemaTemplate(
-      TemplateExtendInfo templateExtendInfo, boolean isGeneratedByPipe) {
+      final TemplateExtendInfo templateExtendInfo, final boolean isGeneratedByPipe) {
     if (templateExtendInfo.getEncodings() != null) {
       for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
         try {
           SchemaUtils.checkDataTypeWithEncoding(
               templateExtendInfo.getDataTypes().get(i), templateExtendInfo.getEncodings().get(i));
-        } catch (MetadataException e) {
+        } catch (final MetadataException e) {
           return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
         }
       }
     }
 
-    TemplateInfoResp resp =
+    final TemplateInfoResp resp =
         clusterSchemaInfo.getTemplate(
             new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()));
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
