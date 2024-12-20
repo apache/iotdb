@@ -156,7 +156,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       tableModelMTree = new ConfigMTree(true);
       templateTable = new TemplateTable();
       templatePreSetTable = new TemplatePreSetTable();
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.error("Can't construct ClusterSchemaInfo", e);
       throw new IOException(e);
     }

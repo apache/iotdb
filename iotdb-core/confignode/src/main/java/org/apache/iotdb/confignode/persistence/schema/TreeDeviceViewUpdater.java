@@ -20,16 +20,19 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
@@ -46,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.manager.ProcedureManager.PROCEDURE_WAIT_RETRY_TIMEOUT;
 import static org.apache.iotdb.confignode.manager.ProcedureManager.PROCEDURE_WAIT_TIME_OUT;
@@ -56,7 +60,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceViewUpdater.class);
   private static final String UPDATE_TIMEOUT_MESSAGE =
       "Timed out to wait for device view update. The procedure is still running.";
-  private final TreeDeviceUpdateTaskExecutor executor;
+  private final ConfigManager configManager;
   private final AtomicLong executedRounds = new AtomicLong(0);
   private TDeviceViewResp currentResp;
   private volatile TSStatus lastStatus = StatusUtils.OK;
@@ -67,7 +71,7 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.TREE_DEVICE_VIEW_UPDATER.getName()),
         ConfigNodeDescriptor.getInstance().getConf().getTreeDeviceViewUpdateIntervalInMs());
-    this.executor = new TreeDeviceUpdateTaskExecutor(configManager, Collections.emptyMap());
+    this.configManager = configManager;
   }
 
   @Override
@@ -76,8 +80,20 @@ public class TreeDeviceViewUpdater extends AbstractPeriodicalServiceWithAdvance 
       lastStatus = StatusUtils.OK;
     }
     hasError = false;
-    executor.execute();
+    new TreeDeviceUpdateTaskExecutor(configManager, getLatestSchemaRegionMap()).execute();
     executedRounds.incrementAndGet();
+  }
+
+  private Map<TConsensusGroupId, TRegionReplicaSet> getLatestSchemaRegionMap() {
+    final PartitionManager partitionManager = configManager.getPartitionManager();
+    return partitionManager
+        .getAllReplicaSetsMap(TConsensusGroupType.SchemaRegion)
+        .entrySet()
+        .stream()
+        .filter(
+            entry ->
+                !PathUtils.isTableModelDatabase(partitionManager.getRegionDatabase(entry.getKey())))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   public TSStatus notifyAndWait() {
