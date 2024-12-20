@@ -47,6 +47,7 @@ import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -316,7 +317,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -346,7 +349,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -377,7 +382,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format("Failed to handshake with subscription provider %s", provider));
+          String.format("Failed to handshake with subscription provider %s", provider), e);
     }
 
     // update consumer id and consumer group id if not exist
@@ -1407,13 +1412,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder consumerId(final String consumerId) {
-      this.consumerId = IdentifierUtils.parseIdentifier(consumerId);
+    public Builder consumerId(@Nullable final String consumerId) {
+      if (Objects.isNull(consumerId)) {
+        return this;
+      }
+      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
       return this;
     }
 
-    public Builder consumerGroupId(final String consumerGroupId) {
-      this.consumerGroupId = IdentifierUtils.parseIdentifier(consumerGroupId);
+    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
+      if (Objects.isNull(consumerGroupId)) {
+        return this;
+      }
+      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
       return this;
     }
 

@@ -151,7 +151,6 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         (1L + this.measurementCount)
             * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.allSensors = allSensors;
-    // this.allSensors = new HashSet<>(measurementColumnNames);
     this.measurementSchemas = measurementSchemas;
     this.measurementColumnTSDataTypes =
         measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());

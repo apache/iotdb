@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
@@ -342,9 +343,9 @@ public class AnalyzeUtils {
   }
 
   @SuppressWarnings("java:S3655") // optional is checked
-  private static void validateSchema(Delete node, MPPQueryContext queryContext) {
-    String tableName = node.getTable().getName().getSuffix();
-    String databaseName;
+  private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
+    final String tableName = node.getTable().getName().getSuffix();
+    final String databaseName;
     if (node.getTable().getName().getPrefix().isPresent()) {
       databaseName = node.getTable().getName().getPrefix().get().toString();
     } else if (queryContext.getDatabaseName().isPresent()) {
@@ -352,9 +353,10 @@ public class AnalyzeUtils {
     } else {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);
 
-    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
     if (table == null) {
       throw new SemanticException("Table " + tableName + " not found");
     }

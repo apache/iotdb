@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -32,13 +34,12 @@ import org.apache.tsfile.utils.BytesUtils;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
-
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
-  public static Iterator<TsBlock> getSupplier(String tableName, List<TSDataType> dataTypes) {
-    if (tableName.equals(QUERIES.getSchemaTableName())) {
+  public static Iterator<TsBlock> getSupplier(
+      final String tableName, final List<TSDataType> dataTypes) {
+    if (tableName.equals(InformationSchema.QUERIES)) {
       return new Iterator<TsBlock>() {
         private final TsBlockBuilder resultBuilder = new TsBlockBuilder(dataTypes);
         private final ColumnBuilder[] columnBuilders = resultBuilder.getValueColumnBuilders();
