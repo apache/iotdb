@@ -1220,6 +1220,13 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (Objects.isNull(originalTable.getColumnSchema(oldName))) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
+          null);
+    }
+
     if (Objects.nonNull(originalTable.getColumnSchema(newName))) {
       return new Pair<>(
           RpcUtils.getStatus(
@@ -1229,14 +1236,6 @@ public class ClusterSchemaManager {
     }
 
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
-
-    final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
-    if (Objects.isNull(schema)) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
-          null);
-    }
 
     expandedTable.renameColumnSchema(oldName, newName);
 
@@ -1253,6 +1252,14 @@ public class ClusterSchemaManager {
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
               String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    if (getTableIfExists(database, newName).isPresent()) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_ALREADY_EXISTS,
+              String.format("Table '%s.%s' already exists.", database, newName)),
           null);
     }
 
