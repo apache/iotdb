@@ -206,7 +206,6 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public void deleteGlobalTsFileCountGauge(String orderStr, String database, String regionId) {
-    // the region may contains no tsfile
     AbstractMetricService metricService = this.metricService.get();
     if (metricService == null) {
       return;
