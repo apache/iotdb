@@ -568,10 +568,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
+      final String database = req.getFullPath();
       // req.getFullPath() is a database path
-      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
+      ClusterTemplateManager.getInstance().invalid(database);
       // clear table related cache
-      final String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
       tableDeviceSchemaCache.invalidate(database);
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());

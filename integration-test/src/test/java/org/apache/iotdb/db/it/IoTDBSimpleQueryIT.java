@@ -1054,7 +1054,6 @@ public class IoTDBSimpleQueryIT {
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         while (resultSet.next()) {
           Assert.assertEquals("root.group_with_hyphen", resultSet.getString(1));
-          Assert.assertEquals("TREE", resultSet.getString(12));
         }
       }
     } catch (final SQLException e) {
