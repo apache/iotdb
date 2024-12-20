@@ -1228,6 +1228,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
+      if (TreeViewSchema.isTreeViewDatabase(plan.getDatabase())) {
+        return new ShowTableResp(
+            StatusUtils.OK,
+            treeDeviceViewTableMap.values().stream()
+                .map(tsTable -> new TTableInfo(tsTable.getTableName(), null))
+                .collect(Collectors.toList()));
+      }
       return new ShowTableResp(
           StatusUtils.OK,
           plan.isDetails()

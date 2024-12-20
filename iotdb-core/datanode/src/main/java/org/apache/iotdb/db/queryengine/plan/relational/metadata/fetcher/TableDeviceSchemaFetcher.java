@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -181,7 +182,7 @@ public class TableDeviceSchemaFetcher {
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
-    final boolean isTreeViewQuery = TreeViewSchemaUtils.isTreeViewDatabase(database);
+    final boolean isTreeViewQuery = TreeViewSchema.isTreeViewDatabase(database);
     final ShowDevice statement =
         new ShowDevice(
             isTreeViewQuery ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance) : database,

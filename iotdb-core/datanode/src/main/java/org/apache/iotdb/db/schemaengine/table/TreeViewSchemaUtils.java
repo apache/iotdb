@@ -41,7 +41,7 @@ import static org.apache.iotdb.commons.schema.table.TreeViewSchema.TREE_VIEW_DAT
 public class TreeViewSchemaUtils {
 
   public static void checkDBNameInWrite(final String dbName) {
-    if (isTreeViewDatabase(dbName)) {
+    if (TreeViewSchema.isTreeViewDatabase(dbName)) {
       throw new SemanticException(
           new IoTDBException(
               "The database 'tree_view_db' only accepts rename table and rename column for write requests",
@@ -50,7 +50,7 @@ public class TreeViewSchemaUtils {
   }
 
   public static void checkDBNameInRename(final String dbName) {
-    if (!isTreeViewDatabase(dbName)) {
+    if (!TreeViewSchema.isTreeViewDatabase(dbName)) {
       throw new SemanticException(
           new IoTDBException(
               "Renaming table and column only supports database 'tree_view_db'",
@@ -73,10 +73,6 @@ public class TreeViewSchemaUtils {
       builder.getColumnBuilder(6).appendNull();
     }
     builder.declarePosition();
-  }
-
-  public static boolean isTreeViewDatabase(final String database) {
-    return TREE_VIEW_DATABASE.equals(database);
   }
 
   public static String getOriginalDatabase(final TsTable table) {

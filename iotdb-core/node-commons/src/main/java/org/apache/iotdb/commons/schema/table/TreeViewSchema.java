@@ -25,6 +25,10 @@ public class TreeViewSchema {
   public static final String ORIGINAL_COLUMN = "__original_column";
   public static final String TREE_DATABASE = "__tree_database";
 
+  public static boolean isTreeViewDatabase(final String database) {
+    return TREE_VIEW_DATABASE.equals(database);
+  }
+
   private TreeViewSchema() {
     // Private constructor
   }

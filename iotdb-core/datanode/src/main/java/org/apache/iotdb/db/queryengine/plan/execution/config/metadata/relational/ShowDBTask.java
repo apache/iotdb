@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -91,7 +92,7 @@ public class ShowDBTask implements IConfigTask {
       if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
         continue;
       }
-      if (TreeViewSchemaUtils.isTreeViewDatabase(dbName)) {
+      if (TreeViewSchema.isTreeViewDatabase(dbName)) {
         TreeViewSchemaUtils.buildDatabaseTsBlock(builder, false);
         continue;
       }
@@ -135,7 +136,7 @@ public class ShowDBTask implements IConfigTask {
       if (!canSeenDB.test(dbName)) {
         continue;
       }
-      if (TreeViewSchemaUtils.isTreeViewDatabase(dbName)) {
+      if (TreeViewSchema.isTreeViewDatabase(dbName)) {
         TreeViewSchemaUtils.buildDatabaseTsBlock(builder, true);
         continue;
       }

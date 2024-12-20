@@ -52,6 +52,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -255,7 +256,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3289,10 +3289,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       if (isDetails) {
         ShowTablesDetailsTask.buildTsBlock(
-            resp.getTableInfoList(), future, TreeViewSchemaUtils.isTreeViewDatabase(database));
+            resp.getTableInfoList(), future, TreeViewSchema.isTreeViewDatabase(database));
       } else {
         ShowTablesTask.buildTsBlock(
-            resp.getTableInfoList(), future, TreeViewSchemaUtils.isTreeViewDatabase(database));
+            resp.getTableInfoList(), future, TreeViewSchema.isTreeViewDatabase(database));
       }
     } catch (final Exception e) {
       future.setException(e);
