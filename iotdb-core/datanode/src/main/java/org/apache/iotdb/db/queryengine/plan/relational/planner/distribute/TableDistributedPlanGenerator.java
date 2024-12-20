@@ -508,8 +508,9 @@ public class TableDistributedPlanGenerator
     final List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry : tableScanNodeMap.entrySet()) {
-      DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
+    for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
+        tableScanNodeMap.entrySet()) {
+      final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null

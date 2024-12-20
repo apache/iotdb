@@ -273,10 +273,10 @@ public class TestMatadata implements Metadata {
 
   @Override
   public List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context) {
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
     if (tableName.getDatabaseName().equals(TREE_VIEW_DB)) {
       if (expressionList.isEmpty()) {
         return ImmutableList.of(
