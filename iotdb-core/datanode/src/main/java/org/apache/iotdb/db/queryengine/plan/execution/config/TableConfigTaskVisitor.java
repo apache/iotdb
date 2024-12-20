@@ -431,6 +431,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
+    TreeViewSchemaUtils.checkDBNameInRename(databaseTablePair.getLeft());
 
     final String oldName = databaseTablePair.getRight();
     final String newName = node.getTarget().getValue();
@@ -470,6 +471,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    TreeViewSchemaUtils.checkDBNameInRename(databaseTablePair.getLeft());
 
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();

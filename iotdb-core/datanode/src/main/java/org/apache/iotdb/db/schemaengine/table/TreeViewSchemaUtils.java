@@ -44,6 +44,15 @@ public class TreeViewSchemaUtils {
     }
   }
 
+  public static void checkDBNameInRename(final String dbName) {
+    if (!isTreeViewDatabase(dbName)) {
+      throw new SemanticException(
+          new IoTDBException(
+              "Renaming table and column only supports database 'tree_view_db'",
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+    }
+  }
+
   public static boolean isTreeViewDatabase(final String database) {
     return TreeViewSchema.TREE_VIEW_DATABASE.equals(database);
   }
