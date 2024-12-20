@@ -55,7 +55,7 @@ public class IoTDBRestartIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
+    // EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -66,7 +66,7 @@ public class IoTDBRestartIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
+    // EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()

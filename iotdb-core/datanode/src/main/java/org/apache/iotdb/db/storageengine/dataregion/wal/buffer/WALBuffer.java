@@ -531,8 +531,7 @@ public class WALBuffer extends AbstractWALBuffer {
       this.info = info == null ? new SerializeInfo() : info;
     }
 
-    @Override
-    public void run() {
+    private void runInternal() {
       final long startTime = System.nanoTime();
 
       makeMemTableCheckpoints();
@@ -616,6 +615,15 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);
+    }
+
+    @Override
+    public void run() {
+      try {
+        runInternal();
+      } catch (Exception e) {
+        logger.warn("Unexpected exception in sync wal buffer task.", e);
+      }
     }
 
     private void makeMemTableCheckpoints() {
@@ -709,6 +717,7 @@ public class WALBuffer extends AbstractWALBuffer {
     MmapUtil.clean(workingBuffer);
     MmapUtil.clean(syncingBuffer);
     MmapUtil.clean(compressedByteBuffer);
+    logger.info("WAL Buffer {} is closed", this);
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
