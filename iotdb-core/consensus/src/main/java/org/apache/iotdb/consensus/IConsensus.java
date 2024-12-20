@@ -153,7 +153,7 @@ public interface IConsensus {
    *
    * @param correctPeerList The correct consensus group member list
    */
-  void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList);
+  void recordCorrectPeerListBeforeStarting(Map<ConsensusGroupId, List<Peer>> correctPeerList);
 
   /**
    * Reset the peer list of the corresponding consensus group. Currently only used in the automatic

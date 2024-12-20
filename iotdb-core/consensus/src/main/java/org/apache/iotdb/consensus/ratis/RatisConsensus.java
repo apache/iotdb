@@ -612,7 +612,7 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+  public void recordCorrectPeerListBeforeStarting(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
     this.correctPeerListBeforeStart = correctPeerList;
   }
 

@@ -646,9 +646,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
     }
     DataRegionConsensusImpl.getInstance()
-        .recordCorrectPeerListBeforeStart(correctPeerListForDataRegion);
+        .recordCorrectPeerListBeforeStarting(correctPeerListForDataRegion);
     SchemaRegionConsensusImpl.getInstance()
-        .recordCorrectPeerListBeforeStart(correctPeerListForSchemaRegion);
+        .recordCorrectPeerListBeforeStarting(correctPeerListForSchemaRegion);
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
