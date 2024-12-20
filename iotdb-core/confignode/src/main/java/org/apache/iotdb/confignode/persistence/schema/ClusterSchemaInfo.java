@@ -30,6 +30,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -87,9 +90,12 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionViewInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -109,6 +115,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1447,6 +1454,52 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void updateTreeViewTables(final TDeviceViewResp viewResp) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      for (final Map.Entry<String, TsTable> tableEntry : treeDeviceViewTableMap.entrySet()) {
+        if (!viewResp.getDeviewViewUpdateMap().containsKey(tableEntry.getKey())) {
+          continue;
+        }
+        final TSchemaRegionViewInfo info =
+            viewResp.getDeviewViewUpdateMap().get(tableEntry.getKey());
+        final TsTable table = tableEntry.getValue();
+        final Map<String, TsTableColumnSchema> measurementSchemaMap =
+            table.getColumnList().stream()
+                .filter(
+                    columnSchema ->
+                        columnSchema.getColumnCategory() == TsTableColumnCategory.MEASUREMENT)
+                .collect(
+                    Collectors.toMap(
+                        columnSchema ->
+                            Objects.isNull(columnSchema.getProps())
+                                    || !columnSchema
+                                        .getProps()
+                                        .containsKey(TreeViewSchema.ORIGINAL_NAME)
+                                ? columnSchema.getColumnName()
+                                : columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME),
+                        Function.identity()));
+        info.getMeasurementsDataTypeCountMap()
+            .forEach(
+                (measurement, countMap) -> {
+                  final TSDataType newType =
+                      TSDataType.getTsDataType(
+                          countMap.entrySet().stream()
+                              .reduce(
+                                  (entry1, entry2) ->
+                                      entry1.getValue() > entry2.getValue() ? entry1 : entry2)
+                              .orElse(TSDataType.UNKNOWN.serialize())
+                              .getKey());
+                  if (!measurementSchemaMap.containsKey(measurement)) {
+                    table.addColumnSchema(new MeasurementColumnSchema(measurement, newType));
+                  }
+                });
+      }
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
