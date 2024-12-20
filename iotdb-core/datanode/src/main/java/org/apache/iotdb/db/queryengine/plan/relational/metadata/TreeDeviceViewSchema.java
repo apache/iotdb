@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TreeDeviceViewSchema extends TableSchema {
@@ -36,8 +37,13 @@ public class TreeDeviceViewSchema extends TableSchema {
     return props.get(TreeViewSchema.TREE_DATABASE);
   }
 
-  public Map<String, String> getMeasurementColumnNameMap() {
+  // Notice: This will only return the renamed columns.
+  public Map<String, String> getColumn2OriginalNameMap() {
     return columns.stream()
+        .filter(
+            columnSchema ->
+                Objects.nonNull(columnSchema.getProps())
+                    && columnSchema.getProps().containsKey(TreeViewSchema.ORIGINAL_NAME))
         .collect(
             Collectors.toMap(
                 ColumnSchema::getName,
