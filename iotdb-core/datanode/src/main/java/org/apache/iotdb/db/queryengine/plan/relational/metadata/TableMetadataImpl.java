@@ -567,6 +567,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:
+      case SqlConstant.COUNT_IF:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
@@ -615,6 +616,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
