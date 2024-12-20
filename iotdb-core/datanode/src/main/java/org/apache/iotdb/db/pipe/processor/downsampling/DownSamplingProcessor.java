@@ -113,7 +113,6 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
             "%s must be > 0, but got %s",
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY, memoryLimitInBytes),
         memoryLimitInBytes);
-    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   public void validateTimeInterval(final PipeParameterValidator validator) throws Exception {
@@ -177,6 +176,7 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
                             .getRegionId()))
                 .getDatabaseName()
             + TsFileConstant.PATH_SEPARATOR;
+    initPathLastObjectCache(memoryLimitInBytes);
   }
 
   protected abstract void initPathLastObjectCache(long memoryLimitInBytes);
