@@ -70,13 +70,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -183,25 +181,27 @@ public class PipeConsensus implements IConsensus {
         try {
           future.get();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+          throw new RuntimeException(e);
         }
-        BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
-          try {
-            resetPeerList(consensusGroupId, peers);
-          } catch (ConsensusGroupNotExistException ignore) {
+        BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+            (consensusGroupId, peers) -> {
+              try {
+                resetPeerList(consensusGroupId, peers);
+              } catch (ConsensusGroupNotExistException ignore) {
 
-          } catch (Exception e) {
-            LOGGER.warn("Failed to reset peer list while start", e);
-          }
-        };
+              } catch (Exception e) {
+                LOGGER.warn("Failed to reset peer list while start", e);
+              }
+            };
         // make peers which are in list correct
         correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
         // clear peers which are not in the list
         stateMachineMap.keySet().stream()
-                .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
-                .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+            .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+            .forEach(
+                consensusGroupId ->
+                    resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
       }
-
     }
   }
 

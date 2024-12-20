@@ -645,8 +645,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         correctPeerListForSchemaRegion.put(consensusGroupId, peerList);
       }
     }
-    DataRegionConsensusImpl.getInstance().recordCorrectPeerListBeforeStart(correctPeerListForDataRegion);
-    SchemaRegionConsensusImpl.getInstance().recordCorrectPeerListBeforeStart(correctPeerListForSchemaRegion);
+    DataRegionConsensusImpl.getInstance()
+        .recordCorrectPeerListBeforeStart(correctPeerListForDataRegion);
+    SchemaRegionConsensusImpl.getInstance()
+        .recordCorrectPeerListBeforeStart(correctPeerListForSchemaRegion);
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {

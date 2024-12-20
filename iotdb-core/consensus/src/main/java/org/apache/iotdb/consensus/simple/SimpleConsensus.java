@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -213,7 +212,8 @@ class SimpleConsensus implements IConsensus {
 
   @Override
   public void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    throw new UnsupportedOperationException("SimpleConsensus does not support record correct peer list");
+    throw new UnsupportedOperationException(
+        "SimpleConsensus does not support record correct peer list");
   }
 
   @Override

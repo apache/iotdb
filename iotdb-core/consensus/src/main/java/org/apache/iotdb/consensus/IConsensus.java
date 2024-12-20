@@ -148,9 +148,10 @@ public interface IConsensus {
 
   /**
    * Record the correct peer list (likely got from the ConfigNode) for future use in resetPeerList.
-   * Only use this method if necessary.
-   * If it is called, it should be called before {@link #start()}.
-   * @param correctPeerList
+   * Only use this method if necessary. If it is called, it should be called before {@link
+   * #start()}.
+   *
+   * @param correctPeerList The correct consensus group member list
    */
   void recordCorrectPeerListBeforeStart(Map<ConsensusGroupId, List<Peer>> correctPeerList);
 

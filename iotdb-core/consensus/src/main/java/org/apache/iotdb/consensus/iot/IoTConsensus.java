@@ -72,7 +72,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -185,21 +184,24 @@ public class IoTConsensus implements IConsensus {
       }
     }
     if (correctPeerListBeforeStart != null) {
-      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
-        try {
-          resetPeerList(consensusGroupId, peers);
-        } catch (ConsensusGroupNotExistException ignore) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+          (consensusGroupId, peers) -> {
+            try {
+              resetPeerList(consensusGroupId, peers);
+            } catch (ConsensusGroupNotExistException ignore) {
 
-        } catch (Exception e) {
-          logger.warn("Failed to reset peer list while start", e);
-        }
-      };
+            } catch (Exception e) {
+              logger.warn("Failed to reset peer list while start", e);
+            }
+          };
       // make peers which are in list correct
       correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
       // clear peers which are not in the list
       stateMachineMap.keySet().stream()
-              .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
-              .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+          .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          .forEach(
+              consensusGroupId ->
+                  resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
     }
     stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }

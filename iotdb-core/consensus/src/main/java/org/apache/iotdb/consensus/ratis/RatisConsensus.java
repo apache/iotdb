@@ -94,15 +94,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -231,7 +227,6 @@ class RatisConsensus implements IConsensus {
                                 raftGroupId,
                                 this::onLeaderChanged))
                     .build());
-
   }
 
   @Override
@@ -241,21 +236,24 @@ class RatisConsensus implements IConsensus {
     registerAndStartDiskGuardian();
 
     if (correctPeerListBeforeStart != null) {
-      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow = (consensusGroupId, peers) -> {
-        try {
-          resetPeerList(consensusGroupId, peers);
-        } catch (ConsensusGroupNotExistException ignore) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+          (consensusGroupId, peers) -> {
+            try {
+              resetPeerList(consensusGroupId, peers);
+            } catch (ConsensusGroupNotExistException ignore) {
 
-        } catch (Exception e) {
-          logger.warn("Failed to reset peer list while start", e);
-        }
-      };
+            } catch (Exception e) {
+              logger.warn("Failed to reset peer list while start", e);
+            }
+          };
       // make peers which are in list correct
       correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
       // clear peers which are not in the list
-      stateMachineMap.keySet().stream()
-              .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
-              .forEach(consensusGroupId -> resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+      getAllConsensusGroupIds().stream()
+          .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          .forEach(
+              consensusGroupId ->
+                  resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
     }
   }
 
@@ -621,7 +619,6 @@ class RatisConsensus implements IConsensus {
   @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
