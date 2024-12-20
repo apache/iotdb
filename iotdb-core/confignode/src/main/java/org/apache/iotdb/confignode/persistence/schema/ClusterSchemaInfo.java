@@ -108,6 +108,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -133,7 +134,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock databaseReadWriteLock;
   private final ConfigMTree treeModelMTree;
   private final ConfigMTree tableModelMTree;
-  private final Map<String, TsTable> treeDeviceViewTableMap = new HashMap<>();
+  private final Map<String, TsTable> treeDeviceViewTableMap = new ConcurrentHashMap<>();
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
@@ -175,8 +176,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema databaseSchema = plan.getSchema();
       final PartialPath partialPathName = getQualifiedDatabasePartialPath(databaseSchema.getName());
 
-      final ConfigMTree mTree =
-          plan.getSchema().isIsTableModel() ? tableModelMTree : treeModelMTree;
+      final ConfigMTree mTree = databaseSchema.isIsTableModel() ? tableModelMTree : treeModelMTree;
       mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
@@ -185,6 +185,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(databaseSchema);
 
+      // Tree view for table model
+      if (!plan.getSchema().isIsTableModel()) {
+        final TsTable databaseTable =
+            new TsTable(databaseSchema.getName() + TreeViewSchema.DEVICE_VIEW_SUFFIX);
+        databaseTable.addProp(TreeViewSchema.TREE_DATABASE, databaseSchema.getName());
+        treeDeviceViewTableMap.put(databaseSchema.getName(), databaseTable);
+      }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -493,12 +500,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final List<String> results = new ArrayList<>();
       if (!Boolean.TRUE.equals(isTableModel)) {
-        treeModelMTree.getAllDatabasePaths(isTableModel).stream()
+        treeModelMTree.getAllDatabasePaths().stream()
             .map(PartialPath::getFullPath)
             .forEach(results::add);
       }
       if (!Boolean.FALSE.equals(isTableModel)) {
-        tableModelMTree.getAllDatabasePaths(isTableModel).stream()
+        tableModelMTree.getAllDatabasePaths().stream()
             .map(path -> path.getNodes()[1])
             .forEach(results::add);
       }
