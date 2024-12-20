@@ -132,11 +132,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock databaseReadWriteLock;
   private final ConfigMTree treeModelMTree;
   private final ConfigMTree tableModelMTree;
+  private final Map<String, TsTable> treeDeviceViewTableMap = new HashMap<>();
 
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
-
-  private final String ERROR_NAME = "Error Database name";
+  private static final String ERROR_NAME = "Error Database name";
 
   private final TemplateTable templateTable;
 
