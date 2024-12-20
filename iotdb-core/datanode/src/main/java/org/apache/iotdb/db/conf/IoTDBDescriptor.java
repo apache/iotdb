@@ -894,6 +894,14 @@ public class IoTDBDescriptor {
                         Integer.toString(conf.getMinCrossCompactionUnseqFileLevel())))
                 .map(String::trim)
                 .orElse(Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
+    conf.setMinInsertionCompactionUnseqFileSizeInByte(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "min_insertion_compaction_unseq_file_size_in_byte",
+                        Long.toString(conf.getMinInsertionCompactionUnseqFileSizeInByte())))
+                .map(String::trim)
+                .orElse(Long.toString(conf.getMinInsertionCompactionUnseqFileSizeInByte()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -1918,6 +1926,24 @@ public class IoTDBDescriptor {
                         "min_cross_compaction_unseq_file_level"))));
     configModified |=
         minCrossCompactionCandidateFileNum != conf.getMinCrossCompactionUnseqFileLevel();
+
+    // update min_insertion_compaction_unseq_file_size_in_byte
+    long minInsertionCompactionUnseqFileSizeInByte =
+        conf.getMinInsertionCompactionUnseqFileSizeInByte();
+    conf.setMinInsertionCompactionUnseqFileSizeInByte(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "min_insertion_compaction_unseq_file_size_in_byte",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "min_insertion_compaction_unseq_file_size_in_byte")))
+                .map(String::trim)
+                .orElse(
+                    ConfigurationFileUtils.getConfigurationDefaultValue(
+                        "min_insertion_compaction_unseq_file_size_in_byte"))));
+    configModified |=
+        minInsertionCompactionUnseqFileSizeInByte
+            != conf.getMinInsertionCompactionUnseqFileSizeInByte();
 
     // update inner_compaction_task_selection_disk_redundancy
     double innerCompactionTaskSelectionDiskRedundancy =

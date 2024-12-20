@@ -20,6 +20,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -63,14 +65,22 @@ import java.util.concurrent.Phaser;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 
 public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompactionTest {
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private long minUnseqFileSizeForInsertionCompactionTask;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    minUnseqFileSizeForInsertionCompactionTask =
+        config.getMinInsertionCompactionUnseqFileSizeInByte();
+    config.setMinInsertionCompactionUnseqFileSizeInByte(0);
     super.setUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    config.setMinInsertionCompactionUnseqFileSizeInByte(minUnseqFileSizeForInsertionCompactionTask);
     super.tearDown();
   }
 

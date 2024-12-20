@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -63,23 +64,26 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       new FixedPriorityBlockingQueue<>(50, new DefaultCompactionTaskComparatorImpl());
   private final CompactionWorker worker = new CompactionWorker(0, candidateCompactionTaskQueue);
 
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private boolean enableInsertionCrossSpaceCompaction;
+  private long minUnseqFileSizeForInsertionCompactionTask;
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    enableInsertionCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    enableInsertionCrossSpaceCompaction = config.isEnableCrossSpaceCompaction();
+    minUnseqFileSizeForInsertionCompactionTask =
+        config.getMinInsertionCompactionUnseqFileSizeInByte();
+    config.setEnableCrossSpaceCompaction(true);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(0);
     TsFileResourceManager.getInstance().clear();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
+    config.setEnableCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(minUnseqFileSizeForInsertionCompactionTask);
     super.tearDown();
     TsFileResourceManager.getInstance().clear();
   }
@@ -308,6 +312,27 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(
         tsFileManager.size(true) + tsFileManager.size(false),
         TsFileResourceManager.getInstance().getPriorityQueueSize());
+  }
+
+  @Test
+  public void test6() throws IOException, InterruptedException {
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    config.setMinInsertionCompactionUnseqFileSizeInByte(unseqResource1.getTsFileSize() + 1);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
+    unseqResources.add(unseqResource1);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    Assert.assertEquals(0, tasks.size());
   }
 
   @Test
