@@ -1220,9 +1220,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus renameTable(final RenameTablePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
-      treeDeviceViewTableMap.values().stream()
-          .filter(table -> table.getTableName().equals(plan.getTableName()))
-          .findAny()
+      getTreeViewTable(plan.getTableName())
           .orElseThrow(() -> new TableNotExistsException(plan.getDatabase(), plan.getTableName()))
           .renameTable(plan.getNewName());
       return RpcUtils.SUCCESS_STATUS;
@@ -1308,9 +1306,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       if (TreeViewSchema.isTreeViewDatabase(plan.getDatabase())) {
         return new DescTableResp(
             StatusUtils.OK,
-            treeDeviceViewTableMap.values().stream()
-                .filter(table -> table.getTableName().equals(plan.getTableName()))
-                .findAny()
+            getTreeViewTable(plan.getTableName())
                 .orElseThrow(
                     () -> new TableNotExistsException(plan.getDatabase(), plan.getTableName())),
             Collections.emptySet());
@@ -1357,7 +1353,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
+      return TreeViewSchema.isTreeViewDatabase(database)
+          ? getTreeViewTable(tableName)
+          : tableModelMTree.getTableIfExists(getQualifiedDatabasePartialPath(database), tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1452,6 +1450,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
+  }
+
+  private Optional<TsTable> getTreeViewTable(final String tableName) {
+    return treeDeviceViewTableMap.values().stream()
+        .filter(table -> table.getTableName().equals(table))
+        .findAny();
   }
 
   // endregion
