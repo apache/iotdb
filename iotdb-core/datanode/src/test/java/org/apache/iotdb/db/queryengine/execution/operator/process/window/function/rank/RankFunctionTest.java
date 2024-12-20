@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.tsfile.block.column.Column;
@@ -25,7 +26,7 @@ public class RankFunctionTest {
 
   @Test
   public void testRankFunction() {
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     RankFunction function = new RankFunction();
     List<Integer> sortedColumns = Collections.singletonList(0);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, sortedColumns);

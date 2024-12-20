@@ -33,8 +33,7 @@ public class RangeFrame implements Frame {
       int partitionStart,
       int partitionEnd,
       List<ColumnList> columns,
-      RowComparator comparator,
-      int initialEnd) {
+      RowComparator comparator) {
     this.frameInfo = frameInfo;
     // Only one sort key is allowed in range frame
     assert columns.size() == 1;

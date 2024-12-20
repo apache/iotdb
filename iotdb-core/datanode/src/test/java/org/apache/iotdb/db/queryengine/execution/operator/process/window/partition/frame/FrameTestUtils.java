@@ -4,18 +4,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.C
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class FrameTestUtils {
   private final List<ColumnList> sortedColumns;
@@ -94,25 +88,12 @@ public class FrameTestUtils {
     Frame frame;
     switch (frameInfo.getFrameType()) {
       case RANGE:
-        if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-          frame =
-              new RangeFrame(
-                  frameInfo,
-                  partitionStart,
-                  partitionEnd,
-                  sortedColumns,
-                  peerGroupComparator,
-                  partitionEnd - partitionStart - 1);
-        } else {
-          frame =
-              new RangeFrame(
-                  frameInfo,
-                  partitionStart,
-                  partitionEnd,
-                  sortedColumns,
-                  peerGroupComparator,
-                  peerGroupEnd - partitionStart - 1);
-        }
+        frame = new RangeFrame(
+            frameInfo,
+            partitionStart,
+            partitionEnd,
+            sortedColumns,
+            peerGroupComparator);
         break;
       case ROWS:
         frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
@@ -133,36 +114,5 @@ public class FrameTestUtils {
     }
 
     return frame;
-  }
-
-  public static TsBlock createTsBlockWithInts(int[] inputs) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int input : inputs) {
-      columnBuilders[0].writeInt(input);
-      tsBlockBuilder.declarePosition();
-    }
-
-    return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
-  }
-
-  public static TsBlock createTsBlockWithIntsAndNulls(int[] inputs) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int input : inputs) {
-      if (input >= 0) {
-        columnBuilders[0].writeInt(input);
-      } else {
-        // Mimic null value
-        columnBuilders[0].appendNull();
-      }
-      tsBlockBuilder.declarePosition();
-    }
-
-    return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(
-            TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

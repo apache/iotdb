@@ -1,8 +1,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -28,7 +28,7 @@ public class LagFunctionTest {
   public void testLagFunctionIgnoreNullWithoutDefault() {
     int[] expected = {-1, -1, -1, -1, 0, 1, 1, 2, 3, 3, 4, 5, 5, 5, 5, 5};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     LagFunction function = new LagFunction(0, 2, null, true);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -56,7 +56,7 @@ public class LagFunctionTest {
   public void testLagFunctionIgnoreNullWithDefault() {
     int[] expected = {10, 10, 10, 10, 0, 1, 1, 2, 3, 3, 4, 5, 5, 5, 5, 5};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     LagFunction function = new LagFunction(0, 2, 10, true);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -80,7 +80,7 @@ public class LagFunctionTest {
   public void testLagFunctionNotIgnoreNullWithoutDefault() {
     int[] expected = {-1, -1, 0, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     LagFunction function = new LagFunction(0, 2, null, false);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -108,7 +108,7 @@ public class LagFunctionTest {
   public void testLagFunctionNotIgnoreNullWithDefault() {
     int[] expected = {10, 10, 0, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     LagFunction function = new LagFunction(0, 2, 10, false);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 

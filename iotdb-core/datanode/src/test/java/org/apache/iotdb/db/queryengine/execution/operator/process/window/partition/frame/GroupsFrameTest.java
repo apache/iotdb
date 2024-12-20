@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
@@ -13,7 +14,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testUnboundPrecedingAndPreceding() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.PRECEDING, 1);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -33,7 +34,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testUnboundPrecedingAndCurrentRow() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.CURRENT_ROW);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -53,7 +54,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testUnboundPrecedingAndFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.FOLLOWING, 1);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -73,7 +74,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testUnboundPrecedingAndUnboundFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -93,7 +94,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testPrecedingAndPreceding() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.PRECEDING, 1);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -113,7 +114,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testPrecedingAndCurrentRow() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.PRECEDING, 1, FrameInfo.FrameBoundType.CURRENT_ROW);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -133,7 +134,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testPrecedingAndFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.PRECEDING, 1, FrameInfo.FrameBoundType.FOLLOWING, 1);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -153,7 +154,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testPrecedingAndUnboundFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.PRECEDING, 1, FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -173,7 +174,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testCurrentRowAndCurrentRow() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.CURRENT_ROW, FrameInfo.FrameBoundType.CURRENT_ROW);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -193,7 +194,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testCurrentRowAndFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.CURRENT_ROW,  FrameInfo.FrameBoundType.FOLLOWING, 1);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -213,7 +214,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testCurrentRowAndUnboundFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.CURRENT_ROW, FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -233,7 +234,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testFollowingAndFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.FOLLOWING, 1, FrameInfo.FrameBoundType.FOLLOWING, 2);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
     utils.processAllRows();
@@ -253,7 +254,7 @@ public class GroupsFrameTest {
 
   @Test
   public void testFollowingAndUnboundFollowing() {
-    TsBlock tsBlock = FrameTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.GROUPS, FrameInfo.FrameBoundType.FOLLOWING, 1, FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING);
 
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);

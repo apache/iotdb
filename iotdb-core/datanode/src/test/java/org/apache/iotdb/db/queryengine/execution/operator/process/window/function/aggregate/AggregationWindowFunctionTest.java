@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
@@ -29,7 +30,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
     double[] expected = {0, 1, 3, 6, 10, 15, 21, 28, 36, 45};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING, FrameInfo.FrameBoundType.CURRENT_ROW);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
@@ -56,7 +57,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT32);
     int[] expected = {0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.MIN, TSDataType.INT32, TSDataType.INT32, true);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
@@ -83,7 +84,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
     double[] expected = {3, 6, 10, 15, 20, 25, 30, 35, 30, 24};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
@@ -113,7 +114,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
     double[] expected = {4, 4, 4, 4, 12, 12, 12, 12, 10, 10};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockWithInts(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     AggregationWindowFunction function = FunctionTestUtils.createAggregationWindowFunction(TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.RANGE, FrameInfo.FrameBoundType.CURRENT_ROW, -1, FrameInfo.FrameBoundType.CURRENT_ROW, -1, 0, SortOrder.ASC_NULLS_FIRST);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo, Collections.singletonList(0));

@@ -92,25 +92,12 @@ public final class PartitionExecutor {
         FrameInfo frameInfo = frameInfoList.get(i);
         switch (frameInfo.getFrameType()) {
           case RANGE:
-            if (frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-              frame =
-                  new RangeFrame(
-                      frameInfo,
-                      partitionStart,
-                      partitionEnd,
-                      sortedColumns,
-                      peerGroupComparator,
-                      partitionEnd - partitionStart - 1);
-            } else {
-              frame =
-                  new RangeFrame(
-                      frameInfo,
-                      partitionStart,
-                      partitionEnd,
-                      sortedColumns,
-                      peerGroupComparator,
-                      peerGroupEnd - partitionStart - 1);
-            }
+            frame = new RangeFrame(
+                frameInfo,
+                partitionStart,
+                partitionEnd,
+                sortedColumns,
+                peerGroupComparator);
             break;
           case ROWS:
             frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);

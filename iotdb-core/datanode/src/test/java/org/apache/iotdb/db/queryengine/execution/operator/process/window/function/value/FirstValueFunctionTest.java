@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
@@ -28,7 +29,7 @@ public class FirstValueFunctionTest {
   public void testFirstValueFunctionIgnoreNull() {
     int[] expected = {0, 0, 0, 1, 1, 1, 2, 3, 3, 4, 5, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FirstValueFunction function = new FirstValueFunction(0, true);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
@@ -57,7 +58,7 @@ public class FirstValueFunctionTest {
   public void testFirstValueFunctionNotIgnoreNull() {
     int[] expected = {0, 0, 0, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = FunctionTestUtils.createTsBlockForValueFunction(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
     FirstValueFunction function = new FirstValueFunction(0, false);
     FrameInfo frameInfo = new FrameInfo(FrameInfo.FrameType.ROWS, FrameInfo.FrameBoundType.PRECEDING, 2, FrameInfo.FrameBoundType.FOLLOWING, 2);
     PartitionExecutor partitionExecutor = FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function, frameInfo);
