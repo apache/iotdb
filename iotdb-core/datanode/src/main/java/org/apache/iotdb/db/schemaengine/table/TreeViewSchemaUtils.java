@@ -27,11 +27,17 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.Arrays;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 
 public class TreeViewSchemaUtils {
 
@@ -51,6 +57,26 @@ public class TreeViewSchemaUtils {
               "Renaming table and column only supports database 'tree_view_db'",
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
+  }
+
+  public static void buildDatabaseTsBlock(
+      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
+    if (!canSeenDB.test(INFORMATION_DATABASE)) {
+      return;
+    }
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(1).appendNull();
+
+    builder.getColumnBuilder(2).appendNull();
+    builder.getColumnBuilder(3).appendNull();
+    builder.getColumnBuilder(4).appendNull();
+    if (details) {
+      builder.getColumnBuilder(5).writeBinary(new Binary("TABLE", TSFileConfig.STRING_CHARSET));
+    }
+    builder.declarePosition();
   }
 
   public static boolean isTreeViewDatabase(final String database) {
