@@ -136,9 +136,9 @@ public class ClusterSchemaManager {
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterSchemaManager(
-      ConfigManager configManager,
-      ClusterSchemaInfo clusterSchemaInfo,
-      ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
+      final ConfigManager configManager,
+      final ClusterSchemaInfo clusterSchemaInfo,
+      final ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
@@ -1254,9 +1254,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format(
-                  "Table '%s.%s' does not exist",
-                  database.substring(ROOT.length() + 1), tableName)),
+              String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
     }
 
