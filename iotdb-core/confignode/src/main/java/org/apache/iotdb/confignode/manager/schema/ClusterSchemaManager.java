@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -1220,10 +1221,19 @@ public class ClusterSchemaManager {
           null);
     }
 
-    if (Objects.isNull(originalTable.getColumnSchema(oldName))) {
+    final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
+    if (Objects.isNull(schema)) {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
+          null);
+    }
+
+    if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH,
+              "The renaming for time column is not supported."),
           null);
     }
 
