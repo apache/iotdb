@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.Set;
 
 public interface ITimeIndex {
@@ -150,7 +151,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @return start time
    */
-  long getStartTime(IDeviceID deviceId);
+  Optional<Long> getStartTime(IDeviceID deviceId);
 
   /**
    * get end time of device
@@ -158,7 +159,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @return end time
    */
-  long getEndTime(IDeviceID deviceId);
+  Optional<Long> getEndTime(IDeviceID deviceId);
 
   /**
    * check whether deviceId exists in TsFile

@@ -75,6 +75,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     flushNonAlignedChunkToFileWriter(fileWriter, chunk, chunkMetadata, subTaskId);
 
     lastTime[subTaskId] = chunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -112,6 +113,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         fileWriter, timeChunk, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
 
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -142,6 +144,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         fileWriter, null, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
 
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -180,6 +183,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         subTaskId);
 
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -215,6 +219,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         subTaskId);
 
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -240,6 +245,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
 
     lastTime[subTaskId] = pageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
