@@ -22,17 +22,19 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.PageColumnAccessInfo;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPageReader;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
+import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 /** To read aligned chunk data in memory. */
 public class MemAlignedChunkReader implements IChunkReader {
@@ -57,11 +60,10 @@ public class MemAlignedChunkReader implements IChunkReader {
     timeValuePairIterator =
         new MergeSortAlignedTVListIterator(
             alignedTVLists,
+            readableChunk.getDataTypes(),
             readableChunk.getColumnIndexList(),
             readableChunk.getFloatPrecision(),
             readableChunk.getEncodingList(),
-            readableChunk.getTimeColumnDeletion(),
-            readableChunk.getValueColumnsDeletionList(),
             readableChunk.getContext().isIgnoreAllNullRows());
     timeValuePairIterator.setRowsForWorkingTVListIterator(readableChunk.workingTVListRows());
     this.globalTimeFilter = globalTimeFilter;
@@ -152,59 +154,165 @@ public class MemAlignedChunkReader implements IChunkReader {
       return true;
     }
 
+    private void writePageTimeIntoBuilder(long[] time, int count, TsBlockBuilder builder) {
+      for (int index = 0; index < count; index++) {
+        builder.getTimeColumnBuilder().writeLong(time[index]);
+      }
+    }
+
+    private void writePageValuesIntoBuilder(
+        PageColumnAccessInfo[] columnAccessInfo,
+        List<TSDataType> tsDataTypes,
+        TsBlockBuilder builder) {
+      for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
+        PageColumnAccessInfo pageAccessInfo = columnAccessInfo[columnIndex];
+        ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+        switch (tsDataTypes.get(columnIndex)) {
+          case BOOLEAN:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeBoolean(value.getBoolean());
+              }
+            }
+            break;
+          case INT32:
+          case DATE:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeInt(value.getInt());
+              }
+            }
+            break;
+          case INT64:
+          case TIMESTAMP:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeLong(value.getLong());
+              }
+            }
+            break;
+          case FLOAT:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeFloat(value.getFloat());
+              }
+            }
+            break;
+          case DOUBLE:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeDouble(value.getDouble());
+              }
+            }
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            for (int index = 0; index < pageAccessInfo.count(); index++) {
+              int[] accessInfo = pageAccessInfo.get(index);
+              TsPrimitiveType value =
+                  timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+              if (value == null) {
+                valueBuilder.appendNull();
+              } else {
+                valueBuilder.writeBinary(value.getBinary());
+              }
+            }
+            break;
+          default:
+            break;
+        }
+      }
+    }
+
     // read one page and write to tsblock
     private synchronized void writeValidValuesIntoTsBlock(TsBlockBuilder builder) {
+      boolean ignoreAllNullRows = readableChunk.getContext().isIgnoreAllNullRows();
       List<TSDataType> tsDataTypes = readableChunk.getDataTypes();
+      List<TimeRange> timeColumnDeletion = readableChunk.getTimeColumnDeletion();
+      List<List<TimeRange>> valueColumnsDeletionList = readableChunk.getValueColumnsDeletionList();
+
+      int pointsInPage = 0;
+      long[] time = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+      PageColumnAccessInfo[] pageColumnAccessInfo = new PageColumnAccessInfo[tsDataTypes.size()];
+      for (int i = 0; i < pageColumnAccessInfo.length; i++) {
+        pageColumnAccessInfo[i] = new PageColumnAccessInfo();
+      }
+
+      int[] timeDeleteCursor = new int[] {0};
+      List<int[]> valueColumnDeleteCursor = new ArrayList<>();
+      if (valueColumnsDeletionList != null) {
+        valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
+      }
+
       while (timeValuePairIterator.hasNextTimeValuePair()) {
         if (isOutOfMemPageBounds()) {
           break;
         }
-        TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
-        builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
 
-        // value columns
-        TsPrimitiveType[] values = tvPair.getValue().getVector();
-        for (int columnIndex = 0; columnIndex < values.length; columnIndex++) {
-          if (values[columnIndex] == null) {
-            builder.getColumnBuilder(columnIndex).appendNull();
-            continue;
-          }
-          ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
-          switch (tsDataTypes.get(columnIndex)) {
-            case BOOLEAN:
-              valueBuilder.writeBoolean(values[columnIndex].getBoolean());
-              break;
-            case INT32:
-            case DATE:
-              valueBuilder.writeInt(values[columnIndex].getInt());
-              break;
-            case INT64:
-            case TIMESTAMP:
-              valueBuilder.writeLong(values[columnIndex].getLong());
-              break;
-            case FLOAT:
-              valueBuilder.writeFloat(values[columnIndex].getFloat());
-              break;
-            case DOUBLE:
-              valueBuilder.writeDouble(values[columnIndex].getDouble());
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-              valueBuilder.writeBinary(values[columnIndex].getBinary());
-              break;
-            default:
-              break;
+        // skip deleted rows
+        long timestamp = timeValuePairIterator.getTime();
+        if (timeColumnDeletion != null
+            && isPointDeleted(timestamp, timeColumnDeletion, timeDeleteCursor)) {
+          timeValuePairIterator.step();
+          continue;
+        }
+
+        BitMap bitMap = timeValuePairIterator.getBitmap();
+        if (valueColumnsDeletionList != null) {
+          for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
+            if (isPointDeleted(
+                timestamp,
+                valueColumnsDeletionList.get(columnIndex),
+                valueColumnDeleteCursor.get(columnIndex))) {
+              bitMap.mark(columnIndex);
+            }
           }
         }
-        builder.declarePosition();
+        if (ignoreAllNullRows && bitMap.isAllMarked()) {
+          timeValuePairIterator.step();
+          continue;
+        }
+
+        // prepare column access info for current page
+        int[][] accessInfo = timeValuePairIterator.getColumnAccessInfo();
+        for (int i = 0; i < tsDataTypes.size(); i++) {
+          time[pointsInPage] = timeValuePairIterator.getTime();
+          pageColumnAccessInfo[i].add(accessInfo[i]);
+        }
+        timeValuePairIterator.step();
+        pointsInPage++;
       }
-      if (builder.getPositionCount() > MAX_NUMBER_OF_POINTS_IN_PAGE) {
-        throw new RuntimeException(
-            String.format(
-                "Points in current page %d is larger than %d",
-                builder.getPositionCount(), MAX_NUMBER_OF_POINTS_IN_PAGE));
-      }
+
+      // write time and values into builders
+      writePageTimeIntoBuilder(time, pointsInPage, builder);
+      writePageValuesIntoBuilder(pageColumnAccessInfo, tsDataTypes, builder);
+      builder.declarePositions(pointsInPage);
     }
   }
 }

@@ -27,11 +27,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.PageColumnAccessInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
@@ -57,25 +56,23 @@ import java.util.Set;
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private final Map<String, Integer> measurementIndexMap;
+  private final List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
   private boolean ignoreAllNullRows;
 
-  private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     this.measurementIndexMap = new LinkedHashMap<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    this.dataTypes = new ArrayList<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
-      dataTypeList.add(schemaList.get(i).getType());
+      dataTypes.add(schemaList.get(i).getType());
     }
-    this.list = AlignedTVList.newAlignedList(dataTypeList);
+    this.list = AlignedTVList.newAlignedList(dataTypes);
     this.sortedList = new ArrayList<>();
     this.ignoreAllNullRows = !isTableModel;
   }
@@ -88,6 +85,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
     this.list = list;
+    this.dataTypes = list.getTsDataTypes();
     this.sortedList = new ArrayList<>();
     this.ignoreAllNullRows = !isTableModel;
   }
@@ -216,11 +214,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     } finally {
       list.unlockQueryList();
     }
-    List<TSDataType> dataTypeList = new ArrayList<>();
-    for (IMeasurementSchema schema : schemaList) {
-      dataTypeList.add(schema.getType());
-    }
-    this.list = AlignedTVList.newAlignedList(dataTypeList);
+    this.list = AlignedTVList.newAlignedList(dataTypes);
   }
 
   @Override
@@ -588,6 +582,78 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  private void writePageValuesIntoWriter(
+      IChunkWriter chunkWriter,
+      long[] times,
+      PageColumnAccessInfo[] pageColumnAccessInfo,
+      MergeSortAlignedTVListIterator timeValuePairIterator) {
+    AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
+
+    // update value statistics
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      ValueChunkWriter valueChunkWriter =
+          alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
+      PageColumnAccessInfo pageAccessInfo = pageColumnAccessInfo[columnIndex];
+      switch (dataTypes.get(columnIndex)) {
+        case BOOLEAN:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getBoolean(), value.getValue() == null);
+          }
+          break;
+        case INT32:
+        case DATE:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getInt(), value.getValue() == null);
+          }
+          break;
+        case INT64:
+        case TIMESTAMP:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getLong(), value.getValue() == null);
+          }
+          break;
+        case FLOAT:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getFloat(), value.getValue() == null);
+          }
+          break;
+        case DOUBLE:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getDouble(), value.getValue() == null);
+          }
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            valueChunkWriter.write(times[index], value.getBinary(), value.getValue() == null);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataTypes.get(columnIndex)));
+      }
+    }
+  }
+
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
   @Override
   public void encode(IChunkWriter chunkWriter) {
@@ -602,50 +668,40 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     alignedTvLists.add(list);
     MergeSortAlignedTVListIterator timeValuePairIterator =
         new MergeSortAlignedTVListIterator(
-            alignedTvLists, null, null, null, null, null, ignoreAllNullRows);
+            alignedTvLists, dataTypes, null, null, null, ignoreAllNullRows);
 
     int pointsInPage = 0;
     long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+
+    PageColumnAccessInfo[] pageColumnAccessInfo = new PageColumnAccessInfo[dataTypes.size()];
+    for (int i = 0; i < pageColumnAccessInfo.length; i++) {
+      pageColumnAccessInfo[i] = new PageColumnAccessInfo();
+    }
+
     while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
-      times[pointsInPage] = tvPair.getTimestamp();
-      TsPrimitiveType[] values = tvPair.getValue().getVector();
-      for (int columnIndex = 0; columnIndex < values.length; columnIndex++) {
-        ValueChunkWriter valueChunkWriter =
-            alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
-        boolean isNull = values[columnIndex].getValue() == null;
-        switch (schemaList.get(columnIndex).getType()) {
-          case BOOLEAN:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getBoolean(), isNull);
-            break;
-          case INT32:
-          case DATE:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getInt(), isNull);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getLong(), isNull);
-            break;
-          case FLOAT:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getFloat(), isNull);
-            break;
-          case DOUBLE:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getDouble(), isNull);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            valueChunkWriter.write(tvPair.getTimestamp(), values[columnIndex].getBinary(), isNull);
-            break;
-          default:
-            break;
-        }
+      // prepare column access info for current page
+      int[][] accessInfo = timeValuePairIterator.getColumnAccessInfo();
+      for (int i = 0; i < dataTypes.size(); i++) {
+        times[pointsInPage] = timeValuePairIterator.getTime();
+        pageColumnAccessInfo[i].add(accessInfo[i]);
       }
+      timeValuePairIterator.step();
       pointsInPage++;
-      if (pointsInPage % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
+
+      if (pointsInPage == MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        writePageValuesIntoWriter(chunkWriter, times, pageColumnAccessInfo, timeValuePairIterator);
         alignedChunkWriter.write(times, pointsInPage, 0);
+
+        for (PageColumnAccessInfo columnAccessInfo : pageColumnAccessInfo) {
+          columnAccessInfo.reset();
+        }
         pointsInPage = 0;
       }
+    }
+
+    if (pointsInPage > 0) {
+      writePageValuesIntoWriter(chunkWriter, times, pageColumnAccessInfo, timeValuePairIterator);
+      alignedChunkWriter.write(times, pointsInPage, 0);
     }
   }
 

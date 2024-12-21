@@ -262,7 +262,7 @@ public class MemAlignedPageReader implements IPageReader {
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         timeStatistics.update(tsBlock.getTimeByIndex(i));
       }
-      timeStatistics.setEmpty(false);
+      //      timeStatistics.setEmpty(false);
 
       for (int column = 0; column < tsDataTypes.size(); column++) {
         switch (tsDataTypes.get(column)) {
