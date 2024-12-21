@@ -187,7 +187,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!InternalTypeManager.getTSDataType(real.getType())
-        .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))) {
+            .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))
+        && !innerTreeStatement.isForceTypeConversion()) {
       SemanticException semanticException =
           new SemanticException(
               String.format(

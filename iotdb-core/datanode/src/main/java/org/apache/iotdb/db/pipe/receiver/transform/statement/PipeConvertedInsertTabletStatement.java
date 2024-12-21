@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.transform.statement;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,12 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     columns[columnIndex] =
         ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
     dataTypes[columnIndex] = dataType;
+    return true;
+  }
+
+  @TableModel
+  @Override
+  public boolean isForceTypeConversion() {
     return true;
   }
 }
