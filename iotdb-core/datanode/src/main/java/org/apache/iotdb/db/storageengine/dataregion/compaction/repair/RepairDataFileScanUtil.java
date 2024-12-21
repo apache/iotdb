@@ -74,6 +74,7 @@ public class RepairDataFileScanUtil {
   private ArrayDeviceTimeIndex timeIndex;
   private boolean hasUnsortedDataOrWrongStatistics;
   private boolean isBrokenFile;
+  private boolean previousTimeSet;
   private long previousTime;
   private boolean printLog;
 
@@ -84,7 +85,7 @@ public class RepairDataFileScanUtil {
   public RepairDataFileScanUtil(TsFileResource resource, boolean printLog) {
     this.resource = resource;
     this.hasUnsortedDataOrWrongStatistics = false;
-    this.previousTime = Long.MIN_VALUE;
+    this.previousTimeSet = false;
     this.printLog = printLog;
   }
 
@@ -217,7 +218,7 @@ public class RepairDataFileScanUtil {
     }
 
     // reset previousTime
-    previousTime = Long.MIN_VALUE;
+    previousTimeSet = false;
 
     // check timeseries time range
     if (actualTimeseriesStartTime > actualTimeseriesEndTime) {
@@ -290,7 +291,7 @@ public class RepairDataFileScanUtil {
       actualDeviceEndTime =
           Math.max(actualDeviceEndTime, timeseriesMetadata.getStatistics().getEndTime());
       checkSingleNonAlignedSeries(reader, device, timeseriesMetadata);
-      previousTime = Long.MIN_VALUE;
+      previousTimeSet = false;
     }
 
     if (!checkTsFileResource || actualDeviceStartTime > actualDeviceEndTime) {
@@ -404,18 +405,20 @@ public class RepairDataFileScanUtil {
   }
 
   private void checkPreviousTimeAndUpdate(IDeviceID deviceID, String measurementId, long time) {
-    if (previousTime >= time) {
+    if (previousTimeSet && previousTime >= time) {
       throw new CompactionLastTimeCheckFailedException(
           deviceID.toString() + TsFileConstant.PATH_SEPARATOR + measurementId, time, previousTime);
     }
     previousTime = time;
+    previousTimeSet = true;
   }
 
   private void checkPreviousTimeAndUpdate(IDeviceID deviceID, long time) {
-    if (previousTime >= time) {
+    if (previousTimeSet && previousTime >= time) {
       throw new CompactionLastTimeCheckFailedException(deviceID.toString(), time, previousTime);
     }
     previousTime = time;
+    previousTimeSet = true;
   }
 
   public boolean hasUnsortedDataOrWrongStatistics() {

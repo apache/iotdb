@@ -137,6 +137,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timestamp;
+    lastTimeSet[subTaskId] = true;
   }
 
   /** Write data in batch, only used for aligned device. */

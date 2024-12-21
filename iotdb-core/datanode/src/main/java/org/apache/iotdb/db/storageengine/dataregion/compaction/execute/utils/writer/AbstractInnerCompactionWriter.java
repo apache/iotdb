@@ -121,6 +121,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     chunkPointNumArray[subTaskId]++;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     lastTime[subTaskId] = timeValuePair.getTimestamp();
+    lastTimeSet[subTaskId] = true;
   }
 
   @Override
