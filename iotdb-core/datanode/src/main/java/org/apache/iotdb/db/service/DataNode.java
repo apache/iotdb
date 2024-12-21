@@ -21,12 +21,12 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -65,6 +65,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -126,6 +128,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -560,11 +563,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
-  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+  private void removeInvalidRegions(List<TRegionReplicaSet> correctedRegions) {
+    List<ConsensusGroupId> dataNodeConsensusGroupIds =
+        correctedRegions.stream()
+            .map(TRegionReplicaSet::getRegionId)
+            .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
+            .collect(Collectors.toList());
     removeInvalidConsensusDataRegions(dataNodeConsensusGroupIds);
     removeInvalidDataRegions(dataNodeConsensusGroupIds);
     removeInvalidConsensusSchemaRegions(dataNodeConsensusGroupIds);
     removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
+    prepareToResetDataRegionPeerList(correctedRegions);
   }
 
   private void removeInvalidDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
@@ -657,6 +666,31 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  private void prepareToResetDataRegionPeerList(List<TRegionReplicaSet> correctedRegions) {
+    Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : correctedRegions) {
+      ConsensusGroupId consensusGroupId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
+      if (consensusGroupId.getType() != TConsensusGroupType.DataRegion) {
+        continue;
+      }
+      List<Peer> peerList = new ArrayList<>();
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        peerList.add(
+            new Peer(
+                consensusGroupId,
+                dataNodeLocation.getDataNodeId(),
+                dataNodeLocation.getDataRegionConsensusEndPoint()));
+      }
+      correctPeerListBeforeStart.put(consensusGroupId, peerList);
+    }
+    try {
+      DataRegionConsensusImpl.getInstance().recordCorrectPeerList(correctPeerListBeforeStart);
+    } catch (ConsensusException e) {
+      logger.warn("Something wrong happened during recordCorrectPeerList", e);
+    }
+  }
+
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
@@ -709,11 +743,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           config.getClusterName(),
           (endTime - startTime));
 
-      List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
-      removeInvalidRegions(
-          consensusGroupIds.stream()
-              .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
-              .collect(Collectors.toList()));
+      removeInvalidRegions(dataNodeRestartResp.getCorrectConsensusGroups());
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
