@@ -27,7 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalWritePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreeWritePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -279,7 +280,32 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
         case CreateUserWithRawPassword:
-          plan = new AuthorPlan(configPhysicalPlanType);
+          plan = new AuthorTreeWritePlan(configPhysicalPlanType);
+          break;
+        case RCreateRole:
+        case RCreateUser:
+        case RDropRole:
+        case RDropUser:
+        case RGrantUserRole:
+        case RRevokeUserRole:
+        case RGrantRoleAny:
+        case RGrantUserAny:
+        case RUpdateUser:
+        case RGrantUserDBPriv:
+        case RGrantUserTBPriv:
+        case RGrantRoleDBPriv:
+        case RGrantRoleTBPriv:
+        case RRevokeRoleAny:
+        case RRevokeUserAny:
+        case RRevokeUserDBPriv:
+        case RRevokeUserTBPriv:
+        case RRevokeRoleDBPriv:
+        case RRevokeRoleTBPriv:
+        case RGrantUserSysPri:
+        case RGrantRoleSysPri:
+        case RRevokeUserSysPri:
+        case RRevokeRoleSysPri:
+          plan = new AuthorRelationalWritePlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
           plan = new ApplyConfigNodePlan();

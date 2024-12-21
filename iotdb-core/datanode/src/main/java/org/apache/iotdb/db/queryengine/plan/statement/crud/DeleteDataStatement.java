@@ -55,8 +55,7 @@ public class DeleteDataStatement extends Statement {
     }
     List<MeasurementPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkPatternPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+        AuthorityChecker.checkPatternPermission(userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);
   }

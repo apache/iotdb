@@ -22,10 +22,10 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -91,7 +91,7 @@ public class PermissionManager {
    * @param authorPlan AuthorReq
    * @return PermissionInfoResp
    */
-  public PermissionInfoResp queryPermission(final AuthorReadPlan authorPlan) {
+  public PermissionInfoResp queryPermission(final AuthorPlan authorPlan) {
     try {
       return (PermissionInfoResp) getConsensusManager().read(authorPlan);
     } catch (final ConsensusException e) {
@@ -110,9 +110,8 @@ public class PermissionManager {
     return authorInfo.login(username, password);
   }
 
-  public TPermissionInfoResp checkUserPrivileges(
-      String username, List<PartialPath> paths, int permission) {
-    return authorInfo.checkUserPrivileges(username, paths, permission);
+  public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
+    return authorInfo.checkUserPrivileges(username, union);
   }
 
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
@@ -128,9 +127,5 @@ public class PermissionManager {
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
       throws AuthException {
     return authorInfo.checkRoleOfUser(username, rolename);
-  }
-
-  public void checkUserPathPrivilege() {
-    authorInfo.checkUserPathPrivilege();
   }
 }

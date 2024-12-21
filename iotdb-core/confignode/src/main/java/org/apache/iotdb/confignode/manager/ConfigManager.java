@@ -36,6 +36,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -63,7 +64,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -75,7 +76,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -1253,7 +1253,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet queryPermission(final AuthorReadPlan authorPlan) {
+  public DataSet queryPermission(final AuthorPlan authorPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.queryPermission(authorPlan);
@@ -1277,11 +1277,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TPermissionInfoResp checkUserPrivileges(
-      String username, List<PartialPath> paths, int permission) {
+  public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.checkUserPrivileges(username, paths, permission);
+      return permissionManager.checkUserPrivileges(username, union);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
       resp.setStatus(status);
@@ -1305,10 +1304,6 @@ public class ConfigManager implements IManager {
       resp.setStatus(status);
       return resp;
     }
-  }
-
-  public void checkUserPathPrivilege() {
-    permissionManager.checkUserPathPrivilege();
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
