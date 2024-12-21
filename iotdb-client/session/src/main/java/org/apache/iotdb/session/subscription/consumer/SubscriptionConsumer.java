@@ -41,11 +41,13 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -315,7 +317,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -345,7 +349,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -376,7 +382,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format("Failed to handshake with subscription provider %s", provider));
+          String.format("Failed to handshake with subscription provider %s", provider), e);
     }
 
     // update consumer id and consumer group id if not exist
@@ -609,7 +615,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                         LOGGER.warn("unexpected response type: {}", responseType);
                         return Optional.empty();
                       })
-                  .apply(response, timer)
+                  // TODO: reuse previous timer?
+                  .apply(response, new PollTimer(System.currentTimeMillis(), timeoutMs))
                   .ifPresent(currentMessages::add);
             } catch (final SubscriptionRuntimeNonCriticalException e) {
               LOGGER.warn(
@@ -1405,13 +1412,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder consumerId(final String consumerId) {
-      this.consumerId = IdentifierUtils.parseIdentifier(consumerId);
+    public Builder consumerId(@Nullable final String consumerId) {
+      if (Objects.isNull(consumerId)) {
+        return this;
+      }
+      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
       return this;
     }
 
-    public Builder consumerGroupId(final String consumerGroupId) {
-      this.consumerGroupId = IdentifierUtils.parseIdentifier(consumerGroupId);
+    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
+      if (Objects.isNull(consumerGroupId)) {
+        return this;
+      }
+      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
       return this;
     }
 
@@ -1463,8 +1476,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("consumerGroupId", consumerGroupId);
     result.put("isClosed", isClosed.toString());
     result.put("fileSaveDir", fileSaveDir);
-    result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
-    result.put("subscribedTopicNames", subscribedTopics.keySet().toString());
+    result.put(
+        "inFlightFilesCommitContextSet",
+        CollectionUtils.getLimitedString(inFlightFilesCommitContextSet, 32));
+    result.put(
+        "subscribedTopicNames", CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32));
     return result;
   }
 

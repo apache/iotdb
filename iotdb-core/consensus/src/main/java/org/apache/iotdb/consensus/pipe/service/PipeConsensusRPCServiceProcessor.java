@@ -21,6 +21,9 @@ package org.apache.iotdb.consensus.pipe.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
@@ -75,6 +78,9 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
 
   @Override
   public TSetActiveResp setActive(TSetActiveReq req) throws TException {
+    if (req.isForDeletionPurpose && !req.isActive) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
+    }
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
@@ -87,6 +93,12 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
       return new TSetActiveResp(status);
     }
     impl.setActive(req.isActive);
+    if (req.isActive) {
+      KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE);
+    }
+    if (req.isForDeletionPurpose && !req.isActive) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+    }
     return new TSetActiveResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -114,11 +126,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.I
               ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
               req.targetPeerNodeId,
               req.targetPeerEndPoint),
-          new Peer(
-              ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId),
-              req.coordinatorPeerNodeId,
-              req.coordinatorPeerEndPoint),
-          true);
+          false);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

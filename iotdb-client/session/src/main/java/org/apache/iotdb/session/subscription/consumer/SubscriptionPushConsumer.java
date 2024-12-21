@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -178,7 +179,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           LOGGER.info(
               "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
               this,
-              subscribedTopics.keySet(),
+              CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
               autoPollTimeoutMs);
           return;
         }

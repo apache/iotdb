@@ -52,7 +52,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
     final List<String[]> deviceIdList =
         Arrays.asList(
@@ -133,7 +133,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -147,6 +147,8 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     attributeMap.put("cycle", "daily");
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"shandong", "p_1", "d_1"}, attributeMap);
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName, new String[] {"广州", "p_2", "d_2"}, attributeMap);
 
     List<IDeviceSchemaInfo> deviceSchemaInfoList =
         SchemaRegionTestUtil.getTableDevice(
@@ -184,8 +186,17 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             Arrays.asList(
                 new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_0", "d_1"))), 2),
                 new IdFilter(new LikeFilter("__1", Optional.empty()), 2)));
-
     Assert.assertEquals(2, deviceSchemaInfoList.size());
+
+    // Test CN characters
+    deviceSchemaInfoList =
+        SchemaRegionTestUtil.getTableDevice(
+            schemaRegion,
+            tableName,
+            3,
+            Collections.singletonList(
+                new IdFilter(new NotFilter(new LikeFilter("广州%", Optional.empty())), 0)));
+    Assert.assertEquals(3, deviceSchemaInfoList.size());
   }
 
   @Test
@@ -193,7 +204,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -269,7 +280,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
 
     final Map<String, String> attributeMap = new HashMap<>();
@@ -314,7 +325,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName1 = "t1";
 
     final Map<String, String> attributeMap = new HashMap<>();

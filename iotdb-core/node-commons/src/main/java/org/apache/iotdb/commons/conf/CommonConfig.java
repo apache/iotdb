@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -252,6 +254,7 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
+  private long pipeStuckRestartMinIntervalMs = 30 * 60 * 1000L; // 30 minutes
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -320,6 +323,16 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
+  private boolean enableBinaryAllocator = true;
+
+  private int arenaNum = 4;
+
+  private int minAllocateSize = 4096;
+
+  private int maxAllocateSize = 1024 * 1024;
+
+  private int log2SizeClassGroup = 3;
+
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
@@ -332,6 +345,16 @@ public class CommonConfig {
   private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
+
+  private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
+  // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
+  // the queries
+  private volatile boolean querySamplingHasRateLimit = true;
+  // if querySamplingRateLimiter != 0, enableQuerySampling is true; querySamplingRateLimiter = 0,
+  // enableQuerySampling is false
+  private volatile boolean enableQuerySampling = true;
+
+  private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   CommonConfig() {
     // Empty constructor
@@ -1007,8 +1030,16 @@ public class CommonConfig {
     return pipeStuckRestartIntervalSeconds;
   }
 
+  public long getPipeStuckRestartMinIntervalMs() {
+    return pipeStuckRestartMinIntervalMs;
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
+    this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -1478,5 +1509,83 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
+  }
+
+  public int getArenaNum() {
+    return arenaNum;
+  }
+
+  public void setArenaNum(int arenaNum) {
+    this.arenaNum = arenaNum;
+  }
+
+  public int getMinAllocateSize() {
+    return minAllocateSize;
+  }
+
+  public void setMinAllocateSize(int minAllocateSize) {
+    this.minAllocateSize = minAllocateSize;
+  }
+
+  public int getMaxAllocateSize() {
+    return maxAllocateSize;
+  }
+
+  public void setMaxAllocateSize(int maxAllocateSize) {
+    this.maxAllocateSize = maxAllocateSize;
+  }
+
+  public boolean isEnableBinaryAllocator() {
+    return enableBinaryAllocator;
+  }
+
+  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
+    this.enableBinaryAllocator = enableBinaryAllocator;
+  }
+
+  public int getLog2SizeClassGroup() {
+    return log2SizeClassGroup;
+  }
+
+  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
+    this.log2SizeClassGroup = log2SizeClassGroup;
+  }
+
+  /**
+   * @param querySamplingRateLimit query_sample_throughput_bytes_per_sec
+   */
+  public void setQuerySamplingRateLimit(int querySamplingRateLimit) {
+    if (querySamplingRateLimit > 0) {
+      this.querySamplingRateLimiter.setRate(querySamplingRateLimit);
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = true;
+    } else if (querySamplingRateLimit == 0) {
+      // querySamplingRateLimit = 0, means that we sample no queries
+      this.enableQuerySampling = false;
+    } else {
+      // querySamplingRateLimit < 0, means that we need to full sample all queries
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = false;
+    }
+  }
+
+  public boolean isQuerySamplingHasRateLimit() {
+    return querySamplingHasRateLimit;
+  }
+
+  public RateLimiter getQuerySamplingRateLimiter() {
+    return querySamplingRateLimiter;
+  }
+
+  public boolean isEnableQuerySampling() {
+    return enableQuerySampling;
+  }
+
+  public Pattern getTrustedUriPattern() {
+    return trustedUriPattern;
+  }
+
+  public void setTrustedUriPattern(Pattern trustedUriPattern) {
+    this.trustedUriPattern = trustedUriPattern;
   }
 }

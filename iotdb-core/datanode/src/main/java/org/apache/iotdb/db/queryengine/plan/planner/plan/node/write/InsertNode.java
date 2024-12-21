@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -84,6 +85,8 @@ public abstract class InsertNode extends SearchNode {
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
+
+  protected long memorySize;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -417,5 +420,12 @@ public abstract class InsertNode extends SearchNode {
       throws IllegalPathException, IOException {
     return DataNodeDevicePathCache.getInstance()
         .getPartialPath(ReadWriteIOUtils.readString(stream));
+  }
+
+  public long getMemorySize() {
+    if (memorySize == 0) {
+      memorySize = InsertNodeMemoryEstimator.sizeOf(this);
+    }
+    return memorySize;
   }
 }

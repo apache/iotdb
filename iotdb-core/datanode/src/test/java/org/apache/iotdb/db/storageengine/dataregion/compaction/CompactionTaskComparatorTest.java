@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -85,7 +86,7 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), i));
       }
       compactionTasks[i] =
-          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, i % 2 == 0, resources, 0);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 

@@ -516,7 +516,7 @@ class Session(object):
             )
             measurements = list(filtered_measurements)
             values = list(filtered_values)
-            if len(measurements) is 0 or len(values) is 0:
+            if len(measurements) == 0 or len(values) == 0:
                 logger.info("All inserting values are none!")
                 return
         request = self.gen_insert_str_record_req(
@@ -556,7 +556,7 @@ class Session(object):
             )
             measurements = list(filtered_measurements)
             values = list(filtered_values)
-            if len(measurements) is 0 or len(values) is 0:
+            if len(measurements) == 0 or len(values) == 0:
                 logger.info("All inserting values are none!")
                 return
         request = self.gen_insert_str_record_req(
@@ -605,7 +605,7 @@ class Session(object):
             measurements = list(filtered_measurements)
             data_types = list(filtered_data_types)
             values = list(filtered_values)
-            if len(measurements) is 0 or len(data_types) is 0 or len(values) is 0:
+            if len(measurements) == 0 or len(data_types) == 0 or len(values) == 0:
                 logger.info("All inserting values are none!")
                 return
         request = self.gen_insert_record_req(
@@ -651,7 +651,7 @@ class Session(object):
             ) = self.__filter_lists_by_values(
                 device_ids, times, measurements_lst, types_lst, values_lst
             )
-            if len(device_ids) is 0:
+            if len(device_ids) == 0:
                 logger.info("All inserting values are none!")
                 return
         if self.__enable_redirection:
@@ -734,7 +734,7 @@ class Session(object):
             measurements = list(filtered_measurements)
             data_types = list(filtered_data_types)
             values = list(filtered_values)
-            if len(measurements) is 0 or len(data_types) is 0 or len(values) is 0:
+            if len(measurements) == 0 or len(data_types) == 0 or len(values) == 0:
                 logger.info("All inserting values are none!")
                 return
         request = self.gen_insert_record_req(
@@ -780,7 +780,7 @@ class Session(object):
             ) = self.__filter_lists_by_values(
                 device_ids, times, measurements_lst, types_lst, values_lst
             )
-            if len(device_ids) is 0:
+            if len(device_ids) == 0:
                 logger.info("All inserting values are none!")
                 return
         if self.__enable_redirection:

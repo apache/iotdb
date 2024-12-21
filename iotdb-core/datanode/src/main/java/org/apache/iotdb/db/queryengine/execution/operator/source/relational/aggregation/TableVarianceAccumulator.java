@@ -90,6 +90,33 @@ public class TableVarianceAccumulator implements TableAccumulator {
   }
 
   @Override
+  public void removeInput(Column[] arguments) {
+    switch (seriesDataType) {
+      case INT32:
+        removeIntInput(arguments[0]);
+        return;
+      case INT64:
+        removeLongInput(arguments[0]);
+        return;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        return;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
+        return;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation variance : %s", seriesDataType));
+    }
+  }
+
+  @Override
   public void addIntermediate(Column argument) {
     checkArgument(
         argument instanceof BinaryColumn
@@ -188,6 +215,11 @@ public class TableVarianceAccumulator implements TableAccumulator {
     m2 = 0.0;
   }
 
+  @Override
+  public boolean removable() {
+    return true;
+  }
+
   private void addIntInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {
@@ -242,5 +274,59 @@ public class TableVarianceAccumulator implements TableAccumulator {
       mean += delta / count;
       m2 += delta * (value - mean);
     }
+  }
+
+  private void removeIntInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      int value = column.getInt(i);
+      updateStateByRemove(value);
+    }
+  }
+
+  private void removeLongInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      long value = column.getLong(i);
+      updateStateByRemove(value);
+    }
+  }
+
+  private void removeFloatInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      float value = column.getFloat(i);
+      updateStateByRemove(value);
+    }
+  }
+
+  private void removeDoubleInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (column.isNull(i)) {
+        continue;
+      }
+
+      double value = column.getDouble(i);
+      updateStateByRemove(value);
+    }
+  }
+
+  private void updateStateByRemove(double value) {
+    long newCount = count - 1;
+    double newMean = (count * mean - value) / newCount;
+    double delta = value - mean;
+
+    m2 = m2 - delta * delta * count / newCount;
+    count = newCount;
+    mean = newMean;
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -57,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -137,10 +139,13 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
   private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
+  private boolean containsSelectDistinct;
 
   private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
   private final Map<NodeRef<Join>, JoinUsingAnalysis> joinUsing = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, SubqueryAnalysis> subQueries = new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, PredicateCoercions> predicateCoercions =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
 
@@ -416,7 +421,7 @@ public class Analysis implements IAnalysis {
   }
 
   public boolean containsAggregationQuery() {
-    return !groupingSets.isEmpty();
+    return !groupingSets.isEmpty() || containsSelectDistinct;
   }
 
   public GroupingSetAnalysis getGroupingSets(QuerySpecification node) {
@@ -496,6 +501,10 @@ public class Analysis implements IAnalysis {
 
   public List<SelectExpression> getSelectExpressions(Node node) {
     return selectExpressions.get(NodeRef.of(node));
+  }
+
+  public void setContainsSelectDistinct() {
+    this.containsSelectDistinct = true;
   }
 
   public void setHaving(QuerySpecification node, Expression expression) {
@@ -633,37 +642,37 @@ public class Analysis implements IAnalysis {
     return getOutputDescriptor(root);
   }
 
-  public RelationType getOutputDescriptor(Node node) {
+  public RelationType getOutputDescriptor(final Node node) {
     return getScope(node).getRelationType();
   }
 
-  public void addSourceColumns(Field field, Set<SourceColumn> sourceColumn) {
+  public void addSourceColumns(final Field field, final Set<SourceColumn> sourceColumn) {
     originColumnDetails.putAll(field, sourceColumn);
   }
 
-  public Set<SourceColumn> getSourceColumns(Field field) {
+  public Set<SourceColumn> getSourceColumns(final Field field) {
     return ImmutableSet.copyOf(originColumnDetails.get(field));
   }
 
-  public void addExpressionFields(Expression expression, Collection<Field> fields) {
+  public void addExpressionFields(final Expression expression, final Collection<Field> fields) {
     fieldLineage.putAll(NodeRef.of(expression), fields);
   }
 
-  public Set<SourceColumn> getExpressionSourceColumns(Expression expression) {
+  public Set<SourceColumn> getExpressionSourceColumns(final Expression expression) {
     return fieldLineage.get(NodeRef.of(expression)).stream()
         .flatMap(field -> getSourceColumns(field).stream())
         .collect(toImmutableSet());
   }
 
-  public void setRelationName(Relation relation, QualifiedName name) {
+  public void setRelationName(final Relation relation, final QualifiedName name) {
     relationNames.put(NodeRef.of(relation), name);
   }
 
-  public QualifiedName getRelationName(Relation relation) {
+  public QualifiedName getRelationName(final Relation relation) {
     return relationNames.get(NodeRef.of(relation));
   }
 
-  public void addAliased(Relation relation) {
+  public void addAliased(final Relation relation) {
     aliasedRelations.add(NodeRef.of(relation));
   }
 
@@ -672,12 +681,22 @@ public class Analysis implements IAnalysis {
   }
 
   public void addTableSchema(
-      QualifiedObjectName qualifiedObjectName, Map<Symbol, ColumnSchema> tableColumnSchema) {
+      final QualifiedObjectName qualifiedObjectName,
+      final Map<Symbol, ColumnSchema> tableColumnSchema) {
     tableColumnSchemas.put(qualifiedObjectName, tableColumnSchema);
   }
 
-  public Map<Symbol, ColumnSchema> getTableColumnSchema(QualifiedObjectName qualifiedObjectName) {
+  public Map<Symbol, ColumnSchema> getTableColumnSchema(
+      final QualifiedObjectName qualifiedObjectName) {
     return tableColumnSchemas.get(qualifiedObjectName);
+  }
+
+  public void addPredicateCoercions(final Map<NodeRef<Expression>, PredicateCoercions> coercions) {
+    predicateCoercions.putAll(coercions);
+  }
+
+  public PredicateCoercions getPredicateCoercions(final Expression expression) {
+    return predicateCoercions.get(NodeRef.of(expression));
   }
 
   public boolean hasValueFilter() {
@@ -692,7 +711,7 @@ public class Analysis implements IAnalysis {
     return hasSortNode;
   }
 
-  public void setSortNode(boolean hasSortNode) {
+  public void setSortNode(final boolean hasSortNode) {
     this.hasSortNode = hasSortNode;
   }
 
@@ -700,7 +719,7 @@ public class Analysis implements IAnalysis {
     return emptyDataSource;
   }
 
-  public void setEmptyDataSource(boolean emptyDataSource) {
+  public void setEmptyDataSource(final boolean emptyDataSource) {
     this.emptyDataSource = emptyDataSource;
   }
 
@@ -715,12 +734,12 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setFailStatus(TSStatus failStatus) {
+  public void setFailStatus(final TSStatus failStatus) {
     this.failStatus = failStatus;
   }
 
   @Override
-  public boolean canSkipExecute(MPPQueryContext context) {
+  public boolean canSkipExecute(final MPPQueryContext context) {
     return isFinishQueryAfterAnalyze();
   }
 
@@ -729,7 +748,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
+  public void setFinishQueryAfterAnalyze(final boolean finishQueryAfterAnalyze) {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
@@ -738,14 +757,14 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setDataPartitionInfo(DataPartition dataPartition) {
+  public void setDataPartitionInfo(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
   @Override
-  public TsBlock constructResultForMemorySource(MPPQueryContext context) {
+  public TsBlock constructResultForMemorySource(final MPPQueryContext context) {
     requireNonNull(getStatement(), "root statement is analysis is null");
-    StatementMemorySource memorySource =
+    final StatementMemorySource memorySource =
         new TableModelStatementMemorySourceVisitor()
             .process(getStatement(), new TableModelStatementMemorySourceContext(context, this));
     setRespDatasetHeader(memorySource.getDatasetHeader());
@@ -763,7 +782,8 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    return false;
+    return root instanceof ShowStatement
+        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
   }
 
   @Override
@@ -795,11 +815,11 @@ public class Analysis implements IAnalysis {
     return dataPartition;
   }
 
-  public void setDataPartition(DataPartition dataPartition) {
+  public void setDataPartition(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
-  public void upsertDataPartition(DataPartition targetDataPartition) {
+  public void upsertDataPartition(final DataPartition targetDataPartition) {
     if (this.dataPartition == null) {
       this.dataPartition = targetDataPartition;
     } else {
@@ -813,12 +833,12 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+  public void setRedirectNodeList(final List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }
 
   @Override
-  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(final TEndPoint endPoint) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }
@@ -826,7 +846,7 @@ public class Analysis implements IAnalysis {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceId, Filter timeFilter) {
+      final String database, final IDeviceID deviceId, final Filter timeFilter) {
     if (dataPartition == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     } else {
@@ -835,7 +855,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public TimePredicate getCovertedTimePredicate() {
+  public TimePredicate getConvertedTimePredicate() {
     return null;
   }
 
@@ -1105,6 +1125,35 @@ public class Analysis implements IAnalysis {
 
     public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries() {
       return unmodifiableList(quantifiedComparisonSubqueries);
+    }
+  }
+
+  /**
+   * Analysis for predicates such as <code>x IN (subquery)</code> or <code>x = SOME (subquery)
+   * </code>
+   */
+  public static class PredicateCoercions {
+    private final Type valueType;
+    private final Optional<Type> valueCoercion;
+    private final Optional<Type> subqueryCoercion;
+
+    public PredicateCoercions(
+        Type valueType, Optional<Type> valueCoercion, Optional<Type> subqueryCoercion) {
+      this.valueType = requireNonNull(valueType, "valueType is null");
+      this.valueCoercion = requireNonNull(valueCoercion, "valueCoercion is null");
+      this.subqueryCoercion = requireNonNull(subqueryCoercion, "subqueryCoercion is null");
+    }
+
+    public Type getValueType() {
+      return valueType;
+    }
+
+    public Optional<Type> getValueCoercion() {
+      return valueCoercion;
+    }
+
+    public Optional<Type> getSubqueryCoercion() {
+      return subqueryCoercion;
     }
   }
 
