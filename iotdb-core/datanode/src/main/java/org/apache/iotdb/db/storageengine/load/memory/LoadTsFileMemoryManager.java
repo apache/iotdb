@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;

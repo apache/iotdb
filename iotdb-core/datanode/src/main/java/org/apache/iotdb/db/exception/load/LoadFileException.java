@@ -17,10 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
-public class LoadRuntimeOutOfMemoryException extends RuntimeException {
-  public LoadRuntimeOutOfMemoryException(String message) {
-    super(message);
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class LoadFileException extends IoTDBException {
+
+  public LoadFileException(String message) {
+    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  }
+
+  public LoadFileException(Exception exception) {
+    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
   }
 }

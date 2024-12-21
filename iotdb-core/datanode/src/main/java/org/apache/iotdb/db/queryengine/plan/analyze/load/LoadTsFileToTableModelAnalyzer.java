@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.exception.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
