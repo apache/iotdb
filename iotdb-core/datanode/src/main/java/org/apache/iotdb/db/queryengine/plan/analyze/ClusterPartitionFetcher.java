@@ -349,7 +349,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   schemaPartitionTableResp.getStatus().getCode()));
         }
       }
-      System.out.println(schemaPartition.getSchemaPartitionMap());
       return schemaPartition;
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
