@@ -3710,8 +3710,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
-      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
@@ -3726,6 +3724,8 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
+      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
+      MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
