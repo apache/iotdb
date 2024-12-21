@@ -2250,7 +2250,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
     if (node.getDatabaseName() != null
-        && !PathUtils.qualifyDatabaseName(node.getDatabaseName()).equals(databaseName)) {
+        && !node.getDatabaseName().equals(databaseName)) {
       // not targeted on this database, return
       return;
     }
