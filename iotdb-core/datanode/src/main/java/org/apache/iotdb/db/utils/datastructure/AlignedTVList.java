@@ -78,9 +78,6 @@ public abstract class AlignedTVList extends TVList {
   // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
-  // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
-  boolean reachMaxChunkSizeFlag;
-
   // not null when constructed by queries for tree model
   BitMap allValueColDeletedMap;
   // constructed after deletion
@@ -93,7 +90,6 @@ public abstract class AlignedTVList extends TVList {
     indices = new ArrayList<>(types.size());
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
-    reachMaxChunkSizeFlag = false;
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -208,9 +204,6 @@ public abstract class AlignedTVList extends TVList {
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
-          if (memoryBinaryChunkSize[i] >= TARGET_CHUNK_SIZE) {
-            reachMaxChunkSizeFlag = true;
-          }
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
@@ -782,11 +775,6 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return reachMaxChunkSizeFlag || rowCount >= MAX_SERIES_POINT_NUMBER;
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putAlignedValues(
@@ -860,9 +848,6 @@ public abstract class AlignedTVList extends TVList {
           for (int i1 = 0; i1 < remaining; i1++) {
             memoryBinaryChunkSize[i] +=
                 arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
-          }
-          if (memoryBinaryChunkSize[i] > TARGET_CHUNK_SIZE) {
-            reachMaxChunkSizeFlag = true;
           }
           break;
         case FLOAT:
@@ -1088,7 +1073,7 @@ public abstract class AlignedTVList extends TVList {
         // Value: 1,2,null,null
         // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
         // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
         // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
         if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
@@ -1485,6 +1470,44 @@ public abstract class AlignedTVList extends TVList {
     }
 
     return new BitMap(rowCount, rowBitsArr);
+  }
+
+  public int getAvgPointSizeOfLargestColumn() {
+    int largestPrimitivePointSize = 8; // TimeColumn or int64,double ValueColumn
+    long largestBinaryChunkSize = 0;
+    int largestBinaryColumnIndex = 0;
+    for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
+      if (memoryBinaryChunkSize[i] > largestBinaryChunkSize) {
+        largestBinaryChunkSize = memoryBinaryChunkSize[i];
+        largestBinaryColumnIndex = i;
+      }
+    }
+    if (largestBinaryChunkSize == 0) {
+      return largestPrimitivePointSize;
+    }
+    int avgPointSizeOfLargestBinaryColumn =
+        (int) largestBinaryChunkSize / getColumnValueCnt(largestBinaryColumnIndex);
+    return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
+  }
+
+  public int getColumnValueCnt(int columnIndex) {
+    int pointNum = 0;
+    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
+      pointNum = rowCount;
+    } else {
+      for (int i = 0; i < rowCount; i++) {
+        int arrayIndex = i / ARRAY_SIZE;
+        if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
+          pointNum++;
+        } else {
+          int elementIndex = i % ARRAY_SIZE;
+          if (!bitMaps.get(columnIndex).get(arrayIndex).isMarked(elementIndex)) {
+            pointNum++;
+          }
+        }
+      }
+    }
+    return pointNum;
   }
 
   public List<List<BitMap>> getBitMaps() {
