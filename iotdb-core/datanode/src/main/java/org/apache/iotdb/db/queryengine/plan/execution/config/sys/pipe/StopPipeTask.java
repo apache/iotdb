@@ -32,17 +32,18 @@ public class StopPipeTask implements IConfigTask {
 
   private final StopPipeStatement stopPipeStatement;
 
-  public StopPipeTask(StopPipeStatement stopPipeStatement) {
+  public StopPipeTask(final StopPipeStatement stopPipeStatement) {
     this.stopPipeStatement = stopPipeStatement;
   }
 
-  public StopPipeTask(StopPipe node) {
+  public StopPipeTask(final StopPipe node) {
     stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
     stopPipeStatement.setPipeName(node.getPipeName());
+    stopPipeStatement.setTableModel(true);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.stopPipe(stopPipeStatement);
   }

@@ -75,6 +75,10 @@ public class PipeParameters {
     attributes.put(KeyReducer.reduce(key), values);
   }
 
+  public void addRawAttribute(final String key, String values) {
+    attributes.put(key, values);
+  }
+
   public String getString(final String key) {
     final String value = attributes.get(key);
     return value != null ? value : attributes.get(KeyReducer.reduce(key));
