@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -2249,8 +2248,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
-    if (node.getDatabaseName() != null
-        && !node.getDatabaseName().equals(databaseName)) {
+    if (node.getDatabaseName() != null && !node.getDatabaseName().equals(databaseName)) {
       // not targeted on this database, return
       return;
     }
