@@ -30,6 +30,8 @@ import org.junit.Test;
 
 import java.util.Optional;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.DEVICE_VIEW_TEST_TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -48,6 +50,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 
 public class TreeViewTest {
+
+  private static final String DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME =
+      String.format("%s.\"%s\"", TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE);
+
   // ==================================================================
   // ===================== Device View Test =======================
   // ==================================================================
@@ -57,11 +63,11 @@ public class TreeViewTest {
     PlanTester planTester = new PlanTester();
 
     LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan("select * from tree_view_db.\"root.test.device_view\"");
+        planTester.createPlan("select * from " + DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME);
     PlanMatchPattern expectedPlanPattern =
         output(
             treeDeviceViewTableScan(
-                "tree_view_db.\"root.test.device_view\"",
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                 ImmutableList.of("time", "tag1", "tag2", "s1", "s2"),
                 ImmutableSet.of("time", "tag1", "tag2", "s1", "s2")));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
@@ -69,13 +75,13 @@ public class TreeViewTest {
     // column prune test
     logicalQueryPlan =
         planTester.createPlan(
-            "select s1 from tree_view_db.\"root.test.device_view\" order by tag1");
+            "select s1 from " + DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME + " order by tag1");
     expectedPlanPattern =
         output(
             project(
                 streamSort(
                     treeDeviceViewTableScan(
-                        "tree_view_db.\"root.test.device_view\"",
+                        DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                         ImmutableList.of("tag1", "s1"),
                         ImmutableSet.of("tag1", "s1")))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
@@ -88,18 +94,18 @@ public class TreeViewTest {
                 mergeSort(
                     exchange(),
                     treeAlignedDeviceViewTableScan(
-                        "tree_view_db.\"root.test.device_view\"",
+                        DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                         ImmutableList.of("tag1", "s1"),
                         ImmutableSet.of("tag1", "s1")),
                     treeNonAlignedDeviceViewTableScan(
-                        "tree_view_db.\"root.test.device_view\"",
+                        DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                         ImmutableList.of("tag1", "s1"),
                         ImmutableSet.of("tag1", "s1"))))));
 
     assertPlan(
         planTester.getFragmentPlan(1),
         treeAlignedDeviceViewTableScan(
-            "tree_view_db.\"root.test.device_view\"",
+            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
             ImmutableSet.of("tag1", "s1")));
   }
@@ -111,13 +117,15 @@ public class TreeViewTest {
     // has non-aligned DeviceEntry, no push-down
     LogicalQueryPlan logicalQueryPlan =
         planTester.createPlan(
-            "select tag1, count(s1) from tree_view_db.\"root.test.device_view\" group by tag1");
+            "select tag1, count(s1) from "
+                + DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME
+                + "group by tag1");
     PlanMatchPattern expectedPlanPattern =
         output(
             aggregation(
                 ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("s1"))),
                 treeDeviceViewTableScan(
-                    "tree_view_db.\"root.test.device_view\"",
+                    DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                     ImmutableList.of("tag1", "s1"),
                     ImmutableSet.of("tag1", "s1"))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
@@ -125,7 +133,9 @@ public class TreeViewTest {
     // only aligned DeviceEntry, do push-down
     logicalQueryPlan =
         planTester.createPlan(
-            "select tag1, count(s1) from tree_view_db.\"root.test.device_view\" where tag1='shanghai' group by tag1");
+            "select tag1, count(s1) from "
+                + DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME
+                + " where tag1='shanghai' group by tag1");
     expectedPlanPattern =
         output(
             aggregation(
@@ -136,7 +146,7 @@ public class TreeViewTest {
                     ImmutableList.of("tag1"),
                     Optional.empty(),
                     PARTIAL,
-                    "tree_view_db.\"root.test.device_view\"",
+                    DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                     ImmutableList.of("tag1", "count_0"),
                     ImmutableSet.of("tag1", "s1"))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
@@ -159,7 +169,7 @@ public class TreeViewTest {
                             ImmutableList.of("tag1"),
                             Optional.empty(),
                             PARTIAL,
-                            "tree_view_db.\"root.test.device_view\"",
+                            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                             ImmutableList.of("tag1", "count_0"),
                             ImmutableSet.of("tag1", "s1")))))));
 
@@ -173,7 +183,7 @@ public class TreeViewTest {
                 ImmutableList.of("tag1"),
                 Optional.empty(),
                 PARTIAL,
-                "tree_view_db.\"root.test.device_view\"",
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                 ImmutableList.of("tag1", "count_0"),
                 ImmutableSet.of("tag1", "s1"))));
   }
