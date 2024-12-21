@@ -78,6 +78,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableLastQueryOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
@@ -1919,7 +1921,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    if (canUseLastCacheOptimize()) {
+    if (canUseLastCacheOptimize(aggregators)) {
       // context add TableLastQueryOperator
       TableLastQueryOperator lastQueryOperator =
           new TableLastQueryOperator(
@@ -2075,8 +2077,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new boolean[] {canUseStatistic, isAscending};
   }
 
-  private boolean canUseLastCacheOptimize() {
-    // TODO complete this method
+  private boolean canUseLastCacheOptimize(List<TableAggregator> aggregators) {
+    for (TableAggregator aggregator : aggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastDescAccumulator
+          || (aggregator.getAccumulator() instanceof LastByDescAccumulator
+              && ((LastByDescAccumulator) aggregator.getAccumulator()).yIsTimeColumn()))) {
+        return false;
+      }
+    }
     return true;
   }
 }

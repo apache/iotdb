@@ -65,6 +65,10 @@ public class LastByAccumulator implements TableAccumulator {
     this.xResult = TsPrimitiveType.getByType(xDataType);
   }
 
+  public boolean yIsTimeColumn() {
+    return this.yIsTimeColumn;
+  }
+
   @Override
   public long getEstimatedSize() {
     return INSTANCE_SIZE;
