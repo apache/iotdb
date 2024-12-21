@@ -37,6 +37,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
+
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
@@ -64,6 +67,10 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       TSStatus status = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);
+        // ignore idempotence logic
+        if (status.getMessage().contains(PIPE_ALREADY_EXIST_MSG)) {
+          return;
+        }
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
@@ -111,6 +118,10 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       final TSStatus status = configNodeClient.dropPipe(pipeName.toString());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
+        // ignore idempotence logic
+        if (status.getMessage().contains(PIPE_NOT_EXIST_MSG)) {
+          return;
+        }
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {

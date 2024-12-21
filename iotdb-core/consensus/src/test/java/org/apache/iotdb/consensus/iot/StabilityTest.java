@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -42,7 +41,11 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertTrue;
 
@@ -52,32 +55,34 @@ public class StabilityTest {
 
   private final File storageDir = new File("target" + java.io.File.separator + "stability");
 
-  private IConsensus consensusImpl;
+  private IoTConsensus consensusImpl;
 
   private final int basePort = 6667;
 
   public void constructConsensus() throws IOException {
     consensusImpl =
-        ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.IOT_CONSENSUS,
-                ConsensusConfig.newBuilder()
-                    .setThisNodeId(1)
-                    .setThisNode(new TEndPoint("0.0.0.0", basePort))
-                    .setStorageDir(storageDir.getAbsolutePath())
-                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                    .build(),
-                gid -> new TestStateMachine())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.IOT_CONSENSUS)));
+        (IoTConsensus)
+            ConsensusFactory.getConsensusImpl(
+                    ConsensusFactory.IOT_CONSENSUS,
+                    ConsensusConfig.newBuilder()
+                        .setThisNodeId(1)
+                        .setThisNode(new TEndPoint("0.0.0.0", basePort))
+                        .setStorageDir(storageDir.getAbsolutePath())
+                        .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                        .build(),
+                    gid -> new TestStateMachine())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            String.format(
+                                ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                                ConsensusFactory.IOT_CONSENSUS)));
     consensusImpl.start();
   }
 
   @Before
   public void setUp() throws Exception {
+    FileUtils.deleteFully(storageDir);
     constructConsensus();
   }
 
@@ -209,5 +214,48 @@ public class StabilityTest {
     Assert.assertEquals(1, versionFiles2.length);
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
     consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
+  @Test
+  public void recordAndResetPeerListTest() throws Exception {
+    try {
+      Assert.assertEquals(0, consensusImpl.getReplicationNum(dataRegionId));
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
+      Assert.assertEquals(1, consensusImpl.getReplicationNum(dataRegionId));
+      Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+    } catch (ConsensusException e) {
+      Assert.fail();
+    }
+    consensusImpl.stop();
+
+    // test add sync channel
+    Map<ConsensusGroupId, List<Peer>> correctPeers = new HashMap<>();
+    List<Peer> peerList1And2 = new ArrayList<>();
+    peerList1And2.add(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
+    peerList1And2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
+    correctPeers.put(dataRegionId, peerList1And2);
+    consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
+    consensusImpl.start();
+    Assert.assertEquals(2, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+    consensusImpl.stop();
+
+    // test remove sync channel
+    List<Peer> peerList1 = new ArrayList<>();
+    peerList1.add(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
+    correctPeers.put(dataRegionId, peerList1);
+    consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
+    consensusImpl.start();
+    Assert.assertEquals(1, consensusImpl.getImpl(dataRegionId).getConfiguration().size());
+    consensusImpl.stop();
+
+    // test remove invalid peer
+    List<Peer> peerList2 = new ArrayList<>();
+    peerList2.add(new Peer(dataRegionId, 2, new TEndPoint("0.0.0.0", basePort)));
+    correctPeers.put(dataRegionId, peerList2);
+    consensusImpl.recordCorrectPeerListBeforeStarting(correctPeers);
+    consensusImpl.start();
+    Assert.assertNull(consensusImpl.getImpl(dataRegionId));
   }
 }
