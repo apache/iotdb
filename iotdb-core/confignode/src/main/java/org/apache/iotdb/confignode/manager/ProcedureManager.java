@@ -233,7 +233,7 @@ public class ProcedureManager {
 
   public TSStatus deleteDatabases(
       final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
-    List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
+    final List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
     final long startCheckTimeForProcedures = System.currentTimeMillis();
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       final String database = databaseSchema.getName();
@@ -357,11 +357,11 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
-    String queryId = req.getQueryId();
-    ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
-    int size = byteBuffer.getInt();
+  public TSStatus alterLogicalView(final TAlterLogicalViewReq req) {
+    final String queryId = req.getQueryId();
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+    final int size = byteBuffer.getInt();
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {
@@ -912,11 +912,12 @@ public class ProcedureManager {
    *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
    */
   public TSStatus createRegionGroups(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
-    CreateRegionGroupsProcedure procedure =
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
+    final CreateRegionGroupsProcedure procedure =
         new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan);
     executor.submitProcedure(procedure);
-    TSStatus status = waitingProcedureFinished(procedure);
+    final TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     } else {

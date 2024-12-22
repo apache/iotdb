@@ -23,9 +23,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -37,17 +39,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ALL_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.BEIJING_A1_DEVICE_ENTRY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
@@ -63,7 +70,22 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.buildSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -77,6 +99,7 @@ public class JoinTest {
   MergeSortNode mergeSortNode;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+  String sql;
 
   // ========== table1 join table1 ===============
 
@@ -340,10 +363,208 @@ public class JoinTest {
     assertTableScan(deviceTableScanNode, BEIJING_A1_DEVICE_ENTRY, Ordering.ASC, 0, 0, true, "");
   }
 
-  // has filter which can be push down, inner limit, test if inner limit can be pushed down
-  @Ignore
+  // TableScan join AggTableScan (whose cardinality is at most one)
   @Test
   public void innerJoinTest3() {
+    PlanTester planTester = new PlanTester();
+    Expression filterPredicate =
+        new ComparisonExpression(EQUAL, new SymbolReference("s1"), new SymbolReference("max"));
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *           └──ProjectNode
+     *             └──FilterNode
+     *               └──JoinNode
+     *                   |──TableScanNode
+     *                   ├──AggregationNode
+     *                   │   └──AggregationTableScanNode
+     */
+    assertPlan(
+        planTester.createPlan(
+            "SELECT s1 FROM table1 t1 JOIN (select max(s1) as agg from table1) t2 ON t1.s1=t2.agg"),
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(tableScan)
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("max"),
+                                            aggregationFunction("max", ImmutableList.of("max_9"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        FINAL,
+                                        aggregationTableScan(
+                                            singleGroupingSet(),
+                                            Collections.emptyList(),
+                                            Optional.empty(),
+                                            PARTIAL,
+                                            "testdb.table1",
+                                            ImmutableList.of("max_9"),
+                                            ImmutableSet.of("s1_6")))))))));
+
+    filterPredicate =
+        new ComparisonExpression(EQUAL, new SymbolReference("s1"), new SymbolReference("sum"));
+    assertPlan(
+        planTester.createPlan(
+            "SELECT s1 FROM table1 t1 JOIN (select sum(s1) as agg from table1) t2 ON t1.s1=t2.agg"),
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(tableScan)
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("sum"),
+                                            aggregationFunction("sum", ImmutableList.of("sum_9"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        FINAL,
+                                        aggregationTableScan(
+                                            singleGroupingSet(),
+                                            Collections.emptyList(),
+                                            Optional.empty(),
+                                            PARTIAL,
+                                            "testdb.table1",
+                                            ImmutableList.of("sum_9"),
+                                            ImmutableSet.of("s1_6")))))))));
+  }
+
+  @Test
+  public void innerJoinTest4() {
+    PlanTester planTester = new PlanTester();
+
+    Expression filterPredicate =
+        new ComparisonExpression(
+            GREATER_THAN, new SymbolReference("s1"), new SymbolReference("s1_6"));
+
+    // equiClause with non equiClause
+    sql =
+        "SELECT t1.s1 FROM table1 t1 JOIN table1 t2 ON t1.tag1=t2.tag1 AND t1.time=t2.time AND t1.s1>t2.s1";
+    logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan1 =
+        tableScan(
+            "testdb.table1",
+            ImmutableList.of("time", "tag1", "s1"),
+            ImmutableSet.of("time", "tag1", "s1"));
+    PlanMatchPattern tableScan2 =
+        tableScan(
+            "testdb.table1", ImmutableMap.of("time_0", "time", "tag1_1", "tag1", "s1_6", "s1"));
+    // Verify full LogicalPlan
+    /*
+     *       └──OutputNode
+     *           └──Project
+     *              └──Filter (t1.s1>t2.s1)
+     *                └──JoinNode  (t1.tag1=t2.tag1 AND t1.time=t2.time)
+     *                   |──SortNode
+     *                   │   └──TableScanNode
+     *                   ├──SortNode
+     *                   │   └──TableScanNode
+     */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(sort(tableScan1))
+                                .right(sort(tableScan2))
+                                .ignoreEquiCriteria())))));
+
+    sql = "SELECT t1.s1 FROM table1 t1 JOIN table1 t2 ON t1.s1>t2.s1";
+    logicalQueryPlan = planTester.createPlan(sql);
+    // Verify full LogicalPlan
+    /*
+     *       └──OutputNode
+     *          └──Project
+     *             └──Filter
+     *               └──JoinNode
+     *                   │   └──TableScanNode
+     *                   │   └──TableScanNode
+     */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(
+                                    tableScan(
+                                        "testdb.table1",
+                                        ImmutableList.of("s1"),
+                                        ImmutableSet.of("s1")))
+                                .right(tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1")))
+                                .ignoreEquiCriteria())))));
+  }
+
+  @Test
+  public void fullJoinTest() {
+    PlanTester planTester = new PlanTester();
+    sql =
+        "SELECT t1.time FROM table1 t1 FULL JOIN table1 t2 ON t1.tag1=t2.tag1 AND t1.time=t2.time";
+    logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan1 =
+        tableScan(
+            "testdb.table1", ImmutableList.of("time", "tag1"), ImmutableSet.of("time", "tag1"));
+    PlanMatchPattern tableScan2 =
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "tag1_1", "tag1"));
+    // Verify full LogicalPlan
+    /*
+     *       └──OutputNode
+     *                └──JoinNode  (t1.tag1=t2.tag1 AND t1.time=t2.time)
+     *                   |──SortNode
+     *                   │   └──TableScanNode
+     *                   ├──SortNode
+     *                   │   └──TableScanNode
+     */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            join(
+                JoinNode.JoinType.FULL,
+                builder ->
+                    builder.left(sort(tableScan1)).right(sort(tableScan2)).ignoreEquiCriteria())));
+  }
+
+  @Ignore
+  @Test
+  public void otherInnerJoinTests() {
+    assertInnerJoinTest2(
+        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
+            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+            + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 ORDER BY tag1 LIMIT 111) t1 JOIN (SELECT * FROM table1 WHERE tag1='shenzhen' AND s2>1 LIMIT 222) t2 "
+            + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
+        false);
+
+    // 1. has logical or in subquery filter, outer query filter
+
+    // has filter which can be push down, inner limit and sort, test if inner limit can be pushed
+    // down
+
+    // has filter which can be push down, inner limit, test if inner limit can be pushed down
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
@@ -352,66 +573,17 @@ public class JoinTest {
         false);
   }
 
-  // has filter which can be push down, inner limit and sort, test if inner limit can be pushed down
-  @Ignore
-  @Test
-  public void innerJoinTest4() {
-    assertInnerJoinTest2(
-        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
-            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 ORDER BY tag1 LIMIT 111) t1 JOIN (SELECT * FROM table1 WHERE tag1='shenzhen' AND s2>1 LIMIT 222) t2 "
-            + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
-        false);
-  }
-
-  @Ignore
-  @Test
-  public void innerJoinTest5() {
-    // 1. has logical or in subquery filter, outer query filter
-
-    // 2. where t1.value1 > t2.value2
-  }
-
   // ========== unsupported test ===============
   @Test
   public void unsupportedJoinTest() {
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time AND t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time OR t1.tag1=t2.tag2",
-        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1)",
-        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1, time)",
-        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-
-    // LEFT, RIGHT JOIN
+    // LEFT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
         "LEFT JOIN is not supported, only support INNER JOIN in current version");
 
+    // RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 RIGHT JOIN table1 t2 ON t1.time=t2.time",
         "RIGHT JOIN is not supported, only support INNER JOIN in current version");
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 CROSS JOIN table1 t2",
-        "CROSS JOIN is not supported, only support INNER JOIN in current version");
-
-    // TODO(beyyes) has non time equal join criteria;
   }
 }

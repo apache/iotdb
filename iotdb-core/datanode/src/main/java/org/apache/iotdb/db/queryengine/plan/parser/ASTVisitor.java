@@ -1336,7 +1336,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
     createModelStatement.setModelName(parseIdentifier(modelName));
-    createModelStatement.setUri(ctx.modelUri.getText());
+    createModelStatement.setUri(ctx.uriClause().uri().getText());
     return createModelStatement;
   }
 
@@ -3329,20 +3329,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Flush
 
   @Override
-  public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Statement visitFlush(final IoTDBSqlParser.FlushContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
-      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-        storageGroups.add(parsePrefixPath(prefixPathContext));
+      for (final IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext).getFullPath());
       }
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return flushStatement;
   }
 

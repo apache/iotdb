@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
@@ -343,8 +342,8 @@ public abstract class SubscriptionPrefetchingQueue {
         continue;
       }
 
-      if (event instanceof PipeTsFileInsertionEvent) {
-        if (onEvent((PipeTsFileInsertionEvent) event)) {
+      if (event instanceof TsFileInsertionEvent) {
+        if (onEvent((TsFileInsertionEvent) event)) {
           return;
         }
         continue;
@@ -448,7 +447,7 @@ public abstract class SubscriptionPrefetchingQueue {
                 this);
           }
 
-          ev.ack();
+          ev.ack(this::enqueueEventToPrefetchingQueue);
           ev.recordCommittedTimestamp(); // now committed
           acked.set(true);
 

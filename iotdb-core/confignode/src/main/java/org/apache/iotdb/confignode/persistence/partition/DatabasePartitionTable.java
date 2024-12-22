@@ -274,7 +274,7 @@ public class DatabasePartitionTable {
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getSchemaPartition(
-      List<TSeriesPartitionSlot> partitionSlots, SchemaPartitionTable schemaPartition) {
+      final List<TSeriesPartitionSlot> partitionSlots, final SchemaPartitionTable schemaPartition) {
     return schemaPartitionTable.getSchemaPartition(partitionSlots, schemaPartition);
   }
 
@@ -286,7 +286,8 @@ public class DatabasePartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots, DataPartitionTable dataPartition) {
+      final Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots,
+      final DataPartitionTable dataPartition) {
     return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }
 

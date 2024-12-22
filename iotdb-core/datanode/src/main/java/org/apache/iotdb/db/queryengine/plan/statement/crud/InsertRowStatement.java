@@ -39,9 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -190,9 +190,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
