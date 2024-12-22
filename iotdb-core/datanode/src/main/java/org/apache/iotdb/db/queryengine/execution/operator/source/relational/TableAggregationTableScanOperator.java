@@ -93,7 +93,9 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   protected List<TSDataType> measurementColumnTSDataTypes;
   protected int measurementCount;
 
+  // distinct column schemas appeared in aggregation function
   protected List<ColumnSchema> aggColumnSchemas;
+  // length of aggColumnsIndexArray equals the size of aggColumnSchemas
   protected int[] aggColumnsIndexArray;
 
   protected SeriesScanOptions seriesScanOptions;
