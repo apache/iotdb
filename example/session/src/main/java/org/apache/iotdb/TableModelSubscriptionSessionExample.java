@@ -32,8 +32,8 @@ public class TableModelSubscriptionSessionExample {
         new SubscriptionTableSessionBuilder().host("localhost").port(6667).build()) {
       // no need to open
       final Properties config = new Properties();
-      config.put(TopicConstant.DATABASE_NAME_KEY, "test");
-      config.put(TopicConstant.TABLE_NAME_KEY, "test");
+      config.put(TopicConstant.DATABASE_KEY, "test");
+      config.put(TopicConstant.TABLE_KEY, "test");
       config.put(TopicConstant.START_TIME_KEY, 25);
       config.put(TopicConstant.END_TIME_KEY, 75);
       session.createTopic("test", config);
