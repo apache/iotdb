@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -363,6 +364,9 @@ public class ClusterSchemaManager {
       final String database = databaseSchema.getName();
       final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
+      if (TreeViewSchema.TREE_VIEW_DATABASE.equals(database)) {
+        continue;
+      }
       databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
