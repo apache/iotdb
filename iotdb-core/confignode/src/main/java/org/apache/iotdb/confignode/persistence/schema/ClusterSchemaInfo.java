@@ -386,7 +386,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
       }
       if (plan.isTableModel() && plan.isShowDatabasePlan() && !treeDeviceViewTableMap.isEmpty()) {
-        schemaMap.put(TreeViewSchema.TREE_VIEW_DATABASE, new TDatabaseSchema());
+        schemaMap.put(TreeViewSchema.TREE_VIEW_DATABASE, new TDatabaseSchema(TreeViewSchema.TREE_VIEW_DATABASE));
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
