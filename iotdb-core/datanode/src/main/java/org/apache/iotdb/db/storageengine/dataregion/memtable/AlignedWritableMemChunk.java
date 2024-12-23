@@ -196,10 +196,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     try {
       if (list.isSorted()) {
         sortedList.add(list);
-        return;
-      }
-
-      if (list.getQueryContextList().isEmpty()) {
+      } else if (list.getQueryContextList().isEmpty()) {
         list.safelySort();
         sortedList.add(list);
       } else {
@@ -753,7 +750,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return sortedList;
   }
 
-  public List<Integer> getColumnIndexList(List<IMeasurementSchema> schemaList) {
+  public List<Integer> buildColumnIndexList(List<IMeasurementSchema> schemaList) {
     List<Integer> columnIndexList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(

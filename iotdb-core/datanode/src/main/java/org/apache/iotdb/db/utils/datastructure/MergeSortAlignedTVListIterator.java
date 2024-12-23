@@ -139,4 +139,12 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
     }
     probeNext = false;
   }
+
+  public int getRowsForWorkingTVListIterator() {
+    return alignedTvListIterators[alignedTvListIterators.length - 1].getRows();
+  }
+
+  public void setRowsForWorkingTVListIterator(int rows) {
+    alignedTvListIterators[alignedTvListIterators.length - 1].setRows(rows);
+  }
 }

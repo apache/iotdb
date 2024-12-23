@@ -50,6 +50,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
+
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final String timeChunkName;
 
@@ -71,6 +73,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   protected Map<AlignedTVList, Integer> alignedTvListQueryMap;
 
   private final List<Integer> columnIndexList;
+
+  private int workingTVListRows;
 
   /**
    * The constructor for Aligned type.
@@ -138,6 +142,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             timeColumnDeletion,
             valueColumnsDeletionList,
             context.isIgnoreAllNullRows());
+    this.workingTVListRows = timeValuePairIterator.getRowsForWorkingTVListIterator();
     int[] alignedTvListOffsets = timeValuePairIterator.getAlignedTVListOffsets();
 
     Statistics<? extends Serializable> pageTimeStats = null;
@@ -380,5 +385,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   public List<Statistics<? extends Serializable>[]> getValuesStatisticsList() {
     return valueStatisticsList;
+  }
+
+  public int workingTVListRows() {
+    return workingTVListRows;
   }
 }

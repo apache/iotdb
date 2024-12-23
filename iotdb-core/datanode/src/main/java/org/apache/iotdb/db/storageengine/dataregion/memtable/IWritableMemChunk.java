@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -33,6 +34,8 @@ import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
   int TVLIST_SORT_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+  int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   boolean putLongWithFlushCheck(long t, long v);
 

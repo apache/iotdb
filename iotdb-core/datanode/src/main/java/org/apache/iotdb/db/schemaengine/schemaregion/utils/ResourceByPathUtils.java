@@ -293,7 +293,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     // column index list for the query
     List<Integer> columnIndexList =
-        alignedMemChunk.getColumnIndexList(alignedFullPath.getSchemaList());
+        alignedMemChunk.buildColumnIndexList(alignedFullPath.getSchemaList());
 
     List<TimeRange> timeColumnDeletion = null;
     List<List<TimeRange>> valueColumnsDeletionList = null;

@@ -125,4 +125,12 @@ public class MergeSortTvListIterator implements IPointReader {
     }
     selectedTVListIndex = -1;
   }
+
+  public int getRowsForWorkingTVListIterator() {
+    return tvListIterators[tvListIterators.length - 1].getRows();
+  }
+
+  public void setRowsForWorkingTVListIterator(int rows) {
+    tvListIterators[tvListIterators.length - 1].setRows(rows);
+  }
 }

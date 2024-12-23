@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 /**
@@ -82,8 +83,7 @@ public class ReadOnlyMemChunk {
   // tvlist rowCount during query
   private Map<TVList, Integer> tvListQueryMap;
 
-  protected static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private int workingTVListRows;
 
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
@@ -145,6 +145,7 @@ public class ReadOnlyMemChunk {
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     MergeSortTvListIterator timeValuePairIterator =
         new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
+    this.workingTVListRows = timeValuePairIterator.getRowsForWorkingTVListIterator();
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
@@ -327,5 +328,9 @@ public class ReadOnlyMemChunk {
   @TestOnly
   public TsBlock getTsBlock() {
     return null;
+  }
+
+  public int workingTVListRows() {
+    return workingTVListRows;
   }
 }

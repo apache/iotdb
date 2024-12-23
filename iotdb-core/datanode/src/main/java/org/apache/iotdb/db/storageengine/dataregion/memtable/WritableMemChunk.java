@@ -70,10 +70,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     try {
       if (list.isSorted()) {
         sortedList.add(list);
-        return;
-      }
-
-      if (list.getQueryContextList().isEmpty()) {
+      } else if (list.getQueryContextList().isEmpty()) {
         list.safelySort();
         sortedList.add(list);
       } else {

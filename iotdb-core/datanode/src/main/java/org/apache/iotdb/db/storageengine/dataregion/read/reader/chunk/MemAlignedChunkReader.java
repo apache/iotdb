@@ -41,6 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
+
 /** To read aligned chunk data in memory. */
 public class MemAlignedChunkReader implements IChunkReader {
   private final AlignedReadOnlyMemChunk readableChunk;
@@ -61,6 +63,7 @@ public class MemAlignedChunkReader implements IChunkReader {
             readableChunk.getTimeColumnDeletion(),
             readableChunk.getValueColumnsDeletionList(),
             readableChunk.getContext().isIgnoreAllNullRows());
+    timeValuePairIterator.setRowsForWorkingTVListIterator(readableChunk.workingTVListRows());
     this.globalTimeFilter = globalTimeFilter;
     this.pageReaderList = new ArrayList<>();
     initAllPageReaders(
@@ -195,6 +198,12 @@ public class MemAlignedChunkReader implements IChunkReader {
           }
         }
         builder.declarePosition();
+      }
+      if (builder.getPositionCount() > MAX_NUMBER_OF_POINTS_IN_PAGE) {
+        throw new RuntimeException(
+            String.format(
+                "Points in current page %d is larger than %d",
+                builder.getPositionCount(), MAX_NUMBER_OF_POINTS_IN_PAGE));
       }
     }
   }
