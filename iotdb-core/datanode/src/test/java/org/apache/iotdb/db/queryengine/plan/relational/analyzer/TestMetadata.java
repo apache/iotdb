@@ -98,7 +98,7 @@ public class TestMetadata implements Metadata {
   private final TypeManager typeManager = new InternalTypeManager();
 
   public static final String DB1 = "testdb";
-  public static final String TREE_DB1 = "root.testdb";
+  public static final String TREE_DB1 = "root.test";
   public static final String TABLE1 = "table1";
   public static final String TIME = "time";
   private static final String TAG1 = "tag1";
@@ -122,8 +122,8 @@ public class TestMetadata implements Metadata {
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
 
-  private static final String TREE_VIEW_DB = "tree_view_db";
-  private static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
+  public static final String TREE_VIEW_DB = "tree_view";
+  public static final String DEVICE_VIEW_TEST_TABLE = "root.test.device_view";
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -281,18 +281,18 @@ public class TestMetadata implements Metadata {
       if (expressionList.isEmpty()) {
         return ImmutableList.of(
             new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_3.split("\\.")), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
             new AlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_5.split("\\.")), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()),
             new NonAlignedDeviceEntry(
-                new StringArrayDeviceID(DEVICE_4.split("\\.")), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_4), ImmutableList.of()));
       }
 
       return ImmutableList.of(
           new AlignedDeviceEntry(
-              new StringArrayDeviceID(DEVICE_3.split("\\.")), ImmutableList.of()),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
           new AlignedDeviceEntry(
-              new StringArrayDeviceID(DEVICE_5.split("\\.")), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
     }
 
     if (expressionList.size() == 2) {
@@ -432,20 +432,26 @@ public class TestMetadata implements Metadata {
   @Override
   public DataPartition getDataPartition(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return DATA_PARTITION;
+    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return DATA_PARTITION;
+    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
-  private static final DataPartition DATA_PARTITION =
-      MockTableModelDataPartition.constructDataPartition();
+  private static final DataPartition TABLE_DATA_PARTITION =
+      MockTableModelDataPartition.constructDataPartition(DB1);
 
-  private static final SchemaPartition SCHEMA_PARTITION =
-      MockTableModelDataPartition.constructSchemaPartition();
+  private static final DataPartition TREE_VIEW_DATA_PARTITION =
+      MockTableModelDataPartition.constructDataPartition(TREE_DB1);
+
+  private static final SchemaPartition TABLE_SCHEMA_PARTITION =
+      MockTableModelDataPartition.constructSchemaPartition(DB1);
+
+  private static final SchemaPartition TREE_SCHEMA_PARTITION =
+      MockTableModelDataPartition.constructSchemaPartition(TREE_DB1);
 
   private static IPartitionFetcher getFakePartitionFetcher() {
 
@@ -453,37 +459,41 @@ public class TestMetadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-        return SCHEMA_PARTITION;
+        return TABLE_SCHEMA_PARTITION;
       }
 
       @Override
       public SchemaPartition getOrCreateSchemaPartition(
           PathPatternTree patternTree, String userName) {
-        return SCHEMA_PARTITION;
+        return TABLE_SCHEMA_PARTITION;
       }
 
       @Override
       public DataPartition getDataPartition(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
+        return !sgNameToQueryParamsMap.isEmpty() && sgNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+            ? TREE_VIEW_DATA_PARTITION
+            : TABLE_DATA_PARTITION;
       }
 
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
+        return !sgNameToQueryParamsMap.isEmpty() && sgNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+            ? TREE_VIEW_DATA_PARTITION
+            : TABLE_DATA_PARTITION;
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
+        return TABLE_DATA_PARTITION;
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
           List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-        return DATA_PARTITION;
+        return TABLE_DATA_PARTITION;
       }
 
       @Override
@@ -503,12 +513,12 @@ public class TestMetadata implements Metadata {
       @Override
       public SchemaPartition getOrCreateSchemaPartition(
           String database, List<IDeviceID> deviceIDList, String userName) {
-        return SCHEMA_PARTITION;
+        return TREE_VIEW_DB.equals(database) ? TREE_SCHEMA_PARTITION : TABLE_SCHEMA_PARTITION;
       }
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
+        return TREE_VIEW_DB.equals(database) ? TREE_SCHEMA_PARTITION : TABLE_SCHEMA_PARTITION;
       }
     };
   }
