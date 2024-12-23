@@ -1346,7 +1346,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public Map<String, List<TsTable>> getAllUsingTables() {
     databaseReadWriteLock.readLock().lock();
     try {
-      return tableModelMTree.getAllUsingTables();
+      final Map<String, List<TsTable>> result = tableModelMTree.getAllUsingTables();
+      if (!treeDeviceViewTableMap.isEmpty()) {
+        result.put(
+            TreeViewSchema.TREE_VIEW_DATABASE, new ArrayList<>(treeDeviceViewTableMap.values()));
+      }
+      return result;
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
