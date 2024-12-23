@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -32,10 +31,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank.RankFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value.FirstValueFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -67,19 +66,20 @@ public class TableWindowOperatorTest {
   public void testOneTsBlockWithMultiPartition() {
     long[][] timeArray =
         new long[][] {
-            {1, 2, 3, 4, 5, 6, 7},
+          {1, 2, 3, 4, 5, 6, 7},
         };
     String[][] deviceIdArray =
         new String[][] {
-            {"d1", "d1", "d2", "d2", "d2", "d2", "d2"},
+          {"d1", "d1", "d2", "d2", "d2", "d2", "d2"},
         };
     int[][] valueArray =
         new int[][] {
-            {1, 2, 3, 4, 5, 6, 7},
+          {1, 2, 3, 4, 5, 6, 7},
         };
 
     int count = 0;
-    try (TableWindowOperator windowOperator = genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+    try (TableWindowOperator windowOperator =
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
       ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
       listenableFuture.get();
       while (!windowOperator.isFinished() && windowOperator.hasNext()) {
@@ -87,13 +87,15 @@ public class TableWindowOperatorTest {
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
             assertEquals(column1[count], tsBlock.getColumn(0).getLong(i));
-            assertEquals(column2[count], tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+            assertEquals(
+                column2[count],
+                tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             assertEquals(column3[count], tsBlock.getColumn(2).getInt(i));
             assertEquals(column4[count], tsBlock.getColumn(3).getLong(i));
           }
         }
       }
-    }  catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -103,28 +105,29 @@ public class TableWindowOperatorTest {
   public void testPartitionCrossMultiTsBlock() {
     long[][] timeArray =
         new long[][] {
-            {1, 2},
-            {3, 4},
-            {5},
-            {6, 7},
+          {1, 2},
+          {3, 4},
+          {5},
+          {6, 7},
         };
     String[][] deviceIdArray =
         new String[][] {
-            {"d1", "d1"},
-            {"d2", "d2"},
-            {"d2"},
-            {"d2", "d2"},
+          {"d1", "d1"},
+          {"d2", "d2"},
+          {"d2"},
+          {"d2", "d2"},
         };
     int[][] valueArray =
         new int[][] {
-            {1, 2},
-            {3, 4},
-            {5},
-            {6, 7},
+          {1, 2},
+          {3, 4},
+          {5},
+          {6, 7},
         };
 
     int count = 0;
-    try (TableWindowOperator windowOperator = genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+    try (TableWindowOperator windowOperator =
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
       ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
       listenableFuture.get();
       while (!windowOperator.isFinished() && windowOperator.hasNext()) {
@@ -132,13 +135,15 @@ public class TableWindowOperatorTest {
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
             assertEquals(column1[count], tsBlock.getColumn(0).getLong(i));
-            assertEquals(column2[count], tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+            assertEquals(
+                column2[count],
+                tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             assertEquals(column3[count], tsBlock.getColumn(2).getInt(i));
             assertEquals(column4[count], tsBlock.getColumn(3).getLong(i));
           }
         }
       }
-    }  catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -148,22 +153,23 @@ public class TableWindowOperatorTest {
   public void testMixedPartition() {
     long[][] timeArray =
         new long[][] {
-            {1, 2, 3, 4},
-            {5, 6, 7},
+          {1, 2, 3, 4},
+          {5, 6, 7},
         };
     String[][] deviceIdArray =
         new String[][] {
-            {"d1", "d1", "d2", "d2"},
-            {"d2", "d2", "d2"},
+          {"d1", "d1", "d2", "d2"},
+          {"d2", "d2", "d2"},
         };
     int[][] valueArray =
         new int[][] {
-            {1, 2, 3, 4},
-            {5, 6, 7},
+          {1, 2, 3, 4},
+          {5, 6, 7},
         };
 
     int count = 0;
-    try (TableWindowOperator windowOperator = genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+    try (TableWindowOperator windowOperator =
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
       ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
       listenableFuture.get();
       while (!windowOperator.isFinished() && windowOperator.hasNext()) {
@@ -171,13 +177,15 @@ public class TableWindowOperatorTest {
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
             assertEquals(column1[count], tsBlock.getColumn(0).getLong(i));
-            assertEquals(column2[count], tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+            assertEquals(
+                column2[count],
+                tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
             assertEquals(column3[count], tsBlock.getColumn(2).getInt(i));
             assertEquals(column4[count], tsBlock.getColumn(3).getLong(i));
           }
         }
       }
-    }  catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -191,7 +199,11 @@ public class TableWindowOperatorTest {
     private final int[][] valueArray;
     private final DriverContext driverContext;
 
-    ChildOperator(long[][] timeArray, String[][] deviceIdArray, int[][] valueArray, DriverContext driverContext) {
+    ChildOperator(
+        long[][] timeArray,
+        String[][] deviceIdArray,
+        int[][] valueArray,
+        DriverContext driverContext) {
       this.timeArray = timeArray;
       this.deviceIdArray = deviceIdArray;
       this.valueArray = valueArray;
@@ -264,7 +276,8 @@ public class TableWindowOperatorTest {
     }
   }
 
-  private TableWindowOperator genWindowOperator(long[][] timeArray, String[][] deviceIdArray, int[][] valueArray) {
+  private TableWindowOperator genWindowOperator(
+      long[][] timeArray, String[][] deviceIdArray, int[][] valueArray) {
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
