@@ -130,6 +130,10 @@ public class TableWindowOperator implements ProcessOperator {
     if (inputOperator.hasNextWithTimer()) {
       // This TsBlock is pre-sorted with PARTITION BY and ORDER BY channels
       TsBlock preSortedBlock = inputOperator.next();
+      // StreamSort Operator sometimes returns null
+      if (preSortedBlock == null || preSortedBlock.isEmpty()) {
+        return null;
+      }
 
       cachedPartitionExecutors = partition(preSortedBlock);
       if (cachedPartitionExecutors.isEmpty()) {
@@ -210,22 +214,24 @@ public class TableWindowOperator implements ProcessOperator {
                 windowFunctions,
                 frameInfoList,
                 sortChannels);
-        partitionExecutors.addLast(partitionExecutor);
-      }
 
-      cachedTsBlocks.clear();
+        partitionExecutors.addLast(partitionExecutor);
+        cachedTsBlocks.clear();
+        startIndexInFirstBlock = -1;
+      }
     }
 
     // Try to find all partitions
-    while (partitionEndInCurrentBlock < tsBlock.getPositionCount()) {
+    int count = tsBlock.getPositionCount();
+    while (count == 1 || partitionEndInCurrentBlock < count) {
       // Try to find one partition
-      while (partitionEndInCurrentBlock < tsBlock.getPositionCount()
+      while (partitionEndInCurrentBlock < count
           && partitionComparator.equalColumns(
               partitionColumns, partitionStartInCurrentBlock, partitionEndInCurrentBlock)) {
         partitionEndInCurrentBlock++;
       }
 
-      if (partitionEndInCurrentBlock != tsBlock.getPositionCount()) {
+      if (partitionEndInCurrentBlock != count) {
         // Find partition
         PartitionExecutor partitionExecutor;
         if (partitionStartInCurrentBlock != 0 || startIndexInFirstBlock == -1) {
@@ -261,8 +267,12 @@ public class TableWindowOperator implements ProcessOperator {
       } else {
         // Last partition of TsBlock
         // The beginning of next TsBlock may have rows in this partition
-        startIndexInFirstBlock = partitionStartInCurrentBlock;
+        if (startIndexInFirstBlock == -1) {
+          startIndexInFirstBlock = partitionStartInCurrentBlock;
+        }
         cachedTsBlocks.add(tsBlock);
+        // For count == 1
+        break;
       }
     }
 
