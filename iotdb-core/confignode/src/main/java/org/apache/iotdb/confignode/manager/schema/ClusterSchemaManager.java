@@ -364,34 +364,34 @@ public class ClusterSchemaManager {
       final String database = databaseSchema.getName();
       final TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
-      if (TreeViewSchema.TREE_VIEW_DATABASE.equals(database)) {
-        continue;
-      }
-      databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
-      databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
-      databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
-      databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
-      databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
-      databaseInfo.setMinSchemaRegionNum(
-          getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
-      databaseInfo.setMaxSchemaRegionNum(
-          getMaxRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
-      databaseInfo.setMinDataRegionNum(
-          getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
-      databaseInfo.setMaxDataRegionNum(
-          getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
+      if (!TreeViewSchema.TREE_VIEW_DATABASE.equals(database)) {
+        databaseInfo.setTTL(databaseSchema.isSetTTL() ? databaseSchema.getTTL() : Long.MAX_VALUE);
+        databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
+        databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
+        databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
+        databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
+        databaseInfo.setMinSchemaRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        databaseInfo.setMaxSchemaRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        databaseInfo.setMinDataRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
+        databaseInfo.setMaxDataRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
 
-      try {
-        databaseInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
-        databaseInfo.setDataRegionNum(
-            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
-      } catch (final DatabaseNotExistsException e) {
-        // Skip pre-deleted Database
-        LOGGER.warn(
-            "The Database: {} doesn't exist. Maybe it has been pre-deleted.",
-            databaseSchema.getName());
-        continue;
+        try {
+          databaseInfo.setSchemaRegionNum(
+              getPartitionManager()
+                  .getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
+          databaseInfo.setDataRegionNum(
+              getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
+        } catch (final DatabaseNotExistsException e) {
+          // Skip pre-deleted Database
+          LOGGER.warn(
+              "The Database: {} doesn't exist. Maybe it has been pre-deleted.",
+              databaseSchema.getName());
+          continue;
+        }
       }
 
       infoMap.put(database, databaseInfo);
