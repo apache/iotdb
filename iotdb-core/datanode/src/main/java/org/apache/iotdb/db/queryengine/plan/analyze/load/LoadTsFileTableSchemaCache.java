@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -290,7 +291,7 @@ public class LoadTsFileTableSchemaCache {
         final ColumnSchema realColumn =
             realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
         if (!fileColumn.getType().equals(realColumn.getType())) {
-          throw new VerifyMetadataException(
+          throw new VerifyMetadataTypeMismatchException(
               String.format(
                   "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
                   realColumn.getName(),

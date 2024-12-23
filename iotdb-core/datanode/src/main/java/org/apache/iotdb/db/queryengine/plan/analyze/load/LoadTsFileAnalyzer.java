@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -31,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -61,11 +65,16 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final boolean isTableModelStatement;
 
+  private final SqlParser relationalSqlParser = new SqlParser();
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
 
   protected final boolean isDeleteAfterLoad;
+
+  protected final boolean isConvertOnTypeMismatch;
 
   protected final boolean isAutoCreateDatabase;
 
@@ -78,15 +87,32 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
+  protected final LoadTsFileDataTypeMismatchConvertHandler loadTsFileDataTypeMismatchConvertHandler;
+
+  //  public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+  //      new LoadStatementTSStatusVisitor();
+  //  public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
+  //      new LoadStatementExceptionVisitor();
+  //  private final LoadTableStatementDataTypeConvertExecutionVisitor
+  //      tableStatementDataTypeConvertExecutionVisitor =
+  //          new LoadTableStatementDataTypeConvertExecutionVisitor(
+  //              this::executeStatementForTableModel);
+  //  private final LoadTreeStatementDataTypeConvertExecutionVisitor
+  //      treeStatementDataTypeConvertExecutionVisitor =
+  //          new
+  // LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
+
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
+    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
@@ -99,9 +125,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.statementString = loadTsFileTableStatement.toString();
     this.isVerifySchema = true;
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
+    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
 
     this.loadTsFileStatement = null;
     this.isTableModelStatement = true;
@@ -136,6 +164,10 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
+        return false;
+      } catch (VerifyMetadataTypeMismatchException e) {
+        this.executeDataTypeConversionOnTypeMismatch(analysis);
+        // just return false to STOP the analysis process
         return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
@@ -174,6 +206,23 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     return tsFileResource;
   }
 
+  public void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
+
+    TSStatus status;
+    if (isTableModelStatement) {
+      status =
+          loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(loadTsFileTableStatement);
+    } else {
+      status = loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileStatement);
+    }
+
+    if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      analysis.setFailStatus(status);
+    }
+
+    analysis.setFinishQueryAfterAnalyze(true);
+  }
+
   protected String getStatementString() {
     return statementString;
   }
@@ -204,6 +253,10 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected boolean isVerifySchema() {
     return isVerifySchema;
+  }
+
+  protected boolean isConvertOnTypeMismatch() {
+    return isConvertOnTypeMismatch;
   }
 
   protected boolean isAutoCreateDatabase() {
