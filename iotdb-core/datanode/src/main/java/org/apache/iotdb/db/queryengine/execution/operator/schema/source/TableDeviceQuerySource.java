@@ -299,7 +299,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     return (Objects.isNull(idDeterminedPredicateList)
             || idDeterminedPredicateList.isEmpty()
             || idDeterminedPredicateList.stream().allMatch(List::isEmpty))
-        && Objects.isNull(filter);
+        && Objects.isNull(filter)
+        && PathUtils.isTableModelDatabase(database);
   }
 
   @Override
