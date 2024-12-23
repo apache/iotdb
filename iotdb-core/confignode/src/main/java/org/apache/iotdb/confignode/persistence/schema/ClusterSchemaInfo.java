@@ -1253,7 +1253,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         return new ShowTableResp(
             StatusUtils.OK,
             treeDeviceViewTableMap.values().stream()
-                .map(tsTable -> new TTableInfo(tsTable.getTableName(), null))
+                .map(tsTable -> new TTableInfo(tsTable.getTableName(), TTL_INFINITE))
                 .collect(Collectors.toList()));
       }
       return new ShowTableResp(
