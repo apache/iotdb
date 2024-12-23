@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -72,8 +73,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
     final List<PartialPath> devicePatternList =
-        getDevicePatternList(
-            PathUtils.unQualifyDatabaseName(database), tableName, idDeterminedPredicateList);
+        getDevicePatternList(database, tableName, idDeterminedPredicateList);
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
@@ -193,15 +193,20 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
-    if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database, tableName))) {
+    final String database4TableCache = getDatabase4TableCache(database);
+    if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database4TableCache, tableName))) {
       throw new SchemaExecutionException(
           String.format("Table '%s.%s' does not exist.", database, tableName));
     }
     return DeviceFilterUtil.convertToDevicePattern(
-        database,
+        PathUtils.unQualifyDatabaseName(database4TableCache),
         tableName,
-        DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
+        DataNodeTableCache.getInstance().getTable(database4TableCache, tableName).getIdNums(),
         idDeterminedPredicateList);
+  }
+
+  private static String getDatabase4TableCache(final String database) {
+    return PathUtils.isTableModelDatabase(database) ? database : TreeViewSchema.TREE_VIEW_DATABASE;
   }
 
   @Override
@@ -231,7 +236,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    final TsTable table =
+        DataNodeTableCache.getInstance().getTable(getDatabase4TableCache(database), tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
@@ -266,7 +272,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    final TsTable table =
+        DataNodeTableCache.getInstance().getTable(getDatabase4TableCache(database), tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
