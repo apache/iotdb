@@ -125,7 +125,7 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
       } catch (final SQLException e) {
         Assert.assertEquals(
             TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-                + ": root.sg has already been created as database",
+                + ": root.db has already been created as database",
             e.getMessage());
       }
     }
@@ -158,7 +158,6 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("CREATE DATABASE %s", database));
 
       try {
         statement.execute(String.format("create database %s", database));
@@ -179,7 +178,6 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("CREATE DATABASE %s", database));
 
       try {
         statement.execute(String.format("create database %s", database));
