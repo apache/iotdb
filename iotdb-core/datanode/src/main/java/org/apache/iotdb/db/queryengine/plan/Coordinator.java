@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -396,6 +397,7 @@ public class Coordinator {
         || statement instanceof DropColumn
         || statement instanceof DropTable
         || statement instanceof DeleteDevice
+        || statement instanceof RenameColumn
         || statement instanceof RenameTable
         || statement instanceof UpdateTreeView
         || statement instanceof ShowCluster

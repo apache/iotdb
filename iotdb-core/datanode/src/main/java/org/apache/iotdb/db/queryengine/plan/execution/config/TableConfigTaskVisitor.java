@@ -442,8 +442,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new AlterTableRenameTableTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),
-        node.getTarget().getValue(),
         context.getQueryId().getId(),
+        node.getTarget().getValue(),
         node.tableIfExists());
   }
 
