@@ -1539,8 +1539,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
-    final String database;
-    final int size;
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
@@ -1720,7 +1718,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 LOGGER.warn(
                     "Failed to get the schema region database length for device view schema", e);
               }
-              final int finalDBLength = databaseLength;
+              final int finalDeviceDBLength = databaseLength + 1;
 
               final ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                   SchemaSourceFactory.getTimeSeriesSchemaCountSource(
@@ -1743,7 +1741,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             info.setMaxLength(
                                 Math.max(
                                     info.getMaxLength(),
-                                    result.getPartialPath().getNodeLength() - finalDBLength));
+                                    result.getPartialPath().getNodeLength() - finalDeviceDBLength));
                             final IMeasurementSchema schema = result.getSchema();
                             if (Objects.isNull(info.getMeasurementsDataTypeCountMap())) {
                               info.setMeasurementsDataTypeCountMap(new HashMap<>());
