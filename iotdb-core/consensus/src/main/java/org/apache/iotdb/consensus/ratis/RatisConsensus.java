@@ -656,7 +656,9 @@ class RatisConsensus implements IConsensus {
     Set<RaftPeer> correctRaftPeerSet = new HashSet<>(newGroupPeers);
     if (localRaftPeerSet.equals(correctRaftPeerSet)) {
       // configurations are the same
-      logger.info("[RESET PEER LIST] The current peer list is correct, nothing need to be reset");
+      logger.info(
+          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          localRaftPeerSet);
       return;
     }
 
