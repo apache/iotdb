@@ -562,15 +562,15 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
-  private void removeInvalidRegions(List<TRegionReplicaSet> correctedRegions) {
+  private void makeRegionsCorrect(List<TRegionReplicaSet> correctRegions) {
     List<ConsensusGroupId> dataNodeConsensusGroupIds =
-        correctedRegions.stream()
+        correctRegions.stream()
             .map(TRegionReplicaSet::getRegionId)
             .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
             .collect(Collectors.toList());
     removeInvalidDataRegions(dataNodeConsensusGroupIds);
     removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
-    prepareToResetDataRegionPeerList(correctedRegions);
+    prepareToResetDataRegionPeerList(correctRegions);
   }
 
   private void removeInvalidDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
@@ -632,16 +632,23 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.regionId);
       List<Peer> peerList = new ArrayList<>();
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        peerList.add(
-            new Peer(
-                consensusGroupId,
-                dataNodeLocation.getDataNodeId(),
-                dataNodeLocation.getDataRegionConsensusEndPoint()));
-      }
       if (consensusGroupId.getType() == TConsensusGroupType.DataRegion) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          peerList.add(
+              new Peer(
+                  consensusGroupId,
+                  dataNodeLocation.getDataNodeId(),
+                  dataNodeLocation.getDataRegionConsensusEndPoint()));
+        }
         correctPeerListForDataRegion.put(consensusGroupId, peerList);
       } else if (consensusGroupId.getType() == TConsensusGroupType.SchemaRegion) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          peerList.add(
+              new Peer(
+                  consensusGroupId,
+                  dataNodeLocation.getDataNodeId(),
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint()));
+        }
         correctPeerListForSchemaRegion.put(consensusGroupId, peerList);
       }
     }
@@ -703,7 +710,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           config.getClusterName(),
           (endTime - startTime));
 
-      removeInvalidRegions(dataNodeRestartResp.getCorrectConsensusGroups());
+      makeRegionsCorrect(dataNodeRestartResp.getCorrectConsensusGroups());
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());

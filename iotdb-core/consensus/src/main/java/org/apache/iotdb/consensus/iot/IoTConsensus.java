@@ -528,6 +528,8 @@ public class IoTConsensus implements IConsensus {
             "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
             previousPeerListStr,
             newPeerListStr);
+      } else {
+        logger.info("[RESET PEER LIST] The current peer list is correct, nothing need to be reset");
       }
     }
   }

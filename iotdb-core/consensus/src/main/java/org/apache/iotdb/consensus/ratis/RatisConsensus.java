@@ -96,11 +96,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -639,11 +639,7 @@ class RatisConsensus implements IConsensus {
             .anyMatch(
                 raftPeer ->
                     myself.getId().equals(raftPeer.getId())
-                        && Utils.fromRaftPeerAddressToTEndPoint(myself.getAddress())
-                            .getIp()
-                            .equals(
-                                Utils.fromRaftPeerAddressToTEndPoint(raftPeer.getAddress())
-                                    .getIp()));
+                        && myself.getAddress().equals(raftPeer.getAddress()));
     if (!myselfInCorrectPeers) {
       logger.info(
           "[RESET PEER LIST] Local peer is not in the correct peer list, delete local peer {}",
@@ -656,10 +652,11 @@ class RatisConsensus implements IConsensus {
         Utils.fromPeersAndPriorityToRaftPeers(correctPeers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
-    Set<RaftPeer> localRaftPeerSet = new TreeSet<>(group.getPeers());
-    Set<RaftPeer> correctRaftPeerSet = new TreeSet<>(newGroupPeers);
+    Set<RaftPeer> localRaftPeerSet = new HashSet<>(group.getPeers());
+    Set<RaftPeer> correctRaftPeerSet = new HashSet<>(newGroupPeers);
     if (localRaftPeerSet.equals(correctRaftPeerSet)) {
       // configurations are the same
+      logger.info("[RESET PEER LIST] The current peer list is correct, nothing need to be reset");
       return;
     }
 

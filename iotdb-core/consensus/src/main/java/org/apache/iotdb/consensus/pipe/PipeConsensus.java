@@ -497,6 +497,8 @@ public class PipeConsensus implements IConsensus {
           "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
           previousPeerListStr,
           impl.getPeers());
+    } else {
+      LOGGER.info("[RESET PEER LIST] The current peer list is correct, nothing need to be reset");
     }
   }
 
