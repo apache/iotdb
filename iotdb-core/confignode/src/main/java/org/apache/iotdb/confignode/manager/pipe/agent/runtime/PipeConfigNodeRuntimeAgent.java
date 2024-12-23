@@ -22,9 +22,11 @@ package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -35,7 +37,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeConfigNodeRuntimeAgent implements IService {
@@ -45,6 +46,12 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   private final PipeConfigRegionListener regionListener = new PipeConfigRegionListener();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
+
+  private final PipePeriodicalPhantomReferenceCleaner pipePeriodicalPhantomReferenceCleaner =
+      new PipePeriodicalPhantomReferenceCleaner();
 
   @Override
   public synchronized void start() {
@@ -59,6 +66,13 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     // Clean receiver file dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
+    // Start periodical job executor
+    pipePeriodicalJobExecutor.start();
+
+    if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
+      pipePeriodicalPhantomReferenceCleaner.start();
+    }
+
     isShutdown.set(false);
     LOGGER.info("PipeRuntimeConfigNodeAgent started");
   }
@@ -69,6 +83,9 @@ public class PipeConfigNodeRuntimeAgent implements IService {
       return;
     }
     isShutdown.set(true);
+
+    // Stop periodical job executor
+    pipePeriodicalJobExecutor.stop();
 
     PipeConfigNodeAgent.task().dropAllPipeTasks();
 
@@ -90,12 +107,13 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     return regionListener.listener();
   }
 
-  public void increaseListenerReference(PipeParameters parameters) throws IllegalPathException {
+  public void increaseListenerReference(final PipeParameters parameters)
+      throws IllegalPathException {
     regionListener.increaseReference(parameters);
   }
 
-  public void decreaseListenerReference(PipeParameters parameters)
-      throws IllegalPathException, IOException {
+  public void decreaseListenerReference(final PipeParameters parameters)
+      throws IllegalPathException {
     regionListener.decreaseReference(parameters);
   }
 
@@ -120,7 +138,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
-  public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
+  public void report(final EnrichedEvent event, final PipeRuntimeException pipeRuntimeException) {
     if (event.getPipeTaskMeta() != null) {
       report(event.getPipeTaskMeta(), pipeRuntimeException);
     } else {
@@ -128,7 +146,8 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     }
   }
 
-  private void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+  private void report(
+      final PipeTaskMeta pipeTaskMeta, final PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
         "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
         pipeTaskMeta,
@@ -141,5 +160,16 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
     }
+  }
+
+  /////////////////////////// Periodical Job Executor ///////////////////////////
+
+  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
+  }
+
+  public void registerPhantomReferenceCleanJob(
+      String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalPhantomReferenceCleaner.register(id, periodicalJob, intervalInSeconds);
   }
 }

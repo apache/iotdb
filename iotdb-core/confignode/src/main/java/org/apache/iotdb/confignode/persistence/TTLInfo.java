@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -46,6 +47,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -210,6 +212,11 @@ public class TTLInfo implements SnapshotProcessor {
         && this.showTTL(new ShowTTLPlan())
             .getPathTTLMap()
             .equals(other.showTTL(new ShowTTLPlan()).getPathTTLMap());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getTTLCount(), showTTL(new ShowTTLPlan()).getPathTTLMap());
   }
 
   @TestOnly

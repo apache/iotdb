@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -37,9 +41,11 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,7 +73,7 @@ public class SchemaRegionTestUtil {
       throws MetadataException {
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath(fullPath),
+            new MeasurementPath(fullPath),
             dataType,
             encoding,
             compressor,
@@ -92,7 +98,7 @@ public class SchemaRegionTestUtil {
     for (int i = 0; i < fullPaths.size(); i++) {
       schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath(fullPaths.get(i)),
+              new MeasurementPath(fullPaths.get(i)),
               dataTypes.get(i),
               encodings.get(i),
               compressors.get(i),
@@ -406,5 +412,63 @@ public class SchemaRegionTestUtil {
     final Pair<Long, Boolean> numIsViewPair = schemaRegion.constructSchemaBlackList(patternTree);
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     return numIsViewPair;
+  }
+
+  public static void createTableDevice(
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final Object[] deviceIds,
+      final Map<String, String> attributes)
+      throws MetadataException {
+    schemaRegion.createOrUpdateTableDevice(
+        new CreateOrUpdateTableDeviceNode(
+            new PlanNodeId(""),
+            null,
+            table,
+            Collections.singletonList(deviceIds),
+            new ArrayList<>(attributes.keySet()),
+            Collections.singletonList(
+                attributes.values().stream()
+                    .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)
+                    .toArray())));
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      final ISchemaRegion schemaRegion, final String table, final List<String[]> deviceIdList) {
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    try (final ISchemaReader<IDeviceSchemaInfo> reader =
+        schemaRegion.getTableDeviceReader(table, new ArrayList<>(deviceIdList))) {
+      while (reader.hasNext()) {
+        result.add(reader.next());
+      }
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final int idColumnNum,
+      final List<SchemaFilter> idDeterminedFilterList) {
+    final List<PartialPath> patternList =
+        DeviceFilterUtil.convertToDevicePattern(
+            schemaRegion.getDatabaseFullPath(),
+            table,
+            idColumnNum,
+            Collections.singletonList(idDeterminedFilterList));
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    for (final PartialPath pattern : patternList) {
+      try (final ISchemaReader<IDeviceSchemaInfo> reader =
+          schemaRegion.getTableDeviceReader(pattern)) {
+        while (reader.hasNext()) {
+          result.add(reader.next());
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return result;
   }
 }

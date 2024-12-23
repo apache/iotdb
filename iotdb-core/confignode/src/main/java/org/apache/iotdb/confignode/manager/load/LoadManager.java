@@ -99,7 +99,7 @@ public class LoadManager {
    * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
-      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
@@ -111,7 +111,7 @@ public class LoadManager {
    * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
@@ -262,11 +262,15 @@ public class LoadManager {
         loadCache.cacheConfigNodeHeartbeatSample(nodeId, heartbeatSample);
         break;
       case DataNode:
-      default:
         loadCache.cacheDataNodeHeartbeatSample(nodeId, heartbeatSample);
         break;
+      case AINode:
+        loadCache.cacheAINodeHeartbeatSample(nodeId, heartbeatSample);
+        break;
+      default:
+        break;
     }
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
@@ -278,7 +282,7 @@ public class LoadManager {
    */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
-    loadCache.updateNodeStatistics();
+    loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 

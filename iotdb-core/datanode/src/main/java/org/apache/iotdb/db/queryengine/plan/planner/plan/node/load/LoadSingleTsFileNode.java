@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -56,6 +57,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private final File tsFile;
   private final TsFileResource resource;
+  private final boolean isTableModel;
+  private final String database;
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
@@ -63,10 +66,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
+      PlanNodeId id,
+      TsFileResource resource,
+      boolean isTableModel,
+      String database,
+      boolean deleteAfterLoad,
+      long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
+    this.isTableModel = isTableModel;
+    this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
   }
@@ -130,6 +140,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return deleteAfterLoad;
   }
 
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
   public long getWritePointCount() {
     return writePointCount;
   }
@@ -145,6 +159,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public TsFileResource getTsFileResource() {
     return resource;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
@@ -208,10 +226,11 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         Files.deleteIfExists(tsFile.toPath());
         Files.deleteIfExists(
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
         Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+            new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
@@ -227,6 +246,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
     return Objects.equals(tsFile, loadSingleTsFileNode.tsFile)
         && Objects.equals(resource, loadSingleTsFileNode.resource)
+        && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
+        && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
@@ -234,6 +255,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, resource, needDecodeTsFile, deleteAfterLoad, localRegionReplicaSet);
+    return Objects.hash(
+        tsFile,
+        resource,
+        isTableModel,
+        database,
+        needDecodeTsFile,
+        deleteAfterLoad,
+        localRegionReplicaSet);
   }
 }

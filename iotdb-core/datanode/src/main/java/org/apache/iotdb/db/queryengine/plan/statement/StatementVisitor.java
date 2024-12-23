@@ -74,6 +74,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -165,17 +169,17 @@ public abstract class StatementVisitor<R, C> {
   }
 
   // Create Multi Timeseries
-  public R visitCreateMultiTimeseries(
+  public R visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, C context) {
     return visitStatement(createMultiTimeSeriesStatement, context);
   }
 
-  // Alter Timeseries
-  public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
+  // Alter TimeSeries
+  public R visitAlterTimeSeries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
-  public R visitDeleteTimeseries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
+  public R visitDeleteTimeSeries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
     return visitStatement(deleteTimeSeriesStatement, context);
   }
 
@@ -281,6 +285,19 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitAlterLogicalView(AlterLogicalViewStatement alterLogicalViewStatement, C context) {
     return visitStatement(alterLogicalViewStatement, context);
+  }
+
+  // AI Model
+  public R visitCreateModel(CreateModelStatement createModelStatement, C context) {
+    return visitStatement(createModelStatement, context);
+  }
+
+  public R visitDropModel(DropModelStatement dropModelStatement, C context) {
+    return visitStatement(dropModelStatement, context);
+  }
+
+  public R visitShowModels(ShowModelsStatement showModelsModelStatement, C context) {
+    return visitStatement(showModelsModelStatement, context);
   }
 
   /** Data Manipulation Language (DML) */
@@ -443,6 +460,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
     return visitStatement(showConfigNodesStatement, context);
+  }
+
+  public R visitShowAINodes(ShowAINodesStatement showAINodesStatement, C context) {
+    return visitStatement(showAINodesStatement, context);
   }
 
   public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {

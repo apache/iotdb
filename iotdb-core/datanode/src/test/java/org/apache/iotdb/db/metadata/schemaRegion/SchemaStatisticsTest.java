@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
@@ -400,6 +401,28 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  public void testTableDeviceStatistics() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
+    final String tableName1 = "t1";
+
+    final Map<String, String> attributeMap = new HashMap<>();
+    attributeMap.put("type", "new");
+    attributeMap.put("cycle", "monthly");
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_0"}, attributeMap);
+    attributeMap.put("type", "old");
+    SchemaRegionTestUtil.createTableDevice(
+        schemaRegion, tableName1, new String[] {"hebei", "p_1", "d_1"}, attributeMap);
+
+    // Check device number
+    Assert.assertEquals(
+        2, schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName1));
+  }
+
+  @Test
   public void testPBTreeNodeStatistics() throws Exception {
     if (testParams.getSchemaEngineMode().equals("PBTree")) {
       final ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
@@ -470,7 +493,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
     schemaRegion1.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
+            new MeasurementPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,

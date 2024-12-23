@@ -48,65 +48,65 @@
     <fileSets>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/datanode/src/assembly/resources/conf</directory>
+            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/confignode/src/assembly/resources/conf</directory>
+            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/datanode/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/confignode/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/datanode/src/assembly/resources/tools</directory>
+            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/tools</directory>
+            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <!--        <fileSet>-->
         <!--            <outputDirectory>datanode</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</directory>-->
+        <!--            <directory>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</directory>-->
         <!--        </fileSet>-->
         <!--        <fileSet>-->
         <!--            <outputDirectory>confignode</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>-->
+        <!--            <directory>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>-->
         <!--        </fileSet>-->
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
+            <source>${project.basedir}/../iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
             <outputDirectory>conf</outputDirectory>
             <fileMode>0755</fileMode>
         </file>
     </files>
     <!--    <files>-->
     <!--        <file>-->
-    <!--            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/datanode-env.sh</source>-->
+    <!--            <source>${project.basedir}/../server/src/assembly/resources/conf/datanode-env.sh</source>-->
     <!--            <destName>datanode/conf/datanode-env.sh</destName>-->
     <!--            <fileMode>0755</fileMode>-->
     <!--        </file>-->

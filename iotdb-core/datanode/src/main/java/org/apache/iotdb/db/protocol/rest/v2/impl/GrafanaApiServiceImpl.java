@@ -117,7 +117,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              true);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
@@ -184,7 +185,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               sql,
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              true);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
@@ -227,6 +229,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     Long queryId = null;
     try {
       if (requestBody != null && !requestBody.isEmpty()) {
+        // TODO: necessary to create a PartialPath
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
         Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
@@ -246,7 +249,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 sql,
                 partitionFetcher,
                 schemaFetcher,
-                config.getQueryTimeoutThreshold());
+                config.getQueryTimeoutThreshold(),
+                true);
         if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           return Response.ok()

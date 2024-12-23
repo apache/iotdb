@@ -70,6 +70,10 @@ struct TSExecuteStatementResp {
   12: optional TSTracingInfo tracingInfo
   13: optional list<binary> queryResult
   14: optional bool moreData
+  // only be set while executing use XXX successfully
+  15: optional string database
+  16: optional bool tableModel
+  17: optional list<i32> columnIndex2TsBlockColumnIndexList
 }
 
 enum TSProtocolVersion {
@@ -212,6 +216,8 @@ struct TSInsertRecordReq {
   4: required binary values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional bool isWriteToTable
+  8: optional list<byte> columnCategoryies
 }
 
 struct TSInsertStringRecordReq {
@@ -233,6 +239,8 @@ struct TSInsertTabletReq {
   6: required list<i32> types
   7: required i32 size
   8: optional bool isAligned
+  9: optional bool writeToTable
+  10: optional list<byte> columnCategories
 }
 
 struct TSInsertTabletsReq {

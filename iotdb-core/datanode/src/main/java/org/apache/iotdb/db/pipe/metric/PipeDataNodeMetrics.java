@@ -41,6 +41,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionExtractorMetrics.getInstance().bindTo(metricService);
     PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().bindTo(metricService);
+    PipeDataNodeReceiverMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -57,6 +58,7 @@ public class PipeDataNodeMetrics implements IMetricSet {
     PipeSchemaRegionExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().unbindFrom(metricService);
+    PipeDataNodeReceiverMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

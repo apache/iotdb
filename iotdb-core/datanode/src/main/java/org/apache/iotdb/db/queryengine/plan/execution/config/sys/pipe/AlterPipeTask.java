@@ -19,24 +19,81 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.Map;
 
 public class AlterPipeTask implements IConfigTask {
 
   private final AlterPipeStatement alterPipeStatement;
 
   public AlterPipeTask(AlterPipeStatement alterPipeStatement) {
+    // support now() function
+    applyNowFunctionToExtractorAttributes(alterPipeStatement.getExtractorAttributes());
     this.alterPipeStatement = alterPipeStatement;
+  }
+
+  public AlterPipeTask(AlterPipe node) {
+    alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
+    alterPipeStatement.setPipeName(node.getPipeName());
+    alterPipeStatement.setIfExists(node.hasIfExistsCondition());
+
+    // support now() function
+    applyNowFunctionToExtractorAttributes(node.getExtractorAttributes());
+
+    alterPipeStatement.setExtractorAttributes(node.getExtractorAttributes());
+    alterPipeStatement.setProcessorAttributes(node.getProcessorAttributes());
+    alterPipeStatement.setConnectorAttributes(node.getConnectorAttributes());
+    alterPipeStatement.setReplaceAllExtractorAttributes(node.isReplaceAllExtractorAttributes());
+    alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
+    alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterPipe(alterPipeStatement);
+  }
+
+  private void applyNowFunctionToExtractorAttributes(final Map<String, String> attributes) {
+    final long currentTime =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            System.currentTimeMillis(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    // support now() function
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+        attributes,
+        PipeExtractorConstant.SOURCE_START_TIME_KEY,
+        PipeExtractorConstant.EXTRACTOR_START_TIME_KEY,
+        currentTime);
+
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+        attributes,
+        PipeExtractorConstant.SOURCE_END_TIME_KEY,
+        PipeExtractorConstant.EXTRACTOR_END_TIME_KEY,
+        currentTime);
+
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+        attributes,
+        PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY,
+        PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
+        currentTime);
+
+    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+        attributes,
+        PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY,
+        PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
+        currentTime);
   }
 }

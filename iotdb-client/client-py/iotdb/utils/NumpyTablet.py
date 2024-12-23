@@ -17,28 +17,48 @@
 #
 
 import struct
+
+import numpy as np
+from numpy import ndarray
+from typing import List
+
+from iotdb.tsfile.utils.DateUtils import parse_date_to_int
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
+from iotdb.utils.Tablet import ColumnType
 
 
 class NumpyTablet(object):
     def __init__(
-        self, device_id, measurements, data_types, values, timestamps, bitmaps=None
+        self,
+        insert_target_name: str,
+        column_names: List[str],
+        data_types: List[TSDataType],
+        values: List[ndarray],
+        timestamps: ndarray,
+        bitmaps: List[BitMap] = None,
+        column_types: List[ColumnType] = None,
     ):
         """
         creating a numpy tablet for insertion
-          for example, considering device: root.sg1.d1
+          for example using tree-model, considering device: root.sg1.d1
             timestamps,     m1,    m2,     m3
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2
                      3,  688.6,  True,  text3
-        Notice: From 0.13.0, the tablet can contain empty cell
-                The tablet will be sorted at the initialization by timestamps
-        :param device_id: String, IoTDB time series path to device layer (without sensor)
-        :param measurements: List, sensors
-        :param data_types: TSDataType List, specify value types for sensors
-        :param values: List of numpy array, the values of each column should be the inner numpy array
-        :param timestamps: Numpy array, the timestamps
+          for example using table-model, considering table: table1
+            timestamps,    id1,  attr1,    m1
+                     1,  id:1,  attr:1,   1.0
+                     2,  id:1,  attr:1,   2.0
+                     3,  id:2,  attr:2,   3.0
+        Notice: The tablet will be sorted at the initialization by timestamps
+        :param insert_target_name: Str, DeviceId if using tree model or TableName when using table model.
+        :param column_names: Str List, names of columns
+        :param data_types: TSDataType List, specify value types for columns
+        :param values: ndarray List, one ndarray contains the value of one column
+        :param timestamps: ndarray, contains the timestamps
+        :param bitmaps: BitMap list, one bitmap records the position of none value in a column
+        :param column_types: ColumnType List, marking the type of each column, can be none for tree-view interfaces.
         """
         if len(values) > 0 and len(values[0]) != len(timestamps):
             raise RuntimeError(
@@ -63,12 +83,18 @@ class NumpyTablet(object):
 
         self.__values = values
         self.__timestamps = timestamps
-        self.__device_id = device_id
-        self.__measurements = measurements
+        self.__insert_target_name = insert_target_name
+        self.__measurements = column_names
         self.__data_types = data_types
         self.__row_number = len(timestamps)
-        self.__column_number = len(measurements)
+        self.__column_number = len(column_names)
         self.bitmaps = bitmaps
+        if column_types is None:
+            self.__column_types = ColumnType.n_copy(
+                ColumnType.MEASUREMENT, self.__column_number
+            )
+        else:
+            self.__column_types = column_types
 
     @staticmethod
     def check_sorted(timestamps):
@@ -83,11 +109,14 @@ class NumpyTablet(object):
     def get_data_types(self):
         return self.__data_types
 
+    def get_column_categories(self):
+        return self.__column_types
+
     def get_row_number(self):
         return self.__row_number
 
-    def get_device_id(self):
-        return self.__device_id
+    def get_insert_target_name(self):
+        return self.__insert_target_name
 
     def get_timestamps(self):
         return self.__timestamps
@@ -102,12 +131,22 @@ class NumpyTablet(object):
         bs_len = 0
         bs_list = []
         for data_type, value in zip(self.__data_types, self.__values):
-            # TEXT
-            if data_type == 5:
+            # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
+            if (
+                data_type == 0
+                or data_type == 1
+                or data_type == 2
+                or data_type == 3
+                or data_type == 4
+                or data_type == 8
+            ):
+                bs = value.tobytes()
+            # TEXT, STRING, BLOB
+            elif data_type == 5 or data_type == 11 or data_type == 10:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
-                    # Fot TEXT, it's same as the original solution
+                    # For TEXT, it's same as the original solution
                     if isinstance(str_list, str):
                         value_bytes = bytes(str_list, "utf-8")
                     else:
@@ -119,11 +158,18 @@ class NumpyTablet(object):
                     values_tobe_packed.append(value_bytes)
                 format_str = "".join(format_str_list)
                 bs = struct.pack(format_str, *values_tobe_packed)
-            # Non-TEXT
+            # DATE
+            elif data_type == 9:
+                bs = (
+                    np.vectorize(parse_date_to_int)(value)
+                    .astype(np.dtype(">i4"))
+                    .tobytes()
+                )
             else:
-                bs = value.tobytes()
+                raise RuntimeError("Unsupported data type:" + str(data_type))
             bs_list.append(bs)
             bs_len += len(bs)
+
         if self.bitmaps is not None:
             format_str_list = [">"]
             values_tobe_packed = []

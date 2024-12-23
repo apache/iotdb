@@ -50,7 +50,7 @@ public class SubPlanTypeExtractor {
   public static TypeProvider extractor(PlanNode root, TypeProvider allTypes) {
 
     TypeProvider typeProvider =
-        new TypeProvider(allTypes.getTypeMap(), allTypes.getTemplatedInfo());
+        new TypeProvider(allTypes.getTreeModelTypeMap(), allTypes.getTemplatedInfo());
     root.accept(new Visitor(typeProvider, allTypes), null);
     return typeProvider;
   }
@@ -68,7 +68,7 @@ public class SubPlanTypeExtractor {
     @Override
     public Void visitPlan(PlanNode node, Void context) {
       node.getOutputColumnNames()
-          .forEach(name -> typeProvider.setType(name, allTypes.getType(name)));
+          .forEach(name -> typeProvider.setTreeModelType(name, allTypes.getTreeModelType(name)));
       for (PlanNode source : node.getChildren()) {
         source.accept(this, context);
       }
@@ -78,7 +78,7 @@ public class SubPlanTypeExtractor {
     @Override
     public Void visitSeriesAggregationScan(SeriesAggregationScanNode node, Void context) {
       String sourcePath = node.getSeriesPath().getFullPath();
-      typeProvider.setType(sourcePath, allTypes.getType(sourcePath));
+      typeProvider.setTreeModelType(sourcePath, allTypes.getTreeModelType(sourcePath));
       return visitPlan(node, context);
     }
 
@@ -95,7 +95,7 @@ public class SubPlanTypeExtractor {
       AlignedPath alignedPath = node.getAlignedPath();
       for (int i = 0; i < alignedPath.getColumnNum(); i++) {
         String sourcePath = alignedPath.getPathWithMeasurement(i).getFullPath();
-        typeProvider.setType(sourcePath, allTypes.getType(sourcePath));
+        typeProvider.setTreeModelType(sourcePath, allTypes.getTreeModelType(sourcePath));
       }
       return visitPlan(node, context);
     }
@@ -209,7 +209,8 @@ public class SubPlanTypeExtractor {
           .forEach(
               expression -> {
                 String expressionStr = expression.getExpressionString();
-                typeProvider.setType(expressionStr, allTypes.getType(expressionStr));
+                typeProvider.setTreeModelType(
+                    expressionStr, allTypes.getTreeModelType(expressionStr));
               });
     }
   }

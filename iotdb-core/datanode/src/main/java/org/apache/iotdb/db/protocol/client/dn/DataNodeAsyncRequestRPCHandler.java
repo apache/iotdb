@@ -61,15 +61,16 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
   }
 
   public static DataNodeAsyncRequestRPCHandler<?> createAsyncRPCHandler(
-      AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> context,
-      int requestId,
-      TDataNodeLocation targetDataNode) {
-    DnToDnRequestType requestType = context.getRequestType();
-    Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
-    Map<Integer, ?> responseMap = context.getResponseMap();
-    CountDownLatch countDownLatch = context.getCountDownLatch();
+      final AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> context,
+      final int requestId,
+      final TDataNodeLocation targetDataNode) {
+    final DnToDnRequestType requestType = context.getRequestType();
+    final Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
+    final Map<Integer, ?> responseMap = context.getResponseMap();
+    final CountDownLatch countDownLatch = context.getCountDownLatch();
     switch (requestType) {
       case TEST_CONNECTION:
+      case UPDATE_ATTRIBUTE:
         return new AsyncTSStatusRPCHandler(
             requestType,
             requestId,

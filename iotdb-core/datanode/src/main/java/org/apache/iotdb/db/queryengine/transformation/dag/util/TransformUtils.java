@@ -76,6 +76,10 @@ public class TransformUtils {
           return new BinaryColumn(1, Optional.empty(), new Binary[] {(Binary) value});
         case BOOLEAN:
           return new BooleanColumn(1, Optional.empty(), new boolean[] {(boolean) value});
+        case STRING:
+        case BLOB:
+        case DATE:
+        case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
               "Unsupported type: " + constantOperand.getDataType());
@@ -151,6 +155,10 @@ public class TransformUtils {
           valueRecorder.recordString(str);
         }
         break;
+      case TIMESTAMP:
+      case DATE:
+      case BLOB:
+      case STRING:
       default:
         throw new UnsupportedOperationException(
             "The data type of the state window strategy is not valid.");

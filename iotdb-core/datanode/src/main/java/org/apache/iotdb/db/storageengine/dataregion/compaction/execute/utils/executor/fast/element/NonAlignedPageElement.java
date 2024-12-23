@@ -41,9 +41,8 @@ public class NonAlignedPageElement extends PageElement {
       ByteBuffer pageData,
       CompactionChunkReader chunkReader,
       ChunkMetadataElement chunkMetadataElement,
-      boolean isLastPage,
-      long priority) {
-    super(chunkMetadataElement, isLastPage, priority);
+      boolean isLastPage) {
+    super(chunkMetadataElement, isLastPage);
     this.pageHeader = pageHeader;
     this.pageData = pageData;
     this.chunkReader = chunkReader;

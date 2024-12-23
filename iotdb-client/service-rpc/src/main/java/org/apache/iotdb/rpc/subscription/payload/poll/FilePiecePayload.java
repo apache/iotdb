@@ -30,10 +30,13 @@ import java.util.Objects;
 
 public class FilePiecePayload implements SubscriptionPollPayload {
 
+  /** The name of the file. */
   private transient String fileName;
 
+  /** The field to be filled in the next {@link PollFilePayload} request. */
   private transient long nextWritingOffset;
 
+  /** The piece of the file content. */
   private transient byte[] filePiece;
 
   public String getFileName() {

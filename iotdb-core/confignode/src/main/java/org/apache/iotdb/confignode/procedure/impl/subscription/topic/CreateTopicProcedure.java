@@ -20,9 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -68,27 +66,27 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateTopicProcedure: executeFromValidate");
 
     // 1. check if the topic exists
-    subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq);
+    if (!subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq)) {
+      return false;
+    }
 
     // 2. create the topic meta
     topicMeta =
         new TopicMeta(
             createTopicReq.getTopicName(),
-            CommonDateTimeUtils.convertMilliTimeWithPrecision(
-                System.currentTimeMillis(),
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            System.currentTimeMillis(),
             createTopicReq.getTopicAttributes());
+    return true;
   }
 
   @Override
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info(
-        "CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta);
 
     TSStatus response;
     try {
@@ -98,7 +96,6 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
@@ -108,35 +105,28 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
-    LOGGER.info(
-        "CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta.getTopicName());
+      throws SubscriptionException, IOException {
+    LOGGER.info("CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta);
 
-    try {
-      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
-      if (RpcUtils.squashResponseStatusList(statuses).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SubscriptionException(
-            String.format(
-                "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the topic meta due to: ", e);
+    final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to create topic %s on data nodes, because %s", topicMeta, e.getMessage()));
+              "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
     }
   }
 
   @Override
   protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateTopicProcedure: rollbackFromValidate({})", topicMeta.getTopicName());
+    LOGGER.info("CreateTopicProcedure: rollbackFromValidate({})", topicMeta);
   }
 
   @Override
-  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
-        "CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta.getTopicName());
+  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
+    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta);
 
     TSStatus response;
     try {
@@ -149,25 +139,27 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response =
           new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback topic %s on config nodes, because %s", topicMeta, response));
+              "Failed to rollback creating topic %s on config nodes, because %s",
+              topicMeta, response));
     }
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
-        "CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta.getTopicName());
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
+    LOGGER.info("CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta);
 
     final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback topic %s on data nodes, because %s", topicMeta, statuses));
+              "Failed to rollback creating topic %s on data nodes, because %s",
+              topicMeta, statuses));
     }
   }
 

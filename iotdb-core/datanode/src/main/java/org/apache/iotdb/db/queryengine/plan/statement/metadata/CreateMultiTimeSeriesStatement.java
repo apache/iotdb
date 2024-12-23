@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -39,7 +39,7 @@ import java.util.Map;
 /** CREATE MULTI TIMESERIES statement. */
 public class CreateMultiTimeSeriesStatement extends Statement {
 
-  private List<PartialPath> paths;
+  private List<MeasurementPath> paths;
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
@@ -54,7 +54,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
   }
 
   @Override
-  public List<PartialPath> getPaths() {
+  public List<MeasurementPath> getPaths() {
     return paths;
   }
 
@@ -63,7 +63,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    List<PartialPath> checkedPaths = getPaths();
+    List<MeasurementPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
             userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
@@ -71,7 +71,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
         PrivilegeType.WRITE_SCHEMA);
   }
 
-  public void setPaths(List<PartialPath> paths) {
+  public void setPaths(List<MeasurementPath> paths) {
     this.paths = paths;
   }
 
@@ -137,7 +137,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateMultiTimeseries(this, context);
+    return visitor.visitCreateMultiTimeSeries(this, context);
   }
 
   @Override

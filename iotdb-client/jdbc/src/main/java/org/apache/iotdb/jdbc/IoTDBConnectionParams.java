@@ -25,6 +25,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 
 import java.nio.charset.Charset;
 import java.time.ZoneId;
+import java.util.Optional;
 
 public class IoTDBConnectionParams {
 
@@ -48,6 +49,10 @@ public class IoTDBConnectionParams {
   private boolean useSSL = false;
   private String trustStore;
   private String trustStorePwd;
+
+  private String sqlDialect = "tree";
+
+  private String db;
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
@@ -175,5 +180,21 @@ public class IoTDBConnectionParams {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public String getSqlDialect() {
+    return sqlDialect;
+  }
+
+  public void setSqlDialect(String sqlDialect) {
+    this.sqlDialect = sqlDialect;
+  }
+
+  public Optional<String> getDb() {
+    return Optional.ofNullable(db);
+  }
+
+  public void setDb(String db) {
+    this.db = db;
   }
 }

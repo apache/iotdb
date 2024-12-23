@@ -56,7 +56,11 @@ public class ExtremeAccumulator implements Accumulator {
         addDoubleInput(columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
@@ -84,7 +88,11 @@ public class ExtremeAccumulator implements Accumulator {
         updateDoubleResult(partialResult[0].getDouble(0));
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
@@ -114,7 +122,11 @@ public class ExtremeAccumulator implements Accumulator {
         updateDoubleResult((double) statistics.getMinValue());
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
@@ -141,7 +153,11 @@ public class ExtremeAccumulator implements Accumulator {
         extremeResult.setDouble(finalResult.getDouble(0));
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
@@ -170,7 +186,11 @@ public class ExtremeAccumulator implements Accumulator {
         columnBuilders[0].writeDouble(extremeResult.getDouble());
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
@@ -197,7 +217,11 @@ public class ExtremeAccumulator implements Accumulator {
         columnBuilder.writeDouble(extremeResult.getDouble());
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));

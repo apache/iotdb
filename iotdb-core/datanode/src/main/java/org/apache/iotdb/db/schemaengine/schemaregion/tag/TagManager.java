@@ -86,10 +86,10 @@ public class TagManager {
     this.regionStatistics = regionStatistics;
   }
 
-  public synchronized boolean createSnapshot(File targetDir) {
-    File tagLogSnapshot =
+  public synchronized boolean createSnapshot(final File targetDir) {
+    final File tagLogSnapshot =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.TAG_LOG_SNAPSHOT);
-    File tagLogSnapshotTmp =
+    final File tagLogSnapshotTmp =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.TAG_LOG_SNAPSHOT_TMP);
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
@@ -111,7 +111,7 @@ public class TagManager {
       }
 
       return true;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
       if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
         logger.warn(
@@ -398,12 +398,13 @@ public class TagManager {
    * @throws IOException error occurred when reading disk
    */
   public void updateTagsAndAttributes(
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap,
-      IMeasurementMNode<?> leafMNode)
+      final Map<String, String> tagsMap,
+      final Map<String, String> attributesMap,
+      final IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
+    final Pair<Map<String, String>, Map<String, String>> pair =
+        tagLogFile.read(leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {

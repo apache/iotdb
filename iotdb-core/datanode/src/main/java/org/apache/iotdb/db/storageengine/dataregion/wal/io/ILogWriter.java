@@ -38,6 +38,19 @@ public interface ILogWriter extends Closeable {
   double write(ByteBuffer buffer) throws IOException;
 
   /**
+   * Write given logs to a persistent medium. NOTICE: the logs may be cached in the storage device,
+   * if the storage device you are using do not guarantee strong persistence, and you want the logs
+   * to be persisted immediately, please call {@link #force()} after calling this method. Notice: do
+   * not flip the buffer before calling this method
+   *
+   * @param buffer content that have been converted to bytes
+   * @param allowCompress if the buffer should be compressed
+   * @throws IOException if an I/O error occurs
+   * @return Compression rate of the buffer after compression
+   */
+  double write(ByteBuffer buffer, boolean allowCompress) throws IOException;
+
+  /**
    * Forces any updates to this file to be written to the storage device that contains it.
    *
    * @throws IOException if an I/O error occurs

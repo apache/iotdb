@@ -29,12 +29,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesS
 
 public class TimeseriesFilterVisitor extends SchemaFilterVisitor<ITimeSeriesSchemaInfo> {
   @Override
-  public boolean visitNode(SchemaFilter filter, ITimeSeriesSchemaInfo info) {
+  public Boolean visitNode(SchemaFilter filter, ITimeSeriesSchemaInfo info) {
     return true;
   }
 
   @Override
-  public boolean visitPathContainsFilter(
+  public Boolean visitPathContainsFilter(
       PathContainsFilter pathContainsFilter, ITimeSeriesSchemaInfo info) {
     if (pathContainsFilter.getContainString() == null) {
       return true;
@@ -43,12 +43,12 @@ public class TimeseriesFilterVisitor extends SchemaFilterVisitor<ITimeSeriesSche
   }
 
   @Override
-  public boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, ITimeSeriesSchemaInfo info) {
+  public Boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, ITimeSeriesSchemaInfo info) {
     return info.getSchema().getType() == dataTypeFilter.getDataType();
   }
 
   @Override
-  public boolean visitViewTypeFilter(ViewTypeFilter viewTypeFilter, ITimeSeriesSchemaInfo info) {
+  public Boolean visitViewTypeFilter(ViewTypeFilter viewTypeFilter, ITimeSeriesSchemaInfo info) {
     return info.isLogicalView() == (viewTypeFilter.getViewType() == ViewType.VIEW);
   }
 }

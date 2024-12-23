@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.List;
 
@@ -86,7 +86,7 @@ public class SessionWindowManager implements IWindowManager {
       return inputTsBlock;
     }
 
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     int i = 0;
     int size = inputTsBlock.getPositionCount();
     long previousTimeValue = sessionWindow.getTimeValue();
@@ -126,7 +126,7 @@ public class SessionWindowManager implements IWindowManager {
   }
 
   @Override
-  public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
+  public TsBlockBuilder createResultTsBlockBuilder(List<TreeAggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
     if (isNeedOutputEndTime) {
@@ -137,7 +137,7 @@ public class SessionWindowManager implements IWindowManager {
 
   @Override
   public void appendAggregationResult(
-      TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
+      TsBlockBuilder resultTsBlockBuilder, List<TreeAggregator> aggregators) {
     long endTime = isNeedOutputEndTime ? sessionWindow.getEndTime() : -1;
     outputAggregators(aggregators, resultTsBlockBuilder, sessionWindow.getStartTime(), endTime);
   }

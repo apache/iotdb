@@ -8,6 +8,7 @@ on:
     branches:
       - master
       - "rel/*"
+      - "rc/*"
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -16,6 +17,7 @@ on:
       - master
       - "rel/*"
       - "new_*"
+      - "rc/*"
     paths-ignore:
       - "docs/**"
       - 'site/**'

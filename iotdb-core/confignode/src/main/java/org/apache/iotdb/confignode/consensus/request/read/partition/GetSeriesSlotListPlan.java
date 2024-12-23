@@ -20,28 +20,19 @@
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
+public class GetSeriesSlotListPlan extends ConfigPhysicalReadPlan {
 
-  private String database;
+  private final String database;
 
-  private TConsensusGroupType partitionType;
+  private final TConsensusGroupType partitionType;
 
-  public GetSeriesSlotListPlan() {
+  public GetSeriesSlotListPlan(final String database, final TConsensusGroupType partitionType) {
     super(ConfigPhysicalPlanType.GetSeriesSlotList);
-  }
-
-  public GetSeriesSlotListPlan(String database, TConsensusGroupType partitionType) {
-    this();
     this.database = database;
     this.partitionType = partitionType;
   }
@@ -55,27 +46,14 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(database, stream);
-    stream.writeInt(partitionType.ordinal());
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetSeriesSlotListPlan that = (GetSeriesSlotListPlan) o;
+    final GetSeriesSlotListPlan that = (GetSeriesSlotListPlan) o;
     return database.equals(that.database) && partitionType.equals(that.partitionType);
   }
 

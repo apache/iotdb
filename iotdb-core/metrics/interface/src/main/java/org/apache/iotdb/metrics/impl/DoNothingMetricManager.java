@@ -57,7 +57,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Histogram createHistogram(MetricInfo metricInfo) {
+  public Histogram createHistogram() {
     return DO_NOTHING_HISTOGRAM;
   }
 

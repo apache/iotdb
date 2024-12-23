@@ -47,7 +47,7 @@ public enum FragmentInstanceState {
   /** Instance execution failed. */
   FAILED(true, true),
   /** Instance is not found. */
-  NO_SUCH_INSTANCE(false, false);
+  NO_SUCH_INSTANCE(false, true);
 
   public static final Set<FragmentInstanceState> TERMINAL_INSTANCE_STATES =
       Stream.of(FragmentInstanceState.values())

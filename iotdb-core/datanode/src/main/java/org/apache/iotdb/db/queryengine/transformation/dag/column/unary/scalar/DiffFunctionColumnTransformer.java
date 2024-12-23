@@ -26,6 +26,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Arrays;
+
 public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
 
   // default is true
@@ -44,6 +46,19 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    // The DIFF function depends on forward and backward rows and cannot be short-circuited.
+    boolean[] selectionCopy = new boolean[selection.length];
+    Arrays.fill(selectionCopy, true);
+    childColumnTransformer.evaluateWithSelection(selectionCopy);
+    Column column = childColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
+    doTransform(column, columnBuilder, selection);
+    initializeColumnCache(columnBuilder.build());
+    childColumnTransformer.clearCache();
+  }
+
+  @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (column.isNull(i)) {
@@ -56,14 +71,22 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
       } else {
         double currValue = childColumnTransformer.getType().getDouble(column, i);
         if (lastValueIsNull) {
-          columnBuilder.appendNull(); // lastValue is null, append null
+          // lastValue is null, append null
+          columnBuilder.appendNull();
         } else {
           returnType.writeDouble(columnBuilder, currValue - lastValue);
         }
 
-        lastValue = currValue; // currValue is not null, update lastValue
+        // currValue is not null, update lastValue
+        lastValue = currValue;
         lastValueIsNull = false;
       }
     }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    // Diff do not support short circuit evaluation
+    doTransform(column, columnBuilder);
   }
 }

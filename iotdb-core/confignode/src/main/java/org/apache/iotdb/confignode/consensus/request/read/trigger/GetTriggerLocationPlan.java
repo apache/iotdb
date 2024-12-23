@@ -19,26 +19,16 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.trigger;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetTriggerLocationPlan extends ConfigPhysicalPlan {
+public class GetTriggerLocationPlan extends ConfigPhysicalReadPlan {
+  private final String triggerName;
 
-  String triggerName;
-
-  public GetTriggerLocationPlan() {
+  public GetTriggerLocationPlan(final String triggerName) {
     super(ConfigPhysicalPlanType.GetTriggerLocation);
-  }
-
-  public GetTriggerLocationPlan(String triggerName) {
-    this();
     this.triggerName = triggerName;
   }
 
@@ -46,24 +36,8 @@ public class GetTriggerLocationPlan extends ConfigPhysicalPlan {
     return triggerName;
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
-  }
-
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    ReadWriteIOUtils.write(triggerName, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.triggerName = ReadWriteIOUtils.readString(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -73,7 +47,7 @@ public class GetTriggerLocationPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    GetTriggerLocationPlan that = (GetTriggerLocationPlan) o;
+    final GetTriggerLocationPlan that = (GetTriggerLocationPlan) o;
     return Objects.equals(triggerName, that.triggerName);
   }
 

@@ -74,7 +74,7 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteTimeseries(this, context);
+    return visitor.visitDeleteTimeSeries(this, context);
   }
 
   @Override

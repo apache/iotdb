@@ -21,8 +21,6 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
-import java.io.File;
-
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
@@ -32,22 +30,26 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   }
 
   @Override
-  public File getTsFile() {
-    return null;
-  }
-
-  @Override
   public void ack() {
     batch.ack();
   }
 
   @Override
-  public void cleanup() {
-    batch.cleanup();
+  public void cleanUp() {
+    batch.cleanUp();
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionPipeTabletBatchEvents{batch=" + batch + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return batch.getPipeEventCount();
   }
 }

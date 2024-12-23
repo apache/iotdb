@@ -21,8 +21,7 @@ package org.apache.iotdb.db.schemaengine;
 
 public enum SchemaEngineMode {
   Memory(0),
-  PBTree(1),
-  Rocksdb_based(2);
+  PBTree(1);
 
   private final int code;
 

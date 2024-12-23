@@ -90,7 +90,7 @@ public class UDAFAccumulator implements Accumulator {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes,
       boolean isInputRaw) {
-    udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
+    udaf = UDFManagementService.getInstance().reflect(functionName, UDAF.class);
     state = udaf.createState();
 
     final UDFParameters parameters =

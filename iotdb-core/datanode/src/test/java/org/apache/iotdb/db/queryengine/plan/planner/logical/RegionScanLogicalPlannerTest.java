@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -36,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -53,6 +54,7 @@ public class RegionScanLogicalPlannerTest {
 
   private static Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>>
       deviceToTimeseriesSchemaInfoMap;
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>>
       getDeviceToTimeseriesSchemaInfoMap() throws IllegalPathException {
@@ -67,38 +69,78 @@ public class RegionScanLogicalPlannerTest {
         new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
         Collections.singletonList(
             new TimeseriesContext(
-                "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "INT32",
+                null,
+                config.getDefaultInt32Encoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE),
         Collections.singletonList(
             new TimeseriesContext(
-                "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "DOUBLE",
+                "status",
+                config.getDefaultDoubleEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s3", TSDataType.BOOLEAN),
         Collections.singletonList(
             new TimeseriesContext(
-                "BOOLEAN", null, "PLAIN", "LZ4", "{\"key1\":\"value2\"}", null, null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")), timeseriesSchemaInfoMap);
+                "BOOLEAN",
+                null,
+                config.getDefaultBooleanEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value2\"}",
+                null,
+                null,
+                null)));
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d1"), timeseriesSchemaInfoMap);
 
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap2 = new HashMap<>();
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
         Collections.singletonList(
             new TimeseriesContext(
-                "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "INT32",
+                null,
+                config.getDefaultInt32Encoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE),
         Collections.singletonList(
             new TimeseriesContext(
-                "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "DOUBLE",
+                "status",
+                config.getDefaultDoubleEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT),
         Collections.singletonList(
             new TimeseriesContext(
-                "TEXT", null, "PLAIN", "LZ4", "{\"key2\":\"value1\"}", null, null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")), timeseriesSchemaInfoMap2);
+                "TEXT",
+                null,
+                config.getDefaultTextEncoding().toString(),
+                "LZ4",
+                "{\"key2\":\"value1\"}",
+                null,
+                null,
+                null)));
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2"), timeseriesSchemaInfoMap2);
 
     List<String> schemas = new ArrayList<>();
     schemas.add("s1");
@@ -107,14 +149,27 @@ public class RegionScanLogicalPlannerTest {
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap3 = new HashMap<>();
     timeseriesContextList.add(
         new TimeseriesContext(
-            "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null));
+            "INT32",
+            null,
+            config.getDefaultInt32Encoding().toString(),
+            "LZ4",
+            "{\"key1\":\"value1\"}",
+            null,
+            null,
+            null));
     timeseriesContextList.add(
         new TimeseriesContext(
-            "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null));
+            "DOUBLE",
+            "status",
+            config.getDefaultDoubleEncoding().toString(),
+            "LZ4",
+            "{\"key1\":\"value1\"}",
+            null,
+            null,
+            null));
     timeseriesSchemaInfoMap3.put(
         new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()), timeseriesContextList);
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")), timeseriesSchemaInfoMap3);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2.a"), timeseriesSchemaInfoMap3);
 
     return deviceToTimeseriesSchemaInfoMap;
   }
@@ -129,14 +184,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
@@ -155,14 +207,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
@@ -186,14 +235,11 @@ public class RegionScanLogicalPlannerTest {
 
     Map<PartialPath, DeviceContext> deviceContextMap = new HashMap<>();
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d1"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")),
-        new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2"), new DeviceContext(false, SchemaConstant.NON_TEMPLATE));
     deviceContextMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")),
-        new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
+        new PartialPath("root.sg.d2.a"), new DeviceContext(true, SchemaConstant.NON_TEMPLATE));
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, true, null);

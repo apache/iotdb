@@ -35,11 +35,7 @@ public interface TsFileFlushPolicy {
 
     @Override
     public void apply(DataRegion dataRegion, TsFileProcessor tsFileProcessor, boolean isSeq) {
-      if (tsFileProcessor.shouldClose()) {
-        dataRegion.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
-      } else {
-        tsFileProcessor.asyncFlush();
-      }
+      dataRegion.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
     }
   }
 }

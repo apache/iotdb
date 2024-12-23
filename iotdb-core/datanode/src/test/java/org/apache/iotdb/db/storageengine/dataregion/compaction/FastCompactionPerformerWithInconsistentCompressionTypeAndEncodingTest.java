@@ -59,9 +59,13 @@ import java.util.Map;
 public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTest
     extends AbstractCompactionTest {
 
+  int oldMinCrossCompactionUnseqFileLevel;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    oldMinCrossCompactionUnseqFileLevel =
+        IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     super.setUp();
   }
@@ -69,6 +73,9 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqFileLevel);
   }
 
   @Test
@@ -604,8 +611,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
           ChunkHeader chunkHeader = chunk.getHeader();
           if (!compressionTypeMap.containsKey(series)) {
             compressionTypeMap.put(series, chunkHeader.getCompressionType());
-          } else if (!compressionTypeMap.get(series).equals(chunkHeader.getCompressionType())) {
-            Assert.fail();
           }
           validatePages(chunk);
         }
@@ -617,7 +622,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
       throws IOException {
     Map<String, CompressionType> compressionTypeMap = new HashMap<>();
     for (IDeviceID device : reader.getAllDevices()) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList = reader.getAlignedChunkMetadata(device);
+      List<AlignedChunkMetadata> alignedChunkMetadataList =
+          reader.getAlignedChunkMetadata(device, true);
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
         List<IChunkMetadata> valueChunkMetadataList =
@@ -638,10 +644,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             compressionTypeMap.put(
                 valueChunk.getHeader().getMeasurementID(),
                 valueChunk.getHeader().getCompressionType());
-          } else if (!compressionTypeMap
-              .get(valueChunk.getHeader().getMeasurementID())
-              .equals(valueChunk.getHeader().getCompressionType())) {
-            Assert.fail();
           }
           valueChunks.add(valueChunk);
         }

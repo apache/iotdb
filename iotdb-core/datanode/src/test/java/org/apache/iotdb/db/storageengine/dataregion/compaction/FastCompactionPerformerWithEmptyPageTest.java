@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -48,20 +48,27 @@ import java.util.Map;
 
 public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompactionTest {
 
+  int oldAlignedSeriesCompactionBatchSize;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    oldAlignedSeriesCompactionBatchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(10);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionMaxAlignedSeriesNumInOneBatch(oldAlignedSeriesCompactionBatchSize);
   }
 
   @Test
   public void test1() throws IOException, IllegalPathException {
-    IDeviceID device = new PlainDeviceID("root.testsg.d1");
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqFile1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
       writer.startChunkGroup("d1");

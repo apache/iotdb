@@ -38,7 +38,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.window;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 <#if dataType.dataType == "Binary">
 import org.apache.tsfile.utils.Binary;
 </#if>
@@ -65,7 +64,7 @@ public class ${className} extends VariationWindowManager {
     }
 
     Column controlColumn = variationWindow.getControlColumn(inputTsBlock);
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
     ${dataType.dataType} previousValue = ((${windowName}) variationWindow).getPreviousHeadValue();
     boolean previousValueIsNull = ((${windowName}) variationWindow).valueIsNull();

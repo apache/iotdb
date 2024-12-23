@@ -80,8 +80,9 @@ struct TSendSnapshotFragmentReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required string snapshotId
   3: required string filePath
-  4: required i64 chunkLength
-  5: required binary fileChunk
+  4: required i64 offset
+  5: required i64 chunkLength
+  6: required binary fileChunk
 }
 
 struct TWaitSyncLogCompleteReq {
@@ -92,6 +93,14 @@ struct TWaitSyncLogCompleteRes {
   1: required bool complete
   2: required i64 searchIndex
   3: required i64 safeIndex
+}
+
+struct TWaitReleaseAllRegionRelatedResourceReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TWaitReleaseAllRegionRelatedResourceRes {
+  1: required bool releaseAllResource
 }
 
 struct TSendSnapshotFragmentRes {
@@ -123,6 +132,7 @@ service IoTConsensusIService {
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
   TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)
   TWaitSyncLogCompleteRes waitSyncLogComplete(TWaitSyncLogCompleteReq req)
+  TWaitReleaseAllRegionRelatedResourceRes waitReleaseAllRegionRelatedResource(TWaitReleaseAllRegionRelatedResourceReq req)
   TSendSnapshotFragmentRes sendSnapshotFragment(TSendSnapshotFragmentReq req)
   TTriggerSnapshotLoadRes triggerSnapshotLoad(TTriggerSnapshotLoadReq req)
   TCleanupTransferredSnapshotRes cleanupTransferredSnapshot(TCleanupTransferredSnapshotReq req)

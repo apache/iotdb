@@ -20,15 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathType;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -164,13 +163,8 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
                 AlignedPath alignedPath = (AlignedPath) path;
                 return alignedPath.getMeasurementList().stream()
                     .map(
-                        measurementName -> {
-                          try {
-                            return new PartialPath(alignedPath.getDevice(), measurementName);
-                          } catch (IllegalPathException e) {
-                            return null;
-                          }
-                        });
+                        measurementName ->
+                            alignedPath.getDevicePath().concatAsMeasurementPath(measurementName));
               } else {
                 return Stream.of(path);
               }

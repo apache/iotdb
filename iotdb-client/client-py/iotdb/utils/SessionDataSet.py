@@ -124,29 +124,33 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
-    def todf(self):
-        return resultset_to_pandas(self)
+    def todf(self) -> pd.DataFrame:
+        return result_set_to_pandas(self)
 
 
-def resultset_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
+def result_set_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
     """
     Transforms a SessionDataSet from IoTDB to a Pandas Data Frame
     Each Field from IoTDB is a column in Pandas
     :param result_set:
     :return:
     """
-    return result_set.iotdb_rpc_data_set.resultset_to_pandas()
+    return result_set.iotdb_rpc_data_set.result_set_to_pandas()
 
 
 def get_typed_point(field: Field, none_value=None):
     choices = {
         # In Case of Boolean, cast to 0 / 1
-        TSDataType.BOOLEAN: lambda field: 1 if field.get_bool_value() else 0,
-        TSDataType.TEXT: lambda field: field.get_string_value(),
-        TSDataType.FLOAT: lambda field: field.get_float_value(),
-        TSDataType.INT32: lambda field: field.get_int_value(),
-        TSDataType.DOUBLE: lambda field: field.get_double_value(),
-        TSDataType.INT64: lambda field: field.get_long_value(),
+        TSDataType.BOOLEAN: lambda f: 1 if f.get_bool_value() else 0,
+        TSDataType.TEXT: lambda f: f.get_string_value(),
+        TSDataType.FLOAT: lambda f: f.get_float_value(),
+        TSDataType.INT32: lambda f: f.get_int_value(),
+        TSDataType.DOUBLE: lambda f: f.get_double_value(),
+        TSDataType.INT64: lambda f: f.get_long_value(),
+        TSDataType.TIMESTAMP: lambda f: f.get_long_value(),
+        TSDataType.STRING: lambda f: f.get_string_value(),
+        TSDataType.DATE: lambda f: f.get_date_value(),
+        TSDataType.BLOB: lambda f: f.get_binary_value(),
     }
 
     result_next_type: TSDataType = field.get_data_type()

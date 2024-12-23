@@ -45,15 +45,30 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
       inputColumnTransformer.tryEvaluate();
     }
-    // construct input TsBlock with columns
+    doTransform();
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
+      inputColumnTransformer.evaluateWithSelection(selection);
+    }
+    doTransform();
+    // clear cache
+    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
+      inputColumnTransformer.clearCache();
+    }
+  }
+
+  private void doTransform() {
     int size = inputColumnTransformers.length;
     Column[] columns = new Column[size];
     for (int i = 0; i < size; i++) {
       columns[i] = inputColumnTransformers[i].getColumn();
     }
-    // construct TsBlockBuilder
-    int count = inputColumnTransformers[0].getColumnCachePositionCount();
-    ColumnBuilder builder = returnType.createColumnBuilder(count);
+    // construct input TsBlock with columns
+    int positionCount = columns[0].getPositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     // executor UDF and cache result
     executor.execute(columns, builder);
     initializeColumnCache(builder.build());
@@ -72,5 +87,13 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   public void close() {
     // finalize executor
     executor.beforeDestroy();
+  }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    for (ColumnTransformer columnTransformer : inputColumnTransformers) {
+      columnTransformer.clearCache();
+    }
   }
 }

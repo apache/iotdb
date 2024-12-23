@@ -32,41 +32,36 @@ public class UDFInformation {
 
   private String functionName;
   private String className;
-  private boolean isBuiltin;
+  private UDFType udfType;
 
+  // jarName and jarMD5 are null if isUsingURI is false
   private boolean isUsingURI;
-
   private String jarName;
   private String jarMD5;
 
   private UDFInformation() {}
 
-  public UDFInformation(String functionName, String className) {
-    this.functionName = functionName.toUpperCase();
-    this.className = className;
-  }
-
-  public UDFInformation(
-      String functionName, String className, boolean isBuiltin, boolean isUsingURI) {
-    this.functionName = functionName.toUpperCase();
-    this.className = className;
-    this.isBuiltin = isBuiltin;
-    this.isUsingURI = isUsingURI;
-  }
-
   public UDFInformation(
       String functionName,
       String className,
-      boolean isBuiltin,
+      UDFType udfType,
       boolean isUsingURI,
       String jarName,
       String jarMD5) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
-    this.isBuiltin = isBuiltin;
     this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.jarMD5 = jarMD5;
+    this.udfType = udfType;
+  }
+
+  // Only used for built-in UDF
+  public UDFInformation(String functionName, String className, UDFType udfType) {
+    this.functionName = functionName.toUpperCase();
+    this.className = className;
+    this.udfType = udfType;
+    this.isUsingURI = false;
   }
 
   public String getFunctionName() {
@@ -77,8 +72,8 @@ public class UDFInformation {
     return className;
   }
 
-  public boolean isBuiltin() {
-    return isBuiltin;
+  public UDFType getUdfType() {
+    return udfType;
   }
 
   public String getJarName() {
@@ -101,8 +96,8 @@ public class UDFInformation {
     this.className = className;
   }
 
-  public void setBuiltin(boolean builtin) {
-    isBuiltin = builtin;
+  public void setUdfType(UDFType udfType) {
+    this.udfType = udfType;
   }
 
   public void setJarName(String jarName) {
@@ -117,6 +112,14 @@ public class UDFInformation {
     isUsingURI = usingURI;
   }
 
+  public void setAvailable(boolean available) {
+    this.udfType = this.udfType.setAvailable(available);
+  }
+
+  public boolean isAvailable() {
+    return udfType.isAvailable();
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -127,7 +130,7 @@ public class UDFInformation {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(functionName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
-    ReadWriteIOUtils.write(isBuiltin, outputStream);
+    udfType.serialize(outputStream);
     ReadWriteIOUtils.write(isUsingURI, outputStream);
     if (isUsingURI) {
       ReadWriteIOUtils.write(jarName, outputStream);
@@ -139,7 +142,7 @@ public class UDFInformation {
     UDFInformation udfInformation = new UDFInformation();
     udfInformation.setFunctionName(ReadWriteIOUtils.readString(byteBuffer));
     udfInformation.setClassName(ReadWriteIOUtils.readString(byteBuffer));
-    udfInformation.setBuiltin(ReadWriteIOUtils.readBool(byteBuffer));
+    udfInformation.setUdfType(UDFType.deserialize(byteBuffer));
     boolean isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
     udfInformation.setUsingURI(isUsingURI);
     if (isUsingURI) {
@@ -159,7 +162,7 @@ public class UDFInformation {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     UDFInformation that = (UDFInformation) o;
-    return isBuiltin == that.isBuiltin
+    return udfType.equals(that.udfType)
         && Objects.equals(functionName, that.functionName)
         && Objects.equals(className, that.className)
         && Objects.equals(jarName, that.jarName)

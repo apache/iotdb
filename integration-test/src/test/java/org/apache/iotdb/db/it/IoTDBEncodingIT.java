@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,20 +40,35 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBEncodingIT {
 
-  @Before
-  public void setUp() throws Exception {
+  private static final String[] databasesToClear =
+      new String[] {"root.db_0", "root.db1", "root.turbine1"};
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() {
+    for (String database : databasesToClear) {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("DELETE DATABASE " + database);
+      } catch (Exception ignored) {
+
+      }
+    }
   }
 
   @Test
@@ -430,6 +449,77 @@ public class IoTDBEncodingIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void testCreateNewTypes() throws Exception {
+    String currDB = "root.db1";
+    int seriesCnt = 0;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.STRING, TSDataType.BLOB, TSDataType.TIMESTAMP, TSDataType.DATE
+        };
+
+    // supported encodings
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (TSDataType dataType : dataTypes) {
+        for (TSEncoding encoding : TSEncoding.values()) {
+          if (encoding.isSupported(dataType)) {
+            statement.execute(
+                "create timeseries "
+                    + currDB
+                    + ".d1.s"
+                    + seriesCnt
+                    + " with datatype="
+                    + dataType
+                    + ", encoding="
+                    + encoding
+                    + ", compression=SNAPPY");
+            seriesCnt++;
+          }
+        }
+      }
+
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
+
+      while (resultSet.next()) {
+        seriesCnt--;
+      }
+      assertEquals(0, seriesCnt);
+      statement.execute("DROP DATABASE " + currDB);
+    }
+
+    // unsupported encodings
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (TSDataType dataType : dataTypes) {
+        for (TSEncoding encoding : TSEncoding.values()) {
+          if (!encoding.isSupported(dataType)) {
+            try {
+              statement.execute(
+                  "create timeseries "
+                      + currDB
+                      + ".d1.s"
+                      + seriesCnt
+                      + " with datatype="
+                      + dataType
+                      + ", encoding="
+                      + encoding
+                      + ", compression=SNAPPY");
+              fail("Should have thrown an exception");
+            } catch (SQLException e) {
+              assertEquals(
+                  "507: encoding " + encoding + " does not support " + dataType, e.getMessage());
+            }
+            seriesCnt++;
+          }
+        }
+      }
+
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
+      assertFalse(resultSet.next());
     }
   }
 }

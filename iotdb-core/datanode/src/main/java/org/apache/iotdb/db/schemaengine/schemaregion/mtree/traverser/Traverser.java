@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
@@ -103,7 +102,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     this.store = store.getWithReentrantReadLock();
     initStack();
     String[] nodes = path.getNodes();
-    if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
+    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
@@ -164,7 +163,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
           && !(skipPreDeletedSchema
               && parent
                   .getAsDeviceMNode()
-                  .isPreDeactivateTemplate())) { // the template should not skip
+                  .isPreDeactivateSelfOrTemplate())) { // the template should not skip
         int templateId = parent.getAsDeviceMNode().getSchemaTemplateId();
         Template template = templateMap.get(templateId);
         // If null, it means the template on this device is not covered in this query, refer to the

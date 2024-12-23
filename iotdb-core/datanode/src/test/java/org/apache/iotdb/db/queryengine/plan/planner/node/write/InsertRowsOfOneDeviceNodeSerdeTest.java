@@ -40,7 +40,7 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
   public void TestSerializeAndDeserialize() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d");
     InsertRowsOfOneDeviceNode node = new InsertRowsOfOneDeviceNode(new PlanNodeId("plan node 1"));
-    node.setDevicePath(device);
+    node.setTargetPath(device);
     List<InsertRowNode> insertRowNodeList = new ArrayList<>();
     List<Integer> insertRowNodeIndexList = new ArrayList<>();
     insertRowNodeList.add(

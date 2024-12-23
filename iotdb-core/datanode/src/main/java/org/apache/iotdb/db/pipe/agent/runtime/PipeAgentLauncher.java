@@ -21,10 +21,10 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
@@ -168,7 +168,7 @@ class PipeAgentLauncher {
               getAllPipeInfoResp.getAllPipeInfo().stream()
                   .map(
                       byteBuffer -> {
-                        final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+                        final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
                         LOGGER.info(
                             "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
                         return pipeMeta;

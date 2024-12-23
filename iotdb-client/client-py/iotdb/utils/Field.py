@@ -17,7 +17,8 @@
 #
 
 # for package
-from .IoTDBConstants import TSDataType
+from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.tsfile.utils.DateUtils import parse_int_to_date
 import numpy as np
 import pandas as pd
 
@@ -36,15 +37,25 @@ class Field(object):
         if output.get_data_type() is not None:
             if output.get_data_type() == TSDataType.BOOLEAN:
                 output.set_bool_value(field.get_bool_value())
-            elif output.get_data_type() == TSDataType.INT32:
+            elif (
+                output.get_data_type() == TSDataType.INT32
+                or output.get_data_type() == TSDataType.DATE
+            ):
                 output.set_int_value(field.get_int_value())
-            elif output.get_data_type() == TSDataType.INT64:
+            elif (
+                output.get_data_type() == TSDataType.INT64
+                or output.get_data_type() == TSDataType.TIMESTAMP
+            ):
                 output.set_long_value(field.get_long_value())
             elif output.get_data_type() == TSDataType.FLOAT:
                 output.set_float_value(field.get_float_value())
             elif output.get_data_type() == TSDataType.DOUBLE:
                 output.set_double_value(field.get_double_value())
-            elif output.get_data_type() == TSDataType.TEXT:
+            elif (
+                output.get_data_type() == TSDataType.TEXT
+                or output.get_data_type() == TSDataType.STRING
+                or output.get_data_type() == TSDataType.BLOB
+            ):
                 output.set_binary_value(field.get_binary_value())
             else:
                 raise Exception(
@@ -80,6 +91,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.INT32
+            and self.__data_type != TSDataType.DATE
             or self.value is None
             or self.value is pd.NA
         ):
@@ -94,6 +106,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.INT64
+            and self.__data_type != TSDataType.TIMESTAMP
             or self.value is None
             or self.value is pd.NA
         ):
@@ -136,17 +149,34 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.TEXT
+            and self.__data_type != TSDataType.STRING
+            and self.__data_type != TSDataType.BLOB
             or self.value is None
             or self.value is pd.NA
         ):
             return None
         return self.value
 
+    def get_date_value(self):
+        if self.__data_type is None:
+            raise Exception("Null Field Exception!")
+        if (
+            self.__data_type != TSDataType.DATE
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return parse_int_to_date(self.value)
+
     def get_string_value(self):
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
-        elif self.__data_type == 5:
+        # TEXT, STRING
+        elif self.__data_type == 5 or self.__data_type == 11:
             return self.value.decode("utf-8")
+        # BLOB
+        elif self.__data_type == 10:
+            return str(hex(int.from_bytes(self.value, byteorder="big")))
         else:
             return str(self.get_object_value(self.__data_type))
 
@@ -163,13 +193,18 @@ class Field(object):
             return bool(self.value)
         elif data_type == 1:
             return np.int32(self.value)
-        elif data_type == 2:
+        elif data_type == 2 or data_type == 8:
             return np.int64(self.value)
         elif data_type == 3:
             return np.float32(self.value)
         elif data_type == 4:
             return np.float64(self.value)
-        return self.value
+        elif data_type == 9:
+            return parse_int_to_date(self.value)
+        elif data_type == 5 or data_type == 10 or data_type == 11:
+            return self.value
+        else:
+            raise RuntimeError("Unsupported data type:" + str(data_type))
 
     @staticmethod
     def get_field(value, data_type):

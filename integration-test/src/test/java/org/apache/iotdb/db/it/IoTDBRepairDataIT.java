@@ -25,7 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -98,7 +98,7 @@ public class IoTDBRepairDataIT {
     Files.createFile(tsfile.toPath());
 
     try (TsFileIOWriter writer = new TsFileIOWriter(tsfile)) {
-      writer.startChunkGroup(new PlainDeviceID("root.testsg.d1"));
+      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
       ChunkWriterImpl chunkWriter =
           new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
       chunkWriter.write(2, 1);

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -40,7 +40,7 @@ public class MemAlignedChunkMetadataLoaderTest {
 
   @Test
   public void testLoadChunkMetadataList() {
-    AlignedPath path = Mockito.mock(AlignedPath.class);
+    AlignedFullPath path = Mockito.mock(AlignedFullPath.class);
     TsFileResource resource = Mockito.mock(TsFileResource.class);
     FragmentInstanceContext context = Mockito.mock(FragmentInstanceContext.class);
     List<IChunkMetadata> chunkMetadataList1 = new ArrayList<>();
@@ -64,7 +64,8 @@ public class MemAlignedChunkMetadataLoaderTest {
     Mockito.when(readOnlyMemChunk.getChunkMetaData()).thenReturn(chunkMetadata2);
     Mockito.when(resource.getVersion()).thenReturn(1L);
 
-    MemChunkMetadataLoader loader = new MemChunkMetadataLoader(resource, path, context, null);
+    MemAlignedChunkMetadataLoader loader =
+        new MemAlignedChunkMetadataLoader(resource, path, context, null, true);
     ITimeSeriesMetadata timeSeriesMetadata = Mockito.mock(AlignedTimeSeriesMetadata.class);
 
     List<IChunkMetadata> chunkMetadataList = loader.loadChunkMetadataList(timeSeriesMetadata);

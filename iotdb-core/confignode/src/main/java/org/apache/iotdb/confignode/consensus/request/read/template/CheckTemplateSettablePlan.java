@@ -19,25 +19,15 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.template;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+public class CheckTemplateSettablePlan extends ConfigPhysicalReadPlan {
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+  private final String name;
+  private final String path;
 
-public class CheckTemplateSettablePlan extends ConfigPhysicalPlan {
-
-  private String name;
-  private String path;
-
-  public CheckTemplateSettablePlan() {
-    super(ConfigPhysicalPlanType.CheckTemplateSettable);
-  }
-
-  public CheckTemplateSettablePlan(String name, String path) {
+  public CheckTemplateSettablePlan(final String name, final String path) {
     super(ConfigPhysicalPlanType.CheckTemplateSettable);
     this.name = name;
     this.path = path;
@@ -49,18 +39,5 @@ public class CheckTemplateSettablePlan extends ConfigPhysicalPlan {
 
   public String getPath() {
     return path;
-  }
-
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(name, stream);
-    ReadWriteIOUtils.write(path, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.name = ReadWriteIOUtils.readString(buffer);
-    this.path = ReadWriteIOUtils.readString(buffer);
   }
 }

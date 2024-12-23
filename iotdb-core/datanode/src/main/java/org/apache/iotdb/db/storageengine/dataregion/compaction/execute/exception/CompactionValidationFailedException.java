@@ -42,6 +42,7 @@ public class CompactionValidationFailedException extends RuntimeException {
   }
 
   @Override
+  @SuppressWarnings("java:S3551")
   public Throwable fillInStackTrace() {
     return this;
   }

@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.schema;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -39,9 +43,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
+public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
+    implements ReferenceTrackableEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
   private String mTreeSnapshotPath;
   private String tagLogSnapshotPath;
@@ -78,7 +85,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeSchemaRegionSnapshotEvent(
       final String mTreeSnapshotPath, final String tagLogSnapshotPath, final String databaseName) {
-    this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, 0, null, null);
+    this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, 0, null, null, null);
   }
 
   public PipeSchemaRegionSnapshotEvent(
@@ -88,8 +95,15 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, PipeDataNodeResourceManager.snapshot());
+      final TreePattern treePattern,
+      final TablePattern tablePattern) {
+    super(
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
     this.databaseName = databaseName;
@@ -148,7 +162,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
@@ -158,7 +173,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         pipeName,
         creationTime,
         pipeTaskMeta,
-        pattern);
+        treePattern,
+        tablePattern);
   }
 
   @Override
@@ -228,5 +244,57 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
             mTreeSnapshotPath, tagLogSnapshotPath, databaseName)
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    PipeDataNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeSchemaRegionSnapshotEventResource(
+        this.isReleased,
+        this.referenceCount,
+        this.resourceManager,
+        this.mTreeSnapshotPath,
+        this.tagLogSnapshotPath);
+  }
+
+  private static class PipeSchemaRegionSnapshotEventResource extends PipeEventResource {
+
+    private final PipeSnapshotResourceManager resourceManager;
+    private final String mTreeSnapshotPath;
+    private final String tagLogSnapshotPath;
+
+    private PipeSchemaRegionSnapshotEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final PipeSnapshotResourceManager resourceManager,
+        final String mTreeSnapshotPath,
+        final String tagLogSnapshotPath) {
+      super(isReleased, referenceCount);
+      this.resourceManager = resourceManager;
+      this.mTreeSnapshotPath = mTreeSnapshotPath;
+      this.tagLogSnapshotPath = tagLogSnapshotPath;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        resourceManager.decreaseSnapshotReference(mTreeSnapshotPath);
+        if (!tagLogSnapshotPath.isEmpty()) {
+          resourceManager.decreaseSnapshotReference(tagLogSnapshotPath);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format(
+                "Decrease reference count for mTree snapshot %s or tLog %s error.",
+                mTreeSnapshotPath, tagLogSnapshotPath),
+            e);
+      }
+    }
   }
 }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -31,6 +31,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -133,17 +134,17 @@ public class IoTDBLoadTsFileIT {
     final String sql =
         String.format(
             "create timeseries %s %s",
-            new Path(device, schema.getMeasurementId(), true).getFullPath(),
+            new Path(device, schema.getMeasurementName(), true).getFullPath(),
             schema.getType().name());
     LOGGER.info("schema execute: {}", sql);
     return sql;
   }
 
-  private String convert2AlignedSQL(final String device, final List<MeasurementSchema> schemas) {
+  private String convert2AlignedSQL(final String device, final List<IMeasurementSchema> schemas) {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
-      final MeasurementSchema schema = schemas.get(i);
-      sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
+      final IMeasurementSchema schema = schemas.get(i);
+      sql += (String.format("%s %s", schema.getMeasurementName(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
     LOGGER.info("schema execute: {}.", sql);
@@ -244,7 +245,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(
           String.format(
               "delete timeseries %s.%s",
-              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
+              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
     }
   }
 
@@ -305,14 +306,14 @@ public class IoTDBLoadTsFileIT {
               Arrays.asList(
                   "lat",
                   "lon",
-                  SchemaConfig.MEASUREMENT_00.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_01.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_02.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_03.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_04.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_05.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_06.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_07.getMeasurementId()));
+                  SchemaConfig.MEASUREMENT_00.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_01.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_02.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_03.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_04.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_05.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_06.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_07.getMeasurementName()));
       try (final ResultSet resultSet = statement.executeQuery("show nodes in schema template t1")) {
         while (resultSet.next()) {
           String device = resultSet.getString(ColumnHeaderConstant.CHILD_NODES);
@@ -542,7 +543,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=none", file1.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='none')",
+              file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -560,7 +563,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute(
-          String.format("load \"%s\" sglevel=2 onSuccess=delete", file2.getAbsolutePath()));
+          String.format(
+              "load \"%s\" with ('database-level'='2', 'on-success'='delete')",
+              file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -582,7 +587,7 @@ public class IoTDBLoadTsFileIT {
     registerSchema();
 
     final String device = SchemaConfig.DEVICE_0;
-    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementId();
+    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
@@ -760,7 +765,6 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
       writtenPoint1 = generator.getTotalNumber();
     }
 

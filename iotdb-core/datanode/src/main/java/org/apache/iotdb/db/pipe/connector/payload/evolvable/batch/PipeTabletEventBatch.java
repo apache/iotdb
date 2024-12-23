@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.exception.write.WriteProcessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,6 +34,8 @@ import java.util.List;
 import java.util.Objects;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 
@@ -53,7 +57,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * @return {@code true} if the batch can be transferred
    */
   public synchronized boolean onEvent(final TabletInsertionEvent event)
-      throws WALPipeException, IOException, WriteProcessException {
+      throws WALPipeException, IOException {
     if (isClosed || !(event instanceof EnrichedEvent)) {
       return false;
     }
@@ -73,8 +77,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
+        LOGGER.warn("Cannot increase reference count for event: {}, ignore it in batch.", event);
       }
     }
 
@@ -90,7 +93,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    *     exceptions and do not return {@code false} here.
    */
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
-      throws WALPipeException, IOException, WriteProcessException;
+      throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
     return totalBufferSize >= getMaxBatchSizeInBytes()
@@ -115,7 +118,23 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     events.clear();
   }
 
-  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
+  /**
+   * Discard all events of the given pipe. This method only clears the reference count of the events
+   * and discard them, but do not modify other objects (such as buffers) for simplicity.
+   */
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+    events.removeIf(
+        event -> {
+          if (pipeNameToDrop.equals(event.getPipeName()) && regionId == event.getRegionId()) {
+            event.clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+            return true;
+          }
+          return false;
+        });
+  }
+
+  public synchronized void decreaseEventsReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 
@@ -127,7 +146,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return new ArrayList<>(events);
   }
 
-  boolean isEmpty() {
+  public boolean isEmpty() {
     return events.isEmpty();
   }
 }

@@ -72,7 +72,7 @@ public class BatchActivateTemplateStatement extends Statement {
       templatePaths.addAll(templateSetInfo.left.getSchemaMap().keySet());
     }
     return devicePathList.stream()
-        .flatMap(path -> templatePaths.stream().map(path::concatNode))
+        .flatMap(path -> templatePaths.stream().map(path::concatAsMeasurementPath))
         .collect(Collectors.toList());
   }
 

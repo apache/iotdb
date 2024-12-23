@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -34,7 +34,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -50,7 +49,7 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
   public AlignedSeriesScanOperator(
       OperatorContext context,
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       boolean queryAllSensors,
@@ -84,22 +83,27 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
 
   @Override
   protected void buildResult(TsBlock tsBlock) {
+    appendDataIntoBuilder(tsBlock, resultTsBlockBuilder);
+  }
+
+  public static void appendDataIntoBuilder(TsBlock tsBlock, TsBlockBuilder builder) {
     int size = tsBlock.getPositionCount();
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    Column timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
-      resultTsBlockBuilder.declarePosition();
+      builder.declarePosition();
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
         columnIndex++) {
-      appendOneColumn(columnIndex, tsBlock, size);
+      appendOneColumn(columnIndex, tsBlock, size, builder);
     }
   }
 
-  private void appendOneColumn(int columnIndex, TsBlock tsBlock, int size) {
-    ColumnBuilder columnBuilder = resultTsBlockBuilder.getColumnBuilder(columnIndex);
+  private static void appendOneColumn(
+      int columnIndex, TsBlock tsBlock, int size, TsBlockBuilder builder) {
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
     Column column = tsBlock.getColumn(columnIndex);
     if (column.mayHaveNull()) {
       for (int i = 0; i < size; i++) {

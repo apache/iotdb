@@ -430,7 +430,7 @@ public class AuthUtils {
     return result;
   }
 
-  public static ByteBuffer serializePartialPathList(List<PartialPath> paths) {
+  public static ByteBuffer serializePartialPathList(List<? extends PartialPath> paths) {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.Abstract
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
 
@@ -61,8 +61,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public TsFileDeviceStartEndTimeIterator getDeviceStartEndTimeIterator() throws IOException {
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
-    return timeIndex instanceof DeviceTimeIndex
-        ? new TsFileDeviceStartEndTimeIterator((DeviceTimeIndex) timeIndex)
+    return timeIndex instanceof ArrayDeviceTimeIndex
+        ? new TsFileDeviceStartEndTimeIterator((ArrayDeviceTimeIndex) timeIndex)
         : new TsFileDeviceStartEndTimeIterator(tsFileResource.buildDeviceTimeIndex());
   }
 

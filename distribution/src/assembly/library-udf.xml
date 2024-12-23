@@ -38,23 +38,23 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/library-udf/src/assembly/tools</directory>
+            <directory>${project.basedir}/../library-udf/src/assembly/tools</directory>
             <outputDirectory/>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
+            <directory>${project.basedir}/../licenses</directory>
             <outputDirectory>licenses</outputDirectory>
         </fileSet>
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
+            <source>${project.basedir}/../LICENSE-binary</source>
             <outputDirectory>licenses</outputDirectory>
             <destName>LICENSE</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <source>${project.basedir}/../NOTICE-binary</source>
             <outputDirectory>licenses</outputDirectory>
             <destName>NOTICE</destName>
         </file>

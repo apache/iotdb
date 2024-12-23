@@ -74,7 +74,7 @@ public class DeviceViewIntoPathDescriptor {
       String targetMeasurement) {
     deviceToSourceTargetPathPairListMap
         .computeIfAbsent(sourceDevice.toString(), key -> new ArrayList<>())
-        .add(new Pair<>(sourceColumn, targetDevice.concatNode(targetMeasurement)));
+        .add(new Pair<>(sourceColumn, targetDevice.concatAsMeasurementPath(targetMeasurement)));
   }
 
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {

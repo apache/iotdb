@@ -36,9 +36,14 @@ import java.util.List;
 public class DropPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private boolean ifExistsCondition;
 
   public DropPipeStatement(StatementType dropPipeStatement) {
     this.statementType = dropPipeStatement;
+  }
+
+  public boolean hasIfExistsCondition() {
+    return ifExistsCondition;
   }
 
   public String getPipeName() {
@@ -47,6 +52,10 @@ public class DropPipeStatement extends Statement implements IConfigStatement {
 
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setIfExists(boolean ifExistsCondition) {
+    this.ifExistsCondition = ifExistsCondition;
   }
 
   @Override

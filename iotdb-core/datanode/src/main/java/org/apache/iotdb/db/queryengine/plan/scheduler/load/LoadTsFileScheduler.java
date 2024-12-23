@@ -45,12 +45,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
-import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
-import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -63,13 +57,22 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -89,6 +92,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -162,6 +166,12 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
+        if (node.isTableModel()) {
+          partitionFetcher.setDatabase(node.getDatabase());
+        } else {
+          partitionFetcher.setDatabase(null);
+        }
+
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
         try {
@@ -188,8 +198,6 @@ public class LoadTsFileScheduler implements IScheduler {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
-
-            node.clean();
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
@@ -214,13 +222,13 @@ public class LoadTsFileScheduler implements IScheduler {
                   LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
             }
 
-            node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
           }
 
           if (isLoadSingleTsFileSuccess) {
+            node.clean();
             LOGGER.info(
                 "Load TsFile {} Successfully, load process [{}/{}]",
                 filePath,
@@ -410,6 +418,24 @@ public class LoadTsFileScheduler implements IScheduler {
       throw new LoadReadOnlyException();
     }
 
+    // if the time index is PlainDeviceTimeIndex, convert it to ArrayDeviceTimeIndex
+    if (node.getTsFileResource().getTimeIndex() instanceof PlainDeviceTimeIndex) {
+      final PlainDeviceTimeIndex timeIndex =
+          (PlainDeviceTimeIndex) node.getTsFileResource().getTimeIndex();
+      final Map<IDeviceID, Integer> convertedDeviceToIndex = new ConcurrentHashMap<>();
+      for (final Map.Entry<IDeviceID, Integer> entry : timeIndex.getDeviceToIndex().entrySet()) {
+        convertedDeviceToIndex.put(
+            entry.getKey() instanceof StringArrayDeviceID
+                ? entry.getKey()
+                : new StringArrayDeviceID(entry.getKey().toString()),
+            entry.getValue());
+      }
+      node.getTsFileResource()
+          .setTimeIndex(
+              new ArrayDeviceTimeIndex(
+                  convertedDeviceToIndex, timeIndex.getStartTimes(), timeIndex.getEndTimes()));
+    }
+
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -522,9 +548,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean addOrSendTsFileData(TsFileData tsFileData) {
-      return tsFileData.isModification()
-          ? addOrSendDeletionData(tsFileData)
-          : addOrSendChunkData((ChunkData) tsFileData);
+      switch (tsFileData.getType()) {
+        case CHUNK:
+          return addOrSendChunkData((ChunkData) tsFileData);
+        case DELETION:
+          return addOrSendDeletionData((DeletionData) tsFileData);
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unsupported TsFileDataType %s.", tsFileData.getType()));
+      }
     }
 
     private boolean isMemoryEnough() {
@@ -581,11 +613,7 @@ public class LoadTsFileScheduler implements IScheduler {
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
-                  .map(
-                      data ->
-                          new Pair<>(
-                              (IDeviceID) new PlainDeviceID(data.getDevice()),
-                              data.getTimePartitionSlot()))
+                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
@@ -602,7 +630,7 @@ public class LoadTsFileScheduler implements IScheduler {
       nonDirectionalChunkData.clear();
     }
 
-    private boolean addOrSendDeletionData(TsFileData deletionData) {
+    private boolean addOrSendDeletionData(DeletionData deletionData) {
       routeChunkData(); // ensure chunk data will be added before deletion
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
@@ -636,9 +664,14 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private static class DataPartitionBatchFetcher {
     private final IPartitionFetcher fetcher;
+    private String database;
 
     public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
       this.fetcher = fetcher;
+    }
+
+    public void setDatabase(String database) {
+      this.database = database;
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
@@ -655,8 +688,12 @@ public class LoadTsFileScheduler implements IScheduler {
             subSlotList.stream()
                 .map(
                     pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
+                        // (database != null) means this file will be loaded into table-model
+                        database != null
+                            ? dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right, database)
+                            : dataPartition.getDataRegionReplicaSetForWriting(
+                                pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -671,10 +708,15 @@ public class LoadTsFileScheduler implements IScheduler {
           .entrySet()
           .stream()
           .map(
-              entry ->
-                  new DataPartitionQueryParam(
-                      ((PlainDeviceID) entry.getKey()).toStringID(),
-                      new ArrayList<>(entry.getValue())))
+              entry -> {
+                DataPartitionQueryParam queryParam =
+                    new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
+                // (database != null) means this file will be loaded into table-model
+                if (database != null) {
+                  queryParam.setDatabaseName(database);
+                }
+                return queryParam;
+              })
           .collect(Collectors.toList());
     }
   }

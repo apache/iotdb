@@ -61,6 +61,12 @@ public class RoundFunctionTransformer extends UnaryTransformer {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case TIMESTAMP:
+      case BOOLEAN:
+      case DATE:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported source dataType: %s", layerReaderDataType));

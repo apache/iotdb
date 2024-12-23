@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter.impl;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -26,16 +27,17 @@ import org.apache.iotdb.commons.schema.view.ViewType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class ViewTypeFilter extends SchemaFilter {
 
   private final ViewType viewType;
 
-  public ViewTypeFilter(ViewType viewType) {
+  public ViewTypeFilter(final ViewType viewType) {
     this.viewType = viewType;
   }
 
-  public ViewTypeFilter(ByteBuffer byteBuffer) {
+  public ViewTypeFilter(final ByteBuffer byteBuffer) {
     this.viewType = ViewType.deserializeFrom(byteBuffer);
   }
 
@@ -44,7 +46,7 @@ public class ViewTypeFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitViewTypeFilter(this, node);
   }
 
@@ -54,12 +56,29 @@ public class ViewTypeFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     viewType.serializeTo(byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     viewType.serializeTo(stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final ViewTypeFilter that = (ViewTypeFilter) o;
+    return Objects.equals(viewType, that.viewType);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(viewType);
   }
 }

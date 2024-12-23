@@ -44,11 +44,11 @@
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf/iotdb-system.properties</source>
+            <source>${project.basedir}/../node-commons/src/assembly/resources/conf/iotdb-system.properties</source>
             <destName>conf/iotdb-system.properties</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
+            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
             <destName>sbin/iotdb-common.sh</destName>
         </file>
     </files>

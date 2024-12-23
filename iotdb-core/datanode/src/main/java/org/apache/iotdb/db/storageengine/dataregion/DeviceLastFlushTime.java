@@ -49,4 +49,8 @@ public class DeviceLastFlushTime implements ILastFlushTime {
     }
     return new PartitionLastFlushTime(maxTime);
   }
+
+  Map<IDeviceID, Long> getDeviceLastFlushTimeMap() {
+    return deviceLastFlushTimeMap;
+  }
 }

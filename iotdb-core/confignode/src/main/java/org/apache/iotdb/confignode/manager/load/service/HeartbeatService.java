@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.load.service;
 
+import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -26,8 +28,10 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.confignode.client.async.AsyncAINodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -126,6 +130,8 @@ public class HeartbeatService {
                 // Send heartbeat requests to all the registered DataNodes
                 pingRegisteredDataNodes(
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
+                // Send heartbeat requests to all the registered AINodes
+                pingRegisteredAINodes(genMLHeartbeatReq(), getNodeManager().getRegisteredAINodes());
               }
             });
   }
@@ -187,6 +193,17 @@ public class HeartbeatService {
     return req;
   }
 
+  private TAIHeartbeatReq genMLHeartbeatReq() {
+    /* Generate heartbeat request */
+    TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
+    heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
+
+    // We sample AINode's load in every 10 heartbeat loop
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+
+    return heartbeatReq;
+  }
+
   /**
    * Send heartbeat requests to all the Registered ConfigNodes.
    *
@@ -242,6 +259,24 @@ public class HeartbeatService {
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+    }
+  }
+
+  /**
+   * Send heartbeat requests to all the Registered AINodes.
+   *
+   * @param registeredAINodes DataNodes that registered in cluster
+   */
+  private void pingRegisteredAINodes(
+      TAIHeartbeatReq heartbeatReq, List<TAINodeConfiguration> registeredAINodes) {
+    // Send heartbeat requests
+    for (TAINodeConfiguration aiNodeInfo : registeredAINodes) {
+      AINodeHeartbeatHandler handler =
+          new AINodeHeartbeatHandler(
+              aiNodeInfo.getLocation().getAiNodeId(), configManager.getLoadManager());
+      AsyncAINodeHeartbeatClientPool.getInstance()
+          .getAINodeHeartBeat(
+              aiNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 

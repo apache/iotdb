@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
@@ -44,7 +44,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TagAggregationOperator.class);
   private final List<List<String>> groups;
-  private final List<List<Aggregator>> groupedAggregators;
+  private final List<List<TreeAggregator>> groupedAggregators;
 
   // These fields record the to be consumed index of each tsBlock.
   private final int[] consumedIndices;
@@ -55,7 +55,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   public TagAggregationOperator(
       OperatorContext operatorContext,
       List<List<String>> groups,
-      List<List<Aggregator>> groupedAggregators,
+      List<List<TreeAggregator>> groupedAggregators,
       List<Operator> children,
       long maxReturnSize) {
     super(operatorContext, children);
@@ -68,8 +68,8 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     for (int outputColumnIdx = 0;
         outputColumnIdx < groupedAggregators.get(0).size();
         outputColumnIdx++) {
-      for (List<Aggregator> aggregators : groupedAggregators) {
-        Aggregator aggregator = aggregators.get(outputColumnIdx);
+      for (List<TreeAggregator> aggregators : groupedAggregators) {
+        TreeAggregator aggregator = aggregators.get(outputColumnIdx);
         if (aggregator != null) {
           actualOutputColumnTypes.addAll(Arrays.asList(aggregator.getOutputType()));
           break;
@@ -109,7 +109,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
       rowBlocks[i] = inputTsBlocks[i].getRegion(consumedIndices[i], 1);
     }
     for (int groupIdx = 0; groupIdx < groups.size(); groupIdx++) {
-      List<Aggregator> aggregators = groupedAggregators.get(groupIdx);
+      List<TreeAggregator> aggregators = groupedAggregators.get(groupIdx);
       aggregate(aggregators, rowBlocks);
       List<String> group = groups.get(groupIdx);
       appendOneRow(rowBlocks, group, aggregators);
@@ -121,8 +121,8 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     }
   }
 
-  private void aggregate(List<Aggregator> aggregators, TsBlock[] rowBlocks) {
-    for (Aggregator aggregator : aggregators) {
+  private void aggregate(List<TreeAggregator> aggregators, TsBlock[] rowBlocks) {
+    for (TreeAggregator aggregator : aggregators) {
       if (aggregator == null) {
         continue;
       }
@@ -131,7 +131,8 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     }
   }
 
-  private void appendOneRow(TsBlock[] rowBlocks, List<String> group, List<Aggregator> aggregators) {
+  private void appendOneRow(
+      TsBlock[] rowBlocks, List<String> group, List<TreeAggregator> aggregators) {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(rowBlocks[0].getStartTime());
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
@@ -144,7 +145,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
       }
     }
     for (int i = 0; i < aggregators.size(); i++) {
-      Aggregator aggregator = aggregators.get(i);
+      TreeAggregator aggregator = aggregators.get(i);
       ColumnBuilder columnBuilder = columnBuilders[i + group.size()];
       if (aggregator == null) {
         columnBuilder.appendNull();

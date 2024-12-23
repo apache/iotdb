@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -32,7 +33,7 @@ import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
@@ -44,10 +45,11 @@ import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 public class SessionUtils {
 
   private static final byte TYPE_NULL = -2;
+  private static final int EMPTY_DATE_INT = 10000101;
 
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
-    ByteBuffer timeBuffer = ByteBuffer.allocate(tablet.getTimeBytesSize());
-    for (int i = 0; i < tablet.rowSize; i++) {
+    ByteBuffer timeBuffer = ByteBuffer.allocate(getTimeBytesSize(tablet));
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       timeBuffer.putLong(tablet.timestamps[i]);
     }
     timeBuffer.flip();
@@ -56,25 +58,90 @@ public class SessionUtils {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
-    ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
+    ByteBuffer valueBuffer = ByteBuffer.allocate(getTotalValueOccupation(tablet));
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      MeasurementSchema schema = tablet.getSchemas().get(i);
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
       getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
     if (tablet.bitMaps != null) {
       for (BitMap bitMap : tablet.bitMaps) {
-        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked();
+        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked(tablet.getRowSize());
         valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
         if (columnHasNull) {
-          byte[] bytes = bitMap.getByteArray();
-          for (int j = 0; j < tablet.rowSize / Byte.SIZE + 1; j++) {
-            valueBuffer.put(bytes[j]);
-          }
+          valueBuffer.put(bitMap.getTruncatedByteArray(tablet.getRowSize()));
         }
       }
     }
     valueBuffer.flip();
     return valueBuffer;
+  }
+
+  private static int getTimeBytesSize(Tablet tablet) {
+    return tablet.getRowSize() * 8;
+  }
+
+  /**
+   * @return Total bytes of values
+   */
+  private static int getTotalValueOccupation(Tablet tablet) {
+    int valueOccupation = 0;
+    int columnIndex = 0;
+    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    int rowSize = tablet.getRowSize();
+    for (IMeasurementSchema schema : schemas) {
+      valueOccupation +=
+          calOccupationOfOneColumn(schema.getType(), tablet.values, columnIndex, rowSize);
+      columnIndex++;
+    }
+
+    // Add bitmap size if the tablet has bitMaps
+    BitMap[] bitMaps = tablet.bitMaps;
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        // Marker byte
+        valueOccupation++;
+        if (bitMap != null && !bitMap.isAllUnmarked()) {
+          valueOccupation += rowSize / Byte.SIZE + 1;
+        }
+      }
+    }
+    return valueOccupation;
+  }
+
+  private static int calOccupationOfOneColumn(
+      TSDataType dataType, Object[] values, int columnIndex, int rowSize) {
+    int valueOccupation = 0;
+    switch (dataType) {
+      case BOOLEAN:
+        valueOccupation += rowSize;
+        break;
+      case INT32:
+      case FLOAT:
+      case DATE:
+        valueOccupation += rowSize * 4;
+        break;
+      case INT64:
+      case DOUBLE:
+      case TIMESTAMP:
+        valueOccupation += rowSize * 8;
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        valueOccupation += rowSize * 4;
+        Binary[] binaries = (Binary[]) values[columnIndex];
+        for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
+          valueOccupation +=
+              binaries[rowIndex] != null
+                  ? binaries[rowIndex].getLength()
+                  : Binary.EMPTY_VALUE.getLength();
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+    return valueOccupation;
   }
 
   public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
@@ -199,10 +266,8 @@ public class SessionUtils {
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          if (tablet.bitMaps == null
-              || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].isMarked(index)) {
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
             valueBuffer.putInt(intValues[index]);
           } else {
             valueBuffer.putInt(Integer.MIN_VALUE);
@@ -212,10 +277,8 @@ public class SessionUtils {
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          if (tablet.bitMaps == null
-              || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].isMarked(index)) {
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
             valueBuffer.putLong(longValues[index]);
           } else {
             valueBuffer.putLong(Long.MIN_VALUE);
@@ -224,10 +287,8 @@ public class SessionUtils {
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          if (tablet.bitMaps == null
-              || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].isMarked(index)) {
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
             valueBuffer.putFloat(floatValues[index]);
           } else {
             valueBuffer.putFloat(Float.MIN_VALUE);
@@ -236,10 +297,8 @@ public class SessionUtils {
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          if (tablet.bitMaps == null
-              || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].isMarked(index)) {
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
             valueBuffer.putDouble(doubleValues[index]);
           } else {
             valueBuffer.putDouble(Double.MIN_VALUE);
@@ -248,10 +307,8 @@ public class SessionUtils {
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          if (tablet.bitMaps == null
-              || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].isMarked(index)) {
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
             valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
           } else {
             valueBuffer.put(BytesUtils.boolToByte(false));
@@ -262,21 +319,44 @@ public class SessionUtils {
       case STRING:
       case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(binaryValues[index].getLength());
-          valueBuffer.put(binaryValues[index].getValues());
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i) && binaryValues[index] != null) {
+            valueBuffer.putInt(binaryValues[index].getLength());
+            valueBuffer.put(binaryValues[index].getValues());
+          } else {
+            valueBuffer.putInt(Binary.EMPTY_VALUE.getLength());
+            valueBuffer.put(Binary.EMPTY_VALUE.getValues());
+          }
         }
         break;
       case DATE:
         LocalDate[] dateValues = (LocalDate[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i) && dateValues[index] != null) {
+            valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));
+          } else {
+            valueBuffer.putInt(EMPTY_DATE_INT);
+          }
         }
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
+  }
+
+  /* Used for table model insert only. */
+  public static boolean isTabletContainsSingleDevice(Tablet tablet) {
+    if (tablet.getRowSize() == 1) {
+      return true;
+    }
+    IDeviceID firstDeviceId = tablet.getDeviceID(0);
+    for (int i = 1; i < tablet.getRowSize(); ++i) {
+      if (!firstDeviceId.equals(tablet.getDeviceID(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {

@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
@@ -79,7 +79,7 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
-    context.getAnalysis().setStatement(node.getQueryStatement());
+    context.getAnalysis().setRealStatement(node.getQueryStatement());
     DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(
@@ -100,6 +100,10 @@ public class StatementMemorySourceVisitor
             new PlanGraphPrinter.GraphContext(
                 context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
+    return getStatementMemorySource(header, lines);
+  }
+
+  static StatementMemorySource getStatementMemorySource(DatasetHeader header, List<String> lines) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(
         line -> {
@@ -183,6 +187,12 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowVersion(
       ShowVersionStatement showVersionStatement, StatementMemorySourceContext context) {
+
+    return new StatementMemorySource(
+        getVersionResult(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  public static TsBlock getVersionResult() {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showVersionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -196,8 +206,7 @@ public class StatementMemorySourceVisitor
         .getColumnBuilder(1)
         .writeBinary(new Binary(IoTDBConstant.BUILD_INFO, TSFileConfig.STRING_CHARSET));
     tsBlockBuilder.declarePosition();
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+    return tsBlockBuilder.build();
   }
 
   @Override
@@ -262,18 +271,24 @@ public class StatementMemorySourceVisitor
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }
 
+  @Override
   public StatementMemorySource visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement,
       StatementMemorySourceContext context) {
+
+    return new StatementMemorySource(
+        getCurrentTimestampResult(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  public static TsBlock getCurrentTimestampResult() {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showCurrentTimestampColumnHeaders.stream()
+        ColumnHeaderConstant.SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeLong(System.currentTimeMillis());
     tsBlockBuilder.declarePosition();
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+    return tsBlockBuilder.build();
   }
 }

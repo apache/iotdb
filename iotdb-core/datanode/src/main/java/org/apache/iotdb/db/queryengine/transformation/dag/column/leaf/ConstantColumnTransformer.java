@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -34,7 +34,21 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void initFromTsBlock(TsBlock input) {
+  protected void evaluate() {
     initializeColumnCache(new RunLengthEncodedColumn(value, input.getPositionCount()));
+  }
+
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    int positionCount = input.getPositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    for (int i = 0; i < positionCount; i++) {
+      if (!selection[i] || value.isNull(i)) {
+        builder.appendNull();
+      } else {
+        builder.write(value, 0);
+      }
+    }
+    initializeColumnCache(builder.build());
   }
 }

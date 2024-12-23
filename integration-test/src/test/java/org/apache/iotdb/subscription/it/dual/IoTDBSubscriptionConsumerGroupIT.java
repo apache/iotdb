@@ -26,7 +26,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
@@ -69,7 +69,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   // Test dimensions:
@@ -123,7 +123,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     // Setup connector attributes
@@ -1036,7 +1036,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              String.format("%s - %s", testName.getMethodName(), consumers.get(index).toString()));
+              String.format("%s - %s", testName.getDisplayName(), consumers.get(index).toString()));
       t.start();
       threads.add(t);
     }
@@ -1058,7 +1058,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
                   // wrapper.executeJstack();
                   wrapper.executeJstack(
-                      String.format("%s_%s", testName.getMethodName(), currentTime[0]));
+                      String.format("%s_%s", testName.getDisplayName(), currentTime[0]));
                 }
                 currentTime[0] = System.currentTimeMillis();
               }

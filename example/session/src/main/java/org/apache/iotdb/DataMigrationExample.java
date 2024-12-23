@@ -19,6 +19,7 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -28,6 +29,7 @@ import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,62 +132,64 @@ public class DataMigrationExample {
         DataIterator dataIter = dataSet.iterator();
         List<String> columnNameList = dataIter.getColumnNameList();
         List<String> columnTypeList = dataIter.getColumnTypeList();
-        List<MeasurementSchema> schemaList = new ArrayList<>();
+        List<IMeasurementSchema> schemaList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
-          PartialPath currentPath = new PartialPath(columnNameList.get(j));
+          PartialPath currentPath = new MeasurementPath(columnNameList.get(j));
           schemaList.add(
               new MeasurementSchema(
                   currentPath.getMeasurement(), TSDataType.valueOf(columnTypeList.get(j))));
         }
         tablet = new Tablet(device, schemaList, 300000);
         while (dataIter.next()) {
-          int row = tablet.rowSize++;
-          tablet.timestamps[row] = dataIter.getLong(1);
+          int row = tablet.getRowSize();
+          tablet.addTimestamp(row, dataIter.getLong(1));
           for (int j = 0; j < schemaList.size(); ++j) {
             if (dataIter.isNull(j + 2)) {
-              tablet.addValue(schemaList.get(j).getMeasurementId(), row, null);
+              tablet.addValue(schemaList.get(j).getMeasurementName(), row, null);
               continue;
             }
             switch (schemaList.get(j).getType()) {
               case BOOLEAN:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getBoolean(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getBoolean(j + 2));
                 break;
               case INT32:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(j + 2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getInt(j + 2));
                 break;
               case INT64:
               case TIMESTAMP:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(j + 2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getLong(j + 2));
                 break;
               case FLOAT:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getFloat(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getFloat(j + 2));
                 break;
               case DOUBLE:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getDouble(j + 2));
                 break;
               case TEXT:
               case STRING:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getString(j + 2));
                 break;
               case DATE:
               case BLOB:
                 tablet.addValue(
-                    schemaList.get(j).getMeasurementId(), row, dataIter.getObject(j + 2));
+                    schemaList.get(j).getMeasurementName(), row, dataIter.getObject(j + 2));
                 break;
               default:
                 LOGGER.info("Migration of this type of data is not supported");
             }
           }
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
             writerPool.insertTablet(tablet, true);
             tablet.reset();
           }
         }
-        if (tablet.rowSize != 0) {
+        if (tablet.getRowSize() != 0) {
           writerPool.insertTablet(tablet);
           tablet.reset();
         }

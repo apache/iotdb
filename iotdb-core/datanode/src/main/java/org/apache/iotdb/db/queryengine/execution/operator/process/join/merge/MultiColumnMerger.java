@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
@@ -69,7 +68,7 @@ public class MultiColumnMerger implements ColumnMerger {
 
         // current location's input column is not empty
         if (!ColumnMerger.empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
-          TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
+          Column timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
           Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
           // time of current location's input column is equal to current row's time
           if (timeColumn.getLong(index) == timeBuilder.getTime(i)) {
@@ -124,7 +123,7 @@ public class MultiColumnMerger implements ColumnMerger {
 
       // current location's input column is not empty
       if (!ColumnMerger.empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
-        TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
+        Column timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
         Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
         // time of current location's input column is equal to current row's time
         if (timeColumn.getLong(index) == currentTime) {

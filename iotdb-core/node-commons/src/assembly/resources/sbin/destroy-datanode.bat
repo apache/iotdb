@@ -182,16 +182,16 @@ for %%i in (%pipe_receiver_file_dirs%) do (
     )
 )
 
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_consensus_receiver_file_dirs"
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^iot_consensus_v2_receiver_file_dirs"
   %IOTDB_DATANODE_CONFIG%') do (
-  set pipe_consensus_receiver_file_dirs=%%i
+  set iot_consensus_v2_receiver_file_dirs=%%i
 )
-if "%pipe_consensus_receiver_file_dirs%"=="" (
-    set "pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver"
+if "%iot_consensus_v2_receiver_file_dirs%"=="" (
+    set "iot_consensus_v2_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver"
 )
 
-set "pipe_consensus_receiver_file_dirs=!pipe_consensus_receiver_file_dirs:%delimiter%= !"
-for %%i in (%pipe_consensus_receiver_file_dirs%) do (
+set "iot_consensus_v2_receiver_file_dirs=!iot_consensus_v2_receiver_file_dirs:%delimiter%= !"
+for %%i in (%iot_consensus_v2_receiver_file_dirs%) do (
   set "var=%%i"
     if "!var:~0,2!"=="\\" (
       rmdir /s /q "%%i" 2>nul

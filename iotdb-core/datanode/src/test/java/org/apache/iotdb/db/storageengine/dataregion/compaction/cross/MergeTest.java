@@ -33,13 +33,13 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -97,7 +97,8 @@ abstract class MergeTest {
     }
     deviceIds = new IDeviceID[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = new PlainDeviceID(MERGE_TEST_SG + PATH_SEPARATOR + "device" + i);
+      deviceIds[i] =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(MERGE_TEST_SG + PATH_SEPARATOR + "device" + i);
     }
   }
 
@@ -141,11 +142,9 @@ abstract class MergeTest {
       throws IOException {
     for (TsFileResource tsFileResource : seqResList) {
       tsFileResource.remove();
-      tsFileResource.getModFile().remove();
     }
     for (TsFileResource tsFileResource : unseqResList) {
       tsFileResource.remove();
-      tsFileResource.getModFile().remove();
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -155,26 +154,26 @@ abstract class MergeTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, ((PlainDeviceID) deviceIds[j]).toStringID());
+        TSRecord record = new TSRecord(deviceIds[j].toString(), i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i + valueOffset)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         tsFileResource.updateStartTime(deviceIds[j], i);
         tsFileResource.updateEndTime(deviceIds[j], i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();

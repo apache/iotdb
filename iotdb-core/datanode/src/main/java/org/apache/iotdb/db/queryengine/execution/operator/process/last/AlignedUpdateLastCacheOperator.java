@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -45,10 +45,11 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       OperatorContext operatorContext,
       Operator child,
       AlignedPath seriesPath,
-      DataNodeSchemaCache dataNodeSchemaCache,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, needUpdateNullEntry);
+    super(
+        operatorContext, child, treeDeviceSchemaCacheManager, needUpdateCache, needUpdateNullEntry);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }
@@ -86,9 +87,7 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       } else {
         // we still need to update last cache if there is no data for this time series to avoid
         // scanning all files each time
-        if (needUpdateNullEntry) {
-          mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
-        }
+        mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;

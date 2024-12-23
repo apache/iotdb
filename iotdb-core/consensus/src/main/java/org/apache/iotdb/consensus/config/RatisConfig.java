@@ -541,8 +541,6 @@ public class RatisConfig {
   public static class Log {
 
     private final boolean useMemory;
-    private final int queueElementLimit;
-    private final SizeInBytes queueByteLimit;
     private final int purgeGap;
     private final boolean purgeUptoSnapshotIndex;
     private final long preserveNumsWhenPurge;
@@ -555,8 +553,6 @@ public class RatisConfig {
 
     private Log(
         boolean useMemory,
-        int queueElementLimit,
-        SizeInBytes queueByteLimit,
         int purgeGap,
         boolean purgeUptoSnapshotIndex,
         long preserveNumsWhenPurge,
@@ -567,8 +563,6 @@ public class RatisConfig {
         int forceSyncNum,
         boolean unsafeFlushEnabled) {
       this.useMemory = useMemory;
-      this.queueElementLimit = queueElementLimit;
-      this.queueByteLimit = queueByteLimit;
       this.purgeGap = purgeGap;
       this.purgeUptoSnapshotIndex = purgeUptoSnapshotIndex;
       this.preserveNumsWhenPurge = preserveNumsWhenPurge;
@@ -582,14 +576,6 @@ public class RatisConfig {
 
     public boolean isUseMemory() {
       return useMemory;
-    }
-
-    public int getQueueElementLimit() {
-      return queueElementLimit;
-    }
-
-    public SizeInBytes getQueueByteLimit() {
-      return queueByteLimit;
     }
 
     public int getPurgeGap() {
@@ -635,8 +621,6 @@ public class RatisConfig {
     public static class Builder {
 
       private boolean useMemory = false;
-      private int queueElementLimit = 4096;
-      private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
       private boolean purgeUptoSnapshotIndex = true;
       private long preserveNumsWhenPurge = 1000;
@@ -650,8 +634,6 @@ public class RatisConfig {
       public Log build() {
         return new Log(
             useMemory,
-            queueElementLimit,
-            queueByteLimit,
             purgeGap,
             purgeUptoSnapshotIndex,
             preserveNumsWhenPurge,
@@ -665,16 +647,6 @@ public class RatisConfig {
 
       public Log.Builder setUseMemory(boolean useMemory) {
         this.useMemory = useMemory;
-        return this;
-      }
-
-      public Log.Builder setQueueElementLimit(int queueElementLimit) {
-        this.queueElementLimit = queueElementLimit;
-        return this;
-      }
-
-      public Log.Builder setQueueByteLimit(SizeInBytes queueByteLimit) {
-        this.queueByteLimit = queueByteLimit;
         return this;
       }
 
@@ -908,6 +880,7 @@ public class RatisConfig {
 
     private final int retryTimesMax;
     private final long retryWaitMillis;
+    private final long retryMaxWaitMillis;
 
     private final long checkAndTakeSnapshotInterval;
     private final long raftLogSizeMaxThreshold;
@@ -917,11 +890,13 @@ public class RatisConfig {
     public Impl(
         int retryTimesMax,
         long retryWaitMillis,
+        long retryMaxWaitMillis,
         long checkAndTakeSnapshotInterval,
         long raftLogSizeMaxThreshold,
         long forceSnapshotInterval) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
+      this.retryMaxWaitMillis = retryMaxWaitMillis;
       this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
       this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
       this.forceSnapshotInterval = forceSnapshotInterval;
@@ -947,14 +922,19 @@ public class RatisConfig {
       return forceSnapshotInterval;
     }
 
+    public long getRetryMaxWaitMillis() {
+      return retryMaxWaitMillis;
+    }
+
     public static Impl.Builder newBuilder() {
       return new Builder();
     }
 
     public static class Builder {
 
-      private int retryTimesMax = 3;
-      private long retryWaitMillis = 500;
+      private int retryTimesMax = 10;
+      private long retryWaitMillis = 100;
+      private long retryMaxWaitMillis = 5000;
 
       // 120s
       private long checkAndTakeSnapshotInterval = 120;
@@ -967,6 +947,7 @@ public class RatisConfig {
         return new Impl(
             retryTimesMax,
             retryWaitMillis,
+            retryMaxWaitMillis,
             checkAndTakeSnapshotInterval,
             raftLogSizeMaxThreshold,
             forceSnapshotInterval);
@@ -994,6 +975,11 @@ public class RatisConfig {
 
       public Impl.Builder setForceSnapshotInterval(long forceSnapshotInterval) {
         this.forceSnapshotInterval = forceSnapshotInterval;
+        return this;
+      }
+
+      public Impl.Builder setRetryMaxWaitMillis(long retryMaxWaitTimeMillis) {
+        this.retryMaxWaitMillis = retryMaxWaitTimeMillis;
         return this;
       }
     }

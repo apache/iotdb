@@ -27,7 +27,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -117,15 +117,15 @@ public class PipeConsensusTabletBatchEventHandler
   @Override
   public void onError(final Exception exception) {
     LOGGER.warn(
-        "PipeConsensus: Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
+        "PipeConsensus: Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
+        events.size(),
         events.stream()
             .map(
                 event ->
                     event instanceof EnrichedEvent
-                        ? ((EnrichedEvent) event).coreReportMessage()
-                        : event.toString())
-            .collect(Collectors.toList()),
-        requestCommitIds,
+                        ? ((EnrichedEvent) event).getPipeName()
+                        : "UNKNOWN")
+            .collect(Collectors.toSet()),
         exception);
 
     connector.addFailureEventsToRetryQueue(events);

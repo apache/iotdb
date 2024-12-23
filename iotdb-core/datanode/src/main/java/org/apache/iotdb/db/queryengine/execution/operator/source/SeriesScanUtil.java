@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -48,6 +49,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TablePageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -61,6 +63,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.ToLongFunction;
 
@@ -73,7 +76,7 @@ public class SeriesScanUtil implements Accountable {
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
-  protected final PartialPath seriesPath;
+  protected final IFullPath seriesPath;
 
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
@@ -123,12 +126,12 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
   public SeriesScanUtil(
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
-    this.deviceID = seriesPath.getIDeviceID();
+    this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -176,8 +179,24 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(
-        DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes()));
+    long ttl;
+    // Only the data in the table model needs to retain rows where all value
+    // columns are null values, so we can use isIgnoreAllNullRows to
+    // differentiate the data of tree model and table model.
+    if (context.isIgnoreAllNullRows()) {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+      scanOptions.setTTL(ttl);
+    } else {
+      if (scanOptions.timeFilterNeedUpdatedByTll()) {
+        String databaseName = dataSource.getDatabaseName();
+        ttl =
+            databaseName == null
+                ? Long.MAX_VALUE
+                : DataNodeTTLCache.getInstance()
+                    .getTTLForTable(databaseName, deviceID.getTableName());
+        scanOptions.setTTL(ttl);
+      }
+    }
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -559,6 +578,7 @@ public class SeriesScanUtil implements Accountable {
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter());
+    long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -569,6 +589,7 @@ public class SeriesScanUtil implements Accountable {
           seqPageReaders.add(
               new VersionPageReader(
                   context,
+                  timestampInFileName,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
@@ -579,6 +600,7 @@ public class SeriesScanUtil implements Accountable {
           seqPageReaders.add(
               new VersionPageReader(
                   context,
+                  timestampInFileName,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
@@ -591,6 +613,7 @@ public class SeriesScanUtil implements Accountable {
               unSeqPageReaders.add(
                   new VersionPageReader(
                       context,
+                      timestampInFileName,
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
@@ -1136,17 +1159,27 @@ public class SeriesScanUtil implements Accountable {
       unpackUnseqTsFileResource();
     }
     while (orderUtils.hasNextSeqResource() && orderUtils.isCurSeqOverlappedWith(endpointTime)) {
-      unpackSeqTsFileResource();
+      Optional<ITimeSeriesMetadata> timeSeriesMetadata = unpackSeqTsFileResource();
+      // asc: if current seq tsfile's endTime >= endpointTime, we don't need to continue
+      // desc: if current seq tsfile's startTime <= endpointTime, we don't need to continue
+      if (timeSeriesMetadata.isPresent()
+          && orderUtils.overlappedSeqResourceSearchingNeedStop(
+              endpointTime, timeSeriesMetadata.get().getStatistics())) {
+        break;
+      }
     }
   }
 
-  private void unpackSeqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
   }
 
@@ -1164,7 +1197,7 @@ public class SeriesScanUtil implements Accountable {
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
-        seriesPath,
+        (NonAlignedFullPath) seriesPath,
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
@@ -1189,7 +1222,7 @@ public class SeriesScanUtil implements Accountable {
 
   protected static class VersionPageReader {
     private final QueryContext context;
-    private final PriorityMergeReader.MergeReaderPriority version;
+    private final MergeReaderPriority version;
     private final IPageReader data;
 
     private final boolean isSeq;
@@ -1197,12 +1230,20 @@ public class SeriesScanUtil implements Accountable {
     private final boolean isMem;
 
     VersionPageReader(
-        QueryContext context, long version, long offset, IPageReader data, boolean isSeq) {
+        QueryContext context,
+        long fileTimestamp,
+        long version,
+        long offset,
+        IPageReader data,
+        boolean isSeq) {
       this.context = context;
-      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset, isSeq);
+      this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
-      this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
+      this.isAligned =
+          data instanceof AlignedPageReader
+              || data instanceof MemAlignedPageReader
+              || data instanceof TablePageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
@@ -1306,6 +1347,9 @@ public class SeriesScanUtil implements Accountable {
     TsFileResource getNextUnseqFileResource(boolean isDelete);
 
     void setCurSeqFileIndex(QueryDataSource dataSource);
+
+    boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<? extends Object> currentStatistics);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1423,6 +1467,12 @@ public class SeriesScanUtil implements Accountable {
     @Override
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
+    }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getStartTime() <= endPointTime;
     }
   }
 
@@ -1542,12 +1592,16 @@ public class SeriesScanUtil implements Accountable {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
     }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getEndTime() >= endPointTime;
+    }
   }
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + deviceID.ramBytesUsed()
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath);
+    return INSTANCE_SIZE + deviceID.ramBytesUsed() + seriesPath.ramBytesUsed();
   }
 }

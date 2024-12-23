@@ -122,13 +122,15 @@ public class OptimizationTestUtil {
     Analysis analysis = analyzer.analyze(statement);
 
     PlanNode actualPlan =
-        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+        new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
     for (PlanOptimizer preOptimizer : preOptimizers) {
       actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
     }
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
+    actualOptPlan =
+        new OrderByExpressionWithLimitChangeToTopK().optimize(actualOptPlan, analysis, context);
     Assert.assertEquals(optPlan, actualOptPlan);
   }
 
@@ -142,7 +144,7 @@ public class OptimizationTestUtil {
     Analysis analysis = analyzer.analyze(statement);
 
     PlanNode actualPlan =
-        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+        new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
     for (PlanOptimizer preOptimizer : preOptimizers) {
       actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
     }

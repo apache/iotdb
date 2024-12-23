@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
@@ -52,12 +52,14 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceSubTreeWit
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForHavingVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -328,7 +330,7 @@ public class ExpressionAnalyzer {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
-          PartialPath concatPath = prefixPath.concatPath(rawPath);
+          PartialPath concatPath = prefixPath.concatAsMeasurementPath(rawPath);
           actualPaths.add(concatPath);
         }
       }
@@ -489,6 +491,18 @@ public class ExpressionAnalyzer {
                 devicePath, schemaTree, isWhere, queryContext));
   }
 
+  public static List<Expression> concatDeviceAndBindSchemaForHaving(
+      final Expression predicate,
+      final PartialPath devicePath,
+      final ISchemaTree schemaTree,
+      final MPPQueryContext queryContext) {
+    return new ConcatDeviceAndBindSchemaForHavingVisitor()
+        .process(
+            predicate,
+            new ConcatDeviceAndBindSchemaForHavingVisitor.Context(
+                devicePath, schemaTree, queryContext));
+  }
+
   /**
    * Search for subexpressions that can be queried natively, including all time series.
    *
@@ -565,12 +579,12 @@ public class ExpressionAnalyzer {
   // Method can only be used in source expression
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public static String getDeviceNameInSourceExpression(Expression expression) {
+  public static IDeviceID getDeviceNameInSourceExpression(Expression expression) {
     if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
           "unsupported expression type for source expression: " + expression.getExpressionType());
     }
-    return ((TimeSeriesOperand) expression).getPath().getDevice();
+    return ((TimeSeriesOperand) expression).getPath().getIDeviceID();
   }
 
   public static Expression getMeasurementExpression(Expression expression, Analysis analysis) {

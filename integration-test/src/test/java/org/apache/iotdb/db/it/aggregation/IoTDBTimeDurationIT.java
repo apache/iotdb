@@ -362,7 +362,7 @@ public class IoTDBTimeDurationIT {
   public void testTimeDurationWithSlidingWindow() {
     assertTestFail(
         "select time_duration(s2) from root.db1.d2 group by ([1,10),5ms,2ms)",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": TIME_DURATION with slidingWindow is not supported now");
   }
 }

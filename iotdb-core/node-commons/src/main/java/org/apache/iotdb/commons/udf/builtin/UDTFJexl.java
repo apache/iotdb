@@ -94,6 +94,10 @@ public class UDTFJexl implements UDTF {
         case BOOLEAN:
           evaluator = new EvaluatorBooleanInput();
           break;
+        case STRING:
+        case TIMESTAMP:
+        case DATE:
+        case BLOB:
         default:
           throw new UDFInputSeriesDataTypeNotValidException(
               0,
@@ -162,6 +166,13 @@ public class UDTFJexl implements UDTF {
       case BOOLEAN:
         evaluator.evaluateBoolean(row, collector);
         break;
+      case TIMESTAMP:
+      case DATE:
+      case STRING:
+      case BLOB:
+      case INT64:
+      case INT32:
+      case FLOAT:
       default:
         // This will not happen.
         throw new UDFOutputSeriesDataTypeNotValidException(0, "[Number, String, Boolean]");
@@ -333,6 +344,10 @@ public class UDTFJexl implements UDTF {
           case BOOLEAN:
             values[i] = row.getBoolean(i);
             break;
+          case STRING:
+          case BLOB:
+          case DATE:
+          case TIMESTAMP:
           default:
             throw new UDFInputSeriesDataTypeNotValidException(
                 i,

@@ -97,7 +97,8 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   private TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
       return new TSStatus(
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -140,7 +141,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitCreateMultiTimeseries(
+  public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(createMultiTimeSeriesStatement, context);
   }
@@ -183,7 +184,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitAlterTimeseries(
+  public TSStatus visitAlterTimeSeries(
       final AlterTimeSeriesStatement alterTimeSeriesStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       if (context.getMessage().contains("already")) {

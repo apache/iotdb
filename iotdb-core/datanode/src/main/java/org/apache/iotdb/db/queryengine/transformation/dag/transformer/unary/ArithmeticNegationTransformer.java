@@ -55,6 +55,12 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case DATE:
+      case TEXT:
+      case TIMESTAMP:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
       default:
         throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
     }

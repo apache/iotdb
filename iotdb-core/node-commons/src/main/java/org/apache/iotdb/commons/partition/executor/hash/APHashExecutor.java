@@ -16,10 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition.executor.hash;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class APHashExecutor extends SeriesPartitionExecutor {
 
@@ -36,6 +41,44 @@ public class APHashExecutor extends SeriesPartitionExecutor {
         hash ^= ((hash << 7) ^ (int) device.charAt(i) ^ (hash >> 3));
       } else {
         hash ^= (~((hash << 11) ^ (int) device.charAt(i) ^ (hash >> 5)));
+      }
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
+
+  @Override
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = 0;
+    int segmentNum = deviceID.segmentNum();
+    int index = 0;
+
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      Object segment = deviceID.segment(segmentID);
+      if (segment instanceof String) {
+        String segmentStr = (String) segment;
+        for (int i = 0; i < segmentStr.length(); i++) {
+          if ((index++ & 1) == 0) {
+            hash ^= ((hash << 7) ^ (int) segmentStr.charAt(i) ^ (hash >> 3));
+          } else {
+            hash ^= (~((hash << 11) ^ (int) segmentStr.charAt(i) ^ (hash >> 5)));
+          }
+        }
+      } else {
+        if ((index++ & 1) == 0) {
+          hash ^= ((hash << 7) ^ NULL_SEGMENT_HASH_NUM ^ (hash >> 3));
+        } else {
+          hash ^= (~((hash << 11) ^ NULL_SEGMENT_HASH_NUM ^ (hash >> 5)));
+        }
+      }
+
+      if (segmentID < segmentNum - 1) {
+        if ((index++ & 1) == 0) {
+          hash ^= ((hash << 7) ^ (int) PATH_SEPARATOR ^ (hash >> 3));
+        } else {
+          hash ^= (~((hash << 11) ^ (int) PATH_SEPARATOR ^ (hash >> 5)));
+        }
       }
     }
     hash &= Integer.MAX_VALUE;

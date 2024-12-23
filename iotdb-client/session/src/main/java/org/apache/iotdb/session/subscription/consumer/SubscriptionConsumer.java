@@ -25,28 +25,30 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPollTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
-import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,23 +68,35 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
+import static org.apache.iotdb.session.subscription.util.SetPartitioner.partition;
 
 abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final long SLEEP_NS = 100_000_000L; // 100ms
+  private static final long SLEEP_MS = 100L;
+  private static final long SLEEP_DELTA_MS = 50L;
+  private static final long TIMER_DELTA_MS = 250L;
 
   private final String username;
   private final String password;
@@ -101,7 +115,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
+  private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
 
+  private final int thriftMaxFrameSize;
+  private final int maxPollParallelism;
+
+  @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
@@ -126,7 +145,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Set<TEndPoint> initialEndpoints = new HashSet<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
-    if (Objects.nonNull(builder.host)) {
+    if (Objects.nonNull(builder.host) || Objects.nonNull(builder.port)) {
+      if (Objects.isNull(builder.host)) {
+        builder.host = SessionConfig.DEFAULT_HOST;
+      }
+      if (Objects.isNull(builder.port)) {
+        builder.port = SessionConfig.DEFAULT_PORT;
+      }
+      initialEndpoints.add(new TEndPoint(builder.host, builder.port));
+    } else if (Objects.isNull(builder.nodeUrls)) {
+      builder.host = SessionConfig.DEFAULT_HOST;
+      builder.port = SessionConfig.DEFAULT_PORT;
       initialEndpoints.add(new TEndPoint(builder.host, builder.port));
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
@@ -144,6 +173,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.maxPollParallelism = builder.maxPollParallelism;
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -185,7 +217,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (Boolean)
                     properties.getOrDefault(
                         ConsumerConstant.FILE_SAVE_FSYNC_KEY,
-                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE)));
+                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE))
+            .thriftMaxFrameSize(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.THRIFT_MAX_FRAME_SIZE_KEY,
+                        SessionConfig.DEFAULT_MAX_FRAME_SIZE))
+            .maxPollParallelism(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.MAX_POLL_PARALLELISM_KEY,
+                        ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -223,13 +265,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       providers.releaseWriteLock();
     }
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
     // submit heartbeat worker
     submitHeartbeatWorker();
 
     // submit endpoints syncer
     submitEndpointsSyncer();
-
-    isClosed.set(false);
   }
 
   @Override
@@ -274,7 +317,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -304,7 +349,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (needParse) {
       topicNames =
-          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+          topicNames.stream()
+              .map(IdentifierUtils::checkAndParseIdentifier)
+              .collect(Collectors.toSet());
     }
 
     providers.acquireReadLock();
@@ -321,7 +368,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     final SubscriptionProvider provider =
         new SubscriptionProvider(
-            endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+            endPoint,
+            this.username,
+            this.password,
+            this.consumerId,
+            this.consumerGroupId,
+            this.thriftMaxFrameSize);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -330,7 +382,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format("Failed to handshake with subscription provider %s", provider));
+          String.format("Failed to handshake with subscription provider %s", provider), e);
     }
 
     // update consumer id and consumer group id if not exist
@@ -354,33 +406,47 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Path getFilePath(
+      final SubscriptionCommitContext commitContext,
       final String topicName,
       final String fileName,
       final boolean allowFileAlreadyExistsException,
       final boolean allowInvalidPathException)
       throws SubscriptionException {
     try {
-      final Path filePath = getFileDir(topicName).resolve(fileName);
-      Files.createFile(filePath);
-      return filePath;
-    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      if (allowFileAlreadyExistsException) {
-        final String suffix = RandomStringGenerator.generate(16);
-        LOGGER.warn(
-            "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
-            fileName,
-            topicName,
-            suffix);
-        return getFilePath(topicName, fileName + "." + suffix, false, true);
+      final Path filePath;
+      try {
+        filePath = getFileDir(topicName).resolve(fileName);
+      } catch (final InvalidPathException invalidPathException) {
+        if (allowInvalidPathException) {
+          return getFilePath(commitContext, URLEncoder.encode(topicName), fileName, true, false);
+        }
+        throw new SubscriptionRuntimeNonCriticalException(
+            invalidPathException.getMessage(), invalidPathException);
       }
-      throw new SubscriptionRuntimeNonCriticalException(
-          fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
-    } catch (final InvalidPathException invalidPathException) {
-      if (allowInvalidPathException) {
-        return getFilePath(URLEncoder.encode(topicName), fileName, true, false);
+
+      try {
+        Files.createFile(filePath);
+        return filePath;
+      } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+        if (allowFileAlreadyExistsException) {
+          if (inFlightFilesCommitContextSet.contains(commitContext)) {
+            LOGGER.info(
+                "Detect already existed file {} when polling topic {}, resume consumption",
+                fileName,
+                topicName);
+            return filePath;
+          }
+          final String suffix = RandomStringGenerator.generate(16);
+          LOGGER.warn(
+              "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
+              fileName,
+              topicName,
+              suffix);
+          return getFilePath(commitContext, topicName, fileName + "." + suffix, false, true);
+        }
+        throw new SubscriptionRuntimeNonCriticalException(
+            fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
       }
-      throw new SubscriptionRuntimeNonCriticalException(
-          invalidPathException.getMessage(), invalidPathException);
     } catch (final IOException e) {
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
@@ -388,121 +454,258 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// poll ///////////////////////////////
 
-  protected List<SubscriptionMessage> poll(
-      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
-      throws SubscriptionException {
-    // check topic names
-    if (subscribedTopics.isEmpty()) {
-      LOGGER.info("SubscriptionConsumer {} has not subscribed to any topics yet", this);
+  private final Map<
+          SubscriptionPollResponseType,
+          BiFunction<SubscriptionPollResponse, PollTimer, Optional<SubscriptionMessage>>>
+      responseTransformer =
+          Collections.unmodifiableMap(
+              new HashMap<
+                  SubscriptionPollResponseType,
+                  BiFunction<
+                      SubscriptionPollResponse, PollTimer, Optional<SubscriptionMessage>>>() {
+                {
+                  put(TABLETS, (resp, timer) -> pollTablets(resp, timer));
+                  put(FILE_INIT, (resp, timer) -> pollFile(resp, timer));
+                  put(
+                      ERROR,
+                      (resp, timer) -> {
+                        final ErrorPayload payload = (ErrorPayload) resp.getPayload();
+                        final String errorMessage = payload.getErrorMessage();
+                        if (payload.isCritical()) {
+                          throw new SubscriptionRuntimeCriticalException(errorMessage);
+                        } else {
+                          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+                        }
+                      });
+                  put(
+                      TERMINATION,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        final String topicNameToUnsubscribe = commitContext.getTopicName();
+                        LOGGER.info(
+                            "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
+                            this,
+                            topicNameToUnsubscribe);
+                        unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
+                        return Optional.empty();
+                      });
+                }
+              });
+
+  protected List<SubscriptionMessage> multiplePoll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
+    if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
 
-    topicNames.stream()
-        .filter(topicName -> !subscribedTopics.containsKey(topicName))
-        .forEach(
-            topicName ->
-                LOGGER.warn(
-                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+    // execute single task in current thread
+    final int availableCount =
+        SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
+    if (availableCount == 0) {
+      // non-strict timeout
+      return singlePoll(topicNames, timeoutMs);
+    }
 
+    // dividing topics
+    final List<PollTask> tasks = new ArrayList<>();
+    final List<Set<String>> partitionedTopicNames =
+        partition(topicNames, Math.min(maxPollParallelism, availableCount));
+    for (final Set<String> partition : partitionedTopicNames) {
+      tasks.add(new PollTask(partition, timeoutMs));
+    }
+
+    // submit multiple tasks to poll messages
     final List<SubscriptionMessage> messages = new ArrayList<>();
-    final SubscriptionPollTimer timer =
-        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
-
-    do {
-      try {
-        // poll tablets or file
-        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
-          final short responseType = pollResponse.getResponseType();
-          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            LOGGER.warn("unexpected response type: {}", responseType);
+    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
+    try {
+      // strict timeout
+      for (final Future<List<SubscriptionMessage>> future :
+          SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
+        try {
+          if (future.isCancelled()) {
             continue;
           }
-          switch (SubscriptionPollResponseType.valueOf(responseType)) {
-            case TABLETS:
-              messages.add(
-                  new SubscriptionMessage(
-                      pollResponse.getCommitContext(),
-                      ((TabletsPayload) pollResponse.getPayload()).getTablets()));
-              break;
-            case FILE_INIT:
-              pollFile(
-                      pollResponse.getCommitContext(),
-                      ((FileInitPayload) pollResponse.getPayload()).getFileName())
-                  .ifPresent(messages::add);
-              break;
-            case ERROR:
-              final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
-              final String errorMessage = payload.getErrorMessage();
-              if (payload.isCritical()) {
-                throw new SubscriptionRuntimeCriticalException(errorMessage);
-              } else {
-                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
-              }
-            case TERMINATION:
-              final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
-              final String topicNameToUnsubscribe = commitContext.getTopicName();
-              LOGGER.info(
-                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} automatically",
-                  this,
-                  topicNames,
-                  topicNameToUnsubscribe);
-              unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
-              break;
-            default:
-              LOGGER.warn("unexpected response type: {}", responseType);
-              break;
+          messages.addAll(future.get());
+        } catch (final CancellationException ignored) {
+
+        } catch (final ExecutionException e) {
+          final Throwable cause = e.getCause();
+          if (cause instanceof SubscriptionRuntimeCriticalException) {
+            final SubscriptionRuntimeCriticalException ex =
+                (SubscriptionRuntimeCriticalException) cause;
+            LOGGER.warn(
+                "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+                this,
+                topicNames,
+                ex);
+            lastSubscriptionRuntimeCriticalException = ex;
+          } else {
+            LOGGER.warn(
+                "ExecutionException occurred when SubscriptionConsumer {} polling topics {}",
+                this,
+                topicNames,
+                e);
           }
         }
-      } catch (final SubscriptionRuntimeNonCriticalException e) {
-        LOGGER.warn(
-            "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
-            this,
-            topicNames,
-            e);
-        // nack and clear messages
-        try {
-          nack(messages);
-          messages.clear();
-        } catch (final Exception ignored) {
-        }
-      } catch (final SubscriptionRuntimeCriticalException e) {
-        LOGGER.warn(
-            "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
-            this,
-            topicNames,
-            e);
-        // nack and clear messages
-        try {
-          nack(messages);
-          messages.clear();
-        } catch (final Exception ignored) {
-        }
-        // rethrow
-        throw e;
       }
-      if (!messages.isEmpty()) {
-        return messages;
-      }
-      // update timer
-      timer.update();
-      // TODO: associated with timeoutMs instead of hardcoding
-      LockSupport.parkNanos(SLEEP_NS); // wait some time
-    } while (timer.notExpired());
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          "InterruptedException occurred when SubscriptionConsumer {} polling topics {}",
+          this,
+          topicNames,
+          e);
+      Thread.currentThread().interrupt(); // restore interrupted state
+    }
 
-    LOGGER.info(
-        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
+    // TODO: ignore possible interrupted state?
+
+    // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
+    // the client
+    if (messages.isEmpty() && Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
+      throw lastSubscriptionRuntimeCriticalException;
+    }
+
+    return messages;
+  }
+
+  private class PollTask implements Callable<List<SubscriptionMessage>> {
+
+    private final Set<String> topicNames;
+    private final long timeoutMs;
+
+    public PollTask(final Set<String> topicNames, final long timeoutMs) {
+      this.topicNames = topicNames;
+      this.timeoutMs = timeoutMs;
+    }
+
+    @Override
+    public List<SubscriptionMessage> call() {
+      return singlePoll(topicNames, timeoutMs);
+    }
+  }
+
+  private List<SubscriptionMessage> singlePoll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    if (topicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
+    final PollTimer timer = new PollTimer(System.currentTimeMillis(), timeoutMs);
+
+    try {
+      do {
+        final List<SubscriptionMessage> currentMessages = new ArrayList<>();
+        try {
+          currentResponses.clear();
+          currentResponses = pollInternal(topicNames, timer.remainingMs());
+          for (final SubscriptionPollResponse response : currentResponses) {
+            final short responseType = response.getResponseType();
+            if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+              LOGGER.warn("unexpected response type: {}", responseType);
+              continue;
+            }
+            try {
+              responseTransformer
+                  .getOrDefault(
+                      SubscriptionPollResponseType.valueOf(responseType),
+                      (resp, ignored) -> {
+                        LOGGER.warn("unexpected response type: {}", responseType);
+                        return Optional.empty();
+                      })
+                  // TODO: reuse previous timer?
+                  .apply(response, new PollTimer(System.currentTimeMillis(), timeoutMs))
+                  .ifPresent(currentMessages::add);
+            } catch (final SubscriptionRuntimeNonCriticalException e) {
+              LOGGER.warn(
+                  "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+                  this,
+                  topicNames,
+                  e);
+              // assume the corresponding response has been nacked
+            }
+          }
+        } catch (final SubscriptionRuntimeCriticalException e) {
+          LOGGER.warn(
+              "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+              this,
+              topicNames,
+              e);
+          // nack and clear current responses
+          try {
+            nack(currentResponses);
+            currentResponses.clear();
+          } catch (final Exception ignored) {
+          }
+          // nack and clear result messages
+          try {
+            nack(messages);
+            messages.clear();
+          } catch (final Exception ignored) {
+          }
+
+          // the upper layer perceives ExecutionException
+          throw e;
+        }
+
+        // add all current messages to result messages
+        messages.addAll(currentMessages);
+
+        // TODO: maybe we can poll a few more times
+        if (!messages.isEmpty()) {
+          break;
+        }
+
+        // update timer
+        timer.update();
+
+        // TODO: associated with timeoutMs instead of hardcoding
+        // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
+        Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
+
+        // the use of TIMER_DELTA_MS here slightly reduces the timeout to avoid being interrupted as
+        // much as possible
+      } while (timer.notExpired(TIMER_DELTA_MS));
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt(); // restore interrupted state
+    }
+
+    if (Thread.currentThread().isInterrupted()) {
+      // nack and clear current responses
+      try {
+        nack(currentResponses);
+        currentResponses.clear();
+      } catch (final Exception ignored) {
+      }
+      // nack and clear result messages
+      try {
+        nack(messages);
+        messages.clear();
+      } catch (final Exception ignored) {
+      }
+
+      // the upper layer perceives CancellationException
+      return Collections.emptyList();
+    }
+
     return messages;
   }
 
   private Optional<SubscriptionMessage> pollFile(
-      final SubscriptionCommitContext commitContext, final String fileName)
-      throws SubscriptionException {
+      final SubscriptionPollResponse response, final PollTimer timer) throws SubscriptionException {
+    final SubscriptionCommitContext commitContext = response.getCommitContext();
+    final String fileName = ((FileInitPayload) response.getPayload()).getFileName();
     final String topicName = commitContext.getTopicName();
-    final Path filePath = getFilePath(topicName, fileName, true, true);
+    final Path filePath = getFilePath(commitContext, topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, file, fileWriter));
+      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter, timer));
     } catch (final Exception e) {
+      if (!(e instanceof SubscriptionPollTimeoutException)) {
+        inFlightFilesCommitContextSet.remove(commitContext);
+      }
       // construct temporary message to nack
       nack(
           Collections.singletonList(
@@ -513,23 +716,36 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private SubscriptionMessage pollFileInternal(
       final SubscriptionCommitContext commitContext,
+      final String rawFileName,
       final File file,
-      final RandomAccessFile fileWriter)
+      final RandomAccessFile fileWriter,
+      final PollTimer timer)
       throws IOException, SubscriptionException {
-    final int dataNodeId = commitContext.getDataNodeId();
-    final String topicName = commitContext.getTopicName();
-    final String fileName = file.getName();
+    long writingOffset = fileWriter.length();
 
     LOGGER.info(
-        "{} start to poll file {} with commit context {}",
+        "{} start to poll file {} with commit context {} at offset {}",
         this,
         file.getAbsolutePath(),
-        commitContext);
+        commitContext,
+        writingOffset);
 
-    long writingOffset = fileWriter.length();
+    fileWriter.seek(writingOffset);
     while (true) {
+      timer.update();
+      if (timer.isExpired(TIMER_DELTA_MS)) {
+        // resume from breakpoint if timeout happened when polling files
+        inFlightFilesCommitContextSet.add(commitContext);
+        final String message =
+            String.format(
+                "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                this, file.getAbsolutePath(), commitContext, writingOffset);
+        LOGGER.info(message);
+        throw new SubscriptionRuntimeNonCriticalException(message);
+      }
+
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(dataNodeId, topicName, fileName, writingOffset);
+          pollFileInternal(commitContext, writingOffset, timer.remainingMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -540,7 +756,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
-      // Only one SubscriptionEvent polled currently...
+      // only one SubscriptionEvent polled currently
       final SubscriptionPollResponse response = responses.get(0);
       final SubscriptionPollPayload payload = response.getPayload();
       final short responseType = response.getResponseType();
@@ -566,11 +782,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FilePiecePayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FilePiecePayload) payload).getFileName(), this);
+                      rawFileName, ((FilePiecePayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -613,11 +829,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // check file name
-            if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
+            if (!Objects.equals(rawFileName, ((FileSealPayload) payload).getFileName())) {
               final String errorMessage =
                   String.format(
                       "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                      fileName, ((FileSealPayload) payload).getFileName(), this);
+                      rawFileName, ((FileSealPayload) payload).getFileName(), this);
               LOGGER.warn(errorMessage);
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
@@ -645,6 +861,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 commitContext);
 
             // generate subscription message
+            inFlightFilesCommitContextSet.remove(commitContext);
             return new SubscriptionMessage(commitContext, file.getAbsolutePath());
           }
         case ERROR:
@@ -653,10 +870,135 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
             final boolean critical = ((ErrorPayload) payload).isCritical();
+            if (!critical
+                && Objects.nonNull(errorMessage)
+                && errorMessage.contains(SubscriptionTimeoutException.KEYWORD)) {
+              // resume from breakpoint if timeout happened when polling files
+              inFlightFilesCommitContextSet.add(commitContext);
+              final String message =
+                  String.format(
+                      "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                      this, file.getAbsolutePath(), commitContext, writingOffset);
+              LOGGER.info(message);
+              throw new SubscriptionPollTimeoutException(message);
+            } else {
+              LOGGER.warn(
+                  "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
+                  this,
+                  file.getAbsolutePath(),
+                  commitContext,
+                  errorMessage,
+                  critical);
+              if (critical) {
+                throw new SubscriptionRuntimeCriticalException(errorMessage);
+              } else {
+                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+              }
+            }
+          }
+        default:
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+    }
+  }
+
+  private Optional<SubscriptionMessage> pollTablets(
+      final SubscriptionPollResponse response, final PollTimer timer) throws SubscriptionException {
+    try {
+      return pollTabletsInternal(response, timer);
+    } catch (final Exception e) {
+      // construct temporary message to nack
+      nack(
+          Collections.singletonList(
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+  }
+
+  private Optional<SubscriptionMessage> pollTabletsInternal(
+      final SubscriptionPollResponse initialResponse, final PollTimer timer) {
+    final List<Tablet> tablets = ((TabletsPayload) initialResponse.getPayload()).getTablets();
+    final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
+
+    int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
+    while (true) {
+      if (nextOffset < 0) {
+        if (!Objects.equals(tablets.size(), -nextOffset)) {
+          final String errorMessage =
+              String.format(
+                  "inconsistent tablet size, current is %s, incoming is %s, consumer: %s",
+                  tablets.size(), -nextOffset, this);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
+        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+      }
+
+      timer.update();
+      if (timer.isExpired(TIMER_DELTA_MS)) {
+        final String errorMessage =
+            String.format(
+                "timeout while poll tablets with commit context: %s, consumer: %s",
+                commitContext, this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      final List<SubscriptionPollResponse> responses =
+          pollTabletsInternal(commitContext, nextOffset, timer.remainingMs());
+
+      // It's agreed that the server will always return at least one response, even in case of
+      // failure.
+      if (responses.isEmpty()) {
+        final String errorMessage =
+            String.format("SubscriptionConsumer %s poll empty response", this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      // only one SubscriptionEvent polled currently
+      final SubscriptionPollResponse response = responses.get(0);
+      final SubscriptionPollPayload payload = response.getPayload();
+      final short responseType = response.getResponseType();
+      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      switch (SubscriptionPollResponseType.valueOf(responseType)) {
+        case TABLETS:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext = response.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // update tablets
+            tablets.addAll(((TabletsPayload) response.getPayload()).getTablets());
+
+            // update offset
+            nextOffset = ((TabletsPayload) payload).getNextOffset();
+            break;
+          }
+        case ERROR:
+          {
+            // no need to check commit context
+
+            final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
+            final boolean critical = ((ErrorPayload) payload).isCritical();
             LOGGER.warn(
-                "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
+                "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
                 this,
-                file.getAbsolutePath(),
                 commitContext,
                 errorMessage,
                 critical);
@@ -674,8 +1016,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
-      throws SubscriptionException {
+  private List<SubscriptionPollResponse> pollInternal(
+      final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -690,9 +1032,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(
-            new SubscriptionPollRequest(
-                SubscriptionPollRequestType.POLL.getType(), new PollPayload(topicNames), 0L));
+        return provider.poll(topicNames, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -702,8 +1042,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
-      final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
+      final SubscriptionCommitContext commitContext, final long writingOffset, final long timeoutMs)
       throws SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
@@ -718,11 +1059,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(
-            new SubscriptionPollRequest(
-                SubscriptionPollRequestType.POLL_FILE.getType(),
-                new PollFilePayload(topicName, fileName, writingOffset),
-                0L));
+        return provider.pollFile(commitContext, writingOffset, timeoutMs);
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
+      }
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private List<SubscriptionPollResponse> pollTabletsInternal(
+      final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs)
+      throws SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
+    providers.acquireReadLock();
+    try {
+      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
+        throw new SubscriptionConnectionException(
+            String.format(
+                "something unexpected happened when %s poll tablets from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, dataNodeId));
+      }
+      // ignore SubscriptionConnectionException to improve poll auto retry
+      try {
+        return provider.pollTablets(commitContext, offset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -741,7 +1105,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), false);
     }
@@ -753,7 +1117,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
       if (Objects.equals(
-          SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())) {
+              SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())
+          &&
+          // do not delete file that can resume from breakpoint
+          !inFlightFilesCommitContextSet.contains(message.getCommitContext())) {
         try {
           message.getTsFileHandler().deleteFile();
         } catch (final Exception ignored) {
@@ -763,7 +1130,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
+      commitInternal(entry.getKey(), entry.getValue(), true);
+    }
+  }
+
+  private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionPollResponse response : responses) {
+      // there is no stale intermediate file here
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(response.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(response.getCommitContext());
+    }
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), true);
     }
@@ -899,6 +1281,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionPipeTimeoutException) {
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
+        }
         LOGGER.warn(
             "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
             this,
@@ -929,6 +1316,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionPipeTimeoutException) {
+          // degrade exception to log for pipe timeout
+          LOGGER.warn(e.getMessage());
+          return;
+        }
         LOGGER.warn(
             "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
             this,
@@ -975,9 +1367,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public abstract static class Builder {
 
-    protected String host = SessionConfig.DEFAULT_HOST;
-    protected int port = SessionConfig.DEFAULT_PORT;
-    protected List<String> nodeUrls = null;
+    protected String host;
+    protected Integer port;
+    protected List<String> nodeUrls;
 
     protected String username = SessionConfig.DEFAULT_USER;
     protected String password = SessionConfig.DEFAULT_PASSWORD;
@@ -991,6 +1383,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
+
+    protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     public Builder host(final String host) {
       this.host = host;
@@ -1017,13 +1412,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder consumerId(final String consumerId) {
-      this.consumerId = IdentifierUtils.parseIdentifier(consumerId);
+    public Builder consumerId(@Nullable final String consumerId) {
+      if (Objects.isNull(consumerId)) {
+        return this;
+      }
+      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
       return this;
     }
 
-    public Builder consumerGroupId(final String consumerGroupId) {
-      this.consumerGroupId = IdentifierUtils.parseIdentifier(consumerGroupId);
+    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
+      if (Objects.isNull(consumerGroupId)) {
+        return this;
+      }
+      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
       return this;
     }
 
@@ -1049,6 +1450,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
+      // single thread to execute poll whenever there are idle resources available, thereby
+      // achieving strict timeout.
+      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
+      return this;
+    }
+
     public abstract SubscriptionPullConsumer buildPullConsumer();
 
     public abstract SubscriptionPushConsumer buildPushConsumer();
@@ -1057,31 +1471,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// stringify ///////////////////////////////
 
   protected Map<String, String> coreReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("isClosed", isClosed.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("subscribedTopicNames", subscribedTopics.keySet().toString());
-      }
-    };
+    final Map<String, String> result = new HashMap<>();
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("isClosed", isClosed.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put(
+        "inFlightFilesCommitContextSet",
+        CollectionUtils.getLimitedString(inFlightFilesCommitContextSet, 32));
+    result.put(
+        "subscribedTopicNames", CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32));
+    return result;
   }
 
   protected Map<String, String> allReportMessage() {
-    return new HashMap<String, String>() {
-      {
-        put("consumerId", consumerId);
-        put("consumerGroupId", consumerGroupId);
-        put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
-        put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
-        put("providers", providers.toString());
-        put("isClosed", isClosed.toString());
-        put("isReleased", isReleased.toString());
-        put("fileSaveDir", fileSaveDir);
-        put("fileSaveFsync", String.valueOf(fileSaveFsync));
-        put("subscribedTopics", subscribedTopics.toString());
-      }
-    };
+    final Map<String, String> result = new HashMap<>();
+    result.put("consumerId", consumerId);
+    result.put("consumerGroupId", consumerGroupId);
+    result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
+    result.put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
+    result.put("providers", providers.toString());
+    result.put("isClosed", isClosed.toString());
+    result.put("isReleased", isReleased.toString());
+    result.put("fileSaveDir", fileSaveDir);
+    result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
+    result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
+    result.put("thriftMaxFrameSize", String.valueOf(thriftMaxFrameSize));
+    result.put("maxPollParallelism", String.valueOf(maxPollParallelism));
+    result.put("subscribedTopics", subscribedTopics.toString());
+    return result;
   }
 }

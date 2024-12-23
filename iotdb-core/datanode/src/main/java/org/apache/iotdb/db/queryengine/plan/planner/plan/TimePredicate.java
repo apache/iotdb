@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,7 +35,14 @@ public interface TimePredicate {
   Filter convertPredicateToTimeFilter();
 
   static TimePredicate deserialize(ByteBuffer byteBuffer) {
-    // TODO will return another kind of TimePredicate like TableModelTimePredicate in the future
-    return new TreeModelTimePredicate(Expression.deserialize(byteBuffer));
+    // 0 for tree model, 1 for table model
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    if (type == 0) {
+      return new TreeModelTimePredicate(Expression.deserialize(byteBuffer));
+    } else {
+      return new TableModelTimePredicate(
+          org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression.deserialize(
+              byteBuffer));
+    }
   }
 }

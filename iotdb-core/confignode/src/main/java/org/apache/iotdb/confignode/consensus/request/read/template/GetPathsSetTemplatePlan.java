@@ -20,25 +20,15 @@
 package org.apache.iotdb.confignode.consensus.request.read.template;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+public class GetPathsSetTemplatePlan extends ConfigPhysicalReadPlan {
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+  private final String name;
+  private final PathPatternTree scope;
 
-public class GetPathsSetTemplatePlan extends ConfigPhysicalPlan {
-
-  private String name;
-  private PathPatternTree scope;
-
-  public GetPathsSetTemplatePlan() {
-    super(ConfigPhysicalPlanType.GetPathsSetTemplate);
-  }
-
-  public GetPathsSetTemplatePlan(String name, PathPatternTree scope) {
+  public GetPathsSetTemplatePlan(final String name, final PathPatternTree scope) {
     super(ConfigPhysicalPlanType.GetPathsSetTemplate);
     this.name = name;
     this.scope = scope;
@@ -50,18 +40,5 @@ public class GetPathsSetTemplatePlan extends ConfigPhysicalPlan {
 
   public PathPatternTree getScope() {
     return scope;
-  }
-
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(name, stream);
-    scope.serialize(stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.name = ReadWriteIOUtils.readString(buffer);
-    this.scope = PathPatternTree.deserialize(buffer);
   }
 }

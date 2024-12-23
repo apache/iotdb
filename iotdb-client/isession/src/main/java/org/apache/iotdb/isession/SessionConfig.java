@@ -54,5 +54,7 @@ public class SessionConfig {
 
   public static final long RETRY_INTERVAL_IN_MS = 500;
 
+  public static final String SQL_DIALECT = "tree";
+
   private SessionConfig() {}
 }

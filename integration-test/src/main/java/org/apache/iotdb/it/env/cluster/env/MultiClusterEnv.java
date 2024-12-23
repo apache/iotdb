@@ -25,7 +25,7 @@ import org.apache.tsfile.utils.Pair;
 
 public class MultiClusterEnv extends AbstractEnv {
 
-  public MultiClusterEnv(long startTime, int index, String currentMethodName) {
+  public MultiClusterEnv(final long startTime, final int index, final String currentMethodName) {
     super(startTime);
     this.index = index;
     this.testMethodName = currentMethodName;
@@ -33,18 +33,18 @@ public class MultiClusterEnv extends AbstractEnv {
 
   @Override
   public void initClusterEnvironment() {
-    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum(index);
+    final Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum(index);
     super.initEnvironment(nodeNum.getLeft(), nodeNum.getRight());
   }
 
   @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+  public void initClusterEnvironment(final int configNodesNum, final int dataNodesNum) {
     super.initEnvironment(configNodesNum, dataNodesNum);
   }
 
   @Override
   public void initClusterEnvironment(
-      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+      final int configNodesNum, final int dataNodesNum, final int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
   }
 }

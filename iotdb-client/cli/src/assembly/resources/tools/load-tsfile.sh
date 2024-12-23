@@ -33,7 +33,7 @@ PARAMETERS=$@
 
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
-MAIN_CLASS=org.apache.iotdb.tool.ImportTsFile
+MAIN_CLASS=org.apache.iotdb.tool.tsfile.ImportTsFile
 
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -124,7 +125,7 @@ public class IoTDBUDTFHybridQueryIT {
 
   @Test
   public void testUserDefinedBuiltInHybridAggregationQuery2() {
-    String[] retArray = new String[] {"0,2.0,0.9092974268256817,3.0,-10.0,12.0"};
+    String[] retArray = new String[] {"2.0,0.9092974268256817,3.0,-10.0,12.0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -134,9 +135,7 @@ public class IoTDBUDTFHybridQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString("avg(root.vehicle.d1.s1)")
+              resultSet.getString("avg(root.vehicle.d1.s1)")
                   + ","
                   + resultSet.getString("sin(avg(root.vehicle.d1.s2))")
                   + ","

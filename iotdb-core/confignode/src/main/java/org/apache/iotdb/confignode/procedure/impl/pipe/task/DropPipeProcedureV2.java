@@ -78,7 +78,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     pipeTaskInfo.get().checkBeforeDropPipe(pipeName);
 
-    return false;
+    return true;
   }
 
   @Override

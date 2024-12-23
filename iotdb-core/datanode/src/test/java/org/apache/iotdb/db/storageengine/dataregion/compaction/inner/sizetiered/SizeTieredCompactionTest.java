@@ -33,7 +33,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -41,6 +41,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -186,27 +187,27 @@ public class SizeTieredCompactionTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(
-            new Path(deviceId, measurementSchema.getMeasurementId(), true), measurementSchema);
+            new Path(deviceId, measurementSchema.getMeasurementName(), true), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i + valueOffset)));
         }
-        fileWriter.write(record);
-        tsFileResource.updateStartTime(new PlainDeviceID(deviceIds[j]), i);
-        tsFileResource.updateEndTime(new PlainDeviceID(deviceIds[j]), i);
+        fileWriter.writeRecord(record);
+        tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
+        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+        fileWriter.flush();
       }
     }
     fileWriter.close();
@@ -232,15 +233,15 @@ public class SizeTieredCompactionTest {
     tsFileResource1.updatePlanIndexes((long) 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
     fileWriter1.registerTimeseries(
-        new Path(deviceIds[0], measurementSchemas[0].getMeasurementId(), true),
+        new Path(deviceIds[0], measurementSchemas[0].getMeasurementName(), true),
         measurementSchemas[0]);
-    TSRecord record1 = new TSRecord(0, deviceIds[0]);
+    TSRecord record1 = new TSRecord(deviceIds[0], 0);
     record1.addTuple(
         DataPoint.getDataPoint(
             measurementSchemas[0].getType(),
-            measurementSchemas[0].getMeasurementId(),
+            measurementSchemas[0].getMeasurementName(),
             String.valueOf(0)));
-    fileWriter1.write(record1);
+    fileWriter1.writeRecord(record1);
     fileWriter1.close();
     // prepare file 2
     File file2 =
@@ -260,15 +261,15 @@ public class SizeTieredCompactionTest {
     tsFileResource2.updatePlanIndexes((long) 1);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
     fileWriter2.registerTimeseries(
-        new Path(deviceIds[0], measurementSchemas[1].getMeasurementId(), true),
+        new Path(deviceIds[0], measurementSchemas[1].getMeasurementName(), true),
         measurementSchemas[1]);
-    TSRecord record2 = new TSRecord(0, deviceIds[0]);
+    TSRecord record2 = new TSRecord(deviceIds[0], 0);
     record2.addTuple(
         DataPoint.getDataPoint(
             measurementSchemas[1].getType(),
-            measurementSchemas[1].getMeasurementId(),
+            measurementSchemas[1].getMeasurementName(),
             String.valueOf(0)));
-    fileWriter2.write(record2);
+    fileWriter2.writeRecord(record2);
     fileWriter2.close();
     ret.add(tsFileResource1);
     ret.add(tsFileResource2);

@@ -142,20 +142,24 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   /////////////////////////////// Topic ///////////////////////////////
 
-  public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
+  public boolean validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     acquireReadLock();
     try {
-      checkBeforeCreateTopicInternal(createTopicReq);
+      return checkBeforeCreateTopicInternal(createTopicReq);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
+  private boolean checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
     if (!isTopicExisted(createTopicReq.getTopicName())) {
-      return;
+      return true;
+    }
+
+    if (createTopicReq.isSetIfNotExistsCondition() && createTopicReq.isIfNotExistsCondition()) {
+      return false;
     }
 
     final String exceptionMessage =
@@ -190,7 +194,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       // executed on all nodes to ensure the consistency.
       return;
     } else {
-      if (!topicMeta.hasSubscribedConsumerGroup()) {
+      if (!consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName)) {
         return;
       }
     }
@@ -201,6 +205,37 @@ public class SubscriptionInfo implements SnapshotProcessor {
             topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
+  }
+
+  public void validatePipePluginUsageByTopic(String pipePluginName) throws SubscriptionException {
+    acquireReadLock();
+    try {
+      validatePipePluginUsageByTopicInternal(pipePluginName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void validatePipePluginUsageByTopicInternal(String pipePluginName)
+      throws SubscriptionException {
+    acquireReadLock();
+    try {
+      topicMetaKeeper
+          .getAllTopicMeta()
+          .forEach(
+              meta -> {
+                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                  final String exceptionMessage =
+                      String.format(
+                          "PipePlugin '%s' is already used by Topic '%s' as a processor.",
+                          pipePluginName, meta.getTopicName());
+                  LOGGER.warn(exceptionMessage);
+                  throw new SubscriptionException(exceptionMessage);
+                }
+              });
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
@@ -471,6 +506,16 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public boolean isTopicSubscribedByConsumerGroup(
+      final String topicName, final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName, consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
@@ -595,7 +640,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
-      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIds()) {
+      for (String consumerGroupId :
+          consumerGroupMetaKeeper.getSubscribedConsumerGroupIds(topicMeta.getTopicName())) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());

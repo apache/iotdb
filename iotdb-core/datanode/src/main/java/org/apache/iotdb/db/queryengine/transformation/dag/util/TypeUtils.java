@@ -72,6 +72,9 @@ public class TypeUtils {
         return column.getDouble(index);
       case BOOLEAN:
         return column.getBoolean(index) ? 1 : 0;
+      case BLOB:
+      case STRING:
+      case TEXT:
       default:
         throw new QueryProcessException("Unsupported data type: " + type);
     }

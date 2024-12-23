@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.commons.schema.filter;
 
-import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
+import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,7 +44,7 @@ import java.util.List;
 
 public abstract class SchemaFilter {
 
-  public static void serialize(SchemaFilter schemaFilter, ByteBuffer byteBuffer) {
+  public static void serialize(final SchemaFilter schemaFilter, final ByteBuffer byteBuffer) {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), byteBuffer);
     } else {
@@ -45,7 +53,7 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static void serialize(SchemaFilter schemaFilter, DataOutputStream outputStream)
+  public static void serialize(final SchemaFilter schemaFilter, final DataOutputStream outputStream)
       throws IOException {
     if (schemaFilter == null) {
       ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), outputStream);
@@ -55,8 +63,8 @@ public abstract class SchemaFilter {
     }
   }
 
-  public static SchemaFilter deserialize(ByteBuffer byteBuffer) {
-    SchemaFilterType type =
+  public static SchemaFilter deserialize(final ByteBuffer byteBuffer) {
+    final SchemaFilterType type =
         SchemaFilterType.getSchemaFilterType(ReadWriteIOUtils.readShort(byteBuffer));
     switch (type) {
       case NULL:
@@ -73,6 +81,22 @@ public abstract class SchemaFilter {
         return new AndFilter(byteBuffer);
       case TEMPLATE_FILTER:
         return new TemplateFilter(byteBuffer);
+      case OR:
+        return new OrFilter(byteBuffer);
+      case NOT:
+        return new NotFilter(byteBuffer);
+      case ID:
+        return new IdFilter(byteBuffer);
+      case ATTRIBUTE:
+        return new AttributeFilter(byteBuffer);
+      case PRECISE:
+        return new PreciseFilter(byteBuffer);
+      case IN:
+        return new InFilter(byteBuffer);
+      case LIKE:
+        return new LikeFilter(byteBuffer);
+      case COMPARISON:
+        return new ComparisonFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }
@@ -84,30 +108,31 @@ public abstract class SchemaFilter {
    * @param filterType type
    * @return list of SchemaFilter with specific type
    */
-  public static List<SchemaFilter> extract(SchemaFilter schemaFilter, SchemaFilterType filterType) {
-    List<SchemaFilter> res = new ArrayList<>();
+  public static List<SchemaFilter> extract(
+      final SchemaFilter schemaFilter, final SchemaFilterType filterType) {
+    final List<SchemaFilter> res = new ArrayList<>();
     internalExtract(res, schemaFilter, filterType);
     return res;
   }
 
   private static void internalExtract(
-      List<SchemaFilter> result, SchemaFilter schemaFilter, SchemaFilterType filterType) {
+      final List<SchemaFilter> result,
+      final SchemaFilter schemaFilter,
+      final SchemaFilterType filterType) {
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }
-    // if binary filter, check left and right
     if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.AND)) {
-      AndFilter andFilter = (AndFilter) schemaFilter;
-      internalExtract(result, andFilter.getLeft(), filterType);
-      internalExtract(result, andFilter.getRight(), filterType);
+      final AndFilter andFilter = (AndFilter) schemaFilter;
+      andFilter.getChildren().forEach(child -> internalExtract(result, child, filterType));
     }
   }
 
-  public abstract <C> boolean accept(SchemaFilterVisitor<C> visitor, C node);
+  public abstract <C> Boolean accept(final SchemaFilterVisitor<C> visitor, C node);
 
   public abstract SchemaFilterType getSchemaFilterType();
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  protected abstract void serialize(final ByteBuffer byteBuffer);
 
-  public abstract void serialize(DataOutputStream stream) throws IOException;
+  protected abstract void serialize(final DataOutputStream stream) throws IOException;
 }

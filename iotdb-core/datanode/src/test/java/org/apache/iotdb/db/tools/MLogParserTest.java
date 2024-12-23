@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -90,8 +91,7 @@ public class MLogParserTest {
     SchemaEngine schemaEngine = SchemaEngine.getInstance();
     for (int i = 0; i < storageGroups.length; i++) {
       SchemaEngine.getInstance()
-          .createSchemaRegion(
-              new PartialPath(storageGroups[i]), new SchemaRegionId(schemaRegionIds[i]));
+          .createSchemaRegion(storageGroups[i], new SchemaRegionId(schemaRegionIds[i]));
     }
 
     for (int i = 0; i < 2; i++) {
@@ -102,7 +102,7 @@ public class MLogParserTest {
                 .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
                 .createTimeSeries(
                     SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                        new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
+                        new MeasurementPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
                         TSDataType.INT32,
                         TSEncoding.PLAIN,
                         CompressionType.GZIP,
@@ -139,7 +139,7 @@ public class MLogParserTest {
 
     try {
       SchemaEngine.getInstance()
-          .createSchemaRegion(new PartialPath("root.sg"), new SchemaRegionId(schemaRegionIds[2]));
+          .createSchemaRegion("root.sg", new SchemaRegionId(schemaRegionIds[2]));
     } catch (MetadataException e) {
       e.printStackTrace();
     }

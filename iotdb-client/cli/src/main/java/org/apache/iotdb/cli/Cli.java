@@ -35,6 +35,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
 import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
 
 import java.io.IOException;
@@ -96,8 +97,11 @@ public class Cli extends AbstractCli {
       ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
-
-    ctx.setLineReader(JlineUtils.getLineReader(ctx, username, host, port));
+    LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port);
+    if (ctx.isDisableCliHistory()) {
+      lineReader.getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
+    }
+    ctx.setLineReader(lineReader);
     serve(ctx);
   }
 
@@ -109,6 +113,7 @@ public class Cli extends AbstractCli {
     }
     info.setProperty("user", username);
     info.setProperty("password", password);
+    info.setProperty(Config.SQL_DIALECT, sqlDialect);
   }
 
   private static boolean parseCommandLine(
@@ -128,6 +133,9 @@ public class Cli extends AbstractCli {
       }
       if (commandLine.hasOption(TIMEOUT_ARGS)) {
         setQueryTimeout(commandLine.getOptionValue(TIMEOUT_ARGS));
+      }
+      if (commandLine.hasOption(Config.SQL_DIALECT)) {
+        setSqlDialect(commandLine.getOptionValue(Config.SQL_DIALECT));
       }
     } catch (ParseException e) {
       ctx.getPrinter()
@@ -223,6 +231,11 @@ public class Cli extends AbstractCli {
     } catch (EndOfFileException e) {
       // Exit on EOF (usually by pressing CTRL+D).
       ctx.exit(CODE_OK);
+    } catch (IllegalArgumentException e) {
+      if (e.getMessage().contains("history")) {
+        return false;
+      }
+      throw e;
     }
     return false;
   }

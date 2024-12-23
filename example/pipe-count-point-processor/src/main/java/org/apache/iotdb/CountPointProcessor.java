@@ -59,7 +59,7 @@ public class CountPointProcessor implements PipeProcessor {
   public void process(
       final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector) {
     tabletInsertionEvent.processTablet(
-        (tablet, rowCollector) -> writePointCount.addAndGet(tablet.rowSize));
+        (tablet, rowCollector) -> writePointCount.addAndGet(tablet.getRowSize()));
   }
 
   @Override
@@ -67,15 +67,14 @@ public class CountPointProcessor implements PipeProcessor {
     if (event instanceof PipeHeartbeatEvent) {
       final Tablet tablet =
           new Tablet(
-              aggregateSeries.getDevice(),
+              aggregateSeries.getIDeviceID().toString(),
               Collections.singletonList(
                   new MeasurementSchema(aggregateSeries.getMeasurement(), TSDataType.INT64)),
               1);
-      tablet.rowSize = 1;
       tablet.addTimestamp(0, System.currentTimeMillis());
       tablet.addValue(aggregateSeries.getMeasurement(), 0, writePointCount.get());
       eventCollector.collect(
-          new PipeRawTabletInsertionEvent(tablet, false, null, 0, null, null, false));
+          new PipeRawTabletInsertionEvent(null, null, tablet, false, null, 0, null, null, false));
     }
   }
 

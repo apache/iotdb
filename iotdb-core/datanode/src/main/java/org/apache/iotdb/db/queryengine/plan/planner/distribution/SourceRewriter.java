@@ -34,11 +34,11 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -81,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -150,7 +151,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return Collections.singletonList(node);
     }
 
-    String device = node.getDevice();
+    IDeviceID device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
         !analysis.useLogicalView()
             ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
@@ -195,7 +196,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     boolean existDeviceCrossRegion = false;
 
     for (int i = 0; i < node.getDevices().size(); i++) {
-      String outputDevice = node.getDevices().get(i);
+      IDeviceID outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.useLogicalView()
@@ -265,7 +266,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
             context
                 .queryContext
                 .getTypeProvider()
-                .setType(partialFunctionExpression.getOutputSymbol(), dataType);
+                .setTreeModelType(partialFunctionExpression.getOutputSymbol(), dataType);
           }
           newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
         }
@@ -276,7 +277,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 : Collections.singletonList(newIdxSum++));
       }
 
-      for (String device : node.getDevices()) {
+      for (IDeviceID device : node.getDevices()) {
         List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
         List<Integer> newMeasurementIdxList = new ArrayList<>();
         oldMeasurementIdxList.forEach(
@@ -340,7 +341,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       DeviceViewNode node,
       DistributionPlanContext context) {
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
-      List<String> devices = new ArrayList<>();
+      List<IDeviceID> devices = new ArrayList<>();
       List<PlanNode> children = new ArrayList<>();
       for (DeviceViewSplit split : deviceViewSplits) {
         if (split.needDistributeTo(regionReplicaSet)) {
@@ -1766,12 +1767,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private static class DeviceViewSplit {
-    protected String device;
+    protected IDeviceID device;
     protected PlanNode root;
     protected Set<TRegionReplicaSet> dataPartitions;
 
     protected DeviceViewSplit(
-        String device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
+        IDeviceID device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
       this.device = device;
       this.root = root;
       this.dataPartitions = new HashSet<>();

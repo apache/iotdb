@@ -19,26 +19,20 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.function;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+public class GetFunctionTablePlan extends ConfigPhysicalReadPlan {
 
-public class GetFunctionTablePlan extends ConfigPhysicalPlan {
+  private final Model model;
 
-  public GetFunctionTablePlan() {
+  public GetFunctionTablePlan(Model model) {
     super(ConfigPhysicalPlanType.GetFunctionTable);
+    this.model = model;
   }
 
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    // do nothing
+  public Model getModel() {
+    return model;
   }
 }

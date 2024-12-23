@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitter;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitter;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;

@@ -133,7 +133,7 @@ public class DriverSchedulerTest {
     // Abort one FragmentInstance
     Mockito.reset(mockDriver1);
     Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
-    manager.abortFragmentInstance(instanceId1);
+    manager.abortFragmentInstance(instanceId1, null);
     Mockito.verify(mockMPPDataExchangeManager, Mockito.times(1))
         .forceDeregisterFragmentInstance(Mockito.any());
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
@@ -146,7 +146,9 @@ public class DriverSchedulerTest {
     Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
     Assert.assertEquals(DriverTaskStatus.READY, task4.getStatus());
     Mockito.verify(mockDriver1, Mockito.times(1)).failed(Mockito.any());
-    Assert.assertEquals(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED, task1.getAbortCause());
+    Assert.assertEquals(
+        "DriverTask test.0.inst-0.0 is aborted by called",
+        task1.getAbortCause().get().getMessage());
 
     // Abort the whole query
     Mockito.reset(mockMPPDataExchangeManager);
@@ -173,9 +175,11 @@ public class DriverSchedulerTest {
     Mockito.verify(mockDriver3, Mockito.times(1)).failed(Mockito.any());
     Mockito.verify(mockDriver4, Mockito.never()).failed(Mockito.any());
     Assert.assertEquals(
-        DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED, task2.getAbortCause());
+        "DriverTask test.0.inst-1.0 is aborted by query cascading aborted",
+        task2.getAbortCause().get().getMessage());
     Assert.assertEquals(
-        DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED, task3.getAbortCause());
-    Assert.assertNull(task4.getAbortCause());
+        "DriverTask test.0.inst-2.0 is aborted by query cascading aborted",
+        task3.getAbortCause().get().getMessage());
+    Assert.assertFalse(task4.getAbortCause().isPresent());
   }
 }

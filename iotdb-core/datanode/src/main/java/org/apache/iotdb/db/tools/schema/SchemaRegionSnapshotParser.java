@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,7 +48,8 @@ public class SchemaRegionSnapshotParser {
     // Empty constructor
   }
 
-  private static Path getLatestSnapshotPath(List<Path> snapshotPathList, boolean includingTmp) {
+  private static Path getLatestSnapshotPath(
+      final List<Path> snapshotPathList, final boolean includingTmp) {
     if (snapshotPathList.isEmpty()) {
       return null;
     }
@@ -68,69 +68,28 @@ public class SchemaRegionSnapshotParser {
     return pathArray[pathArray.length - 1];
   }
 
-  // Return all schema region's latest snapshot units in this datanode.
-  public static List<Pair<Path, Path>> getSnapshotPaths() {
-    final String snapshotPath = CONFIG.getSchemaRegionConsensusDir();
-    final File snapshotDir = new File(snapshotPath);
-    final ArrayList<Pair<Path, Path>> snapshotUnits = new ArrayList<>();
-
-    // Get schema region path
-    try (DirectoryStream<Path> stream =
-        Files.newDirectoryStream(snapshotDir.toPath(), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
-      for (Path path : stream) {
-        try (DirectoryStream<Path> filestream =
-            Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          // Find the latest snapshots
-          final ArrayList<Path> snapshotList = new ArrayList<>();
-          for (Path snapshotFolder : filestream) {
-            if (snapshotFolder.toFile().isDirectory()) {
-              snapshotList.add(snapshotFolder);
-            }
-          }
-          final Path latestSnapshotPath = getLatestSnapshotPath(snapshotList, false);
-          if (latestSnapshotPath != null) {
-            // Get metadata from the latest snapshot folder.
-            final File mTreeSnapshot =
-                SystemFileFactory.INSTANCE.getFile(
-                    latestSnapshotPath + File.separator + SchemaConstant.MTREE_SNAPSHOT);
-            final File tagSnapshot =
-                SystemFileFactory.INSTANCE.getFile(
-                    latestSnapshotPath + File.separator + SchemaConstant.TAG_LOG_SNAPSHOT);
-            if (mTreeSnapshot.exists()) {
-              snapshotUnits.add(
-                  new Pair<>(
-                      mTreeSnapshot.toPath(), tagSnapshot.exists() ? tagSnapshot.toPath() : null));
-            }
-          }
-        }
-      }
-    } catch (IOException exception) {
-      LOGGER.warn("Cannot construct snapshot directory stream", exception);
-    }
-    return snapshotUnits;
-  }
-
   // In schema snapshot path: datanode/consensus/schema_region/47474747-4747-4747-4747-000200000000
   // this func will get schema region id = 47474747-4747-4747-4747-000200000000's latest snapshot.
   // In one schema region, there is only one snapshot unit.
-  public static Pair<Path, Path> getSnapshotPaths(String schemaRegionId, boolean isTmp) {
+  public static Pair<Path, Path> getSnapshotPaths(
+      final String schemaRegionId, final boolean isTmp) {
     final String snapshotPath = CONFIG.getSchemaRegionConsensusDir();
     final File snapshotDir =
         new File(snapshotPath + File.separator + schemaRegionId + File.separator + "sm");
 
     // Get the latest snapshot file
     final ArrayList<Path> snapshotList = new ArrayList<>();
-    try (DirectoryStream<Path> stream =
+    try (final DirectoryStream<Path> stream =
         Files.newDirectoryStream(
             snapshotDir.toPath(), isTmp ? ".tmp.[0-9]*_[0-9]*" : "[0-9]*_[0-9]*")) {
-      for (Path path : stream) {
+      for (final Path path : stream) {
         snapshotList.add(path);
       }
-    } catch (IOException ioException) {
+    } catch (final IOException ioException) {
       LOGGER.warn("ioexception when get {}'s folder", schemaRegionId, ioException);
       return null;
     }
-    Path latestSnapshotPath = getLatestSnapshotPath(snapshotList, isTmp);
+    final Path latestSnapshotPath = getLatestSnapshotPath(snapshotList, isTmp);
     if (latestSnapshotPath != null) {
       // Get metadata from the latest snapshot folder.
       final File mTreeSnapshot =
@@ -148,17 +107,14 @@ public class SchemaRegionSnapshotParser {
   }
 
   public static SRStatementGenerator translate2Statements(
-      Path mtreePath, Path tagFilePath, PartialPath databasePath) throws IOException {
+      final Path mtreePath, final Path tagFilePath, final PartialPath databasePath)
+      throws IOException {
     if (mtreePath == null) {
       return null;
     }
     final File mtreefile = mtreePath.toFile();
-    final File tagfile;
-    if (tagFilePath != null && tagFilePath.toFile().exists()) {
-      tagfile = tagFilePath.toFile();
-    } else {
-      tagfile = null;
-    }
+    final File tagfile =
+        tagFilePath != null && tagFilePath.toFile().exists() ? tagFilePath.toFile() : null;
 
     if (!mtreefile.exists()) {
       return null;

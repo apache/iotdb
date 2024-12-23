@@ -91,14 +91,16 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
   }
 
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) {
+  public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromValidate");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
+    return true;
   }
 
   @Override
-  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromOperateOnConfigNodes");
 
     final List<ConsumerGroupMeta> consumerGroupMetaList =
@@ -121,7 +123,8 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
     LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushConsumerGroupMetaResp> respMap = pushConsumerGroupMetaToDataNodes(env);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -65,7 +66,7 @@ public class ExpressionFactory {
   }
 
   public static TimeSeriesOperand timeSeries(String pathStr) throws IllegalPathException {
-    PartialPath path = new PartialPath(pathStr);
+    PartialPath path = new MeasurementPath(pathStr);
     return new TimeSeriesOperand(path);
   }
 

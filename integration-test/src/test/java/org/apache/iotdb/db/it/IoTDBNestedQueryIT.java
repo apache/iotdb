@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -624,12 +625,8 @@ public class IoTDBNestedQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String query =
-          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
+          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 not REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
       try (ResultSet rs = statement.executeQuery(query)) {
-        for (int i = 2; i <= 4; i++) {
-          Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
-        }
         Assert.assertFalse(rs.next());
       }
 

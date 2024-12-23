@@ -115,6 +115,13 @@ public class UDTFValueRepair implements UDTF {
           collector.putLong(time[i], Math.round(repaired[i]));
         }
         break;
+      case TIMESTAMP:
+      case DATE:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+
       default:
         throw new Exception();
     }

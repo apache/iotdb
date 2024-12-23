@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -36,7 +40,6 @@ import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -60,6 +63,7 @@ import java.util.Set;
 
 public class TsFileResourceUtils {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String VALIDATE_FAILED = "validate failed,";
 
   private TsFileResourceUtils() {
@@ -67,13 +71,16 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
-    DeviceTimeIndex timeIndex;
+    if (resource.isDeleted()) {
+      return true;
+    }
+    ArrayDeviceTimeIndex timeIndex;
     try {
-      if (resource.getTimeIndexType() != 1) {
+      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // if time index is not device time index, then deserialize it from resource file
         timeIndex = resource.buildDeviceTimeIndex();
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
@@ -148,7 +155,8 @@ public class TsFileResourceUtils {
         return false;
       }
 
-      List<long[]> alignedTimeBatch = new ArrayList<>();
+      List<List<long[]>> alignedTimeBatches = new ArrayList<>();
+      Map<String, Integer> valueColumn2TimeBatchIndex = new HashMap<>();
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       int pageIndex = 0;
       byte marker;
@@ -170,6 +178,17 @@ public class TsFileResourceUtils {
               return false;
             }
 
+            String measurement = header.getMeasurementID();
+            List<long[]> alignedTimeBatch = null;
+            if (header.getDataType() == TSDataType.VECTOR) {
+              alignedTimeBatch = new ArrayList<>();
+              alignedTimeBatches.add(alignedTimeBatch);
+            } else if (marker == MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER
+                || marker == MetaMarker.VALUE_CHUNK_HEADER) {
+              int timeBatchIndex = valueColumn2TimeBatchIndex.getOrDefault(measurement, 0);
+              valueColumn2TimeBatchIndex.put(measurement, timeBatchIndex + 1);
+              alignedTimeBatch = alignedTimeBatches.get(timeBatchIndex);
+            }
             // empty value chunk
             int dataSize = header.getDataSize();
             if (dataSize == 0) {
@@ -186,9 +205,6 @@ public class TsFileResourceUtils {
 
             pageIndex = 0;
 
-            if (header.getDataType() == TSDataType.VECTOR) {
-              alignedTimeBatch.clear();
-            }
             LinkedList<Long> lastNoAlignedPageTimeStamps = new LinkedList<>();
             while (dataSize > 0) {
               valueDecoder.reset();
@@ -273,6 +289,8 @@ public class TsFileResourceUtils {
 
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            valueColumn2TimeBatchIndex.clear();
+            alignedTimeBatches.clear();
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             if (chunkGroupHeader.getDeviceID() == null
                 || chunkGroupHeader.getDeviceID().isEmpty()) {
@@ -289,7 +307,10 @@ public class TsFileResourceUtils {
         }
       }
 
-    } catch (IOException | NegativeArraySizeException | IllegalArgumentException e) {
+    } catch (IOException
+        | NegativeArraySizeException
+        | IllegalArgumentException
+        | ArrayIndexOutOfBoundsException e) {
       logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
       return false;
     }
@@ -358,17 +379,17 @@ public class TsFileResourceUtils {
     // deviceID -> <TsFileResource, last end time>
     Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
-      DeviceTimeIndex timeIndex;
-      if (resource.getTimeIndexType() != 1) {
+      ArrayDeviceTimeIndex timeIndex;
+      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // if time index is not device time index, then deserialize it from resource file
         try {
-          timeIndex = resource.buildDeviceTimeIndex();
+          timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         } catch (IOException e) {
           // skip such files
           continue;
         }
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         return false;
@@ -384,7 +405,7 @@ public class TsFileResourceUtils {
           logger.error(
               "Device {} is overlapped between {} and {}, "
                   + "end time in {} is {}, start time in {} is {}",
-              ((PlainDeviceID) device).toStringID(),
+              device.toString(),
               lastDeviceInfo.left,
               resource,
               lastDeviceInfo.left,
@@ -410,14 +431,19 @@ public class TsFileResourceUtils {
 
   public static void updateTsFileResource(
       Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+    // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
+    ITimeIndex newTimeIndex =
+        tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
+            ? config.getTimeIndexLevel().getTimeIndex()
+            : tsFileResource.getTimeIndex();
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-        tsFileResource.updateStartTime(
+        newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource.updateEndTime(
-            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+    tsFileResource.setTimeIndex(newTimeIndex);
   }
 
   /**

@@ -19,23 +19,25 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import java.io.File;
-
 public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
-
-  @Override
-  public File getTsFile() {
-    return null;
-  }
 
   @Override
   public void ack() {}
 
   @Override
-  public void cleanup() {}
+  public void cleanUp() {}
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionEmptyPipeEvent";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return 0;
   }
 }

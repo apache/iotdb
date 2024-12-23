@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -48,7 +48,7 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
     stream.writeInt(pipeMetaList.size());
@@ -58,16 +58,16 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
-      PipeMeta pipeMeta = PipeMeta.deserialize(buffer);
+      PipeMeta pipeMeta = PipeMeta.deserialize4Coordinator(buffer);
       pipeMetaList.add(pipeMeta);
     }
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }

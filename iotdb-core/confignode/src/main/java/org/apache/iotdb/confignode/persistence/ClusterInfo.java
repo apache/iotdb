@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.UUID;
 
 public class ClusterInfo implements SnapshotProcessor {
@@ -105,5 +106,10 @@ public class ClusterInfo implements SnapshotProcessor {
     }
     ClusterInfo clusterInfo = (ClusterInfo) o;
     return clusterId.equals(clusterInfo.getClusterId());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(clusterId);
   }
 }

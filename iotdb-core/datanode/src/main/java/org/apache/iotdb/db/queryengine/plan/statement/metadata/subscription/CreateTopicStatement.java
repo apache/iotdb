@@ -37,7 +37,7 @@ import java.util.Map;
 public class CreateTopicStatement extends Statement implements IConfigStatement {
 
   private String topicName;
-
+  private boolean ifNotExistsCondition;
   private Map<String, String> topicAttributes;
 
   public CreateTopicStatement() {
@@ -49,12 +49,20 @@ public class CreateTopicStatement extends Statement implements IConfigStatement 
     return topicName;
   }
 
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
+  }
+
   public Map<String, String> getTopicAttributes() {
     return topicAttributes;
   }
 
   public void setTopicName(String topicName) {
     this.topicName = topicName;
+  }
+
+  public void setIfNotExists(boolean ifNotExistsCondition) {
+    this.ifNotExistsCondition = ifNotExistsCondition;
   }
 
   public void setTopicAttributes(Map<String, String> topicAttributes) {

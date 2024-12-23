@@ -101,7 +101,11 @@ public class UDAFAvg implements UDAF {
         addDoubleInput(avgState, columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", dataType));

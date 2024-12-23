@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.consensus.common.Peer;
 
 import java.util.Objects;

@@ -55,6 +55,7 @@ public class StatementConstructionHandler {
     insertStatement.setDevicePath(
         DataNodeDevicePathCache.getInstance().getPartialPath(insertTabletRequest.getDevice()));
     // check whether measurement is legal according to syntax convention
+    // TODO: remove the check for table model
     insertStatement.setMeasurements(
         PathUtils.checkIsLegalSingleMeasurementsAndUpdate(insertTabletRequest.getMeasurements())
             .toArray(new String[0]));
@@ -217,6 +218,7 @@ public class StatementConstructionHandler {
       statement.setDevicePath(
           DataNodeDevicePathCache.getInstance()
               .getPartialPath(insertRecordsRequest.getDevices().get(i)));
+      // TODO: remove the check for table model
       statement.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
                   insertRecordsRequest.getMeasurementsList().get(i))

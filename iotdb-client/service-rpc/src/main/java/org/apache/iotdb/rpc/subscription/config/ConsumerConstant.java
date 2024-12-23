@@ -50,6 +50,11 @@ public class ConsumerConstant {
   public static final String FILE_SAVE_FSYNC_KEY = "file-save-fsync";
   public static final boolean FILE_SAVE_FSYNC_DEFAULT_VALUE = false;
 
+  public static final String THRIFT_MAX_FRAME_SIZE_KEY = "thrift-max-frame-size";
+
+  public static final String MAX_POLL_PARALLELISM_KEY = "max-poll-parallelism";
+  public static final int MAX_POLL_PARALLELISM_DEFAULT_VALUE = 1;
+
   /////////////////////////////// pull consumer ///////////////////////////////
 
   public static final String AUTO_COMMIT_KEY = "auto-commit";

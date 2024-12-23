@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
@@ -133,11 +134,8 @@ public class WALNodeRecoverTask implements Runnable {
             logDirectory);
       }
 
-      // PipeConsensus will not only delete WAL node folder, but also register WAL node.
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-          || config
-              .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
         // register wal node
         WALManager.getInstance()
             .registerWALNode(
@@ -287,6 +285,16 @@ public class WALNodeRecoverTask implements Runnable {
                 "Fail to find TsFile recover performer for wal entry in TsFile {}", walFile);
           }
         }
+      } catch (BrokenWALFileException e) {
+        logger.warn(
+            "Fail to read memTable ids from the wal file {} of wal node: {}",
+            walFile.getAbsoluteFile(),
+            e.getMessage());
+      } catch (IOException e) {
+        logger.warn(
+            "Fail to read memTable ids from the wal file {} of wal node.",
+            walFile.getAbsoluteFile(),
+            e);
       } catch (Exception e) {
         logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
       }

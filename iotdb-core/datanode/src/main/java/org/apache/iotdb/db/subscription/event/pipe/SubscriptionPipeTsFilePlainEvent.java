@@ -21,8 +21,6 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
-import java.io.File;
-
 public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents {
 
   private final PipeTsFileInsertionEvent tsFileInsertionEvent;
@@ -32,25 +30,29 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
   }
 
   @Override
-  public File getTsFile() {
-    return tsFileInsertionEvent.getTsFile();
-  }
-
-  @Override
   public void ack() {
     tsFileInsertionEvent.decreaseReferenceCount(this.getClass().getName(), true);
   }
 
   @Override
-  public void cleanup() {
+  public void cleanUp() {
     // clear the reference count of event
     tsFileInsertionEvent.clearReferenceCount(this.getClass().getName());
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionPipeTsFilePlainEvent{tsFileInsertionEvent="
         + tsFileInsertionEvent.coreReportMessage()
         + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return 1;
   }
 }

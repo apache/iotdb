@@ -26,7 +26,7 @@ import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.tool.ImportData;
+import org.apache.iotdb.tool.data.ImportData;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -37,7 +37,6 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -49,6 +48,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
 
 public abstract class AbstractCli {
 
@@ -139,6 +140,8 @@ public abstract class AbstractCli {
   private static boolean cursorBeforeFirst = true;
 
   static int lastProcessStatus = CODE_OK;
+
+  static String sqlDialect = "tree";
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -241,6 +244,14 @@ public abstract class AbstractCli {
                     + "Using the configuration of server if it's not set (optional)")
             .build();
     options.addOption(queryTimeout);
+
+    Option sqlDialect =
+        Option.builder(SQL_DIALECT)
+            .argName(SQL_DIALECT)
+            .hasArg()
+            .desc("currently support tree and table, using tree if it's not set (optional)")
+            .build();
+    options.addOption(sqlDialect);
     return options;
   }
 
@@ -306,6 +317,10 @@ public abstract class AbstractCli {
     } else {
       queryTimeout = Integer.parseInt(timeoutString.trim());
     }
+  }
+
+  static void setSqlDialect(String sqlDialect) {
+    AbstractCli.sqlDialect = sqlDialect;
   }
 
   static String[] removePasswordArgs(String[] args) {
@@ -574,9 +589,16 @@ public abstract class AbstractCli {
             }
             ctx.getPrinter()
                 .println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
-              if ("".equals(br.readLine())) {
+              String line;
+              if (ctx.isDisableCliHistory()) {
+                line = ctx.getLineReader().readLine();
+              } else {
+                line = br.readLine();
+              }
+              if ("".equals(line)) {
                 maxSizeList = new ArrayList<>(columnLength);
                 lists =
                     cacheResult(
@@ -585,7 +607,7 @@ public abstract class AbstractCli {
               } else {
                 break;
               }
-            } catch (IOException e) {
+            } catch (Exception e) {
               ctx.getPrinter().printException(e);
               executeStatus = CODE_ERROR;
             }
@@ -718,7 +740,7 @@ public abstract class AbstractCli {
 
   private static String getStringByColumnIndex(
       IoTDBJDBCResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException {
-    TSDataType type = TSDataType.valueOf(resultSet.getColumnTypeByIndex(columnIndex));
+    TSDataType type = resultSet.getColumnTypeByIndex(columnIndex);
     switch (type) {
       case BOOLEAN:
       case INT32:
@@ -806,12 +828,14 @@ public abstract class AbstractCli {
     ctx.getPrinter().printBlockLine(maxSizeList);
     ctx.getPrinter().printRow(lists, 0, maxSizeList);
     ctx.getPrinter().printBlockLine(maxSizeList);
-    for (int i = 1; i < lists.get(0).size(); i++) {
-      ctx.getPrinter().printRow(lists, i, maxSizeList);
+    if (!lists.isEmpty()) {
+      for (int i = 1; i < lists.get(0).size(); i++) {
+        ctx.getPrinter().printRow(lists, i, maxSizeList);
+      }
     }
     ctx.getPrinter().printBlockLine(maxSizeList);
     if (isReachEnd) {
-      lineCount += lists.get(0).size() - 1;
+      lineCount += lists.isEmpty() ? 0 : lists.get(0).size() - 1;
       ctx.getPrinter().printCount(lineCount);
     } else {
       lineCount += maxPrintRowCount;

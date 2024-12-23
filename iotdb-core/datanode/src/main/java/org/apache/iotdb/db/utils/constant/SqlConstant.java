@@ -31,10 +31,13 @@ public class SqlConstant {
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
   private static final String[] SINGLE_TIME_ARRAY = {"time"};
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
-  public static final String RESERVED_TIME = "time";
+  public static final String TABLE_TIME_COLUMN_NAME = "time";
   public static final String NOW_FUNC = "now()";
 
   public static final String ROOT = "root";
+
+  public static final String ROOT_DOT = "root.";
+
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
   public static final String BOOLEAN_TRUE = "true";
@@ -47,11 +50,17 @@ public class SqlConstant {
   public static final String MAX_TIME = "max_time";
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
+  public static final String MAX = "max";
+  public static final String MIN = "min";
   public static final String MAX_BY = "max_by";
   public static final String MIN_BY = "min_by";
   public static final String EXTREME = "extreme";
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
+  public static final String FIRST_BY_AGGREGATION = "first_by";
+  public static final String LAST_BY_AGGREGATION = "last_by";
+  public static final String LAST_AGGREGATION = "last";
+  public static final String FIRST_AGGREGATION = "first";
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
@@ -70,8 +79,6 @@ public class SqlConstant {
 
   // names of scalar functions
   public static final String DIFF = "diff";
-
-  public static final String LAST = "last";
 
   public static final String CAST_FUNCTION = "CAST";
   public static final String CAST_TYPE = "type";

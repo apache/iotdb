@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
 
@@ -27,7 +29,6 @@ import java.io.IOException;
 @SuppressWarnings("squid:S1104")
 public class PointElement {
   public long timestamp;
-  public long priority;
   public TimeValuePair timeValuePair;
   public IPointReader pointReader;
   public PageElement pageElement;
@@ -41,7 +42,6 @@ public class PointElement {
     }
     this.timeValuePair = pointReader.nextTimeValuePair();
     this.timestamp = timeValuePair.getTimestamp();
-    this.priority = pageElement.getPriority();
   }
 
   public boolean hasNext() throws IOException {
@@ -52,5 +52,9 @@ public class PointElement {
     timeValuePair = pointReader.nextTimeValuePair();
     timestamp = timeValuePair.getTimestamp();
     return timeValuePair;
+  }
+
+  public MergeReaderPriority getPriority() {
+    return this.pageElement.getPriority();
   }
 }

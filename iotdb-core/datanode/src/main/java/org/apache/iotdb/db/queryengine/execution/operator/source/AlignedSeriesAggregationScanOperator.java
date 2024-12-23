@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -43,11 +44,11 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
   @SuppressWarnings("squid:S107")
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
@@ -63,17 +64,19 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         false,
         groupByTimeParameter,
         maxReturnSize,
+        (1L + seriesPath.getMeasurementList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       boolean outputEndTime,
       SeriesScanOptions scanOptions,
       OperatorContext context,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
@@ -89,6 +92,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         outputEndTime,
         groupByTimeParameter,
         maxReturnSize,
+        (1L + seriesPath.getMeasurementList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
         canUseStatistics);
   }
 

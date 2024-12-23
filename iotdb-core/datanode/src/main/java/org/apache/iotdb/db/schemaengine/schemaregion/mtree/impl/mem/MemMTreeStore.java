@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
@@ -123,7 +124,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public IMemMNode addChild(IMemMNode parent, String childName, IMemMNode child) {
+  public IMemMNode addChild(final IMemMNode parent, final String childName, final IMemMNode child) {
     IMemMNode result = parent.addChild(childName, child);
     if (result == child) {
       requestMemory(child.estimateSize());
@@ -132,7 +133,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void deleteChild(IMemMNode parent, String childName) {
+  public void deleteChild(final IMemMNode parent, final String childName) {
     releaseMemory(parent.deleteChild(childName).estimateSize());
   }
 
@@ -204,20 +205,21 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public boolean createSnapshot(File snapshotDir) {
+  public boolean createSnapshot(final File snapshotDir) {
     return MemMTreeSnapshotUtil.createSnapshot(snapshotDir, this);
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric)
+      final File snapshotDir,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final BiConsumer<IDeviceMNode<IMemMNode>, String> tableDeviceProcess,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
+            snapshotDir, measurementProcess, deviceProcess, tableDeviceProcess, regionStatistics),
         regionStatistics,
         metric);
   }
@@ -239,7 +241,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
     }
   }
 
-  private void releaseMemory(int size) {
+  public void releaseMemory(int size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.sink;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -43,8 +44,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -70,7 +73,7 @@ import static org.junit.Assert.fail;
 public class IdentitySinkOperatorTest {
   private static final String IDENTITY_SINK_TEST = "root.identitySinkTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -91,8 +94,10 @@ public class IdentitySinkOperatorTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor0", TSDataType.INT32);
+      IFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(IDENTITY_SINK_TEST + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       allSensors.add("sensor1");
@@ -129,8 +134,10 @@ public class IdentitySinkOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor1", TSDataType.INT32);
+      IFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(IDENTITY_SINK_TEST + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
@@ -143,8 +150,10 @@ public class IdentitySinkOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor0", TSDataType.INT32);
+      IFullPath measurementPath3 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(IDENTITY_SINK_TEST + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -157,8 +166,10 @@ public class IdentitySinkOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor1", TSDataType.INT32);
+      IFullPath measurementPath4 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(IDENTITY_SINK_TEST + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -208,22 +219,35 @@ public class IdentitySinkOperatorTest {
         }
       }
 
-      while (seriesScanOperator4.hasNext()
-          && identitySinkOperator.isBlocked().isDone()
-          && identitySinkOperator.hasNext()) {
-        TsBlock identityTsBlock = seriesScanOperator4.next();
-        TsBlock tsBlock = identitySinkOperator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(1, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertNotNull(identityTsBlock);
-        assertEquals(identityTsBlock.getPositionCount(), tsBlock.getPositionCount());
-        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
-          assertEquals(identityTsBlock.getColumn(0).getInt(i), tsBlock.getColumn(0).getInt(i));
+      List<Long> scanOp4Time = new ArrayList<>();
+      List<Integer> scanOp4Value = new ArrayList<>();
+      List<Long> identitySinkOpTime = new ArrayList<>();
+      List<Integer> identitySinkOpValue = new ArrayList<>();
+      while (seriesScanOperator4.hasNext()) {
+        TsBlock seriesScanBlock = seriesScanOperator4.next();
+        assertNotNull(seriesScanBlock);
+        for (int i = 0; i < seriesScanBlock.getPositionCount(); i++) {
+          scanOp4Time.add(seriesScanBlock.getTimeByIndex(i));
+          scanOp4Value.add(seriesScanBlock.getColumn(0).getInt(i));
         }
       }
+
+      while (identitySinkOperator.isBlocked().isDone() && identitySinkOperator.hasNext()) {
+        TsBlock identityTsBlock = identitySinkOperator.next();
+        if (identityTsBlock == null) {
+          continue;
+        }
+        assertEquals(1, identityTsBlock.getValueColumnCount());
+        assertTrue(identityTsBlock.getColumn(0) instanceof IntColumn);
+        for (int i = 0; i < identityTsBlock.getPositionCount(); i++) {
+          identitySinkOpValue.add(identityTsBlock.getColumn(0).getInt(i));
+          identitySinkOpTime.add(identityTsBlock.getTimeByIndex(i));
+        }
+      }
+
+      assertEquals(500, scanOp4Value.size());
+      assertEquals(scanOp4Value, identitySinkOpValue);
+      assertEquals(scanOp4Time, identitySinkOpTime);
 
     } catch (IllegalPathException e) {
       e.printStackTrace();

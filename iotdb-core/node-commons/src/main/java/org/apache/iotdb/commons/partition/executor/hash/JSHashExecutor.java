@@ -21,6 +21,10 @@ package org.apache.iotdb.commons.partition.executor.hash;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class JSHashExecutor extends SeriesPartitionExecutor {
 
   private static final int BASE = 1315423911;
@@ -35,6 +39,31 @@ public class JSHashExecutor extends SeriesPartitionExecutor {
 
     for (int i = 0; i < device.length(); i++) {
       hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
+
+  @Override
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = BASE;
+    int segmentNum = deviceID.segmentNum();
+
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      Object segment = deviceID.segment(segmentID);
+      if (segment instanceof String) {
+        String segmentStr = (String) segment;
+        for (int i = 0; i < segmentStr.length(); i++) {
+          hash ^= ((hash << 5) + (int) segmentStr.charAt(i) + (hash >> 2));
+        }
+      } else {
+        hash ^= ((hash << 5) + NULL_SEGMENT_HASH_NUM + (hash >> 2));
+      }
+
+      if (segmentID < segmentNum - 1) {
+        hash ^= ((hash << 5) + (int) PATH_SEPARATOR + (hash >> 2));
+      }
     }
     hash &= Integer.MAX_VALUE;
 

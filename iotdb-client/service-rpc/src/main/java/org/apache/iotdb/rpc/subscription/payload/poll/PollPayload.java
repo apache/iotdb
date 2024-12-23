@@ -30,6 +30,7 @@ import java.util.Set;
 
 public class PollPayload implements SubscriptionPollPayload {
 
+  /** The set of topic names that need to be polled. */
   private transient Set<String> topicNames = new HashSet<>();
 
   public PollPayload() {}

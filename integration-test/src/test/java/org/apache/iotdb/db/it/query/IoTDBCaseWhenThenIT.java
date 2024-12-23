@@ -136,6 +136,20 @@ public class IoTDBCaseWhenThenIT {
   }
 
   @Test
+  public void testShortCircuitEvaluation() {
+    String[] retArray =
+        new String[] {"0,0.0,", "1000000,11.0,", "20000000,22.0,", "210000000,33.0,"};
+    String[] expectedHeader =
+        new String[] {
+          "Time", "CASE WHEN 1 = 0 THEN root.sg.d1.s1 / 0 WHEN 1 != 0 THEN root.sg.d1.s1 END",
+        };
+    resultSetEqualTest(
+        "select case when 1=0 then s1/0 when 1!=0 then s1 end from root.sg.d1",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
   public void testKind1InputTypeRestrict() {
     // WHEN clause must return BOOLEAN
     String sql = "select case when s1+1 then 20 else 22 end from root.sg.d1";
@@ -870,6 +884,38 @@ public class IoTDBCaseWhenThenIT {
     String[] retArray =
         new String[] {
           "0,99.0,", "1000000,xxx,", "20000000,null,", "210000000,xxx,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testKind1Logic() {
+    String sql =
+        "select case when s3 >= 0 and s3 < 20 and s4 >= 50 and s4 < 60 then 'just so so~~~' when s3 >= 20 and s3 < 40 and s4 >= 70 and s4 < 80 then 'very well~~~' end as result from root.sg.d2";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "result"};
+    String[] retArray =
+        new String[] {
+          "0,null,", "1000000,just so so~~~,", "20000000,null,", "210000000,very well~~~,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testMultipleSatisfyCase() {
+    // Test the result when two when clause are satisfied
+    String sql =
+        "select case when s3 < 20 or s4 > 60 then \"just so so~~~\" when s3 > 20 or s4 < 60 then \"very well~~~\" end from root.sg.d2";
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          "CASE WHEN root.sg.d2.s3 < 20 | root.sg.d2.s4 > 60 THEN \"just so so~~~\" WHEN root.sg.d2.s3 > 20 | root.sg.d2.s4 < 60 THEN \"very well~~~\" END"
+        };
+    String[] retArray =
+        new String[] {
+          "0,just so so~~~,",
+          "1000000,just so so~~~,",
+          "20000000,just so so~~~,",
+          "210000000,just so so~~~,",
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
   }

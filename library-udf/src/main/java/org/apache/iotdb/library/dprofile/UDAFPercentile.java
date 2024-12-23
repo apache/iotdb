@@ -89,6 +89,12 @@ public class UDAFPercentile implements UDTF {
       case DOUBLE:
         doubleDic = new HashMap<>();
         break;
+      case TIMESTAMP:
+      case DATE:
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case BOOLEAN:
       default:
         break;
     }
@@ -111,6 +117,12 @@ public class UDAFPercentile implements UDTF {
         case DOUBLE:
           doubleDic.put(row.getDouble(0), row.getTime());
           break;
+        case BLOB:
+        case BOOLEAN:
+        case STRING:
+        case TEXT:
+        case DATE:
+        case TIMESTAMP:
         default:
           break;
       }
@@ -145,6 +157,12 @@ public class UDAFPercentile implements UDTF {
           time = doubleDic.getOrDefault(dres, 0L);
           collector.putDouble(time, dres);
           break;
+        case DATE:
+        case TIMESTAMP:
+        case TEXT:
+        case STRING:
+        case BOOLEAN:
+        case BLOB:
         default:
           break;
       }
@@ -163,6 +181,12 @@ public class UDAFPercentile implements UDTF {
         case DOUBLE:
           collector.putDouble(0, res);
           break;
+        case BOOLEAN:
+        case BLOB:
+        case STRING:
+        case TEXT:
+        case TIMESTAMP:
+        case DATE:
         default:
           break;
       }

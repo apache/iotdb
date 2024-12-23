@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -32,7 +31,7 @@ public class ReplaceSubTreeWithViewVisitor extends ReconstructVisitor<Analysis> 
   public Expression process(Expression expression, Analysis analysis) {
     if (expression.isViewExpression()) {
       TSDataType dataType = analysis.getType(expression);
-      return new TimeSeriesOperand(new MeasurementPath(expression.getViewPath(), dataType));
+      return new TimeSeriesOperand(expression.getViewPath(), dataType);
     }
     return expression.accept(this, analysis);
   }

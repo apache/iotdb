@@ -22,6 +22,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.B
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 
+@SuppressWarnings("java:S3077")
 public class CacheMNodeInfo extends BasicMNodeInfo {
 
   private volatile CacheEntry cacheEntry;

@@ -144,10 +144,11 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    byte[] bytes = deviceID.getBytes();
-    len += write(bytes.length, buffer);
-    buffer.put(bytes);
-    len += bytes.length;
+    len += write(deviceID.segmentNum(), buffer);
+    for (int i = 0; i < deviceID.segmentNum(); i++) {
+      String segment = (String) deviceID.segment(i);
+      len += write(segment, buffer);
+    }
     return len;
   }
 
@@ -173,7 +174,7 @@ public class WALWriteUtils {
   public static int write(MeasurementSchema measurementSchema, IWALByteBufferView buffer) {
     int len = 0;
 
-    len += write(measurementSchema.getMeasurementId(), buffer);
+    len += write(measurementSchema.getMeasurementName(), buffer);
 
     len += write(measurementSchema.getType(), buffer);
 
@@ -196,7 +197,7 @@ public class WALWriteUtils {
 
   public static int sizeToWrite(MeasurementSchema measurementSchema) {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementName());
     byteLen += 3 * Byte.BYTES;
 
     Map<String, String> props = measurementSchema.getProps();

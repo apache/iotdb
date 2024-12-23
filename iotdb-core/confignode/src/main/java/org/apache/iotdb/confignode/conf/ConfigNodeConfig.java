@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractL
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -35,7 +36,7 @@ import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value "defaultCluster" will be changed after join cluster. */
+  /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
@@ -90,7 +91,7 @@ public class ConfigNodeConfig {
   private int defaultSchemaRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = schemaReplicationFactor;
+  private int schemaRegionPerDataNode = 1;
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
@@ -103,8 +104,14 @@ public class ConfigNodeConfig {
    */
   private int defaultDataRegionGroupNumPerDatabase = 2;
 
-  /** The maximum number of DataRegions expected to be managed by each DataNode. */
-  private double dataRegionPerDataNode = 5.0;
+  /**
+   * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
+   * each dataNode automatically has the number of CPU cores / 2 regions.
+   */
+  private int dataRegionPerDataNode = 0;
+
+  /** each dataNode automatically has the number of CPU cores / 2 regions. */
+  private double dataRegionPerDataNodeProportion = 0.5;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -159,7 +166,7 @@ public class ConfigNodeConfig {
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Procedure Evict ttl. */
-  private int procedureCompletedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 60;
 
   /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
@@ -308,14 +315,10 @@ public class ConfigNodeConfig {
     pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+  public static String addHomeDir(String dir) {
+    final String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && !homeDir.isEmpty()) {
+      dir = !homeDir.endsWith(File.separator) ? homeDir + File.separatorChar + dir : homeDir + dir;
     }
     return dir;
   }
@@ -339,6 +342,7 @@ public class ConfigNodeConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+    MetricConfigDescriptor.getInstance().getMetricConfig().updateClusterName(clusterName);
   }
 
   public int getConfigNodeId() {
@@ -481,11 +485,11 @@ public class ConfigNodeConfig {
     this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
   }
 
-  public double getSchemaRegionPerDataNode() {
+  public int getSchemaRegionPerDataNode() {
     return schemaRegionPerDataNode;
   }
 
-  public void setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  public void setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     this.schemaRegionPerDataNode = schemaRegionPerDataNode;
   }
 
@@ -497,12 +501,16 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public double getDataRegionPerDataNode() {
+  public int getDataRegionPerDataNode() {
     return dataRegionPerDataNode;
   }
 
-  public void setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public void setDataRegionPerDataNode(int dataRegionPerDataNode) {
     this.dataRegionPerDataNode = dataRegionPerDataNode;
+  }
+
+  public double getDataRegionPerDataNodeProportion() {
+    return dataRegionPerDataNodeProportion;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {

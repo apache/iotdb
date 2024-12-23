@@ -76,16 +76,9 @@ public abstract class ThriftService implements IService {
     JMXService.deregisterMBean(mbeanName);
   }
 
-  boolean setSyncedImpl = false;
-  boolean setAsyncedImpl = false;
+  public void initSyncedServiceImpl(Object serviceImpl) {}
 
-  public void initSyncedServiceImpl(Object serviceImpl) {
-    setSyncedImpl = true;
-  }
-
-  public void initAsyncedServiceImpl(Object serviceImpl) {
-    setAsyncedImpl = true;
-  }
+  public void initAsyncServiceImpl(Object serviceImpl) {}
 
   public abstract void initTProcessor()
       throws ClassNotFoundException,
@@ -114,10 +107,6 @@ public abstract class ThriftService implements IService {
     try {
       reset();
       initTProcessor();
-      if (!setSyncedImpl && !setAsyncedImpl) {
-        throw new StartupException(
-            getID().getName(), "At least one service implementation should be set.");
-      }
       initThriftServiceThread();
       thriftServiceThread.setThreadStopLatch(stopLatch);
       thriftServiceThread.start();

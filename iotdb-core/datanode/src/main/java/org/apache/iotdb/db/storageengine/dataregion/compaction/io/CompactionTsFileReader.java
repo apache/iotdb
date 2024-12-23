@@ -105,6 +105,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     return super.readMemChunk(metaData);
   }
 
+  @SuppressWarnings("java:S2177")
   public ChunkHeader readChunkHeader(long position) throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position);
   }
@@ -155,10 +156,37 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode =
-            MetadataIndexNode.deserializeFrom(nextBuffer, false);
+            getDeserializeContext().deserializeMetadataIndexNode(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
             getTimeseriesMetadataAndOffsetByDevice(
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
+  public Map<String, Pair<Long, Long>> getTimeseriesMetadataOffsetByDevice(
+      MetadataIndexNode measurementNode) throws IOException {
+    Map<String, Pair<Long, Long>> timeseriesMetadataOffsetMap = new LinkedHashMap<>();
+    List<IMetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
+    for (int i = 0; i < childrenEntryList.size(); i++) {
+      long startOffset = childrenEntryList.get(i).getOffset();
+      long endOffset =
+          i == childrenEntryList.size() - 1
+              ? measurementNode.getEndOffset()
+              : childrenEntryList.get(i + 1).getOffset();
+      if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        // leaf measurement node
+        timeseriesMetadataOffsetMap.put(
+            childrenEntryList.get(i).getCompareKey().toString(),
+            new Pair<>(startOffset, endOffset));
+      } else {
+        // internal measurement node
+        ByteBuffer nextBuffer = readData(startOffset, endOffset);
+        MetadataIndexNode nextLayerMeasurementNode =
+            getDeserializeContext().deserializeMetadataIndexNode(nextBuffer, false);
+        timeseriesMetadataOffsetMap.putAll(
+            getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode));
       }
     }
     return timeseriesMetadataOffsetMap;

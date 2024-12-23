@@ -36,6 +36,12 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
+  CommonConfig setEncryptFlag(boolean encryptFlag);
+
+  CommonConfig setEncryptType(String encryptType);
+
+  CommonConfig setEncryptKeyPath(String encryptKeyPath);
+
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
@@ -48,7 +54,7 @@ public interface CommonConfig {
 
   CommonConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction);
 
-  CommonConfig setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum);
+  CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum);
 
   CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema);
 
@@ -65,6 +71,8 @@ public interface CommonConfig {
   CommonConfig setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass);
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
+
+  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
@@ -142,7 +150,7 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
-  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
+  CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
   CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
       int pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
@@ -150,4 +158,13 @@ public interface CommonConfig {
   CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(long pipeMetaSyncerInitialSyncDelayMinutes);
 
   CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes);
+
+  CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes);
+
+  CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    return this;
+  }
 }

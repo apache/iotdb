@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
@@ -39,10 +42,16 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 public interface BaseEnv {
+
+  String TREE_SQL_DIALECT = "tree";
+
+  String TABLE_SQL_DIALECT = "table";
 
   /** Init a cluster with default number of ConfigNodes and DataNodes. */
   void initClusterEnvironment();
@@ -99,27 +108,61 @@ public interface BaseEnv {
   List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
-    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return getConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
+  default Connection getTableConnection() throws SQLException {
+    return getConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
+  }
+
+  default Connection getConnection(String sqlDialect) throws SQLException {
+    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   default Connection getConnection(Constant.Version version) throws SQLException {
-    return getConnection(version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return getConnection(
+        version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
-  Connection getConnection(Constant.Version version, String username, String password)
+  default Connection getConnection(Constant.Version version, String sqlDialect)
+      throws SQLException {
+    return getConnection(
+        version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+  }
+
+  default Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
+    return getConnection(version, username, password, TREE_SQL_DIALECT);
+  }
+
+  Connection getConnection(
+      Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
 
-  Connection getConnection(String username, String password) throws SQLException;
+  default Connection getConnection(String username, String password) throws SQLException {
+    return getConnection(username, password, TREE_SQL_DIALECT);
+  }
+
+  Connection getConnection(String username, String password, String sqlDialect) throws SQLException;
 
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(
-        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
+  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String sqlDialect) throws SQLException {
+    return getWriteOnlyConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
   // This is useful when you shut down a dataNode.
   Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException;
+      DataNodeWrapper dataNode, String username, String password, String sqlDialect)
+      throws SQLException;
 
   default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
@@ -145,11 +188,23 @@ public interface BaseEnv {
 
   ISessionPool getSessionPool(int maxSize);
 
+  ITableSessionPool getTableSessionPool(int maxSize);
+
+  ITableSessionPool getTableSessionPool(int maxSize, String database);
+
   ISession getSessionConnection() throws IoTDBConnectionException;
+
+  ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException;
 
   ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnection() throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnectionWithDB(String database) throws IoTDBConnectionException;
+
+  ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**
    * Get the index of the first dataNode with a SchemaRegion leader.
@@ -262,4 +317,19 @@ public interface BaseEnv {
   void registerConfigNodeKillPoints(List<String> killPoints);
 
   void registerDataNodeKillPoints(List<String> killPoints);
+
+  static Properties constructProperties(String username, String password, String sqlDialect) {
+    Properties info = new Properties();
+
+    if (username != null) {
+      info.put("user", username);
+    }
+    if (password != null) {
+      info.put("password", password);
+    }
+    if (sqlDialect != null) {
+      info.put(Config.SQL_DIALECT, sqlDialect);
+    }
+    return info;
+  }
 }

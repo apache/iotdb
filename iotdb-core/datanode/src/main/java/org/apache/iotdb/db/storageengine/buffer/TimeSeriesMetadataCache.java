@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -34,7 +35,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
@@ -51,6 +51,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
@@ -109,26 +110,37 @@ public class TimeSeriesMetadataCache {
       TimeSeriesMetadataCacheKey key,
       Set<String> allSensors,
       boolean ignoreNotExists,
-      boolean debug)
+      boolean debug,
+      QueryContext queryContext)
       throws IOException {
     long startTime = System.nanoTime();
+    long loadBloomFilterTime = 0;
+    LongConsumer timeSeriesMetadataIoSizeRecorder =
+        queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
+    LongConsumer bloomFilterIoSizeRecorder =
+        queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
     try {
+      String deviceStringFormat = key.device.toString();
       if (!CACHE_ENABLE) {
         cacheHit = false;
 
         // bloom filter part
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
-        BloomFilter bloomFilter = reader.readBloomFilter();
+        TsFileSequenceReader reader =
+            FileReaderManager.getInstance().get(filePath, true, bloomFilterIoSizeRecorder);
+        BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
+        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
         if (bloomFilter != null
             && !bloomFilter.contains(
-                ((PlainDeviceID) key.device).toStringID()
-                    + IoTDBConstant.PATH_SEPARATOR
-                    + key.measurement)) {
+                deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+          loadBloomFilterTime = System.nanoTime() - startTime;
           return null;
         }
+        loadBloomFilterTime = System.nanoTime() - startTime;
+
         TimeseriesMetadata timeseriesMetadata =
-            reader.readTimeseriesMetadata(key.device, key.measurement, ignoreNotExists);
+            reader.readTimeseriesMetadata(
+                key.device, key.measurement, ignoreNotExists, timeSeriesMetadataIoSizeRecorder);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -144,13 +156,13 @@ public class TimeSeriesMetadataCache {
         // allow for the parallelism of different devices
         synchronized (
             devices.computeIfAbsent(
-                ((PlainDeviceID) key.device).toStringID() + SEPARATOR + filePath,
-                WeakReference::new)) {
+                deviceStringFormat + SEPARATOR + filePath, WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
+            long loadBloomFilterStartTime = System.nanoTime();
             // bloom filter part
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
@@ -161,20 +173,33 @@ public class TimeSeriesMetadataCache {
                             key.timePartitionId,
                             key.tsFileVersion,
                             key.compactionVersion),
-                        debug);
+                        debug,
+                        bloomFilterIoSizeRecorder,
+                        queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
+                            ::addAndGet,
+                        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
+                            ::addAndGet);
             if (bloomFilter != null
                 && !bloomFilter.contains(
-                    ((PlainDeviceID) key.device).toStringID()
-                        + TsFileConstant.PATH_SEPARATOR
-                        + key.measurement)) {
+                    deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
+              loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
               return null;
             }
-            TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+
+            loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+            TsFileSequenceReader reader =
+                FileReaderManager.getInstance()
+                    .get(filePath, true, timeSeriesMetadataIoSizeRecorder);
             List<TimeseriesMetadata> timeSeriesMetadataList =
-                reader.readTimeseriesMetadata(key.device, key.measurement, allSensors);
+                reader.readTimeseriesMetadata(
+                    key.device,
+                    key.measurement,
+                    allSensors,
+                    ignoreNotExists,
+                    timeSeriesMetadataIoSizeRecorder);
             // put TimeSeriesMetadata of all sensors used in this read into cache
             for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
               TimeSeriesMetadataCacheKey k =
@@ -212,9 +237,24 @@ public class TimeSeriesMetadataCache {
         return new TimeseriesMetadata(timeseriesMetadata);
       }
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          cacheHit ? READ_TIMESERIES_METADATA_CACHE : READ_TIMESERIES_METADATA_FILE,
-          System.nanoTime() - startTime);
+      queryContext.getQueryStatistics().getLoadBloomFilterTime().getAndAdd(loadBloomFilterTime);
+      if (cacheHit) {
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheCount()
+            .incrementAndGet();
+        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_TIMESERIES_METADATA_CACHE, System.nanoTime() - startTime);
+      } else {
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskCount()
+            .incrementAndGet();
+        // in metric panel, loading BloomFilter time is included in loading TimeSeriesMetadata
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_TIMESERIES_METADATA_FILE, System.nanoTime() - startTime);
+      }
     }
   }
 
@@ -334,7 +374,7 @@ public class TimeSeriesMetadataCache {
           + ", compactionVersion="
           + compactionVersion
           + ", device='"
-          + ((PlainDeviceID) device).toStringID()
+          + device
           + '\''
           + ", measurement='"
           + measurement

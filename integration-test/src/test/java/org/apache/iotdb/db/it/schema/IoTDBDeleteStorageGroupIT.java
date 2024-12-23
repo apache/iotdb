@@ -24,6 +24,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -113,8 +114,8 @@ public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
 
   @Test(expected = SQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln2.wf01.wt01");
       statement.execute("DELETE DATABASE root.ln2.wf01.wt02");
     }
@@ -180,6 +181,26 @@ public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
         }
       }
       assertEquals(1, count);
+    }
+  }
+
+  @Test
+  public void testDeleteStorageGroupInvalidateCache() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("insert into root.sg1.d1(s1) values(1);");
+        statement.execute("insert into root.sg2(s2) values(1);");
+        statement.execute("select last(s1) from root.sg1.d1;");
+        statement.execute("select last(s2) from root.sg2;");
+        statement.execute("insert into root.sg1.d1(s1) values(1);");
+        statement.execute("insert into root.sg2(s2) values(1);");
+        statement.execute("delete database root.**");
+        statement.execute("insert into root.sg1.d1(s1) values(\"2001-08-01\");");
+        statement.execute("insert into root.sg2(s2) values(\"2001-08-01\");");
+      } catch (final Exception e) {
+        Assert.fail(e.getMessage());
+      }
     }
   }
 }

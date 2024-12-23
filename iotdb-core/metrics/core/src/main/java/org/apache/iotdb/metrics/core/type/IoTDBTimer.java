@@ -23,10 +23,15 @@ import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimerMBean {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTimer.class);
   io.micrometer.core.instrument.Timer timer;
 
   public IoTDBTimer(io.micrometer.core.instrument.Timer timer) {
@@ -40,37 +45,47 @@ public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimer
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new IoTDBTimerHistogramSnapshot(timer);
+    try {
+      return new IoTDBTimerHistogramSnapshot(timer);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LOGGER.warn(
+          "Detected an error while taking snapshot, may cause a miss during this recording.", e);
+      return null;
+    }
   }
 
   @Override
   public double getSum() {
-    return this.takeSnapshot().getSum();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getSum).orElse(0.0);
   }
 
   @Override
   public double getMax() {
-    return this.takeSnapshot().getMax();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getMax).orElse(0.0);
   }
 
   @Override
   public double getMean() {
-    return this.takeSnapshot().getMean();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::getMean).orElse(0.0);
   }
 
   @Override
   public int getSize() {
-    return this.takeSnapshot().size();
+    return Optional.ofNullable(takeSnapshot()).map(HistogramSnapshot::size).orElse(0);
   }
 
   @Override
   public double get50thPercentile() {
-    return this.takeSnapshot().getValue(0.5);
+    return Optional.ofNullable(takeSnapshot())
+        .map(histogramSnapshot -> histogramSnapshot.getValue(0.5))
+        .orElse(0.0);
   }
 
   @Override
   public double get99thPercentile() {
-    return this.takeSnapshot().getValue(0.99);
+    return Optional.ofNullable(takeSnapshot())
+        .map(histogramSnapshot -> histogramSnapshot.getValue(0.99))
+        .orElse(0.0);
   }
 
   @Override

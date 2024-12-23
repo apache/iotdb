@@ -159,6 +159,10 @@ public class AccumulatorFactory {
         return new FloatModeAccumulator();
       case DOUBLE:
         return new DoubleModeAccumulator();
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new IllegalArgumentException("Unknown data type: " + tsDataType);
     }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -78,7 +78,7 @@ public abstract class VariationWindowManager implements IWindowManager {
   }
 
   @Override
-  public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
+  public TsBlockBuilder createResultTsBlockBuilder(List<TreeAggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
     if (variationWindow.isOutputEndTime()) {
@@ -88,7 +88,7 @@ public abstract class VariationWindowManager implements IWindowManager {
   }
 
   public void appendAggregationResult(
-      TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
+      TsBlockBuilder resultTsBlockBuilder, List<TreeAggregator> aggregators) {
 
     long endTime = variationWindow.isOutputEndTime() ? variationWindow.getEndTime() : -1;
     outputAggregators(aggregators, resultTsBlockBuilder, variationWindow.getStartTime(), endTime);

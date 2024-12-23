@@ -20,20 +20,25 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -53,6 +58,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeReceiverMetrics;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
@@ -67,7 +73,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -90,6 +97,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiver.class);
 
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
   private static final PipeConfigPhysicalPlanTSStatusVisitor STATUS_VISITOR =
@@ -111,23 +120,44 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   .setMessage(
                       "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
         }
+        TPipeTransferResp resp;
+        long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
-            return handleTransferHandshakeV1(
-                PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            resp =
+                handleTransferHandshakeV1(
+                    PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
+            return resp;
           case HANDSHAKE_CONFIGNODE_V2:
-            return handleTransferHandshakeV2(
-                PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+            resp =
+                handleTransferHandshakeV2(
+                    PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_PLAN:
-            return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
+            resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            return handleTransferFilePiece(
-                PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest,
-                false);
+            resp =
+                handleTransferFilePiece(
+                    PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
+                    req instanceof AirGapPseudoTPipeTransferRequest,
+                    false);
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            return handleTransferFileSealV2(
-                PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
+            resp =
+                handleTransferFileSealV2(
+                    PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
+            PipeConfigNodeReceiverMetrics.getInstance()
+                .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_COMPRESSED:
             return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
@@ -175,6 +205,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlanAndClassifyExceptions(final ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
+      result = checkPermission(plan);
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Receiver id = {}: Permission check failed while executing plan {}: {}",
+            receiverId.get(),
+            plan,
+            result);
+        return result;
+      }
       result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
@@ -195,12 +234,119 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return result;
   }
 
+  private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
+    switch (plan.getType()) {
+      case CreateDatabase:
+      case AlterDatabase:
+      case DeleteDatabase:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_DATABASE.ordinal())
+            .getStatus();
+      case ExtendSchemaTemplate:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
+            .getStatus();
+      case CreateSchemaTemplate:
+      case CommitSetSchemaTemplate:
+      case PipeUnsetTemplate:
+        return CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)
+            ? StatusUtils.OK
+            : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+                .setMessage("Only the admin user can perform this operation");
+      case PipeDeleteTimeSeries:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(
+                    PathPatternTree.deserialize(
+                            ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                        .getAllPathPatterns()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
+      case PipeDeleteLogicalView:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(
+                    PathPatternTree.deserialize(
+                            ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                        .getAllPathPatterns()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
+      case PipeDeactivateTemplate:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
+      case SetTTL:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                Collections.singletonList(new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                PrivilegeType.WRITE_SCHEMA.ordinal())
+            .getStatus();
+      case UpdateTriggerStateInTable:
+      case DeleteTriggerInTable:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.USE_TRIGGER.ordinal())
+            .getStatus();
+      case GrantRole:
+      case GrantUser:
+      case RevokeUser:
+      case RevokeRole:
+        for (final int permission : ((AuthorPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivilegeGrantOpt(
+                      username,
+                      PrivilegeType.isPathRelevant(permission)
+                          ? ((AuthorPlan) plan).getNodeNameList()
+                          : Collections.emptyList(),
+                      permission)
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case UpdateUser:
+        return ((AuthorPlan) plan).getUserName().equals(username)
+            ? StatusUtils.OK
+            : configManager
+                .checkUserPrivileges(
+                    username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+                .getStatus();
+      case CreateUser:
+      case CreateUserWithRawPassword:
+      case DropUser:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+            .getStatus();
+      case CreateRole:
+      case DropRole:
+      case GrantRoleToUser:
+      case RevokeRoleFromUser:
+        return configManager
+            .checkUserPrivileges(
+                username, Collections.emptyList(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .getStatus();
+      default:
+        return StatusUtils.OK;
+    }
+  }
+
   private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
         // Here we only reserve database name and substitute the sender's local information
         // with the receiver's default configurations
-        TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
+        final TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
         schema.setSchemaReplicationFactor(
             ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
         schema.setDataReplicationFactor(
@@ -303,8 +449,26 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected TSStatus tryLogin() {
+    // Do nothing. Login check will be done in the data node receiver.
+    return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
+  }
+
+  @Override
+  protected String getSenderHost() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? session.getClientAddress() : "unknown";
+  }
+
+  @Override
+  protected String getSenderPort() {
+    final IClientSession session = SESSION_MANAGER.getCurrSession();
+    return session != null ? String.valueOf(session.getClientPort()) : "unknown";
   }
 
   @Override
@@ -332,8 +496,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBPipePattern pattern =
-        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final IoTDBTreePattern pattern =
+        new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
       IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
@@ -344,5 +508,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
+  }
+
+  @Override
+  protected void closeSession() {
+    // Do nothing. The session will be closed in the data node receiver.
   }
 }

@@ -41,9 +41,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;
@@ -53,7 +54,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.se
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDataPartition;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceToWhere;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewOutput;
-import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeFrom;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -67,7 +67,8 @@ public class TemplatedAggregationAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context,
-      Template template) {
+      Template template,
+      List<PartialPath> deviceList) {
 
     // not support order by expression and non-aligned template
     if (queryStatement.hasOrderByExpression() || !template.isDirectAligned()) {
@@ -76,11 +77,11 @@ public class TemplatedAggregationAnalyze {
 
     analysis.setNoWhereAndAggregation(false);
 
-    List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-
     if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
       // remove the device which won't appear in resultSet after limit/offset
-      deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
+      deviceList =
+          pushDownLimitOffsetInGroupByTimeForDevice(
+              deviceList, queryStatement, context.getZoneId());
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -167,13 +168,15 @@ public class TemplatedAggregationAnalyze {
             && "*".equalsIgnoreCase(selectExpression.getExpressions().get(0).getOutputSymbol())) {
           subExpressions = new ArrayList<>();
           FunctionExpression functionExpression = (FunctionExpression) selectExpression;
-          for (String measurement : template.getSchemaMap().keySet()) {
+          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
             FunctionExpression subFunctionExpression =
                 new FunctionExpression(
                     functionExpression.getFunctionName(),
                     functionExpression.getFunctionAttributes(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath(new String[] {measurement}))));
+                        new TimeSeriesOperand(
+                            new PartialPath(new String[] {entry.getKey()}),
+                            entry.getValue().getType())));
             subFunctionExpression.setFunctionType(functionExpression.getFunctionType());
             subExpressions.add(subFunctionExpression);
           }
