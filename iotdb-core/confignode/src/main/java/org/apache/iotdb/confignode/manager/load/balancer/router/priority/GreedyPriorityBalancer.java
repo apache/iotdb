@@ -39,17 +39,13 @@ public class GreedyPriorityBalancer implements IPriorityBalancer {
 
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
-      List<TRegionReplicaSet> replicaSets,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Map<Integer, Long> dataNodeLoadScoreMap) {
+      List<TRegionReplicaSet> replicaSets, Map<TConsensusGroupId, Integer> regionLeaderMap) {
 
     Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new TreeMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
-          TRegionReplicaSet sortedReplicaSet =
-              sortReplicasByLoadScore(replicaSet, dataNodeLoadScoreMap);
-          regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
+          regionPriorityMap.put(replicaSet.getRegionId(), replicaSet);
         });
 
     return regionPriorityMap;

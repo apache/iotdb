@@ -35,10 +35,7 @@ public class LeaderPriorityBalancer extends GreedyPriorityBalancer implements IP
 
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
-      List<TRegionReplicaSet> replicaSets,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Map<Integer, Long> dataNodeLoadScoreMap) {
-
+      List<TRegionReplicaSet> replicaSets, Map<TConsensusGroupId, Integer> regionLeaderMap) {
     Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new TreeMap<>();
 
     replicaSets.forEach(
