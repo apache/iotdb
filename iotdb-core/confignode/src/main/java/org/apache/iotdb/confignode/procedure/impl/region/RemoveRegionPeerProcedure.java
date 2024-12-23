@@ -116,9 +116,12 @@ public class RemoveRegionPeerProcedure
               handler.waitTaskFinish(this.getProcId(), coordinator);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             LOGGER.warn(
-                "[pid{}][RemoveRegion] {} executed failed, procedure will continue. You should manually clear peer list.",
+                "[pid{}][RemoveRegion] {} executed failed, current peer list of {} is {}. Procedure will continue. You should manually clear peer list.",
                 getProcId(),
-                state);
+                state,
+                    consensusGroupId,
+                    handler.
+                    );
             setNextState(DELETE_OLD_REGION_PEER);
             return Flow.HAS_MORE_STATE;
           }
