@@ -86,7 +86,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
 
   protected final List<DeviceEntry> deviceEntries;
   protected final int deviceCount;
-  private int currentDeviceIndex;
+  protected int currentDeviceIndex;
   protected List<String> measurementColumnNames;
   protected Set<String> allSensors;
   protected List<IMeasurementSchema> measurementSchemas;
@@ -121,6 +121,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
       List<ColumnSchema> aggColumnSchemas,
       int[] aggColumnsIndexArray,
       List<DeviceEntry> deviceEntries,
+      int deviceCount,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
@@ -142,7 +143,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     this.aggColumnSchemas = aggColumnSchemas;
     this.aggColumnsIndexArray = aggColumnsIndexArray;
     this.deviceEntries = deviceEntries;
-    this.deviceCount = deviceEntries.size();
+    this.deviceCount = deviceCount;
     this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(this.deviceCount));
     this.ascending = ascending;
     this.scanOrder = ascending ? Ordering.ASC : Ordering.DESC;
@@ -822,7 +823,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
-  private void resetTableAggregators() {
+  protected void resetTableAggregators() {
     tableAggregators.forEach(TableAggregator::reset);
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1952,6 +1953,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               aggColumnSchemas,
               aggColumnsIndexArray,
               node.getDeviceEntries(),
+              node.getDeviceEntries().size(),
               seriesScanOptions,
               measurementColumnNames,
               allSensors,
@@ -2078,6 +2080,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   private boolean canUseLastCacheOptimize(List<TableAggregator> aggregators) {
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && aggregators.isEmpty()) {
+      return false;
+    }
+
     for (TableAggregator aggregator : aggregators) {
       if (!(aggregator.getAccumulator() instanceof LastDescAccumulator
           || (aggregator.getAccumulator() instanceof LastByDescAccumulator
@@ -2085,6 +2091,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         return false;
       }
     }
+
     return true;
   }
 }

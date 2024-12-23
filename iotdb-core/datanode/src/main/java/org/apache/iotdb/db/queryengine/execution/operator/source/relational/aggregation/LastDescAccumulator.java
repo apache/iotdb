@@ -29,6 +29,11 @@ public class LastDescAccumulator extends LastAccumulator {
   }
 
   @Override
+  public TableAccumulator copy() {
+    return new LastDescAccumulator(seriesDataType);
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return initResult;
   }

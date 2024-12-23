@@ -45,8 +45,8 @@ public class LastByAccumulator implements TableAccumulator {
   protected final TSDataType xDataType;
   protected final TSDataType yDataType;
 
-  private final boolean xIsTimeColumn;
-  private final boolean yIsTimeColumn;
+  protected final boolean xIsTimeColumn;
+  protected final boolean yIsTimeColumn;
 
   private long yLastTime = Long.MIN_VALUE;
 
@@ -67,6 +67,22 @@ public class LastByAccumulator implements TableAccumulator {
 
   public boolean yIsTimeColumn() {
     return this.yIsTimeColumn;
+  }
+
+  public boolean hasInitResult() {
+    return this.initResult;
+  }
+
+  public long getLastTimeOfY() {
+    return this.yLastTime;
+  }
+
+  public boolean isXNull() {
+    return xIsNull;
+  }
+
+  public TsPrimitiveType getXResult() {
+    return this.xResult;
   }
 
   @Override
