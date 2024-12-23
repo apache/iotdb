@@ -144,7 +144,6 @@ public final class PartitionExecutor {
 
   public void processNextRow(TsBlockBuilder builder) {
     // Copy origin data
-    // TODO: implement forward iterator
     int index = currentPosition - partitionStart;
     Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(index);
     int tsBlockIndex = partitionIndex.getTsBlockIndex();
