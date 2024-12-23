@@ -30,8 +30,8 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.DEVICE_VIEW_TEST_TABLE;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_VIEW_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DEVICE_VIEW_TEST_TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
