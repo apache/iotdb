@@ -64,7 +64,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.satisfiedTimeRange;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.CURRENT_DEVICE_INDEX_STRING;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
@@ -192,13 +191,18 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
 
   @Override
   public boolean hasNext() throws Exception {
-    return timeIterator.hasCachedTimeRange()
-        || timeIterator.hasNextTimeRange()
-        || !resultTsBlockBuilder.isEmpty();
+    if (retainedTsBlock != null) {
+      return true;
+    }
+
+    return timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange();
   }
 
   @Override
   public TsBlock next() throws Exception {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
     if (tableAggregators.isEmpty()
@@ -227,35 +231,20 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
       }
     }
 
-    if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return buildResultTsBlock();
-    } else {
+    if (resultTsBlockBuilder.isEmpty()) {
       return null;
     }
+
+    buildResultTsBlock();
+    return checkTsBlockSizeAndGetResult();
   }
 
-  private TsBlock buildResultTsBlock() {
-    int declaredPositions = resultTsBlockBuilder.getPositionCount();
-    ColumnBuilder[] valueColumnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    Column[] valueColumns = new Column[valueColumnBuilders.length];
-    for (int i = 0; i < valueColumns.length; i++) {
-      valueColumns[i] = valueColumnBuilders[i].build();
-      if (valueColumns[i].getPositionCount() != declaredPositions) {
-        throw new IllegalStateException(
-            format(
-                "Declared positions (%s) does not match column %s's number of entries (%s)",
-                declaredPositions, i, valueColumns[i].getPositionCount()));
-      }
-    }
-
-    TsBlock resultTsBlock =
-        new TsBlock(
-            resultTsBlockBuilder.getPositionCount(),
+  protected void buildResultTsBlock() {
+    resultTsBlock =
+        resultTsBlockBuilder.build(
             new RunLengthEncodedColumn(
-                TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()),
-            valueColumns);
+                TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()));
     resultTsBlockBuilder.reset();
-    return resultTsBlock;
   }
 
   protected void constructAlignedSeriesScanUtil() {
