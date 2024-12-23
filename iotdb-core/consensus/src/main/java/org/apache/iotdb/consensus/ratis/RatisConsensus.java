@@ -99,6 +99,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -654,6 +656,17 @@ class RatisConsensus implements IConsensus {
         Utils.fromPeersAndPriorityToRaftPeers(correctPeers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
+    Set<RaftPeer> localRaftPeerSet = new TreeSet<>(group.getPeers());
+    Set<RaftPeer> correctRaftPeerSet = new TreeSet<>(newGroupPeers);
+    if (localRaftPeerSet.equals(correctRaftPeerSet)) {
+      // configurations are the same
+      return;
+    }
+
+    logger.info(
+        "[RESET PEER LIST] Peer list will be reset from {} to {}",
+        localRaftPeerSet,
+        correctRaftPeerSet);
     RaftClientReply reply = sendReconfiguration(newGroup);
     if (reply.isSuccess()) {
       logger.info("[RESET PEER LIST] Peer list has been reset to {}", newGroupPeers);
