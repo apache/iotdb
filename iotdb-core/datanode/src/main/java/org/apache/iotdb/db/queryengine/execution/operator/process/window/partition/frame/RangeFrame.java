@@ -162,7 +162,7 @@ public class RangeFrame implements Frame {
   private int getPrecedingOffset(int index, int peerGroupStart, int peerGroupEnd, boolean isStart) {
     int offset;
     if (isStart) {
-      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE && dataType != TSDataType.TIMESTAMP) {
         return peerGroupStart;
       }
 
@@ -182,7 +182,7 @@ public class RangeFrame implements Frame {
         offset = getDescFrameStartPreceding(index, recentStart, offsetStart);
       }
     } else {
-      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE && dataType != TSDataType.TIMESTAMP) {
         return peerGroupEnd;
       }
 
@@ -210,7 +210,7 @@ public class RangeFrame implements Frame {
   private int getFollowingOffset(int index, int peerGroupStart, int peerGroupEnd, boolean isStart) {
     int offset;
     if (isStart) {
-      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE && dataType != TSDataType.TIMESTAMP) {
         return peerGroupStart;
       }
 
@@ -241,7 +241,7 @@ public class RangeFrame implements Frame {
         offset = getDescFrameStartFollowing(index, recentStart, offsetStart);
       }
     } else {
-      if (!dataType.isNumeric() && dataType != TSDataType.DATE) {
+      if (!dataType.isNumeric() && dataType != TSDataType.DATE && dataType != TSDataType.TIMESTAMP) {
         return peerGroupEnd;
       }
 
@@ -391,6 +391,7 @@ public class RangeFrame implements Frame {
       case DATE:
         return column.getInt(index);
       case INT64:
+      case TIMESTAMP:
         return column.getLong(index);
       case FLOAT:
         return column.getFloat(index);
