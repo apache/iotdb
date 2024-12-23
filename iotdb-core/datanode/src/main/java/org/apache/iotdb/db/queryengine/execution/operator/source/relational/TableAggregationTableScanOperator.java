@@ -173,23 +173,6 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   }
 
   @Override
-  public long calculateMaxPeekMemory() {
-    return cachedRawDataSize + maxReturnSize;
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return maxReturnSize;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
-        ? cachedRawDataSize
-        : 0;
-  }
-
-  @Override
   public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
       return true;
@@ -846,6 +829,23 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     this.queryDataSource = (QueryDataSource) dataSource;
     this.seriesScanUtil.initQueryDataSource(queryDataSource);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return cachedRawDataSize + maxReturnSize;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
+        ? cachedRawDataSize
+        : 0;
   }
 
   @Override

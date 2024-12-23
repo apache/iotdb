@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByAccumulator;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
@@ -284,7 +284,6 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
 
         outputDeviceIndex++;
         fetchLastCacheForCurrentDevice = false;
-        appendGroupByToResult();
         resetTableAggregators();
       }
     } else {
@@ -438,8 +437,6 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   }
 
   private void buildAggTableScanArguments() {
-    // addLastTimeAggregationToAggregators();
-
     aggColumnsIndexArray = newAggColumnsIndexArray.stream().mapToInt(Integer::intValue).toArray();
     allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add("");
@@ -465,50 +462,21 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
     // aggTableScanOperator.initQueryDataSource(this.queryDataSource);
   }
 
-  private void addLastTimeAggregationToAggregators() {
-    // always add last(time) to tail, update last cache need the value of last(time)
-    int timeColumnIdx = aggColumnLayout.get("time");
-    tableAggregators.add(
-        new TableAggregator(
-            new LastDescAccumulator(TSDataType.TIMESTAMP),
-            AggregationNode.Step.SINGLE,
-            TSDataType.TIMESTAMP,
-            Arrays.asList(timeColumnIdx, timeColumnIdx),
-            OptionalInt.empty()));
-
-    aggregatorInputChannels.add(timeColumnIdx);
-    aggregatorInputChannels.add(timeColumnIdx);
-  }
-
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, tableAggregators);
+    appendAggregationResult();
     // after appendAggregationResult invoked, aggregators must be cleared
     // resetTableAggregators();
   }
 
-  @Override
   /** Append a row of aggregation results to the result tsBlock. */
-  public void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
+  public void appendAggregationResult() {
 
     // no data in current time range, just output empty
     if (!timeIterator.hasCachedTimeRange()) {
       return;
     }
 
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-
-    for (int i = 0; i < aggregators.size(); i++) {
-      aggregators
-          .get(i)
-          .evaluate(columnBuilders[groupKeySize + unCachedMeasurementToAggregatorIndex.get(i)]);
-    }
-
-    tsBlockBuilder.declarePosition();
-  }
-
-  private void appendGroupByToResult() {
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 
     if (groupingKeyIndex != null) {
@@ -535,6 +503,14 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         }
       }
     }
+
+    for (int i = 0; i < tableAggregators.size(); i++) {
+      tableAggregators
+          .get(i)
+          .evaluate(columnBuilders[groupKeySize + unCachedMeasurementToAggregatorIndex.get(i)]);
+    }
+
+    resultTsBlockBuilder.declarePosition();
   }
 
   private void resetAggArguments() {
@@ -581,37 +557,6 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
     }
   }
 
-  //  @Override
-  //  protected void constructAlignedSeriesScanUtil() {
-  //    // TODO?
-  //    //    if (this.deviceEntries == null || this.deviceEntries.isEmpty()) {
-  //    //      return;
-  //    //    }
-  //
-  //    DeviceEntry deviceEntry;
-  //
-  //    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.outputDeviceIndex) == null)
-  // {
-  //      // for device which is not exist
-  //      deviceEntry = new DeviceEntry(new StringArrayDeviceID(""), Collections.emptyList());
-  //    } else {
-  //      deviceEntry = this.deviceEntries.get(this.outputDeviceIndex);
-  //    }
-  //
-  //    AlignedFullPath alignedPath =
-  //        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas,
-  // allSensors);
-  //
-  //    this.seriesScanUtil =
-  //        new AlignedSeriesScanUtil(
-  //            alignedPath,
-  //            Ordering.DESC,
-  //            seriesScanOptions,
-  //            operatorContext.getInstanceContext(),
-  //            true,
-  //            measurementColumnTSDataTypes);
-  //  }
-
   @Override
   public List<TSDataType> getResultDataTypes() {
     List<TSDataType> resultDataTypes = new ArrayList<>(groupKeySize + initTableAggregators.size());
@@ -637,23 +582,12 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   }
 
   @Override
-  public long calculateMaxPeekMemory() {
-    // TODO
-    return 0;
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return 0;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
-  }
-
-  @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + RamUsageEstimator.sizeOfCollection(initDeviceEntries);
   }
 }
