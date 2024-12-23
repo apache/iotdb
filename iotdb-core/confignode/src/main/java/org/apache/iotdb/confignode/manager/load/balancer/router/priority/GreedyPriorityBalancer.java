@@ -19,16 +19,11 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import org.apache.tsfile.utils.Pair;
-
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.Vector;
 
 /** The GreedyPriorityBalancer always pick the Replica with the lowest loadScore */
 public class GreedyPriorityBalancer implements IPriorityBalancer {
@@ -49,34 +44,5 @@ public class GreedyPriorityBalancer implements IPriorityBalancer {
         });
 
     return regionPriorityMap;
-  }
-
-  protected static TRegionReplicaSet sortReplicasByLoadScore(
-      TRegionReplicaSet replicaSet, Map<Integer, Long> dataNodeLoadScoreMap) {
-    TRegionReplicaSet sortedReplicaSet = new TRegionReplicaSet();
-    sortedReplicaSet.setRegionId(replicaSet.getRegionId());
-
-    // List<Pair<loadScore, TDataNodeLocation>> for sorting
-    List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
-    replicaSet
-        .getDataNodeLocations()
-        .forEach(
-            dataNodeLocation -> {
-              // The absenteeism of loadScoreMap means ConfigNode-leader doesn't receive any
-              // heartbeat from that DataNode.
-              // In this case we put a maximum loadScore into the sortList.
-              sortList.add(
-                  new Pair<>(
-                      dataNodeLoadScoreMap.computeIfAbsent(
-                          dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
-                      dataNodeLocation));
-            });
-
-    sortList.sort(Comparator.comparingLong(Pair::getLeft));
-    for (Pair<Long, TDataNodeLocation> entry : sortList) {
-      sortedReplicaSet.addToDataNodeLocations(entry.getRight());
-    }
-
-    return sortedReplicaSet;
   }
 }

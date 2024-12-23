@@ -90,7 +90,7 @@ public class GreedyPriorityTest {
     }
 
     TRegionReplicaSet result2 = result.get(groupId2);
-    for (int i = 3; i < 4; i++) {
+    for (int i = 2; i < 4; i++) {
       Assert.assertEquals(dataNodeLocations.get(i), result2.getDataNodeLocations().get(i - 2));
     }
   }

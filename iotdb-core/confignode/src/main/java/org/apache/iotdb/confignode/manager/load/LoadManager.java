@@ -220,15 +220,6 @@ public class LoadManager {
   }
 
   /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    return loadCache.getAllDataNodeLoadScores();
-  }
-
-  /**
    * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
