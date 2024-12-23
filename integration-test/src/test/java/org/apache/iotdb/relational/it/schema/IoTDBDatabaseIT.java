@@ -438,6 +438,15 @@ public class IoTDBDatabaseIT {
         assertEquals(0, resultSet.getInt(7));
         assertFalse(resultSet.next());
       }
+
+      // Test adjustMaxRegionGroupNum
+      statement.execute("use test");
+      statement.execute(
+          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT)");
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+
+      statement.execute("create database test1");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
