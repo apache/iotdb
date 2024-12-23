@@ -54,6 +54,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
   private final boolean needAligned;
+  private final int beginIndex;
 
   public TableDeviceQuerySource(
       final String database,
@@ -63,6 +64,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     this.database = database;
+    this.beginIndex = PathUtils.isTableModelDatabase(database) ? 3 : 2;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
@@ -199,8 +201,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           String.format("Table '%s.%s' does not exist.", database, tableName));
     }
     return DeviceFilterUtil.convertToDevicePattern(
-        PathUtils.unQualifyDatabaseName(database4TableCache),
-        tableName,
+        PathUtils.unQualifyDatabaseName(database),
+        PathUtils.isTableModelDatabase(database) ? tableName : null,
         DataNodeTableCache.getInstance().getTable(database4TableCache, tableName).getIdNums(),
         idDeterminedPredicateList);
   }
@@ -219,7 +221,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
     if (!needAligned) {
       transformToTableDeviceTsBlockColumns(
-          schemaInfo, builder, database, tableName, columnHeaderList, 3);
+          schemaInfo, builder, database, tableName, columnHeaderList, beginIndex);
     } else {
       transformToTreeDeviceTsBlockColumns(
           schemaInfo, builder, database, tableName, columnHeaderList);
