@@ -555,6 +555,13 @@ class RatisConsensus implements IConsensus {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
 
+    // pre-condition: peer should not have same ip address with any member already in the group
+    if (group.getPeers().stream()
+        .anyMatch(
+            p -> Utils.fromRaftPeerAddressToTEndPoint(p.getAddress()).equals(peer.getEndpoint()))) {
+      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
+    }
+
     List<RaftPeer> newConfig = new ArrayList<>(group.getPeers());
     newConfig.add(peerToAdd);
 
