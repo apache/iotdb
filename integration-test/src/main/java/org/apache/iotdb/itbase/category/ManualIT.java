@@ -17,19 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
+package org.apache.iotdb.itbase.category;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
-
-public class CompactionPathUtils {
-
-  private CompactionPathUtils() {}
-
-  public static PartialPath getPath(IDeviceID device, String measurement)
-      throws IllegalPathException {
-    return new PartialPath(device).concatAsMeasurementPath(measurement);
-  }
-}
+public interface ManualIT {}
