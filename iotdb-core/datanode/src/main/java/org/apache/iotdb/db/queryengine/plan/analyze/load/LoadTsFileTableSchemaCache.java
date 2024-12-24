@@ -276,7 +276,7 @@ public class LoadTsFileTableSchemaCache {
     int idColumnIndex = 0;
     for (int i = 0; i < fileSchema.getColumns().size(); i++) {
       final ColumnSchema fileColumn = fileSchema.getColumns().get(i);
-      if (fileColumn.getColumnCategory() == TsTableColumnCategory.ID) {
+      if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
         final int realIndex = realSchema.getIndexAmongIdColumns(fileColumn.getName());
         if (realIndex != -1) {
           idColumnMapping.put(idColumnIndex++, realIndex);
@@ -286,7 +286,7 @@ public class LoadTsFileTableSchemaCache {
                   "Id column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
         }
-      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.MEASUREMENT) {
+      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         final ColumnSchema realColumn =
             realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
         if (!fileColumn.getType().equals(realColumn.getType())) {

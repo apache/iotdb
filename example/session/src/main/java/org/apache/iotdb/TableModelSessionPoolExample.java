@@ -60,20 +60,20 @@ public class TableModelSessionPoolExample {
       // or use full qualified table name
       session.executeNonQueryStatement(
           "create table test1.table1("
-              + "region_id STRING ID, "
-              + "plant_id STRING ID, "
-              + "device_id STRING ID, "
+              + "region_id STRING TAG, "
+              + "plant_id STRING TAG, "
+              + "device_id STRING TAG, "
               + "model STRING ATTRIBUTE, "
-              + "temperature FLOAT MEASUREMENT, "
-              + "humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+              + "temperature FLOAT FIELD, "
+              + "humidity DOUBLE FIELD) with (TTL=3600000)");
 
       session.executeNonQueryStatement(
           "create table table2("
-              + "region_id STRING ID, "
-              + "plant_id STRING ID, "
+              + "region_id STRING TAG, "
+              + "plant_id STRING TAG, "
               + "color STRING ATTRIBUTE, "
-              + "temperature FLOAT MEASUREMENT, "
-              + "speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+              + "temperature FLOAT FIELD, "
+              + "speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
