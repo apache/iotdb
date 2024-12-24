@@ -45,14 +45,8 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTsFileDataTypeMismatchConvertHandler.class);
 
-  private final SqlParser relationalSqlParser = new SqlParser();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
-      new LoadStatementTSStatusVisitor();
-  public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
-      new LoadStatementExceptionVisitor();
-
+  private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
       tableStatementDataTypeConvertExecutionVisitor =
           new LoadTableStatementDataTypeConvertExecutionVisitor(
@@ -60,6 +54,11 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
       treeStatementDataTypeConvertExecutionVisitor =
           new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
+
+  public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+      new LoadStatementTSStatusVisitor();
+  public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
+      new LoadStatementExceptionVisitor();
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
     return Coordinator.getInstance()
@@ -104,9 +103,12 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
 
   public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileStatement) {
     try {
-      return loadTsFileStatement
-          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
-          .orElse(null);
+      TSStatus status =
+          loadTsFileStatement
+              .accept(treeStatementDataTypeConvertExecutionVisitor, null)
+              .orElse(null);
+      LOGGER.info("the status of convertForTreeModel is {}", status);
+      return status;
     } catch (Exception e) {
       LOGGER.error("Failed to convert data types for tree model.", e);
       return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());

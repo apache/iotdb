@@ -23,12 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
-import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileDataTypeMismatchConvertHandler;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.statement.LoadConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -77,8 +76,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
-          final InsertTabletStatement statement =
-              new PipeConvertedInsertTabletStatement(
+          final LoadConvertedInsertTabletStatement statement =
+              new LoadConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                       .constructStatement());
@@ -112,6 +111,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
               || result.getCode()
                   == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
             return Optional.empty();
@@ -128,7 +128,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
     }
 
-    LOGGER.warn(
+    LOGGER.info(
         "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

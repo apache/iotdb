@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
-import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
-import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileDataTypeMismatchConvertHandler;
+import org.apache.iotdb.db.queryengine.plan.analyze.load.statement.LoadConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -62,7 +62,6 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitLoadTsFile(
       final LoadTsFile loadTsFileStatement, final Pair<TSStatus, String> statusAndDatabaseName) {
-    final TSStatus status = statusAndDatabaseName.getLeft();
     final String databaseName = statusAndDatabaseName.getRight();
 
     if (Objects.isNull(databaseName)) {
@@ -72,15 +71,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       return Optional.empty();
     }
 
-    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
-        // Ignore the error if it is caused by insufficient memory
-        || (status.getMessage() != null && status.getMessage().contains("memory"))) {
-      return Optional.empty();
-    }
-
     LOGGER.warn(
-        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
-        status,
+        "Data type mismatch for LoadTsFileStatement: {}. Start data type conversion.",
         loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
@@ -99,8 +91,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
               (PipeRawTabletInsertionEvent) tabletInsertionEvent;
 
-          final PipeConvertedInsertTabletStatement statement =
-              new PipeConvertedInsertTabletStatement(
+          final LoadConvertedInsertTabletStatement statement =
+              new LoadConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
                           rawTabletInsertionEvent.isAligned())
@@ -110,33 +102,34 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           try {
             result =
                 statement.accept(
-                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                    LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_STATUS_VISITOR,
                     statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
                 i < 5
                     && result.getCode()
-                        == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-                            .getStatusCode();
+                        == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode();
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
                   statement.accept(
-                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                      LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_STATUS_VISITOR,
                       statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
               Thread.currentThread().interrupt();
             }
-            result = statement.accept(IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR, e);
+            result =
+                statement.accept(
+                    LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_EXCEPTION_VISITOR, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
               || result.getCode()
-                  == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
+                  == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
             return Optional.empty();
           }
         }
@@ -151,7 +144,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
     }
 
-    LOGGER.warn(
+    LOGGER.info(
         "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

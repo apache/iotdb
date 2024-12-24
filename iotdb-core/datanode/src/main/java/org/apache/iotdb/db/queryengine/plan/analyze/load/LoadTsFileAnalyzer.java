@@ -204,6 +204,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
   }
 
   protected String getStatementString() {

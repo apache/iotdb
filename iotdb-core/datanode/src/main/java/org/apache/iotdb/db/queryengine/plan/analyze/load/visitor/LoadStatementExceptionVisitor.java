@@ -41,10 +41,12 @@ public class LoadStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
     if (context instanceof LoadRuntimeOutOfMemoryException) {
       return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+
     } else if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.LOAD_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
+
     return visitStatement(loadTsFileStatement, context);
   }
 }
