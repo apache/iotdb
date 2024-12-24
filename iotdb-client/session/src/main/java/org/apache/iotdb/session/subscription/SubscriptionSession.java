@@ -191,8 +191,12 @@ public class SubscriptionSession extends Session {
   private void createTopic(
       final String topicName, final Properties properties, final boolean isSetIfNotExistsCondition)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (properties.isEmpty()) {
-      createTopic(topicName);
+    if (Objects.isNull(properties) || properties.isEmpty()) {
+      if (isSetIfNotExistsCondition) {
+        createTopicIfNotExists(topicName);
+      } else {
+        createTopic(topicName);
+      }
       return;
     }
     final StringBuilder sb = new StringBuilder();
