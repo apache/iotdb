@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.pipe;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -56,6 +55,7 @@ import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -444,7 +444,7 @@ public class PipeConsensus implements IConsensus {
     for (Peer peer : correctPeers) {
       if (!impl.containsPeer(peer) && peer.getNodeId() != this.thisNodeId) {
         try {
-          impl.createConsensusPipeToTargetPeer(peer, false);
+          impl.createConsensusPipeToTargetPeer(peer);
           LOGGER.info("[RESET PEER LIST] Build sync channel with: {}", peer);
         } catch (ConsensusGroupModifyPeerException e) {
           LOGGER.warn("[RESET PEER LIST] Failed to build sync channel with: {}", peer, e);
