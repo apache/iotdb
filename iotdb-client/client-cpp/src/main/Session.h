@@ -547,8 +547,8 @@ public:
 };
 
 enum class ColumnCategory {
-    ID,
-    MEASUREMENT,
+    TAG,
+    FIELD,
     ATTRIBUTE
 };
 
@@ -652,7 +652,7 @@ public:
     Tablet(const std::string &deviceId,
         const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
         int maxRowNumber)
-        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::MEASUREMENT), maxRowNumber) {}
+        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::FIELD), maxRowNumber) {}
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
            const std::vector<ColumnCategory> columnTypes,
            size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes),
