@@ -765,10 +765,6 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  public Optional<TRegionReplicaSet> getReplicaSet(TConsensusGroupId regionGroupId) {
-    return databasePartitionTables.get()
-  }
-
   /**
    * Only leader use this interface.
    *

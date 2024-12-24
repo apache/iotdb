@@ -50,7 +50,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
-import static org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure.simplifiedLocation;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -92,7 +91,7 @@ public class AddRegionPeerProcedure
               "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
               getProcId(),
               consensusGroupId,
-              simplifiedLocation(destDataNode));
+              handler.simplifiedLocation(destDataNode));
           handler.addRegionLocation(consensusGroupId, destDataNode);
           handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
@@ -142,7 +141,7 @@ public class AddRegionPeerProcedure
               "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
               consensusGroupId,
-              simplifiedLocation(destDataNode),
+              handler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));

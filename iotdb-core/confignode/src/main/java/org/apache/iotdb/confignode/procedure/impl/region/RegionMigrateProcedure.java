@@ -86,8 +86,8 @@ public class RegionMigrateProcedure
               "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
               consensusGroupId,
-              simplifiedLocation(originalDataNode),
-              simplifiedLocation(destDataNode));
+              handler.simplifiedLocation(originalDataNode),
+              handler.simplifiedLocation(destDataNode));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -117,15 +117,16 @@ public class RegionMigrateProcedure
           if (env.getConfigManager()
               .getPartitionManager()
               .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
-            cleanHint = "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
+            cleanHint =
+                "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
           }
           LOGGER.info(
               "[pid{}][MigrateRegion] success,{} {} has been migrated from DataNode {} to {}. Procedure took {} (started at {}).",
               getProcId(),
               cleanHint,
               consensusGroupId,
-              simplifiedLocation(originalDataNode),
-              simplifiedLocation(destDataNode),
+              handler.simplifiedLocation(originalDataNode),
+              handler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
@@ -247,9 +248,5 @@ public class RegionMigrateProcedure
 
   public TDataNodeLocation getDestDataNode() {
     return destDataNode;
-  }
-
-  public static String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
-    return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
   }
 }
