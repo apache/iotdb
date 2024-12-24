@@ -74,7 +74,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
           new FragmentInstance(
               new PlanFragment(fragment.getId(), split),
               fragment.getId().genFragmentInstanceId(),
-              analysis.getCovertedTimePredicate(),
+              analysis.getConvertedTimePredicate(),
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());

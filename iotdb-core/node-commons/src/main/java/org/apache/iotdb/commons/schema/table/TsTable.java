@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -79,6 +80,13 @@ public class TsTable {
     columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
   }
 
+  // This interface is used by InformationSchema table, so time column is not necessary
+  public TsTable(String tableName, ImmutableList<TsTableColumnSchema> columnSchemas) {
+    this.tableName = tableName;
+    columnSchemas.forEach(
+        columnSchema -> columnSchemaMap.put(columnSchema.getColumnName(), columnSchema));
+  }
+
   public String getTableName() {
     return tableName;
   }
@@ -96,6 +104,21 @@ public class TsTable {
     readWriteLock.readLock().lock();
     try {
       return idColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public List<TsTableColumnSchema> getIdColumnSchemaList() {
+    readWriteLock.readLock().lock();
+    try {
+      final List<TsTableColumnSchema> idColumnSchemaList = new ArrayList<>();
+      for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+        if (TsTableColumnCategory.ID.equals(columnSchema.getColumnCategory())) {
+          idColumnSchemaList.add(columnSchema);
+        }
+      }
+      return idColumnSchemaList;
     } finally {
       readWriteLock.readLock().unlock();
     }

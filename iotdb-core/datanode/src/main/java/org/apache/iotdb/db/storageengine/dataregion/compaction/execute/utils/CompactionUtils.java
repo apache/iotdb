@@ -56,7 +56,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -173,6 +175,24 @@ public class CompactionUtils {
   public static void prepareCompactionModFiles(
       List<TsFileResource> targets, List<TsFileResource>... sourceLists) throws IOException {
     if (!TsFileResource.useSharedModFile) {
+      Set<ModificationFile> compactionModFileSet =
+          targets.stream()
+              .map(
+                  tsFileResource -> {
+                    try {
+                      return tsFileResource.getModFileForWrite();
+                    } catch (IOException e) {
+                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      return null;
+                    }
+                  })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+      for (List<TsFileResource> sourceList : sourceLists) {
+        for (TsFileResource tsFileResource : sourceList) {
+          tsFileResource.getModFileForWrite().setCascadeFile(compactionModFileSet);
+        }
+      }
       return;
     }
     TsFileResource firstSource = sourceLists[0].get(0);

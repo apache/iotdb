@@ -310,7 +310,8 @@ public class Utils {
         properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
     RaftServerConfigKeys.Write.setByteLimit(
-        properties, config.getLeaderLogAppender().getBufferByteLimit());
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSize() * 10));
 
     RaftServerConfigKeys.Log.setQueueByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());

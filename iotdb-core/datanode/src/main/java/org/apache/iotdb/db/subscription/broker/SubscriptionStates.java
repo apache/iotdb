@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
 import org.apache.tsfile.utils.Pair;
@@ -51,6 +52,7 @@ public class SubscriptionStates {
    * @return a Pair containing two lists: the first list contains the events to poll, and the second
    *     list contains the events to nack
    */
+  @TestOnly
   public Pair<List<SubscriptionEvent>, List<SubscriptionEvent>> filter(
       final List<SubscriptionEvent> events, final long maxBytes) {
     final List<SubscriptionEvent> eventsToPoll = new ArrayList<>();
@@ -82,20 +84,8 @@ public class SubscriptionStates {
     }
 
     // Update the subscription state with the increments calculated during filtering
-    update(topicNameToIncrements);
+    updateStates(topicNameToIncrements);
     return new Pair<>(eventsToPoll, eventsToNack);
-  }
-
-  /**
-   * Updates the subscription state by incrementing the event count for multiple topics.
-   *
-   * @param topicNameToIncrements a map where the key is the topic name and the value is the number
-   *     of events to add to the count
-   */
-  private void update(final Map<String, Long> topicNameToIncrements) {
-    for (final Entry<String, Long> entry : topicNameToIncrements.entrySet()) {
-      topicNameToEventCount.merge(entry.getKey(), entry.getValue(), Long::sum);
-    }
   }
 
   /**
@@ -106,7 +96,19 @@ public class SubscriptionStates {
    */
   private void sort(final List<SubscriptionEvent> events) {
     events.sort(
-        Comparator.comparingLong(event -> getCount(event.getCommitContext().getTopicName())));
+        Comparator.comparingLong(event -> getStates(event.getCommitContext().getTopicName())));
+  }
+
+  /**
+   * Updates the subscription state by incrementing the event count for multiple topics.
+   *
+   * @param topicNameToIncrements a map where the key is the topic name and the value is the number
+   *     of events to add to the count
+   */
+  public void updateStates(final Map<String, Long> topicNameToIncrements) {
+    for (final Entry<String, Long> entry : topicNameToIncrements.entrySet()) {
+      topicNameToEventCount.merge(entry.getKey(), entry.getValue(), Long::sum);
+    }
   }
 
   /**
@@ -115,7 +117,7 @@ public class SubscriptionStates {
    * @param topicName the name of the topic
    * @return the number of events received for the topic
    */
-  private long getCount(final String topicName) {
+  public long getStates(final String topicName) {
     return topicNameToEventCount.getOrDefault(topicName, 0L);
   }
 }

@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class DropTopicStatement extends Statement implements IConfigStatement {
+
   private String topicName;
   private boolean ifExistsCondition;
 

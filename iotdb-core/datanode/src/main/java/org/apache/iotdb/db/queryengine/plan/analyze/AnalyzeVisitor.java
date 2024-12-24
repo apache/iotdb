@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -43,7 +45,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
-import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -54,8 +55,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -160,7 +159,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -202,8 +200,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
@@ -319,16 +317,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        if (TemplatedAnalyze.canBuildPlanUseTemplate(
-            analysis, queryStatement, partitionFetcher, schemaTree, context)) {
+        List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
+
+        if (deviceList.size() > 1
+            && TemplatedAnalyze.canBuildPlanUseTemplate(
+                analysis, queryStatement, partitionFetcher, schemaTree, context, deviceList)) {
+          // when device size is less than 1, there is no need to use template optimization, i.e. no
+          // need to extract common variables
           return analysis;
         }
 
-        List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
-          deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
+          deviceList =
+              pushDownLimitOffsetInGroupByTimeForDevice(
+                  deviceList, queryStatement, context.getZoneId());
         }
 
         outputExpressions =
@@ -2601,7 +2604,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(createTimeSeriesStatement);
 
-    checkIsTableCompatible(createTimeSeriesStatement.getPath(), context, true);
     checkIsTemplateCompatible(
         createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context, true);
 
@@ -2657,19 +2659,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void checkIsTableCompatible(
-      final PartialPath timeSeriesPath, final MPPQueryContext context, final boolean takeLock) {
-    if (takeLock) {
-      DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TABLE);
-    }
-    final Pair<String, String> tableInfo =
-        DataNodeTableCache.getInstance().checkTableCreateAndPreCreateOnGivenPath(timeSeriesPath);
-    if (tableInfo != null) {
-      throw new SemanticException(new TableAlreadyExistsException(tableInfo.left, tableInfo.right));
-    }
-  }
-
   private void analyzeSchemaProps(final Map<String, String> props) {
     if (props == null || props.isEmpty()) {
       return;
@@ -2719,7 +2708,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(createAlignedTimeSeriesStatement);
 
-    checkIsTableCompatible(createAlignedTimeSeriesStatement.getDevicePath(), context, true);
     checkIsTemplateCompatible(
         createAlignedTimeSeriesStatement.getDevicePath(),
         createAlignedTimeSeriesStatement.getMeasurements(),
@@ -2748,7 +2736,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(internalCreateTimeSeriesStatement);
-    checkIsTableCompatible(internalCreateTimeSeriesStatement.getDevicePath(), context, true);
     checkIsTemplateCompatible(
         internalCreateTimeSeriesStatement.getDevicePath(),
         internalCreateTimeSeriesStatement.getMeasurements(),
@@ -2786,7 +2773,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
         internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
-      checkIsTableCompatible(entry.getKey(), context, false);
       checkIsTemplateCompatible(
           entry.getKey(), entry.getValue().right.getMeasurements(), null, context, false);
       pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
@@ -2818,7 +2804,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (int i = 0; i < timeseriesPathList.size(); i++) {
-      checkIsTableCompatible(timeseriesPathList.get(i), context, false);
       checkIsTemplateCompatible(
           timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context, false);
     }
@@ -4085,7 +4070,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(context, SchemaLockType.TIMESERIES_VS_TEMPLATE);
       for (final PartialPath path : createLogicalViewStatement.getTargetPathList()) {
-        checkIsTableCompatible(path, context, false);
         checkIsTemplateCompatible(path, null, context, false);
       }
     } catch (final Exception e) {

@@ -56,11 +56,13 @@ public class WrappedSingleThreadExecutorService
   public void shutdown() {
     service.shutdown();
     JMXService.deregisterMBean(mbeanName);
+    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this.mbeanName);
   }
 
   @Override
   public List<Runnable> shutdownNow() {
     JMXService.deregisterMBean(mbeanName);
+    ThreadPoolMetrics.getInstance().unRegisterThreadPool(this.mbeanName);
     return service.shutdownNow();
   }
 

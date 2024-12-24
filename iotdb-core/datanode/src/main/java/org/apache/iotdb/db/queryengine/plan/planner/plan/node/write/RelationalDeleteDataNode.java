@@ -64,42 +64,44 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   private String databaseName;
 
-  public RelationalDeleteDataNode(PlanNodeId id, Delete delete) {
+  public RelationalDeleteDataNode(final PlanNodeId id, final Delete delete) {
     super(id);
     this.modEntries = delete.getTableDeletionEntries();
     this.replicaSets = delete.getReplicaSets();
     this.databaseName = delete.getDatabaseName();
   }
 
-  public RelationalDeleteDataNode(PlanNodeId id, TableDeletionEntry entry, String databaseName) {
+  public RelationalDeleteDataNode(
+      final PlanNodeId id, final TableDeletionEntry entry, final String databaseName) {
     super(id);
     this.modEntries = Collections.singletonList(entry);
     this.databaseName = databaseName;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id, List<TableDeletionEntry> entries, String databaseName) {
+      final PlanNodeId id, final List<TableDeletionEntry> entries, final String databaseName) {
     super(id);
     this.modEntries = entries;
     this.databaseName = databaseName;
   }
 
-  public RelationalDeleteDataNode(PlanNodeId id, Delete delete, ProgressIndex progressIndex) {
+  public RelationalDeleteDataNode(
+      final PlanNodeId id, final Delete delete, final ProgressIndex progressIndex) {
     this(id, delete);
     this.progressIndex = progressIndex;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id, Delete delete, TRegionReplicaSet regionReplicaSet) {
+      final PlanNodeId id, final Delete delete, final TRegionReplicaSet regionReplicaSet) {
     this(id, delete);
     this.regionReplicaSet = regionReplicaSet;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id,
-      TableDeletionEntry delete,
-      TRegionReplicaSet regionReplicaSet,
-      String databaseName) {
+      final PlanNodeId id,
+      final TableDeletionEntry delete,
+      final TRegionReplicaSet regionReplicaSet,
+      final String databaseName) {
     this(id, delete, databaseName);
     this.regionReplicaSet = regionReplicaSet;
   }
