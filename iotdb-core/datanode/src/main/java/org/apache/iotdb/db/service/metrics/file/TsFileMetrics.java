@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -206,19 +207,18 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public void deleteGlobalTsFileCountGauge(String orderStr, String database, String regionId) {
-    AbstractMetricService metricService = this.metricService.get();
-    if (metricService == null) {
-      return;
-    }
-    metricService.remove(
-        MetricType.GAUGE,
-        FILE_GLOBAL_COUNT,
-        Tag.NAME.toString(),
-        orderStr,
-        Tag.DATABASE.toString(),
-        database,
-        Tag.REGION.toString(),
-        regionId);
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_COUNT,
+                    Tag.NAME.toString(),
+                    orderStr,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
   }
 
   private void updateGlobalTsFileSizeMap(
@@ -270,19 +270,18 @@ public class TsFileMetrics implements IMetricSet {
 
   public void deleteGlobalTsFileSizeGauge(String orderStr, String database, String regionId) {
     // the region may contains no tsfile
-    AbstractMetricService metricService = this.metricService.get();
-    if (metricService == null) {
-      return;
-    }
-    metricService.remove(
-        MetricType.GAUGE,
-        FILE_GLOBAL_SIZE,
-        Tag.NAME.toString(),
-        orderStr,
-        Tag.DATABASE.toString(),
-        database,
-        Tag.REGION.toString(),
-        regionId);
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_SIZE,
+                    Tag.NAME.toString(),
+                    orderStr,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
   }
 
   // endregion
