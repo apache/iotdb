@@ -76,6 +76,8 @@ public class AuthorizerManagerTest {
     user.grantDBPrivilege("test", PrivilegeType.ALTER, false);
     user.grantTBPrivilege("test", "table", PrivilegeType.SELECT, true);
     user.grantDBPrivilege("test2", PrivilegeType.SELECT, true);
+    user.grantAnyScopePrivilege(PrivilegeType.ALTER, false);
+    user.grantAnyScopePrivilege(PrivilegeType.SELECT, true);
 
     TPermissionInfoResp result = new TPermissionInfoResp();
     result.setUserInfo(user.getUserInfo(ModelType.ALL));
