@@ -1141,6 +1141,7 @@ loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
     | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
+    | CONVERTONTYPEMISMATCH operator_eq boolean_literal
     ;
 
 loadFileWithAttributeClauses

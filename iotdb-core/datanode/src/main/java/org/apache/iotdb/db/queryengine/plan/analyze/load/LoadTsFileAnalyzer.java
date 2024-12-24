@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -67,6 +69,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected final boolean isDeleteAfterLoad;
 
+  protected final boolean isConvertOnTypeMismatch;
+
   protected final boolean isAutoCreateDatabase;
 
   protected final int databaseLevel;
@@ -78,15 +82,19 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
+  protected final LoadTsFileDataTypeMismatchConvertHandler loadTsFileDataTypeMismatchConvertHandler;
+
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
+    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
@@ -99,9 +107,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.statementString = loadTsFileTableStatement.toString();
     this.isVerifySchema = true;
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
+    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
 
     this.loadTsFileStatement = null;
     this.isTableModelStatement = true;
@@ -136,6 +146,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
+        return false;
+      } catch (VerifyMetadataTypeMismatchException e) {
+        this.executeDataTypeConversionOnTypeMismatch(analysis);
+        // just return false to STOP the analysis process, the real result on the conversion will be
+        // set in the analysis.
         return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
@@ -174,6 +189,24 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     return tsFileResource;
   }
 
+  public void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
+
+    TSStatus status;
+    if (isTableModelStatement) {
+      status =
+          loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(loadTsFileTableStatement);
+    } else {
+      status = loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileStatement);
+    }
+
+    if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      analysis.setFailStatus(status);
+    }
+
+    analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
+  }
+
   protected String getStatementString() {
     return statementString;
   }
@@ -204,6 +237,10 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected boolean isVerifySchema() {
     return isVerifySchema;
+  }
+
+  protected boolean isConvertOnTypeMismatch() {
+    return isConvertOnTypeMismatch;
   }
 
   protected boolean isAutoCreateDatabase() {

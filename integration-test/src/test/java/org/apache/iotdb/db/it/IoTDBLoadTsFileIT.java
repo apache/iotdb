@@ -31,6 +31,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -48,6 +49,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -328,7 +331,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
-  public void testLoadWithAutoRegister() throws Exception {
+  public void testLoadWithAutoCreate() throws Exception {
     final long writtenPoint1;
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
@@ -896,6 +899,74 @@ public class IoTDBLoadTsFileIT {
         }
       }
     }
+  }
+
+  @Test
+  public void testLoadWithConvertOnTypeMismatch() throws Exception {
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasForDataTypeConvertion();
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    long writtenPoint = 0;
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    List<IMeasurementSchema> schemaList2 =
+        measurementSchemas.stream().map(pair -> pair.right).collect(Collectors.toList());
+
+    try (final TsFileGenerator generator = new TsFileGenerator(file)) {
+      generator.registerTimeseries(SchemaConfig.DEVICE_0, schemaList2);
+
+      generator.generateData(SchemaConfig.DEVICE_0, 100, PARTITION_INTERVAL / 10_000, false);
+
+      writtenPoint = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      for (MeasurementSchema schema : schemaList1) {
+        statement.execute(convert2SQL(SchemaConfig.DEVICE_0, schema));
+      }
+
+      statement.execute(String.format("load \"%s\" ", file.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          final long sgCount = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint, sgCount);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  private List<Pair<MeasurementSchema, MeasurementSchema>>
+      generateMeasurementSchemasForDataTypeConvertion() {
+    TSDataType[] dataTypes = {
+      TSDataType.STRING,
+      TSDataType.TEXT,
+      TSDataType.BLOB,
+      TSDataType.TIMESTAMP,
+      TSDataType.BOOLEAN,
+      TSDataType.DATE,
+      TSDataType.DOUBLE,
+      TSDataType.FLOAT,
+      TSDataType.INT32,
+      TSDataType.INT64
+    };
+    List<Pair<MeasurementSchema, MeasurementSchema>> pairs = new ArrayList<>();
+
+    for (TSDataType type : dataTypes) {
+      for (TSDataType dataType : dataTypes) {
+        String id = String.format("%s2%s", type.name(), dataType.name());
+        pairs.add(new Pair<>(new MeasurementSchema(id, type), new MeasurementSchema(id, dataType)));
+      }
+    }
+    return pairs;
   }
 
   private static class SchemaConfig {
