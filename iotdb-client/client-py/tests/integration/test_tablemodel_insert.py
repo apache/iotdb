@@ -95,9 +95,9 @@ def test_insert_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.TAG,
-            ColumnType.TAG,
-            ColumnType.TAG,
+            ColumnType.ID,
+            ColumnType.ID,
+            ColumnType.ID,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
@@ -374,9 +374,9 @@ def test_insert_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.TAG,
-            ColumnType.TAG,
-            ColumnType.TAG,
+            ColumnType.ID,
+            ColumnType.ID,
+            ColumnType.ID,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
@@ -687,9 +687,9 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.TAG,
-            ColumnType.TAG,
-            ColumnType.TAG,
+            ColumnType.ID,
+            ColumnType.ID,
+            ColumnType.ID,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
@@ -904,9 +904,9 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.TAG,
-            ColumnType.TAG,
-            ColumnType.TAG,
+            ColumnType.ID,
+            ColumnType.ID,
+            ColumnType.ID,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
@@ -1155,9 +1155,9 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.TAG,
-                ColumnType.TAG,
-                ColumnType.TAG,
+                ColumnType.ID,
+                ColumnType.ID,
+                ColumnType.ID,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
@@ -1423,9 +1423,9 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.TAG,
-                ColumnType.TAG,
-                ColumnType.TAG,
+                ColumnType.ID,
+                ColumnType.ID,
+                ColumnType.ID,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
