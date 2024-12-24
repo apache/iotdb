@@ -788,6 +788,7 @@ public class AuthorInfoTest {
             .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus()
             .getCode());
+
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
