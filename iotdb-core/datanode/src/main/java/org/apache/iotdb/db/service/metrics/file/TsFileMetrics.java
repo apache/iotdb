@@ -207,6 +207,7 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public void deleteGlobalTsFileCountGauge(String orderStr, String database, String regionId) {
+    // This metric may not exist
     Optional.ofNullable(this.metricService.get())
         .ifPresent(
             service ->
@@ -269,7 +270,7 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public void deleteGlobalTsFileSizeGauge(String orderStr, String database, String regionId) {
-    // the region may contains no tsfile
+    // This metric may not exist
     Optional.ofNullable(this.metricService.get())
         .ifPresent(
             service ->
