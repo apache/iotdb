@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -26,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class PipeMeta {
@@ -59,6 +63,49 @@ public class PipeMeta {
 
   public PipeTemporaryMeta getTemporaryMeta() {
     return temporaryMeta;
+  }
+
+  public boolean matchSqlDialect(final boolean isTableModel) {
+    return matchSqlDialect(SystemConstant.fetchSqlDialectValue(isTableModel));
+  }
+
+  public boolean matchSqlDialect(final String sqlDialect) {
+    if (Objects.isNull(sqlDialect)) {
+      return true;
+    }
+    return matchBoth()
+        || sqlDialect.equalsIgnoreCase(
+            getStaticMeta()
+                .getExtractorParameters()
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+  }
+
+  private boolean matchBoth() {
+    return // 1. 'mode.double-living' is set to true
+    getStaticMeta()
+            .getExtractorParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+        ||
+        // 2. 'capture.tree' and 'capture.table' is set to true
+        (getStaticMeta()
+                .getExtractorParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                    false)
+            && getStaticMeta()
+                .getExtractorParameters()
+                .getBooleanOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                        PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                    false));
   }
 
   public ByteBuffer serialize() throws IOException {
