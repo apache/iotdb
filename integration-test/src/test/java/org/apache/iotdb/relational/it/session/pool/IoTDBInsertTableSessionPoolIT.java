@@ -75,7 +75,7 @@ public class IoTDBInsertTableSessionPoolIT {
 
   @Test
   public void testPartialInsertTablet() {
-    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    final ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
     try (final ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
