@@ -2853,7 +2853,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
-  private boolean isFilterGtOrGe(Filter filter) {
+  public static boolean isFilterGtOrGe(Filter filter) {
     return filter instanceof TimeGt || filter instanceof TimeGtEq;
   }
 

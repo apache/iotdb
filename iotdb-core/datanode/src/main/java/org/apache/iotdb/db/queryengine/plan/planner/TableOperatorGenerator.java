@@ -1922,7 +1922,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    if (canUseLastCacheOptimize(aggregators)) {
+    if (canUseLastCacheOptimize(aggregators, node)) {
       // context add TableLastQueryOperator
       TableLastQueryOperator lastQueryOperator =
           new TableLastQueryOperator(
@@ -2079,8 +2079,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new boolean[] {canUseStatistic, isAscending};
   }
 
-  private boolean canUseLastCacheOptimize(List<TableAggregator> aggregators) {
-    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && aggregators.isEmpty()) {
+  private boolean canUseLastCacheOptimize(
+      List<TableAggregator> aggregators, AggregationTableScanNode node) {
+
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
+      return false;
+    }
+
+    // has value filter, can not optimize
+    if (node.getPushDownPredicate() != null) {
+      return false;
+    }
+
+    // has date_bin, can not optimize
+    if (!node.getGroupingKeys().isEmpty()
+        && node.getProjection() != null
+        && !node.getProjection().getMap().isEmpty()) {
       return false;
     }
 

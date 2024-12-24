@@ -65,6 +65,10 @@ public class LastByAccumulator implements TableAccumulator {
     this.xResult = TsPrimitiveType.getByType(xDataType);
   }
 
+  public boolean xIsTimeColumn() {
+    return xIsTimeColumn;
+  }
+
   public boolean yIsTimeColumn() {
     return this.yIsTimeColumn;
   }
