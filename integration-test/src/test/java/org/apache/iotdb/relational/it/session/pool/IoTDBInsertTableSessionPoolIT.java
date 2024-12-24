@@ -80,9 +80,9 @@ public class IoTDBInsertTableSessionPoolIT {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
-          "create table sg6 (id1 string id, s1 int64 measurement, s2 int64 measurement)");
+          "create table sg6 (tag1 string tag, s1 int64 field, s2 int64 field)");
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -139,7 +139,7 @@ public class IoTDBInsertTableSessionPoolIT {
       try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
         assertEquals(4, dataSet.getColumnNames().size());
         assertEquals("time", dataSet.getColumnNames().get(0));
-        assertEquals("id1", dataSet.getColumnNames().get(1));
+        assertEquals("tag1", dataSet.getColumnNames().get(1));
         assertEquals("s1", dataSet.getColumnNames().get(2));
         assertEquals("s2", dataSet.getColumnNames().get(3));
         int cnt = 0;
@@ -165,18 +165,18 @@ public class IoTDBInsertTableSessionPoolIT {
       session.executeNonQueryStatement("USE \"test\"");
       session.executeNonQueryStatement(
           "create table table20 ("
-              + "device_id string id,"
+              + "device_id string tag,"
               + "attribute STRING ATTRIBUTE,"
-              + "boolean boolean MEASUREMENT,"
-              + "int32 int32 MEASUREMENT,"
-              + "int64 int64 MEASUREMENT,"
-              + "float float MEASUREMENT,"
-              + "double double MEASUREMENT,"
-              + "text text MEASUREMENT,"
-              + "string string MEASUREMENT,"
-              + "blob blob MEASUREMENT,"
-              + "timestamp01 timestamp MEASUREMENT,"
-              + "date date MEASUREMENT)");
+              + "boolean boolean FIELD,"
+              + "int32 int32 FIELD,"
+              + "int64 int64 FIELD,"
+              + "float float FIELD,"
+              + "double double FIELD,"
+              + "text text FIELD,"
+              + "string string FIELD,"
+              + "blob blob FIELD,"
+              + "timestamp01 timestamp FIELD,"
+              + "date date FIELD)");
 
       List<IMeasurementSchema> schemas = new ArrayList<>();
       schemas.add(new MeasurementSchema("device_id", TSDataType.STRING));
