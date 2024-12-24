@@ -3577,7 +3577,6 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
       MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {

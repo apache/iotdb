@@ -54,6 +54,7 @@ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -749,9 +750,6 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       region.markDeleted();
-      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
-      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
-      WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -782,6 +780,10 @@ public class StorageEngine implements IService {
             }
           }
         }
+        WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+        WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
+        WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
+        FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",
