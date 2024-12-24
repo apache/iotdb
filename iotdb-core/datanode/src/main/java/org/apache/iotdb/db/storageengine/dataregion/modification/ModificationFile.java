@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -50,6 +52,7 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static org.apache.iotdb.db.utils.ModificationUtils.sortAndMerge;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class ModificationFile implements AutoCloseable {
 
@@ -66,6 +69,8 @@ public class ModificationFile implements AutoCloseable {
   private static final long COMPACT_THRESHOLD = 1024 * 1024L;
   private boolean hasCompacted = false;
   private boolean fileExists = false;
+
+  private Set<ModificationFile> cascadeFiles = null;
 
   public ModificationFile(String filePath) {
     this(new File(filePath));
@@ -92,6 +97,12 @@ public class ModificationFile implements AutoCloseable {
       }
       size += entry.serialize(fileOutputStream);
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entry);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
@@ -116,6 +127,12 @@ public class ModificationFile implements AutoCloseable {
         size += entry.serialize(fileOutputStream);
       }
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entries);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
@@ -257,14 +274,18 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    FileUtils.deleteFileOrDirectory(file);
+    FileUtils.deleteFileOrDirectory(file, true);
     FileMetrics.getInstance().decreaseModFileNum(1);
     FileMetrics.getInstance().decreaseModFileSize(getFileLength());
     fileExists = false;
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
-    return new ModificationFile(new File(tsFileResource.getTsFilePath() + FILE_SUFFIX));
+    String tsFilePath = tsFileResource.getTsFilePath();
+    // replace the temp suffix with the final name
+    tsFilePath = tsFilePath.replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    tsFilePath = tsFilePath.replace(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    return new ModificationFile(new File(tsFilePath + FILE_SUFFIX));
   }
 
   public static File getExclusiveMods(File tsFile) {
@@ -297,14 +318,12 @@ public class ModificationFile implements AutoCloseable {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
         String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
-        List<ModEntry> allSettledModifications = new ArrayList<>();
         try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
               pathModificationMap.entrySet();
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
             List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
             compactedModificationFile.write(settledModifications);
-            allSettledModifications.addAll(settledModifications);
           }
         } catch (IOException e) {
           LOGGER.error("compact mods file exception of {}", file, e);
@@ -326,6 +345,32 @@ public class ModificationFile implements AutoCloseable {
         LOGGER.error("remove origin file or rename new mods file error.", e);
       }
       hasCompacted = true;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ModificationFile that = (ModificationFile) o;
+    return Objects.equals(file, that.file);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(file);
+  }
+
+  public void setCascadeFile(Set<ModificationFile> cascadeFiles) {
+    lock.writeLock().lock();
+    try {
+      this.cascadeFiles = cascadeFiles;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 }

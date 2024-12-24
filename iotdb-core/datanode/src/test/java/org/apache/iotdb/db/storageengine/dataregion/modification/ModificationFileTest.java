@@ -21,8 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -30,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -46,22 +52,32 @@ public class ModificationFileTest {
           new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s1"}), 1),
           new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s2"}), 2),
           new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s3"}), 3, 4),
-          new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s41"}), 4, 5)
+          new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s41"}), 4, 5),
+          new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 2)),
+          new TableDeletionEntry(
+              new DeletionPredicate("table2", new SegmentExactMatch("id11", 0)),
+              new TimeRange(3, 4)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table3",
+                  new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
+              new TimeRange(5, 6)),
+          new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < 4; i++) {
         mFile.write(modifications[i]);
       }
       List<ModEntry> modificationList = mFile.getAllMods();
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < 4; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
 
-      for (int i = 2; i < 4; i++) {
+      for (int i = 4; i < 8; i++) {
         mFile.write(modifications[i]);
       }
       modificationList = mFile.getAllMods();
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 8; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
     } catch (IOException e) {
@@ -77,14 +93,23 @@ public class ModificationFileTest {
     ModEntry[] modifications =
         new ModEntry[] {
           new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s1"}), 1),
-          new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s2"}), 2)
+          new TreeDeletionEntry(new MeasurementPath(new String[] {"d1", "s2"}), 2),
+          new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 2)),
+          new TableDeletionEntry(
+              new DeletionPredicate("table2", new SegmentExactMatch("id11", 0)),
+              new TimeRange(3, 4)),
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table3",
+                  new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
+              new TimeRange(5, 6)),
+          new TableDeletionEntry(new DeletionPredicate("table4"), new TimeRange(7, 8)),
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
-      mFile.write(modifications[0]);
-      mFile.write(modifications[1]);
+      mFile.write(Arrays.asList(modifications));
       List<ModEntry> modificationList = mFile.getAllMods();
-      assertEquals(2, modificationList.size());
-      for (int i = 0; i < 2; i++) {
+      assertEquals(modifications.length, modificationList.size());
+      for (int i = 0; i < modifications.length; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
     } catch (IOException e) {
@@ -199,9 +224,116 @@ public class ModificationFileTest {
     }
   }
 
+  @Test
+  public void testCompact05() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
+        modificationFile.write(
+            new TableDeletionEntry(
+                new DeletionPredicate("table1", new NOP()),
+                new TimeRange(Long.MIN_VALUE, time += 5000)));
+      }
+      modificationFile.compact();
+      List<ModEntry> modificationList = new ArrayList<>(modificationFile.getAllMods());
+      assertEquals(1, modificationList.size());
+
+      ModEntry deletion = modificationList.get(0);
+      assertEquals(time, deletion.getEndTime());
+      assertEquals(Long.MIN_VALUE, deletion.getStartTime());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  @Test
+  public void testCompact06() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getFileLength() < 1024 * 100) {
+        modificationFile.write(
+            new TableDeletionEntry(
+                new DeletionPredicate("table1", new NOP()),
+                new TimeRange(Long.MIN_VALUE, time += 5000)));
+      }
+      modificationFile.compact();
+      List<ModEntry> modificationList = new ArrayList<>(modificationFile.getAllMods());
+      assertTrue(modificationList.size() > 1);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  // test if file size greater than 1M.
+  @Test
+  public void testCompact07() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.mods");
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
+        modificationFile.write(
+            new TableDeletionEntry(
+                new DeletionPredicate("table1", new NOP()),
+                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
+      }
+      modificationFile.compact();
+      List<ModEntry> modificationList = new ArrayList<>(modificationFile.getAllMods());
+      assertEquals(1, modificationList.size());
+
+      ModEntry deletion = modificationList.get(0);
+      assertEquals(Long.MAX_VALUE, deletion.getEndTime());
+      assertEquals(Long.MIN_VALUE, deletion.getStartTime());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  @Test
+  public void testCompact08() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.mods");
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      long time = 0;
+      while (modificationFile.getFileLength() < 1024 * 1024) {
+        for (int i = 0; i < 5; i++) {
+          ModEntry[] modEntries = {
+            new TableDeletionEntry(
+                new DeletionPredicate("table1", new NOP()),
+                new TimeRange(Long.MIN_VALUE, time += 5000)),
+            new TableDeletionEntry(
+                new DeletionPredicate("table2", new SegmentExactMatch("id11", 0)),
+                new TimeRange(Long.MIN_VALUE, time += 5000)),
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "table3",
+                    new FullExactMatch(
+                        Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
+                new TimeRange(Long.MIN_VALUE, time += 5000)),
+            new TableDeletionEntry(
+                new DeletionPredicate("table4"), new TimeRange(Long.MIN_VALUE, time += 5000))
+          };
+          modificationFile.write(Arrays.asList(modEntries));
+        }
+      }
+      modificationFile.compact();
+      List<ModEntry> modificationList = new ArrayList<>(modificationFile.getAllMods());
+      assertEquals(4, modificationList.size());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
   // test mods file and mods settle file both exists
   @Test
-  public void testRecover01() {
+  public void testRecover01() throws IOException {
     String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
 
@@ -228,17 +360,13 @@ public class ModificationFileTest {
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
-      try {
-        Files.delete(new File(modsFileName).toPath());
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      Files.delete(new File(modsFileName).toPath());
     }
   }
 
   // test only mods settle file exists
   @Test
-  public void testRecover02() {
+  public void testRecover02() throws IOException {
     String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods.settle");
     String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
@@ -255,11 +383,81 @@ public class ModificationFileTest {
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
-      try {
-        Files.delete(new File(originModsFileName).toPath());
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      Files.delete(new File(originModsFileName).toPath());
+    }
+  }
+
+  @Test
+  public void testRecover03() throws IOException {
+    String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
+
+    long time = 0;
+    try (ModificationFile modsFile = new ModificationFile(modsFileName);
+        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+
+      ModEntry[] modEntries = {
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP()),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate("table2", new SegmentExactMatch("id11", 0)),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table3",
+                new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate("table4"), new TimeRange(Long.MIN_VALUE, time += 5000))
+      };
+      modsFile.write(Arrays.asList(modEntries));
+
+      modsFile.close();
+      modsSettleFile.close();
+      new CompactionRecoverManager(null, null, null)
+          .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
+      Assert.assertTrue(modsFile.exists());
+      Assert.assertFalse(modsSettleFile.getFileLength() > 0);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      Files.delete(new File(modsFileName).toPath());
+    }
+  }
+
+  @Test
+  public void testRecover04() throws IOException {
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods.settle");
+    String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
+
+    long time = 0;
+    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+      ModEntry[] modEntries = {
+        new TableDeletionEntry(
+            new DeletionPredicate("table1", new NOP()),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate("table2", new SegmentExactMatch("id11", 0)),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table3",
+                new FullExactMatch(Factory.DEFAULT_FACTORY.create(new String[] {"id1", "id2"}))),
+            new TimeRange(Long.MIN_VALUE, time += 5000)),
+        new TableDeletionEntry(
+            new DeletionPredicate("table4"), new TimeRange(Long.MIN_VALUE, time += 5000))
+      };
+      modsSettleFile.write(Arrays.asList(modEntries));
+      modsSettleFile.close();
+      new CompactionRecoverManager(null, null, null)
+          .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
+      Assert.assertFalse(modsSettleFile.getFileLength() > 0);
+      Assert.assertTrue(new File(originModsFileName).exists());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      Files.delete(new File(originModsFileName).toPath());
     }
   }
 }

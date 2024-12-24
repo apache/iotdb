@@ -68,7 +68,8 @@ public class DeletionRecoverTest {
                 new PlanNodeId("testPlan"),
                 Collections.singletonList(
                     new TableDeletionEntry(
-                        new DeletionPredicate("table1", new NOP()), new TimeRange(0, 10))));
+                        new DeletionPredicate("table1", new NOP()), new TimeRange(0, 10))),
+                null);
       } else {
         deleteDataNode =
             new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);

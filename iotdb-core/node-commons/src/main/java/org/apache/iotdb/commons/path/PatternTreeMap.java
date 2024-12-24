@@ -25,11 +25,11 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -53,7 +53,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
       BiConsumer<V, Set<V>> appendFunction,
       BiConsumer<V, Set<V>> deleteFunction,
       VSerializer serializer) {
-    this.rootMap = new HashMap<>();
+    this.rootMap = new ConcurrentHashMap<>();
     this.supplier = supplier;
     this.appendFunction = appendFunction;
     this.deleteFunction = deleteFunction;
