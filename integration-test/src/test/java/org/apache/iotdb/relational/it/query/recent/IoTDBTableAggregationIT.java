@@ -112,6 +112,12 @@ public class IoTDBTableAggregationIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
+  //  public static void main(String[] args) {
+  //    for (String sql : createSqls) {
+  //      System.out.println(sql + ";");
+  //    }
+  //  }
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
@@ -2455,7 +2461,7 @@ public class IoTDBTableAggregationIT {
           "shanghai,pudong,d08,null,",
         };
     tableResultSetEqualTest(
-        "select city,region,device_id,last_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
+        "select city,region,device_id,last_by(s5,time) from table1 group by city,region,device_id order by 1,2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);

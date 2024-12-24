@@ -49,6 +49,18 @@ public class LastAccumulator implements TableAccumulator {
     lastValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
+  public boolean hasInitResult() {
+    return this.initResult;
+  }
+
+  public long getMaxTime() {
+    return this.maxTime;
+  }
+
+  public TsPrimitiveType getLastValue() {
+    return this.lastValue;
+  }
+
   @Override
   public long getEstimatedSize() {
     return INSTANCE_SIZE;

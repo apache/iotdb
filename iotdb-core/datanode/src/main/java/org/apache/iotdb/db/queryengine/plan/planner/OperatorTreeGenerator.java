@@ -2853,7 +2853,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
-  private boolean isFilterGtOrGe(Filter filter) {
+  public static boolean isFilterGtOrGe(Filter filter) {
     return filter instanceof TimeGt || filter instanceof TimeGtEq;
   }
 
@@ -3056,8 +3056,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
+      context.dataNodeQueryContext.lock();
       try {
-        context.dataNodeQueryContext.lock();
         if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -75,8 +76,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Info
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableLastQueryOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
@@ -1918,26 +1922,52 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     context.getDriverContext().setInputDriver(true);
 
-    TableAggregationTableScanOperator aggTableScanOperator =
-        new TableAggregationTableScanOperator(
-            node.getPlanNodeId(),
-            operatorContext,
-            aggColumnSchemas,
-            aggColumnsIndexArray,
-            node.getDeviceEntries(),
-            seriesScanOptions,
-            measurementColumnNames,
-            allSensors,
-            measurementSchemas,
-            aggregators,
-            groupingKeySchemas,
-            groupingKeyIndex,
-            timeRangeIterator,
-            scanAscending,
-            canUseStatistic,
-            aggregatorInputChannels);
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
-    return aggTableScanOperator;
+    if (canUseLastCacheOptimize(aggregators, node)) {
+      // context add TableLastQueryOperator
+      TableLastQueryOperator lastQueryOperator =
+          new TableLastQueryOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              node.getDeviceEntries(),
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels,
+              node.getQualifiedObjectName());
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+      return lastQueryOperator;
+    } else {
+      TableAggregationTableScanOperator aggTableScanOperator =
+          new TableAggregationTableScanOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              node.getDeviceEntries(),
+              node.getDeviceEntries().size(),
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels);
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
+      return aggTableScanOperator;
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
@@ -2047,5 +2077,35 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     return new boolean[] {canUseStatistic, isAscending};
+  }
+
+  private boolean canUseLastCacheOptimize(
+      List<TableAggregator> aggregators, AggregationTableScanNode node) {
+
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
+      return false;
+    }
+
+    // has value filter, can not optimize
+    if (node.getPushDownPredicate() != null) {
+      return false;
+    }
+
+    // has date_bin, can not optimize
+    if (!node.getGroupingKeys().isEmpty()
+        && node.getProjection() != null
+        && !node.getProjection().getMap().isEmpty()) {
+      return false;
+    }
+
+    for (TableAggregator aggregator : aggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastDescAccumulator
+          || (aggregator.getAccumulator() instanceof LastByDescAccumulator
+              && ((LastByDescAccumulator) aggregator.getAccumulator()).yIsTimeColumn()))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

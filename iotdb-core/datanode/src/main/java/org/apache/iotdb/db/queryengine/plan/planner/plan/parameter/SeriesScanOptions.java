@@ -85,6 +85,18 @@ public class SeriesScanOptions {
     return pushDownFilter;
   }
 
+  public long getPushDownLimit() {
+    return this.pushDownLimit;
+  }
+
+  public long getPushDownOffset() {
+    return this.pushDownOffset;
+  }
+
+  public boolean getPushLimitToEachDevice() {
+    return this.pushLimitToEachDevice;
+  }
+
   public Set<String> getAllSensors() {
     return allSensors;
   }
