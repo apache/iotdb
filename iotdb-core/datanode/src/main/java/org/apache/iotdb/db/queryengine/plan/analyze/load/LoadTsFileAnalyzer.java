@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -34,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -65,9 +63,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final boolean isTableModelStatement;
 
-  private final SqlParser relationalSqlParser = new SqlParser();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
@@ -88,19 +83,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
   protected final LoadTsFileDataTypeMismatchConvertHandler loadTsFileDataTypeMismatchConvertHandler;
-
-  //  public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
-  //      new LoadStatementTSStatusVisitor();
-  //  public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
-  //      new LoadStatementExceptionVisitor();
-  //  private final LoadTableStatementDataTypeConvertExecutionVisitor
-  //      tableStatementDataTypeConvertExecutionVisitor =
-  //          new LoadTableStatementDataTypeConvertExecutionVisitor(
-  //              this::executeStatementForTableModel);
-  //  private final LoadTreeStatementDataTypeConvertExecutionVisitor
-  //      treeStatementDataTypeConvertExecutionVisitor =
-  //          new
-  // LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
 
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileStatement = loadTsFileStatement;
@@ -167,7 +149,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         return false;
       } catch (VerifyMetadataTypeMismatchException e) {
         this.executeDataTypeConversionOnTypeMismatch(analysis);
-        // just return false to STOP the analysis process
+        // just return false to STOP the analysis process, the real result on the conversion will be
+        // set in the analysis.
         return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
