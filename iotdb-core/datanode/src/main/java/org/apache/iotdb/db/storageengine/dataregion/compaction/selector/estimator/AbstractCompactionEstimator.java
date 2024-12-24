@@ -142,10 +142,7 @@ public abstract class AbstractCompactionEstimator {
       long maxEndTimeOfCurrentDevice = Long.MIN_VALUE;
       int overlapFileNumOfCurrentDevice = 0;
       for (ArrayDeviceTimeIndex resource : resourcesContainsCurrentDevice) {
-        if (resource.definitelyNotContains(device)) {
-          continue;
-        }
-        // checked above
+        // checked by Stream.filter()
         long deviceStartTimeInCurrentFile = resource.getStartTime(device).get();
         long deviceEndTimeInCurrentFile = resource.getEndTime(device).get();
         if (deviceStartTimeInCurrentFile <= maxEndTimeOfCurrentDevice) {
