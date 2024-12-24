@@ -650,7 +650,8 @@ public class IoTDBUncorrelatedQuantifiedComparisonIT {
           String.format(sql, measurement, measurement), expectedHeader, retArray, DATABASE_NAME);
     }
 
-    // Test case: select s != all(subquery), subquery contains null value and s not in non-null
+    // Test case: select s != all(subquery), subquery result contains null value and s not in
+    // non-null
     // value result set
     sql =
         "SELECT %s != all(SELECT (%s) from table3 where device_id = 'd_null') from table1 where device_id = 'd02' and %s != 30";
