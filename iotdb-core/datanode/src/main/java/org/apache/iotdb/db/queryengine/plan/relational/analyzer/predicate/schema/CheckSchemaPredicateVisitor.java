@@ -107,7 +107,7 @@ public class CheckSchemaPredicateVisitor
       return true;
     }
     if (schema.getColumnCategory() == TsTableColumnCategory.TIME
-        || schema.getColumnCategory() == TsTableColumnCategory.MEASUREMENT) {
+        || schema.getColumnCategory() == TsTableColumnCategory.FIELD) {
       throw new SemanticException(
           "The TIME/MEASUREMENT columns are currently not allowed in devices related operations");
     }

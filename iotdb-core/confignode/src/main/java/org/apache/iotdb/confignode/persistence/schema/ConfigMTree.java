@@ -848,7 +848,7 @@ public class ConfigMTree {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
-    if (columnSchema.getColumnCategory() == TsTableColumnCategory.ID
+    if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
       throw new SemanticException("Dropping id or time column is not supported.");
     }
