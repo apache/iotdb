@@ -369,7 +369,7 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,ID,",
+                  "database,STRING,TAG,",
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "schema_replication_factor,INT32,ATTRIBUTE,",
                   "data_replication_factor,INT32,ATTRIBUTE,",
@@ -381,8 +381,8 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,ID,",
-                  "table_name,STRING,ID,",
+                  "database,STRING,TAG,",
+                  "table_name,STRING,TAG,",
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
@@ -390,9 +390,9 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "database,STRING,ID,",
-                  "table_name,STRING,ID,",
-                  "column_name,STRING,ID,",
+                  "database,STRING,TAG,",
+                  "table_name,STRING,TAG,",
+                  "column_name,STRING,TAG,",
                   "datatype,STRING,ATTRIBUTE,",
                   "category,STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,")));
@@ -401,7 +401,7 @@ public class IoTDBDatabaseIT {
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
-                  "query_id,STRING,ID,",
+                  "query_id,STRING,TAG,",
                   "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
