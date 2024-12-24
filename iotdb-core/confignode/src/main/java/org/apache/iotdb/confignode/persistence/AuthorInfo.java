@@ -300,10 +300,14 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         case RGrantRoleSysPri:
+          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt));
+          break;
         case RGrantRoleAny:
           authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RGrantUserSysPri:
+          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
+          break;
         case RGrantUserAny:
           authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt, true));
           break;
@@ -322,10 +326,14 @@ public class AuthorInfo implements SnapshotProcessor {
               userName, new PrivilegeUnion(database, table, priv, grantOpt));
           break;
         case RRevokeRoleSysPri:
+          authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt));
+          break;
         case RRevokeRoleAny:
           authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
           break;
         case RRevokeUserSysPri:
+          authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt));
+          break;
         case RRevokeUserAny:
           authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt, true));
           break;
