@@ -16,42 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.consensus.request.read.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public class AuthorReadPlan extends ConfigPhysicalReadPlan {
+public class AuthorTreePlan extends AuthorPlan {
+  protected Set<Integer> permissions;
+  protected List<PartialPath> nodeNameList;
 
-  private final ConfigPhysicalPlanType authorType;
-  private final String roleName;
-  private String password;
-  private final String newPassword;
-  private Set<Integer> permissions;
-  private final List<PartialPath> nodeNameList;
-  private String userName;
-  private final boolean grantOpt;
+  public AuthorTreePlan(final ConfigPhysicalPlanType type) {
+    super(type);
+  }
 
   /**
-   * {@link AuthorReadPlan} Constructor.
+   * {@link AuthorTreePlan} Constructor.
    *
    * @param authorType author type
    * @param userName user name
    * @param roleName role name
    * @param password password
-   * @param newPassword new password
    * @param permissions permissions
    * @param grantOpt with grant option, only grant statement can set grantOpt = true
    * @param nodeNameList node name in Path structure
    */
-  public AuthorReadPlan(
+  public AuthorTreePlan(
       final ConfigPhysicalPlanType authorType,
       final String userName,
       final String roleName,
@@ -60,82 +54,59 @@ public class AuthorReadPlan extends ConfigPhysicalReadPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final List<PartialPath> nodeNameList) {
-    super(authorType);
-    this.authorType = authorType;
-    this.userName = userName;
-    this.roleName = roleName;
-    this.password = password;
-    this.newPassword = newPassword;
+    super(authorType, userName, roleName, password, newPassword, grantOpt);
     this.permissions = permissions;
-    this.grantOpt = grantOpt;
     this.nodeNameList = nodeNameList;
-  }
-
-  public String getRoleName() {
-    return roleName;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(final String password) {
-    this.password = password;
   }
 
   public Set<Integer> getPermissions() {
     return permissions;
   }
 
-  public void setPermissions(final Set<Integer> permissions) {
+  public void setPermissions(Set<Integer> permissions) {
     this.permissions = permissions;
   }
 
-  public String getUserName() {
-    return userName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList;
   }
 
-  public void setUserName(final String userName) {
-    this.userName = userName;
+  public void setNodeNameList(List<PartialPath> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   @Override
-  public boolean equals(final Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (o instanceof AuthorTreePlan) {
+      AuthorTreePlan that = (AuthorTreePlan) o;
+      return super.equals(that)
+          && Objects.equals(permissions, that.permissions)
+          && Objects.equals(nodeNameList, that.nodeNameList);
+    } else {
       return false;
     }
-    final AuthorReadPlan that = (AuthorReadPlan) o;
-    return Objects.equals(authorType, that.authorType)
-        && Objects.equals(userName, that.userName)
-        && Objects.equals(roleName, that.roleName)
-        && Objects.equals(password, that.password)
-        && Objects.equals(newPassword, that.newPassword)
-        && Objects.equals(permissions, that.permissions)
-        && grantOpt == that.grantOpt
-        && Objects.equals(nodeNameList, that.nodeNameList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeNameList, grantOpt);
+    return Objects.hash(super.hashCode(), permissions, nodeNameList);
   }
 
   @Override
   public String toString() {
     return "[type:"
-        + authorType
+        + super.getType()
         + ", username:"
-        + userName
+        + super.getUserName()
         + ", rolename:"
-        + roleName
+        + super.getRoleName()
         + ", permissions:"
         + PrivilegeType.toPriType(permissions)
         + ", grant option:"
-        + grantOpt
+        + super.getGrantOpt()
         + ", paths:"
         + nodeNameList
         + "]";

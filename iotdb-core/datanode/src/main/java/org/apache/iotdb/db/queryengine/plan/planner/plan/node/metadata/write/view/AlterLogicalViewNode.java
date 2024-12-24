@@ -71,7 +71,7 @@ public class AlterLogicalViewNode extends PlanNode {
     final List<PartialPath> targetPathList = new ArrayList<>(viewPathToSourceMap.keySet());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, targetPathList, PrivilegeType.WRITE_SCHEMA.ordinal()),
+            userName, targetPathList, PrivilegeType.WRITE_SCHEMA),
         targetPathList,
         PrivilegeType.WRITE_SCHEMA);
   }

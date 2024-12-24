@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -297,13 +296,17 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUsers((AuthorReadPlan) req);
+      case RListUser:
+        return authorInfo.executeListUsers((AuthorPlan) req);
       case ListRole:
-        return authorInfo.executeListRoles((AuthorReadPlan) req);
+      case RListRole:
+        return authorInfo.executeListRoles((AuthorPlan) req);
+      case RListUserPrivilege:
       case ListUserPrivilege:
-        return authorInfo.executeListUserPrivileges((AuthorReadPlan) req);
+        return authorInfo.executeListUserPrivileges((AuthorPlan) req);
+      case RListRolePrivilege:
       case ListRolePrivilege:
-        return authorInfo.executeListRolePrivileges((AuthorReadPlan) req);
+        return authorInfo.executeListRolePrivileges((AuthorPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
@@ -465,6 +468,29 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
+      case RCreateRole:
+      case RCreateUser:
+      case RDropUser:
+      case RDropRole:
+      case RUpdateUser:
+      case RGrantUserRole:
+      case RGrantRoleAny:
+      case RGrantUserAny:
+      case RGrantUserDBPriv:
+      case RGrantUserSysPri:
+      case RGrantUserTBPriv:
+      case RGrantRoleDBPriv:
+      case RGrantRoleSysPri:
+      case RGrantRoleTBPriv:
+      case RRevokeRoleAny:
+      case RRevokeUserAny:
+      case RRevokeUserDBPriv:
+      case RRevokeUserSysPri:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeRoleSysPri:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserRole:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
