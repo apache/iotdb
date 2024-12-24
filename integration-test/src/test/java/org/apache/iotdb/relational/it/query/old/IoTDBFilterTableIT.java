@@ -74,13 +74,11 @@ public class IoTDBFilterTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE testNaN(device STRING ID, n1 DOUBLE MEASUREMENT, n2 DOUBLE MEASUREMENT)");
+          "CREATE TABLE testNaN(device STRING TAG, n1 DOUBLE FIELD, n2 DOUBLE FIELD)");
       statement.execute(
-          "CREATE TABLE testTimeSeries(device STRING ID, s1 BOOLEAN MEASUREMENT, s2 BOOLEAN MEASUREMENT)");
-      statement.execute(
-          "CREATE TABLE testUDTF(device STRING ID, s1 TEXT MEASUREMENT, s2 DOUBLE MEASUREMENT)");
-      statement.execute(
-          "CREATE TABLE sg1(device STRING ID, s1 DOUBLE MEASUREMENT, s2 TEXT MEASUREMENT)");
+          "CREATE TABLE testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD)");
+      statement.execute("CREATE TABLE testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD)");
+      statement.execute("CREATE TABLE sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

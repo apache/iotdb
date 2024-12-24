@@ -34,7 +34,7 @@ public class ScalarFunctionExample implements ScalarFunction {
    *
    * <p>USE test;
    *
-   * <p>CREATE TABLE t1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT);
+   * <p>CREATE TABLE t1(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD);
    *
    * <p>INSERT INTO t1(time, device_id, s1, s2) VALUES (1, 'd1', 'a', 1), (2, 'd1', null, 2), (3,
    * 'd1', 'c', null);

@@ -419,7 +419,7 @@ public class WALFileTest {
         columns,
         times.length,
         new TsTableColumnCategory[] {
-          TsTableColumnCategory.ID, TsTableColumnCategory.MEASUREMENT,
+          TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD,
         });
   }
 

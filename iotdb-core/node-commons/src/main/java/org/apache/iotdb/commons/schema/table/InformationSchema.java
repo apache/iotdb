@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -41,7 +41,7 @@ public class InformationSchema {
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
     queriesTable.addColumnSchema(
-        new IdColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.QUERY_ID_START_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
@@ -57,7 +57,7 @@ public class InformationSchema {
 
     final TsTable databaseTable = new TsTable(DATABASES);
     databaseTable.addColumnSchema(
-        new IdColumnSchema(
+        new TagColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
@@ -82,10 +82,10 @@ public class InformationSchema {
 
     final TsTable tableTable = new TsTable(TABLES);
     tableTable.addColumnSchema(
-        new IdColumnSchema(
+        new TagColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
-        new IdColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COLUMN_TTL.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
@@ -97,12 +97,12 @@ public class InformationSchema {
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
-        new IdColumnSchema(
+        new TagColumnSchema(
             ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     columnTable.addColumnSchema(
-        new IdColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     columnTable.addColumnSchema(
-        new IdColumnSchema(ColumnHeaderConstant.COLUMN_NAME_TABLE_MODEL, TSDataType.STRING));
+        new TagColumnSchema(ColumnHeaderConstant.COLUMN_NAME_TABLE_MODEL, TSDataType.STRING));
     columnTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.DATATYPE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));

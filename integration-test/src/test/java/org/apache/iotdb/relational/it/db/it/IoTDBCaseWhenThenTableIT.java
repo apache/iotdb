@@ -53,9 +53,9 @@ public class IoTDBCaseWhenThenTableIT {
         // normal cases
         "CREATE DATABASE " + DATABASE,
         "Use " + DATABASE,
-        "CREATE table table1 (device_id STRING ID, s1 INT32 MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT)",
-        "CREATE table table2 (device_id STRING ID, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT)",
-        "CREATE table table3 (device_id STRING ID, s2 INT64 MEASUREMENT)",
+        "CREATE table table1 (device_id STRING TAG, s1 INT32 FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD)",
+        "CREATE table table2 (device_id STRING TAG, s3 FLOAT FIELD, s4 DOUBLE FIELD)",
+        "CREATE table table3 (device_id STRING TAG, s2 INT64 FIELD)",
         "INSERT INTO table1(time, device_id, s1) values(100, 'd1', 0)",
         "INSERT INTO table1(time, device_id, s1) values(200, 'd1', 11)",
         "INSERT INTO table1(time, device_id, s1) values(300, 'd1', 22)",

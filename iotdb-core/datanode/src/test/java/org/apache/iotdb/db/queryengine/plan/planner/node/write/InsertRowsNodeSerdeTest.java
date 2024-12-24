@@ -170,11 +170,11 @@ public class InsertRowsNodeSerdeTest {
               },
               false,
               new TsTableColumnCategory[] {
-                TsTableColumnCategory.ID,
+                TsTableColumnCategory.TAG,
                 TsTableColumnCategory.ATTRIBUTE,
-                TsTableColumnCategory.MEASUREMENT,
-                TsTableColumnCategory.MEASUREMENT,
-                TsTableColumnCategory.MEASUREMENT
+                TsTableColumnCategory.FIELD,
+                TsTableColumnCategory.FIELD,
+                TsTableColumnCategory.FIELD
               }),
           0);
 
@@ -189,9 +189,9 @@ public class InsertRowsNodeSerdeTest {
               new Object[] {2.0, false},
               false,
               new TsTableColumnCategory[] {
-                TsTableColumnCategory.ID,
+                TsTableColumnCategory.TAG,
                 TsTableColumnCategory.ATTRIBUTE,
-                TsTableColumnCategory.MEASUREMENT
+                TsTableColumnCategory.FIELD
               }),
           1);
 
@@ -236,11 +236,11 @@ public class InsertRowsNodeSerdeTest {
               },
               false,
               new TsTableColumnCategory[] {
-                TsTableColumnCategory.ID,
+                TsTableColumnCategory.TAG,
                 TsTableColumnCategory.ATTRIBUTE,
-                TsTableColumnCategory.MEASUREMENT,
-                TsTableColumnCategory.MEASUREMENT,
-                TsTableColumnCategory.MEASUREMENT
+                TsTableColumnCategory.FIELD,
+                TsTableColumnCategory.FIELD,
+                TsTableColumnCategory.FIELD
               }),
           0);
 
@@ -259,7 +259,7 @@ public class InsertRowsNodeSerdeTest {
               new Object[] {2.0, false},
               false,
               new TsTableColumnCategory[] {
-                TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE
+                TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE
               }),
           1);
 

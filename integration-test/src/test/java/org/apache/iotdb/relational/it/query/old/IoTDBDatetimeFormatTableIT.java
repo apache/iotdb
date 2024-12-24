@@ -55,7 +55,7 @@ public class IoTDBDatetimeFormatTableIT {
       statement.execute("create database " + DATABASE_NAME);
       statement.execute("use " + DATABASE_NAME);
       statement.execute(
-          "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 DOUBLE MEASUREMENT)");
+          "create table table1(device_id STRING TAG, s1 INT32 FIELD, s2 DOUBLE FIELD)");
     }
   }
 

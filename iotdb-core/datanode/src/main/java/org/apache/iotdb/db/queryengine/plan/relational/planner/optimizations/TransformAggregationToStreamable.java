@@ -38,7 +38,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -130,7 +130,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
               k -> {
                 ColumnSchema columnSchema = assignments.get(k);
                 if (columnSchema != null) {
-                  return columnSchema.getColumnCategory() == ID
+                  return columnSchema.getColumnCategory() == TAG
                       || columnSchema.getColumnCategory() == ATTRIBUTE;
                 }
                 return false;

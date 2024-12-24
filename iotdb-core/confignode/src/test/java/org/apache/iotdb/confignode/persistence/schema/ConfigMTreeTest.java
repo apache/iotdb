@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -336,10 +336,10 @@ public class ConfigMTreeTest {
 
       final String tableName = "table" + i;
       final TsTable table = new TsTable(tableName);
-      table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+      table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
       table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
       table.addColumnSchema(
-          new MeasurementColumnSchema(
+          new FieldColumnSchema(
               "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
 
       root.preCreateTable(pathList[i], table);

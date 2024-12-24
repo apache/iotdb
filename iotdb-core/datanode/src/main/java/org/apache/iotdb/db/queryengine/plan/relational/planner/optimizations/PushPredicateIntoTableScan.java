@@ -79,7 +79,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
@@ -378,7 +378,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         if (TIME.equals(columnSchema.getColumnCategory())) {
           measurementColumnNames.add(columnSymbol.getName());
           timeColumnName = columnSymbol.getName();
-        } else if (MEASUREMENT.equals(columnSchema.getColumnCategory())) {
+        } else if (FIELD.equals(columnSchema.getColumnCategory())) {
           measurementColumnNames.add(columnSymbol.getName());
         } else {
           idOrAttributeColumnNames.add(columnSymbol.getName());

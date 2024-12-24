@@ -424,7 +424,7 @@ public class ConvertPredicateToFilterVisitor
 
     public boolean isMeasurementColumn(SymbolReference symbolReference) {
       ColumnSchema schema = schemaMap.get(Symbol.from(symbolReference));
-      return schema != null && schema.getColumnCategory() == TsTableColumnCategory.MEASUREMENT;
+      return schema != null && schema.getColumnCategory() == TsTableColumnCategory.FIELD;
     }
   }
 }

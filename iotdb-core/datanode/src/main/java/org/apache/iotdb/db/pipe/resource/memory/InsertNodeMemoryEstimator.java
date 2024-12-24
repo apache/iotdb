@@ -514,7 +514,7 @@ public class InsertNodeMemoryEstimator {
     long size = SIZE_OF_ARRAYLIST;
     size += NUM_BYTES_ARRAY_HEADER;
     for (TsTableColumnCategory columnCategory : columnCategories) {
-      if (columnCategory != null && columnCategory.equals(TsTableColumnCategory.ID)) {
+      if (columnCategory != null && columnCategory.equals(TsTableColumnCategory.TAG)) {
         size += SIZE_OF_INT + NUM_BYTES_OBJECT_REF;
       }
     }

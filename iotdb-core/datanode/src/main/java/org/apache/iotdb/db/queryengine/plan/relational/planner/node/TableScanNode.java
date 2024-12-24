@@ -43,7 +43,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 
 public abstract class TableScanNode extends SourceNode {
@@ -125,7 +125,7 @@ public abstract class TableScanNode extends SourceNode {
             metadata.getTableSchema(session, qualifiedObjectName).orElse(null))
         .getColumns()
         .stream()
-        .filter(columnSchema -> columnSchema.getColumnCategory() == TsTableColumnCategory.ID)
+        .filter(columnSchema -> columnSchema.getColumnCategory() == TsTableColumnCategory.TAG)
         .map(columnSchema -> Symbol.of(columnSchema.getName()))
         .collect(Collectors.toList());
   }
@@ -133,8 +133,7 @@ public abstract class TableScanNode extends SourceNode {
   public boolean isMeasurementOrTimeColumn(Symbol symbol) {
     ColumnSchema columnSchema = assignments.get(symbol);
     return columnSchema != null
-        && (columnSchema.getColumnCategory() == MEASUREMENT
-            || columnSchema.getColumnCategory() == TIME);
+        && (columnSchema.getColumnCategory() == FIELD || columnSchema.getColumnCategory() == TIME);
   }
 
   public boolean isTimeColumn(Symbol symbol) {

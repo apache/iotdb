@@ -47,9 +47,9 @@ public class InsertTabletTest {
         new String[] {"deviceId_1", "deviceId_2", "attr1", "attr2", "measurement"});
     innerStmt.setColumnCategories(
         new TsTableColumnCategory[] {
-          TsTableColumnCategory.ID, TsTableColumnCategory.ID,
+          TsTableColumnCategory.TAG, TsTableColumnCategory.TAG,
           TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.ATTRIBUTE,
-          TsTableColumnCategory.MEASUREMENT
+          TsTableColumnCategory.FIELD
         });
     innerStmt.setDataTypes(
         new TSDataType[] {

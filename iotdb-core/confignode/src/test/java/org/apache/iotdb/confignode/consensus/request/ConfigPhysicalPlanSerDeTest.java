@@ -50,8 +50,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -1145,7 +1145,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new AddTableColumnPlan(
             "database1",
             "table1",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
             false);
     final AddTableColumnPlan addTableColumnPlan1 =
         (AddTableColumnPlan)
@@ -1173,10 +1173,10 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void preCreateTablePlanTest() throws IOException {
     final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("database1", table);
     final PreCreateTablePlan preCreateTablePlan1 =

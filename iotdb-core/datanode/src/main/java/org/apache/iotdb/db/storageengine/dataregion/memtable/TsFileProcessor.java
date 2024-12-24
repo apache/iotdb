@@ -750,8 +750,7 @@ public class TsFileProcessor {
         // Skip failed Measurements
         if (dataTypes[i] == null
             || measurements[i] == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -810,7 +809,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
           increasingMemTableInfo
@@ -834,7 +833,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
 
@@ -873,7 +872,7 @@ public class TsFileProcessor {
         if (dataTypes[i] == null
             || measurements[i] == null
             || (insertRowNode.getColumnCategories() != null
-                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
         // TEXT data mem size
@@ -1013,7 +1012,7 @@ public class TsFileProcessor {
       measurementColumnNum = dataTypes.length;
     } else {
       for (TsTableColumnCategory columnCategory : columnCategories) {
-        if (columnCategory == TsTableColumnCategory.MEASUREMENT) {
+        if (columnCategory == TsTableColumnCategory.FIELD) {
           measurementColumnNum++;
         }
       }
@@ -1047,8 +1046,7 @@ public class TsFileProcessor {
         if (dataType == null
             || column == null
             || measurement == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -1086,8 +1084,7 @@ public class TsFileProcessor {
       if (dataType == null
           || column == null
           || measurement == null
-          || (columnCategories != null
-              && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+          || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
         continue;
       }
 

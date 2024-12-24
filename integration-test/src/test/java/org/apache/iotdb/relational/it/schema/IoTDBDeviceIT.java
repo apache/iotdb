@@ -63,11 +63,11 @@ public class IoTDBDeviceIT {
       statement.execute("create database test");
       statement.execute("use test");
       statement.execute(
-          "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
       statement.execute(
-          "create table table0(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table table0(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
 
       // Test plain show / count
       TestUtils.assertResultSetEqual(
@@ -168,7 +168,7 @@ public class IoTDBDeviceIT {
         fail("Show devices shall fail for measurement predicate");
       } catch (final Exception e) {
         assertEquals(
-            "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
             e.getMessage());
       }
 
@@ -198,7 +198,7 @@ public class IoTDBDeviceIT {
 
       try {
         statement.execute("update table0 set device_id = '1'");
-        fail("Update shall fail for id");
+        fail("Update shall fail for tag");
       } catch (final Exception e) {
         assertEquals("701: Update can only specify attribute columns.", e.getMessage());
       }
@@ -245,7 +245,7 @@ public class IoTDBDeviceIT {
 
       // Test limit / offset from multi regions
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('2', '5', '3', 'A', 37.6, 111.1)");
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
@@ -255,9 +255,9 @@ public class IoTDBDeviceIT {
         statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
         TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
-        // Test successfully invalidate cache
+        // Test successfully invaltagate cache
         statement.execute(
-            "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+            "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
         TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
 
         // Test successfully delete data
@@ -266,10 +266,10 @@ public class IoTDBDeviceIT {
 
         try {
           statement.executeQuery("delete devices from table0 where time = 1");
-          fail("Delete devices shall fail when specifies non id column");
+          fail("Delete devices shall fail when specifies non tag column");
         } catch (final Exception e) {
           assertEquals(
-              "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+              "701: The TIME/FIELD columns are currently not allowed in devices related operations",
               e.getMessage());
         }
       }

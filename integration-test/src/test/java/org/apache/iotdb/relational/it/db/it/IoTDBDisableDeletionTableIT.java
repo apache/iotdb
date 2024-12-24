@@ -68,7 +68,7 @@ public class IoTDBDisableDeletionTableIT {
       statement.execute("create database test");
       statement.execute("use test");
       statement.execute(
-          "CREATE TABLE vehicle1(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)");
+          "CREATE TABLE vehicle1(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
 
       statement.execute("insert into vehicle1(time, deviceId, s0) values (10, 'd0', 310)");
       statement.execute("insert into vehicle1(time, deviceId, s3) values (10, 'd0','text')");

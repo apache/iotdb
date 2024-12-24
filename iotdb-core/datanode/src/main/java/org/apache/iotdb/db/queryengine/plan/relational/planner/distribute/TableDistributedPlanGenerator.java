@@ -809,7 +809,7 @@ public class TableDistributedPlanGenerator
         break;
       }
       if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
-          == TsTableColumnCategory.ID) {
+          == TsTableColumnCategory.TAG) {
         // segments[0] is always tableName
         orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
       } else {

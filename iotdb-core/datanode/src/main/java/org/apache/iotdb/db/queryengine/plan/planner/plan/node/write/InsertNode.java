@@ -159,15 +159,13 @@ public abstract class InsertNode extends SearchNode {
       return measurements.length;
     }
     return (int)
-        Arrays.stream(columnCategories)
-            .filter(col -> col == TsTableColumnCategory.MEASUREMENT)
-            .count();
+        Arrays.stream(columnCategories).filter(col -> col == TsTableColumnCategory.FIELD).count();
   }
 
   public boolean isValidMeasurement(int i) {
     return measurementSchemas != null
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT);
+        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
   }
 
   public void setMeasurements(String[] measurements) {
@@ -380,7 +378,7 @@ public abstract class InsertNode extends SearchNode {
     if (columnCategories != null) {
       idColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
           idColumnIndices.add(i);
         }
       }
