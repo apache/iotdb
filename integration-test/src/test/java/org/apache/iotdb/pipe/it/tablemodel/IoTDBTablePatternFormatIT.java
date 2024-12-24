@@ -595,7 +595,7 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
           receiverEnv,
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.emptySet(),
+          Collections.singleton("information_schema,INF,null,null,null,"),
           (String) null);
     }
   }

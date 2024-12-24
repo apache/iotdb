@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.pipe.config.constant;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class PipeRPCMessageConstant {
+  // These two message are used in multi-modules such as pipe and IoTV2
+  public static final String PIPE_ALREADY_EXIST_MSG =
+      "the pipe with the same name has been created";
+  public static final String PIPE_NOT_EXIST_MSG = "the pipe does not exist";
 
-public class LoadFileException extends IoTDBException {
-
-  public LoadFileException(String message) {
-    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-  }
-
-  public LoadFileException(Exception exception) {
-    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  private PipeRPCMessageConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

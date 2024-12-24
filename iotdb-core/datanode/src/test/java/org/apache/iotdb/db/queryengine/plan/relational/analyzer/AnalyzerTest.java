@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -974,7 +973,7 @@ public class AnalyzerTest {
     assertTrue(
         getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4)
             instanceof CollectNode);
-    CollectNode collectNode =
+    final CollectNode collectNode =
         (CollectNode)
             getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(collectNode.getChildren().get(1) instanceof DeviceTableScanNode);
@@ -1030,7 +1029,7 @@ public class AnalyzerTest {
         new TableDistributedPlanner(
             analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
     distributedQueryPlan = distributionPlanner.plan();
-    List<PlanFragment> fragments = distributedQueryPlan.getFragments();
+    final List<PlanFragment> fragments = distributedQueryPlan.getFragments();
     identitySinkNode = (IdentitySinkNode) fragments.get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 3) instanceof LimitNode);
     assertTrue(getChildrenNode(identitySinkNode, 4) instanceof DeviceTableScanNode);
@@ -1104,27 +1103,27 @@ public class AnalyzerTest {
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-        int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
-        String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
-        SeriesPartitionExecutor seriesPartitionExecutor =
+          final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
+        final int seriesSlotNum = StatementTestUtils.TEST_SERIES_SLOT_NUM;
+        final String partitionExecutorName = StatementTestUtils.TEST_PARTITION_EXECUTOR;
+        final SeriesPartitionExecutor seriesPartitionExecutor =
             SeriesPartitionExecutor.getSeriesPartitionExecutor(
                 partitionExecutorName, seriesSlotNum);
 
-        Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        final Map<
+                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
             dataPartitionMap = new HashMap<>();
 
-        for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-          String databaseName = dataPartitionQueryParam.getDatabaseName();
-          assertEquals("root." + sessionInfo.getDatabaseName().get(), databaseName);
-          databaseName = PathUtils.qualifyDatabaseName(databaseName);
+        for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+          final String databaseName = dataPartitionQueryParam.getDatabaseName();
+          assertEquals(sessionInfo.getDatabaseName().get(), databaseName);
 
-          String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
+          final String tableName = dataPartitionQueryParam.getDeviceID().getTableName();
           assertEquals(StatementTestUtils.tableName(), tableName);
 
-          TSeriesPartitionSlot partitionSlot =
+          final TSeriesPartitionSlot partitionSlot =
               seriesPartitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
-          for (TTimePartitionSlot tTimePartitionSlot :
+          for (final TTimePartitionSlot tTimePartitionSlot :
               dataPartitionQueryParam.getTimePartitionSlotList()) {
             dataPartitionMap
                 .computeIfAbsent(databaseName, d -> new HashMap<>())
@@ -1162,7 +1161,7 @@ public class AnalyzerTest {
             analysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(3, partitionSlotMapMap.size());
 
     SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -1195,9 +1194,9 @@ public class AnalyzerTest {
 
   @Test
   public void analyzeInsertRow() {
-    Metadata mockMetadata = mockMetadataForInsertion();
+    final Metadata mockMetadata = mockMetadataForInsertion();
 
-    InsertRowStatement insertStatement = StatementTestUtils.genInsertRowStatement(true);
+    final InsertRowStatement insertStatement = StatementTestUtils.genInsertRowStatement(true);
     context = new MPPQueryContext("", queryId, sessionInfo, null, null);
     analysis =
         analyzeStatement(
@@ -1207,26 +1206,28 @@ public class AnalyzerTest {
             new SqlParser(),
             sessionInfo);
     assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+    assertEquals(1, analysis.getDataPartition().getDataPartitionMap().size());
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         partitionSlotMapMap =
             analysis
                 .getDataPartition()
                 .getDataPartitionMap()
-                .get(PathUtils.qualifyDatabaseName(sessionInfo.getDatabaseName().orElse(null)));
+                .get(sessionInfo.getDatabaseName().orElse(null));
     assertEquals(1, partitionSlotMapMap.size());
 
-    SymbolAllocator symbolAllocator = new SymbolAllocator();
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
     logicalQueryPlan =
         new TableLogicalPlanner(
                 context, mockMetadata, sessionInfo, symbolAllocator, WarningCollector.NOOP)
             .plan(analysis);
-    RelationalInsertRowNode insertNode = (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
+    final RelationalInsertRowNode insertNode =
+        (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
-    Object[] columns = StatementTestUtils.genValues(0);
+    final Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
-            new String[] {StatementTestUtils.tableName(), ((Binary) columns[0]).toString()}),
+            new String[] {StatementTestUtils.tableName(), columns[0].toString()}),
         insertNode.getDeviceID());
 
     assertArrayEquals(columns, insertNode.getValues());

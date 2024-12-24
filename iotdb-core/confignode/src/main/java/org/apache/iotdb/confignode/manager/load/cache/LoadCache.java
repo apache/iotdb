@@ -99,7 +99,7 @@ public class LoadCache {
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
-  public void initHeartbeatCache(IManager configManager) {
+  public void initHeartbeatCache(final IManager configManager) {
     initNodeHeartbeatCache(
         configManager.getNodeManager().getRegisteredConfigNodes(),
         configManager.getNodeManager().getRegisteredDataNodes(),
@@ -551,22 +551,6 @@ public class LoadCache {
     return Optional.ofNullable((DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId))
         .map(DataNodeHeartbeatCache::getFreeDiskSpace)
         .orElse(0d);
-  }
-
-  /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
-            result.put(dataNodeId, heartbeatCache.getLoadScore());
-          }
-        });
-    return result;
   }
 
   /**

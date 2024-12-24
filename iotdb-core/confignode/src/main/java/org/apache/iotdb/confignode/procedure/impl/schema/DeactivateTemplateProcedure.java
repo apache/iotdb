@@ -223,7 +223,7 @@ public class DeactivateTemplateProcedure
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree, false);
+        env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree);
 
     // target timeSeries has no data or no target timeSeries, return directly
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {

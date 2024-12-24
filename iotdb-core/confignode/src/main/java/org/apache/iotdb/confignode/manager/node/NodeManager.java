@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -362,11 +361,8 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
-    List<TConsensusGroupId> consensusGroupIds =
-        getPartitionManager().getAllReplicaSets(nodeId).stream()
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    resp.setConsensusGroupIds(consensusGroupIds);
+
+    resp.setCorrectConsensusGroups(getPartitionManager().getAllReplicaSets(nodeId));
     return resp;
   }
 

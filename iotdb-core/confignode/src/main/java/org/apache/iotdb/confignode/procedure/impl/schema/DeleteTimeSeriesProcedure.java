@@ -235,7 +235,7 @@ public class DeleteTimeSeriesProcedure
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(patternTree, false);
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
 
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
