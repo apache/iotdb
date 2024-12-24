@@ -188,10 +188,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.TAG,
-              ColumnCategory.FIELD,
-              ColumnCategory.FIELD,
-              ColumnCategory.FIELD);
+              ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD, ColumnCategory.FIELD);
       Tablet tablet =
           new Tablet(
               "sg6",
