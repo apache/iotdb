@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @SuppressWarnings("java:S2175")
 public class TsFileValidationScan extends TsFileSequenceScan {
@@ -128,11 +129,11 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     FileLastTimeInfo fileNameLastTimePair =
         deviceEndTime.computeIfAbsent(currDeviceID, k -> new FileLastTimeInfo());
     if (!currDeviceID.equals(EMPTY_DEVICE_ID)) {
-      long endTime = resource.getEndTime(currDeviceID);
+      Optional<Long> endTime = resource.getEndTime(currDeviceID);
       // record the end time of last device in current file
-      if (endTime > fileNameLastTimePair.lastTime) {
+      if (endTime.isPresent() && endTime.get() > fileNameLastTimePair.lastTime) {
         fileNameLastTimePair.lastFileName = file.getName();
-        fileNameLastTimePair.endTimeInLastFile = endTime;
+        fileNameLastTimePair.endTimeInLastFile = endTime.get();
       }
     }
 
@@ -140,7 +141,8 @@ public class TsFileValidationScan extends TsFileSequenceScan {
 
     fileNameLastTimePair = deviceEndTime.computeIfAbsent(currDeviceID, k -> new FileLastTimeInfo());
     if (!Boolean.TRUE.equals(hasCheckedDeviceOverlap.getOrDefault(currDeviceID, false))
-        && resource.getStartTime(currDeviceID) <= fileNameLastTimePair.endTimeInLastFile) {
+        && resource.getStartTime(currDeviceID).isPresent()
+        && resource.getStartTime(currDeviceID).get() <= fileNameLastTimePair.endTimeInLastFile) {
       // device overlap, find bad file
       recordDeviceOverlap(fileNameLastTimePair.lastFileName);
     }
