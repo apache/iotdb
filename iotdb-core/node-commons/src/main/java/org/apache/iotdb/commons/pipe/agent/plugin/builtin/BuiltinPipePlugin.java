@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.export.ExportTsFileConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.consensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
@@ -87,6 +88,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
+  EXPORT_TSFILE_CONNECTOR("export-tsfile-connector", ExportTsFileConnector.class),
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
@@ -100,6 +102,7 @@ public enum BuiltinPipePlugin {
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
   PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncConnector.class),
+  EXPORT_TSFILE_SINK("export-tsfile-sink", ExportTsFileConnector.class),
   ;
 
   private final String pipePluginName;
@@ -155,6 +158,7 @@ public enum BuiltinPipePlugin {
                   OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  EXPORT_TSFILE_CONNECTOR.getPipePluginName().toUpperCase(),
                   // Sinks
                   IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
@@ -163,5 +167,6 @@ public enum BuiltinPipePlugin {
                   OPC_UA_SINK.getPipePluginName().toUpperCase(),
                   WRITE_BACK_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
-                  PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase())));
+                  PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase(),
+                  EXPORT_TSFILE_SINK.getPipePluginName().toUpperCase())));
 }
