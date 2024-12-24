@@ -109,7 +109,7 @@ public class CheckSchemaPredicateVisitor
     if (schema.getColumnCategory() == TsTableColumnCategory.TIME
         || schema.getColumnCategory() == TsTableColumnCategory.FIELD) {
       throw new SemanticException(
-          "The TIME/MEASUREMENT columns are currently not allowed in devices related operations");
+          "The TIME/FIELD columns are currently not allowed in devices related operations");
     }
     return schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }

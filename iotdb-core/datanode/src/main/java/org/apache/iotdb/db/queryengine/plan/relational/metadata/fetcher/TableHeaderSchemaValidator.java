@@ -283,7 +283,7 @@ public class TableHeaderSchemaValidator {
       case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
-              "DataType of ID Column should only be STRING, current is " + dataType);
+              "DataType of TAG Column should only be STRING, current is " + dataType);
         }
         return new TagColumnSchema(columnName, dataType);
       case ATTRIBUTE:
