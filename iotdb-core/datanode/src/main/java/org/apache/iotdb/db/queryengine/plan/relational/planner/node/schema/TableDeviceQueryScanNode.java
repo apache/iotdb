@@ -40,6 +40,8 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
   // -1 when unlimited
   private final long limit;
 
+  private final boolean needAligned;
+
   public TableDeviceQueryScanNode(
       final PlanNodeId planNodeId,
       final String database,
@@ -48,7 +50,8 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TDataNodeLocation senderLocation,
-      final long limit) {
+      final long limit,
+      final boolean needAligned) {
     super(
         planNodeId,
         database,
@@ -58,10 +61,15 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         columnHeaderList,
         senderLocation);
     this.limit = limit;
+    this.needAligned = needAligned;
   }
 
   public long getLimit() {
     return limit;
+  }
+
+  public boolean isNeedAligned() {
+    return needAligned;
   }
 
   @Override
@@ -84,19 +92,22 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         senderLocation,
-        limit);
+        limit,
+        needAligned);
   }
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
+    ReadWriteIOUtils.write(needAligned, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
     ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(needAligned, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {

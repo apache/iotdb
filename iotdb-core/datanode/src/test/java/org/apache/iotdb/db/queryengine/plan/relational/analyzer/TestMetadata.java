@@ -37,7 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -93,7 +93,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class TestMatadata implements Metadata {
+public class TestMetadata implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
@@ -151,7 +151,7 @@ public class TestMatadata implements Metadata {
                       .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
                       .build()));
       Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
-      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }
@@ -284,7 +284,7 @@ public class TestMatadata implements Metadata {
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
             new AlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()),
-            new NonAlignedAlignedDeviceEntry(
+            new NonAlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_4), ImmutableList.of()));
       }
 

@@ -356,7 +356,8 @@ public class TableLogicalPlanner {
             null,
             statement.getColumnHeaderList(),
             null,
-            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1);
+            Objects.isNull(statement.getIdFuzzyPredicate()) ? pushDownLimit : -1,
+            statement.needAligned());
 
     // put the column type info into symbolAllocator to generate TypeProvider
     statement

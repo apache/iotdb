@@ -17,11 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.commons.schema.table;
 
-public enum RenameTableColumnState {
-  COLUMN_CHECK,
-  PRE_RELEASE,
-  RENAME_COLUMN,
-  COMMIT_RELEASE
+public class TreeViewSchema {
+  public static final String TREE_VIEW_DATABASE = "tree_view_db";
+  public static final String DEVICE_VIEW_SUFFIX = ".device_view";
+  public static final String ORIGINAL_NAME = "__original_name";
+  public static final String TREE_DATABASE = "__tree_database";
+  public static final String DEFAULT_ID_PREFIX = "tag_";
+
+  public static boolean isTreeViewDatabase(final String database) {
+    return TREE_VIEW_DATABASE.equals(database);
+  }
+
+  private TreeViewSchema() {
+    // Private constructor
+  }
 }
