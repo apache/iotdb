@@ -301,7 +301,7 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 VALUES ('%s', '%s', '%s', '%s', %f)",
                       "tag:" + 100, "tag:" + 100, "tag:" + 100, "attr:" + 100, 100 * 1.0)));
 
-      // invaltag conversion - tag column
+      // Invalid conversion - tag column
       assertThrows(
           StatementExecutionException.class,
           () ->
@@ -310,7 +310,7 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
                       100, 100, "attr:" + 100, 100 * 1.0)));
 
-      // invaltag conversion - attr column
+      // Invalid conversion - attr column
       assertThrows(
           StatementExecutionException.class,
           () ->
@@ -319,7 +319,7 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
                       100, "tag:" + 100, 100, 100 * 1.0)));
 
-      // invaltag conversion - field column
+      // Invalid conversion - field column
       assertThrows(
           StatementExecutionException.class,
           () ->

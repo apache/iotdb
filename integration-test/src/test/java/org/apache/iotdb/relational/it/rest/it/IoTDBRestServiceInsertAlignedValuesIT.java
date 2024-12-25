@@ -309,7 +309,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
                 "t1",
                 "insert into sg9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)"));
     assertEquals(
-        "700: line 1:58: Invaltag numeric literal: 271840880000000000000000",
+        "700: line 1:58: Invalid numeric literal: 271840880000000000000000",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
   }
 

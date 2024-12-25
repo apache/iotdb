@@ -332,7 +332,7 @@ public class IoTDBDeletionTableIT {
         assertEquals(250, cnt);
       }
 
-      // invaltag deletion, d1 not exists
+      // Invalid deletion, d1 not exists
       statement.execute("DELETE FROM vehicle6 WHERE time <= 200 and deviceId = 'd1'");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle6")) {
         int cnt = 0;

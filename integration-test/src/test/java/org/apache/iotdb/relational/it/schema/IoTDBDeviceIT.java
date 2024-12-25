@@ -255,7 +255,7 @@ public class IoTDBDeviceIT {
         statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
         TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
-        // Test successfully invaltagate cache
+        // Test successfully Invalidate cache
         statement.execute(
             "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
         TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);

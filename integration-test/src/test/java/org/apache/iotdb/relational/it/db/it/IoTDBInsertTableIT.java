@@ -322,14 +322,14 @@ public class IoTDBInsertTableIT {
         fail("expected exception");
       } catch (SQLException e) {
         assertEquals(
-            "701: Cannot insert tagentifier NaN, please use string literal", e.getMessage());
+            "701: Cannot insert identifier NaN, please use string literal", e.getMessage());
       }
       try {
         statement.execute("insert into sg8(tag1,time,s1,s2) values('d2',1,\"NaN\",\"NaN\")");
         fail("expected exception");
       } catch (SQLException e) {
         assertEquals(
-            "701: Cannot insert tagentifier \"NaN\", please use string literal", e.getMessage());
+            "701: Cannot insert identifier \"NaN\", please use string literal", e.getMessage());
       }
 
       statement.execute("insert into sg8(tag1,time,s1,s2) values('d2',1,'NaN','NaN')");

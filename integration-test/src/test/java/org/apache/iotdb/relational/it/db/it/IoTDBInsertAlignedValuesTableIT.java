@@ -327,7 +327,8 @@ public class IoTDBInsertAlignedValuesTableIT {
       fail();
     } catch (SQLException e) {
       assertTrue(
-          e.getMessage(), e.getMessage().contains("Insertion contains duplicated field: status"));
+          e.getMessage(),
+          e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
 
@@ -356,7 +357,7 @@ public class IoTDBInsertAlignedValuesTableIT {
       fail("Exception expected");
     } catch (SQLException e) {
       assertEquals(
-          "700: line 1:58: Invaltag numeric literal: 271840880000000000000000", e.getMessage());
+          "700: line 1:58: Invalid numeric literal: 271840880000000000000000", e.getMessage());
     }
   }
 
