@@ -296,7 +296,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
                 "t1",
                 "insert into sg8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)"));
     assertEquals(
-        "507: Fail to insert fields [s1, s2] caused by [data type is not consistent, input 12.11, registered INT32, data type is not consistent, input false, registered INT32]",
+        "507: Fail to insert measurements [s1, s2] caused by [data type is not consistent, input 12.11, registered INT32, data type is not consistent, input false, registered INT32]",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
   }
 
