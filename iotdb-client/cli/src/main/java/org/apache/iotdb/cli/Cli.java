@@ -220,7 +220,7 @@ public class Cli extends AbstractCli {
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
-      s = ctx.getLineReader().readLine(IOTDB_CLI_PREFIX + "> ", null);
+      s = ctx.getLineReader().readLine(cliPrefix + "> ", null);
       boolean continues = processCommand(ctx, s, connection);
       if (!continues) {
         return true;

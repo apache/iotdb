@@ -102,7 +102,7 @@ public abstract class AbstractCli {
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
   static final String IOTDB = "IoTDB";
-  static String IOTDB_CLI_PREFIX = IOTDB;
+  static String cliPrefix = IOTDB;
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
@@ -888,7 +888,10 @@ public abstract class AbstractCli {
     if (!Objects.equals(usingDatabase, database)) {
       usingDatabase = database;
       if (sqlDialect != null && Model.TABLE.name().equals(sqlDialect.toUpperCase())) {
-        IOTDB_CLI_PREFIX = IOTDB + ":" + database;
+        cliPrefix = IOTDB;
+        if (database != null) {
+          cliPrefix += ":" + database;
+        }
       }
     }
   }
