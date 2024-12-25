@@ -57,7 +57,7 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
+          ./mvnw clean verify \
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
@@ -119,7 +119,7 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
+          ./mvnw clean verify \
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
@@ -160,7 +160,7 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
+          ./mvnw clean verify \
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
