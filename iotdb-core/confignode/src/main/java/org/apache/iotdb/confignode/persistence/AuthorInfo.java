@@ -144,19 +144,17 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       status = false;
     }
-    if (status) {
-      try {
-        // Bring this user's permission information back to the datanode for caching
-        result = getUserPermissionInfo(username, ModelType.ALL);
-        result.setFailPos(failedList);
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      } catch (AuthException e) {
-        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-      }
-    } else {
-      result = AuthUtils.generateEmptyPermissionInfoResp();
+
+    try {
+      result = getUserPermissionInfo(username, ModelType.ALL);
       result.setFailPos(failedList);
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+      if (status) {
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+      }
+    } catch (AuthException e) {
+      result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
     }
     return result;
   }
@@ -498,66 +496,41 @@ public class AuthorInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) throws AuthException {
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
+      throws AuthException {
     User user = authorizer.getUser(username);
     TPermissionInfoResp resp = new TPermissionInfoResp();
     boolean status = false;
-    PrivilegeType type = PrivilegeType.values()[permission];
     if (user == null) {
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
       return resp;
     }
-    try {
-      if (type.isPathPrivilege()) {
-        for (PartialPath path : paths) {
-          if (user.checkPathPrivilegeGrantOpt(path, type)) {
-            status = true;
-            continue;
-          }
-          if (!status) {
-            for (String roleName : user.getRoleSet()) {
-              Role role = authorizer.getRole(roleName);
-              if (role.checkPathPrivilegeGrantOpt(path, type)) {
-                status = true;
-                break;
-              }
-            }
-          }
-          if (!status) {
+    switch (union.getModelType()) {
+      case TREE:
+        for (PartialPath path : union.getPaths()) {
+          if (!authorizer.checkUserPrivilegeGrantOption(
+              username, new PrivilegeUnion(path, union.getPrivilegeType()))) {
+            status = false;
             break;
           }
         }
-      } else {
-        if (user.checkSysPriGrantOpt(type)) {
-          status = true;
-        }
-        if (!status) {
-          for (String roleName : user.getRoleSet()) {
-            Role role = authorizer.getRole(roleName);
-            if (role.checkSysPriGrantOpt(type)) {
-              status = true;
-              break;
-            }
-          }
-        }
-      }
-    } catch (AuthException e) {
-      status = false;
-    }
-    if (status) {
-      try {
-        // Bring this user's permission information back to the datanode for caching
-        resp = getUserPermissionInfo(username, ModelType.ALL);
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      } catch (AuthException e) {
-        resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-      }
-    } else {
-      resp = AuthUtils.generateEmptyPermissionInfoResp();
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+        break;
+      case RELATIONAL:
+      case SYSTEM:
+        status = authorizer.checkUserPrivilegeGrantOption(username, union);
     }
 
+    try {
+      // Bring this user's permission information back to the datanode for caching
+      resp = getUserPermissionInfo(username, ModelType.ALL);
+      if (status) {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+      }
+    } catch (AuthException e) {
+      resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+    }
     return resp;
   }
 

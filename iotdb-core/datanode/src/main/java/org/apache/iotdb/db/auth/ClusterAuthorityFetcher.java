@@ -236,8 +236,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         username,
         new PrivilegeUnion(database, permission, true),
         (role, union) ->
-            role.checkObjectPrivilegeGrantOpt(
-                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
+            role.checkDatabasePrivilegeGrantOption(union.getDBName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
                 username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
             .setUsername(database));
@@ -267,7 +266,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         username,
         new PrivilegeUnion(database, table, permission, true),
         (role, union) ->
-            role.checkObjectPrivilegeGrantOpt(
+            role.checkTablePrivilegeGrantOption(
                 union.getDBName(), union.getTbName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
                 username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
@@ -462,6 +461,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       iAuthorCache.invalidAllCache();
     }
     cacheOutDate = false;
+  }
+
+  public void setAcceptCache(boolean acceptCache) {
+    this.acceptCache = acceptCache;
   }
 
   @Override

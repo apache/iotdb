@@ -40,10 +40,10 @@ public class AuthorRelationalWritePlan extends AuthorRelationalPlan {
       final String roleName,
       final String databaseName,
       final String tableName,
-      final boolean grantOpt,
       final int permission,
+      final boolean grantOpt,
       final String password) {
-    super(authorType, userName, roleName, databaseName, tableName, grantOpt, permission, password);
+    super(authorType, userName, roleName, databaseName, tableName, permission, grantOpt, password);
   }
 
   public AuthorRelationalWritePlan(AuthorRelationalPlan authorRelationalPlan) {
@@ -53,8 +53,8 @@ public class AuthorRelationalWritePlan extends AuthorRelationalPlan {
         authorRelationalPlan.getRoleName(),
         authorRelationalPlan.getDatabaseName(),
         authorRelationalPlan.getTableName(),
-        authorRelationalPlan.getGrantOpt(),
         authorRelationalPlan.getPermission(),
+        authorRelationalPlan.getGrantOpt(),
         authorRelationalPlan.getPassword());
   }
 

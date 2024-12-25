@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -119,9 +118,9 @@ public class PermissionManager {
     return authorInfo.generateAuthizedPTree(username, permission);
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) throws AuthException {
-    return authorInfo.checkUserPrivilegeGrantOpt(username, paths, permission);
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
+      throws AuthException {
+    return authorInfo.checkUserPrivilegeGrantOpt(username, union);
   }
 
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)

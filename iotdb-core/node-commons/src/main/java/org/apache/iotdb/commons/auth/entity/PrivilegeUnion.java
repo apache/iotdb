@@ -143,4 +143,8 @@ public class PrivilegeUnion {
   public boolean isForAny() {
     return this.forAny;
   }
+
+  public String toString() {
+    return "type :" + this.modelType;
+  }
 }
