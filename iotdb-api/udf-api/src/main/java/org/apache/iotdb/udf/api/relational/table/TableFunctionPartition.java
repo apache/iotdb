@@ -17,14 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational.table.specification;
+package org.apache.iotdb.udf.api.relational.table;
 
-import java.util.List;
+import org.apache.iotdb.udf.api.relational.access.Record;
 
-public interface TableFunctionSpecification {
-  String getName();
+import java.util.Iterator;
 
-  List<ArgumentSpecification> getArguments();
-
-  ReturnTypeSpecification getReturnTypeSpecification();
+public interface TableFunctionPartition extends Iterator<Record> {
+  int size();
 }

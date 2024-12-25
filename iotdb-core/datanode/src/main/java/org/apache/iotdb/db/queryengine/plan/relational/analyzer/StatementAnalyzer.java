@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.ArgumentsAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -161,16 +162,18 @@ import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.relational.table.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
 import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
-import org.apache.iotdb.udf.api.relational.table.specification.ArgumentSpecification;
-import org.apache.iotdb.udf.api.relational.table.specification.DescriptorArgumentSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.DescriptorParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
-import org.apache.iotdb.udf.api.relational.table.specification.ScalarArgumentSpecification;
-import org.apache.iotdb.udf.api.relational.table.specification.TableArgumentSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -211,7 +214,6 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
-import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -238,6 +240,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument.NULL_DESCRIPTOR;
+import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.GenericTable.GENERIC_TABLE;
+import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.OnlyPassThrough.ONLY_PASS_THROUGH;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
@@ -3144,8 +3148,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope visitTableFunctionInvocation(
-        TableFunctionInvocation node, Optional<Scope> context) {
+    public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
       //      TableFunctionMetadata tableFunctionMetadata = resolveTableFunction(node)
       //              .orElseThrow(() -> semanticException(FUNCTION_NOT_FOUND, node, "Table function
       // '%s' not registered", node.getName()));
@@ -3153,26 +3156,24 @@ public class StatementAnalyzer {
       //      ConnectorTableFunction function = tableFunctionMetadata.function();
       //      CatalogHandle catalogHandle = tableFunctionMetadata.catalogHandle();
 
-      //      Node errorLocation = node;
-      //      if (!node.getArguments().isEmpty()) {
-      //        errorLocation = node.getArguments().getFirst();
-      //      }
+      TableFunction function = metadata.getTableFunction(node.getName().toString());
+      Node errorLocation = node;
+      if (!node.getArguments().isEmpty()) {
+        errorLocation = node.getArguments().get(0);
+      }
 
       ArgumentsAnalysis argumentsAnalysis =
-          analyzeArguments(function.getArguments(), node.getArguments(), scope, errorLocation);
+          analyzeArguments(
+              function.getArgumentsSpecification(), node.getArguments(), scope, errorLocation);
       //
       //      ConnectorTransactionHandle transactionHandle =
       // transactionManager.getConnectorTransaction(session.getRequiredTransactionId(),
       // catalogHandle);
-      //      TableFunctionAnalysis functionAnalysis = function.analyze(
-      //              session.toConnectorSession(catalogHandle),
-      //              transactionHandle,
-      //              argumentsAnalysis.getPassedArguments(),
-      //              new InjectedConnectorAccessControl(accessControl, session.toSecurityContext(),
-      // catalogHandle.getCatalogName().toString()));
+      TableFunctionAnalysis functionAnalysis =
+          function.analyze(argumentsAnalysis.getPassedArguments());
 
       if (node.getCopartitioning().size() != 0) {
-        // TODO: support copartition in future
+        // TODO(UDF): support copartition in future
         throw new SemanticException("Copartitioning is not supported now.");
       }
 
@@ -3183,124 +3184,96 @@ public class StatementAnalyzer {
           || !argumentsAnalysis.getTableArgumentAnalyses().isEmpty()) {
         analysis.addPolymorphicTableFunction(node);
       }
-      Optional<Descriptor> analyzedProperColumnsDescriptor = functionAnalysis.getReturnedType();
+      Optional<Descriptor> properColumns = function.getReturnProperColumns();
       Descriptor properColumnsDescriptor;
       if (returnTypeSpecification == ONLY_PASS_THROUGH) {
-        if (analysis.isAliased(node)) {
-          // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
-          // table alias is prohibited for a table function with ONLY PASS THROUGH returned type.
-          throw semanticException(
-              INVALID_TABLE_FUNCTION_INVOCATION,
-              node,
-              "Alias specified for table function with ONLY PASS THROUGH return type");
-        }
-        if (analyzedProperColumnsDescriptor.isPresent()) {
+        if (properColumns.isPresent()) {
           // If a table function has ONLY PASS THROUGH returned type, it does not produce any proper
           // columns,
           // so the function's analyze() method should not return the proper columns descriptor.
-          throw semanticException(
-              AMBIGUOUS_RETURN_TYPE,
-              node,
-              "Returned relation type for table function %s is ambiguous",
-              node.getName());
+          throw new SemanticException(
+              "A table function with ONLY_PASS_THROUGH return type must not return proper columns.");
         }
-        if (function.getArguments().stream()
-            .filter(TableArgumentSpecification.class::isInstance)
-            .map(TableArgumentSpecification.class::cast)
-            .noneMatch(TableArgumentSpecification::isPassThroughColumns)) {
+        if (function.getArgumentsSpecification().stream()
+            .filter(TableParameterSpecification.class::isInstance)
+            .map(TableParameterSpecification.class::cast)
+            .noneMatch(TableParameterSpecification::isPassThroughColumns)) {
           // According to SQL standard ISO/IEC 9075-2, 10.4 <routine invocation>, p. 764,
           // if there is no generic table parameter that specifies PASS THROUGH, then number of
           // proper columns shall be positive.
           // For GENERIC_TABLE and DescribedTable returned types, this is enforced by the Descriptor
           // constructor, which requires positive number of fields.
           // Here we enforce it for the remaining returned type specification: ONLY_PASS_THROUGH.
-          throw new TrinoException(
-              FUNCTION_IMPLEMENTATION_ERROR,
+          throw new SemanticException(
               "A table function with ONLY_PASS_THROUGH return type must have a table argument with pass-through columns.");
         }
         properColumnsDescriptor = null;
       } else if (returnTypeSpecification == GENERIC_TABLE) {
-        // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
-        // table alias is mandatory for a polymorphic table function invocation which produces
-        // proper columns.
-        // We don't enforce this requirement.
         properColumnsDescriptor =
-            analyzedProperColumnsDescriptor.orElseThrow(
+            properColumns.orElseThrow(
                 () ->
-                    semanticException(
-                        MISSING_RETURN_TYPE,
-                        node,
-                        "Cannot determine returned relation type for table function %s",
-                        node.getName()));
+                    new SemanticException(
+                        String.format(
+                            "Cannot determine returned relation type for generic table function %s",
+                            node.getName())));
       } else { // returned type is statically declared at function declaration
-        // According to SQL standard ISO/IEC 9075-2, 7.6 <table reference>, p. 409,
-        // table alias is mandatory for a polymorphic table function invocation which produces
-        // proper columns.
-        // We don't enforce this requirement.
-        if (analyzedProperColumnsDescriptor.isPresent()) {
-          // If a table function has statically declared returned type, it is returned in
-          // TableFunctionMetadata
-          // so the function's analyze() method should not return the proper columns descriptor.
-          throw semanticException(
-              AMBIGUOUS_RETURN_TYPE,
-              node,
-              "Returned relation type for table function %s is ambiguous",
-              node.getName());
-        }
-        properColumnsDescriptor = ((DescribedTable) returnTypeSpecification).getDescriptor();
+        // TODO(UDF): 如果是DescribedTable，结果在声明的时候就已经知道了。这边或许可以考虑和GENERIC_TABLE合并？
+        properColumnsDescriptor =
+            ((ReturnTypeSpecification.DescribedTable) returnTypeSpecification).getDescriptor();
       }
 
       // validate the required input columns
+      // <TableArgumentName, TableColumnIndexes>
+      // TODO(UDF): mock required function here
       Map<String, List<Integer>> requiredColumns = functionAnalysis.getRequiredColumns();
       Map<String, TableArgumentAnalysis> tableArgumentsByName =
           argumentsAnalysis.getTableArgumentAnalyses().stream()
               .collect(toImmutableMap(TableArgumentAnalysis::getArgumentName, Function.identity()));
-      Set<String> allInputs = ImmutableSet.copyOf(tableArgumentsByName.keySet());
+      Set<String> tableArgumentNameSet = ImmutableSet.copyOf(tableArgumentsByName.keySet());
       requiredColumns.forEach(
           (name, columns) -> {
-            if (!allInputs.contains(name)) {
-              throw new TrinoException(
-                  FUNCTION_IMPLEMENTATION_ERROR,
-                  format(
+            if (!tableArgumentNameSet.contains(name)) {
+              throw new SemanticException(
+                  String.format(
                       "Table function %s specifies required columns from table argument %s which cannot be found",
                       node.getName(), name));
             }
-            if (columns.isEmpty()) {
-              throw new TrinoException(
-                  FUNCTION_IMPLEMENTATION_ERROR,
-                  format(
-                      "Table function %s specifies empty list of required columns from table argument %s",
-                      node.getName(), name));
-            }
+            // TODO(UDF): 定义的时候需要确保 columns 不是empty且不为负数，不在这里二次确认了
+            //            if (columns.isEmpty()) {
+            //              throw new TrinoException(
+            //                  FUNCTION_IMPLEMENTATION_ERROR,
+            //                  format(
+            //                      "Table function %s specifies empty list of required columns from
+            // table argument %s",
+            //                      node.getName(), name));
+            //            }
             // the scope is recorded, because table arguments are already analyzed
             Scope inputScope = analysis.getScope(tableArgumentsByName.get(name).getRelation());
             columns.stream()
-                .filter(
-                    column ->
-                        column < 0 || column >= inputScope.getRelationType().getVisibleFieldCount())
+                .filter(column -> column >= inputScope.getRelationType().getVisibleFieldCount())
                 .findFirst()
                 .ifPresent(
                     column -> {
-                      throw new TrinoException(
-                          FUNCTION_IMPLEMENTATION_ERROR,
-                          format(
-                              "Invalid index: %s of required column from table argument %s",
-                              column, name));
+                      throw new SemanticException(
+                          String.format(
+                              "Index %s of required column from table argument %s is out of bounds for table with %s columns",
+                              column, name, inputScope.getRelationType().getAllFieldCount()));
                     });
             // record the required columns for access control
             columns.stream()
                 .map(inputScope.getRelationType()::getFieldByIndex)
                 .forEach(this::recordColumnAccess);
           });
+      // TODO(UDF)：我觉得requiredInputs应该是一定等于tableArgumentNameSet的。可以考虑让用户在定义的时候，一定要为每个table
+      // argument指定required columns？这个应该在注册的时候做检查。
       Set<String> requiredInputs = ImmutableSet.copyOf(requiredColumns.keySet());
-      allInputs.stream()
+      tableArgumentNameSet.stream()
           .filter(input -> !requiredInputs.contains(input))
           .findFirst()
           .ifPresent(
               input -> {
-                throw new TrinoException(
-                    FUNCTION_IMPLEMENTATION_ERROR,
-                    format(
+                throw new SemanticException(
+                    String.format(
                         "Table function %s does not specify required input columns from table argument %s",
                         node.getName(), input));
               });
@@ -3321,22 +3294,20 @@ public class StatementAnalyzer {
                 field ->
                     Field.newUnqualified(
                         field.getName(),
-                        field
-                            .getType()
-                            .orElseThrow(
-                                () ->
-                                    new IllegalStateException(
-                                        "missing returned type for proper field"))))
+                        UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                            field
+                                .getType()
+                                .orElseThrow(
+                                    () -> new SemanticException("Field type is not present."))),
+                        TsTableColumnCategory.MEASUREMENT))
             .forEach(fields::add);
       }
 
       // next, columns derived from table arguments, in order of argument declarations
       List<String> tableArgumentNames =
-          function.getArguments().stream()
-              .filter(
-                  argumentSpecification ->
-                      argumentSpecification instanceof TableArgumentSpecification)
-              .map(ArgumentSpecification::getName)
+          function.getArgumentsSpecification().stream()
+              .filter(TableParameterSpecification.class::isInstance)
+              .map(ParameterSpecification::getName)
               .collect(toImmutableList());
 
       // table arguments in order of argument declarations
@@ -3344,6 +3315,8 @@ public class StatementAnalyzer {
 
       for (String name : tableArgumentNames) {
         TableArgumentAnalysis argument = tableArgumentsByName.get(name);
+        // analyze arguments will make sure that all table arguments are present
+        checkArgument(argument != null, "Missing table argument: %s", name);
         orderedTableArguments.add(argument);
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
@@ -3358,32 +3331,29 @@ public class StatementAnalyzer {
       analysis.setTableFunctionAnalysis(
           node,
           new TableFunctionInvocationAnalysis(
-              catalogHandle,
-              function.getName(),
+              node.getName().toString(),
               argumentsAnalysis.getPassedArguments(),
               orderedTableArguments.build(),
-              functionAnalysis.getRequiredColumns(),
-              copartitioningLists,
-              properColumnsDescriptor == null ? 0 : properColumnsDescriptor.getFields().size(),
-              functionAnalysis.getHandle(),
-              transactionHandle));
+              requiredColumns,
+              properColumnsDescriptor == null ? 0 : properColumnsDescriptor.getFields().size()));
+      // TODO(UDF): 这里也许需要多一个TableFunctionConfiguration
 
       return createAndAssignScope(node, scope, fields.build());
     }
 
     private ArgumentsAnalysis analyzeArguments(
-        List<ArgumentSpecification> argumentSpecifications,
+        List<ParameterSpecification> parameterSpecifications,
         List<TableFunctionArgument> arguments,
         Optional<Scope> scope,
         Node errorLocation) {
-      if (argumentSpecifications.size() < arguments.size()) {
+      if (parameterSpecifications.size() < arguments.size()) {
         throw new SemanticException(
             String.format(
                 "Too many arguments. Expected at most %s arguments, got %s arguments",
-                argumentSpecifications.size(), arguments.size()));
+                parameterSpecifications.size(), arguments.size()));
       }
 
-      if (argumentSpecifications.isEmpty()) {
+      if (parameterSpecifications.isEmpty()) {
         return new ArgumentsAnalysis(ImmutableMap.of(), ImmutableList.of());
       }
 
@@ -3402,58 +3372,58 @@ public class StatementAnalyzer {
       // TODO(UDF): args passed positionally - can one only pass some prefix of args?
       // TODO(UDF): check at most one table argument passed
       if (argumentsPassedByName) {
-        Map<String, ArgumentSpecification> argumentSpecificationsByName = new HashMap<>();
-        for (ArgumentSpecification argumentSpecification : argumentSpecifications) {
+        Map<String, ParameterSpecification> argumentSpecificationsByName = new HashMap<>();
+        for (ParameterSpecification parameterSpecification : parameterSpecifications) {
           if (argumentSpecificationsByName.put(
-                  argumentSpecification.getName(), argumentSpecification)
+                  parameterSpecification.getName(), parameterSpecification)
               != null) {
             // this should never happen, because the argument names are validated at function
             // registration time
             throw new IllegalStateException(
-                "Duplicate argument specification for name: " + argumentSpecification.getName());
+                "Duplicate argument specification for name: " + parameterSpecification.getName());
           }
         }
         Set<String> uniqueArgumentNames = new HashSet<>();
         for (TableFunctionArgument argument : arguments) {
-          // it has been checked that all arguments have names
+          // it has been checked that all arguments have different names
           String argumentName = argument.getName().get().getCanonicalValue();
           if (!uniqueArgumentNames.add(argumentName)) {
             throw new SemanticException(String.format("Duplicate argument name: %s", argumentName));
           }
-          ArgumentSpecification argumentSpecification =
+          ParameterSpecification parameterSpecification =
               argumentSpecificationsByName.remove(argumentName);
-          if (argumentSpecification == null) {
+          if (parameterSpecification == null) {
             throw new SemanticException(
                 String.format("Unexpected argument name: %s", argumentName));
           }
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(argumentSpecification, argument, scope);
+              analyzeArgument(parameterSpecification, argument, scope);
           passedArguments.put(argumentName, argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
         // apply defaults for not specified arguments
-        for (Map.Entry<String, ArgumentSpecification> entry :
+        for (Map.Entry<String, ParameterSpecification> entry :
             argumentSpecificationsByName.entrySet()) {
-          ArgumentSpecification argumentSpecification = entry.getValue();
+          ParameterSpecification parameterSpecification = entry.getValue();
           passedArguments.put(
-              argumentSpecification.getName(),
-              analyzeDefault(argumentSpecification, errorLocation));
+              parameterSpecification.getName(),
+              analyzeDefault(parameterSpecification, errorLocation));
         }
       } else {
         for (int i = 0; i < arguments.size(); i++) {
           TableFunctionArgument argument = arguments.get(i);
-          ArgumentSpecification argumentSpecification = argumentSpecifications.get(i);
+          ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(argumentSpecification, argument, scope);
-          passedArguments.put(argumentSpecification.getName(), argumentAnalysis.getArgument());
+              analyzeArgument(parameterSpecification, argument, scope);
+          passedArguments.put(parameterSpecification.getName(), argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
         // apply defaults for not specified arguments
-        for (int i = arguments.size(); i < argumentSpecifications.size(); i++) {
-          ArgumentSpecification argumentSpecification = argumentSpecifications.get(i);
+        for (int i = arguments.size(); i < parameterSpecifications.size(); i++) {
+          ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
           passedArguments.put(
-              argumentSpecification.getName(),
-              analyzeDefault(argumentSpecification, errorLocation));
+              parameterSpecification.getName(),
+              analyzeDefault(parameterSpecification, errorLocation));
         }
       }
 
@@ -3461,7 +3431,7 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeArgument(
-        ArgumentSpecification argumentSpecification,
+        ParameterSpecification parameterSpecification,
         TableFunctionArgument argument,
         Optional<Scope> scope) {
       String actualType;
@@ -3478,31 +3448,31 @@ public class StatementAnalyzer {
                 argument.getClass().getSimpleName()));
       }
 
-      if (argumentSpecification instanceof TableArgumentSpecification) {
+      if (parameterSpecification instanceof TableParameterSpecification) {
         if (!(argument.getValue() instanceof TableFunctionTableArgument)) {
           throw new SemanticException(
               String.format(
                   "Invalid argument %s. Expected table argument, got %s",
-                  argumentSpecification.getName(), actualType));
+                  parameterSpecification.getName(), actualType));
         }
         return analyzeTableArgument(
             (TableFunctionTableArgument) argument.getValue(),
-            (TableArgumentSpecification) argumentSpecification,
+            (TableParameterSpecification) parameterSpecification,
             scope);
-      } else if (argumentSpecification instanceof DescriptorArgumentSpecification) {
+      } else if (parameterSpecification instanceof DescriptorParameterSpecification) {
         if (!(argument.getValue() instanceof TableFunctionDescriptorArgument)) {
           throw new SemanticException(
               String.format(
                   "Invalid argument %s. Expected descriptor argument, got %s",
-                  argumentSpecification.getName(), actualType));
+                  parameterSpecification.getName(), actualType));
         }
         return analyzeDescriptorArgument((TableFunctionDescriptorArgument) argument.getValue());
-      } else if (argumentSpecification instanceof ScalarArgumentSpecification) {
+      } else if (parameterSpecification instanceof ScalarParameterSpecification) {
         if (!(argument.getValue() instanceof Expression)) {
           throw new SemanticException(
               String.format(
                   "Invalid argument %s. Expected scalar argument, got %s",
-                  argumentSpecification.getName(), actualType));
+                  parameterSpecification.getName(), actualType));
         }
         // TODO(UDF):
         // 如果functionName是descriptor的话，会被解析成FunctionCall还是TableFunctionDescriptorArgument？
@@ -3514,17 +3484,18 @@ public class StatementAnalyzer {
         // function is not allowed as a table function argument");
         //        }
         return analyzeScalarArgument(
-            (Expression) argument.getValue(), (ScalarArgumentSpecification) argumentSpecification);
+            (Expression) argument.getValue(),
+            (ScalarParameterSpecification) parameterSpecification);
       } else {
         throw new IllegalStateException(
             "Unexpected argument specification: "
-                + argumentSpecification.getClass().getSimpleName());
+                + parameterSpecification.getClass().getSimpleName());
       }
     }
 
     private ArgumentAnalysis analyzeTableArgument(
         TableFunctionTableArgument tableArgument,
-        TableArgumentSpecification argumentSpecification,
+        TableParameterSpecification argumentSpecification,
         Optional<Scope> scope) {
       List<Optional<String>> fieldNames;
       List<org.apache.iotdb.udf.api.type.Type> fieldTypes;
@@ -3564,11 +3535,9 @@ public class StatementAnalyzer {
         analysisBuilder.withPartitionBy(partitionByExpression);
         partitionByExpression.forEach(
             partitioningColumn -> {
-              Type type = validateAndGetInputField(partitioningColumn, argumentScope).getType();
-              //          TODO:不确定下面两行能否用前一行语句替代
-              //          validateAndGetInputField(partitioningColumn, argumentScope);
-              //          Type type = analyzeExpression(partitioningColumn,
-              // argumentScope).getType(partitioningColumn);
+              validateAndGetInputField(partitioningColumn, argumentScope);
+              Type type =
+                  analyzeExpression(partitioningColumn, argumentScope).getType(partitioningColumn);
               if (!type.isComparable()) {
                 throw new SemanticException(
                     String.format(
@@ -3606,12 +3575,9 @@ public class StatementAnalyzer {
             .map(SortItem::getSortKey)
             .forEach(
                 orderingColumn -> {
-
-                  //          TODO:不确定下面两行能否用前一行语句替代
-                  //          validateAndGetInputField(partitioningColumn, argumentScope);
-                  //          Type type = analyzeExpression(partitioningColumn,
-                  // argumentScope).getType(partitioningColumn);
-                  Type type = validateAndGetInputField(orderingColumn, argumentScope).getType();
+                  validateAndGetInputField(orderingColumn, argumentScope);
+                  Type type =
+                      analyzeExpression(orderingColumn, argumentScope).getType(orderingColumn);
                   if (!type.isOrderable()) {
                     throw new SemanticException(
                         String.format(
@@ -3694,7 +3660,7 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeScalarArgument(
-        Expression expression, ScalarArgumentSpecification argumentSpecification) {
+        Expression expression, ScalarParameterSpecification argumentSpecification) {
       // currently, only constant arguments are supported
       Object constantValue =
           IrExpressionInterpreter.evaluateConstantExpression(
@@ -3710,34 +3676,34 @@ public class StatementAnalyzer {
     }
 
     private Argument analyzeDefault(
-        ArgumentSpecification argumentSpecification, Node errorLocation) {
-      if (argumentSpecification.isRequired()) {
+        ParameterSpecification parameterSpecification, Node errorLocation) {
+      if (parameterSpecification.isRequired()) {
         throw new SemanticException(
-            String.format("Missing required argument: %s", argumentSpecification.getName()));
+            String.format("Missing required argument: %s", parameterSpecification.getName()));
       }
       checkArgument(
-          !(argumentSpecification instanceof TableArgumentSpecification),
+          !(parameterSpecification instanceof TableParameterSpecification),
           "Table argument specification cannot have a default value.");
 
-      if (argumentSpecification instanceof DescriptorArgumentSpecification) {
-        if (argumentSpecification.getDefaultValue().isPresent()) {
+      if (parameterSpecification instanceof DescriptorParameterSpecification) {
+        if (parameterSpecification.getDefaultValue().isPresent()) {
           return new DescriptorArgument(
-              Optional.of((Descriptor) argumentSpecification.getDefaultValue().get()));
+              Optional.of((Descriptor) parameterSpecification.getDefaultValue().get()));
         } else {
           return NULL_DESCRIPTOR;
         }
-      } else if (argumentSpecification instanceof ScalarArgumentSpecification) {
+      } else if (parameterSpecification instanceof ScalarParameterSpecification) {
         checkArgument(
-            argumentSpecification.getDefaultValue().isPresent(),
+            parameterSpecification.getDefaultValue().isPresent(),
             String.format(
-                "Missing default value for scalar argument: %s", argumentSpecification.getName()));
+                "Missing default value for scalar argument: %s", parameterSpecification.getName()));
         return new ScalarArgument(
-            ((ScalarArgumentSpecification) argumentSpecification).getType(),
-            argumentSpecification.getDefaultValue().get());
+            ((ScalarParameterSpecification) parameterSpecification).getType(),
+            parameterSpecification.getDefaultValue().get());
       } else {
         throw new IllegalStateException(
             "Unexpected argument specification: "
-                + argumentSpecification.getClass().getSimpleName());
+                + parameterSpecification.getClass().getSimpleName());
       }
     }
 

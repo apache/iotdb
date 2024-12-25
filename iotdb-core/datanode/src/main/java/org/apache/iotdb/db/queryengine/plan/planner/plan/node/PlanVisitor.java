@@ -126,6 +126,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
@@ -769,5 +771,13 @@ public abstract class PlanVisitor<R, C> {
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
       C context) {
     return visitDeviceTableScan(node, context);
+  }
+
+  public R visitTableFunction(TableFunctionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableFunctionProcessor(TableFunctionProcessorNode node, C context) {
+    return visitPlan(node, context);
   }
 }

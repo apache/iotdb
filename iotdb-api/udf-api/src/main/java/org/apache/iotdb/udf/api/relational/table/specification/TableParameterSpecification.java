@@ -21,14 +21,14 @@ package org.apache.iotdb.udf.api.relational.table.specification;
 
 import java.util.Optional;
 
-public class TableArgumentSpecification extends ArgumentSpecification {
+public class TableParameterSpecification extends ParameterSpecification {
   // set semantics or row semantics (default is set semantics)
   private final boolean rowSemantics;
   // prune when empty or keep when empty (default is keep when empty)
   private final boolean pruneWhenEmpty;
   private final boolean passThroughColumns;
 
-  private TableArgumentSpecification(
+  private TableParameterSpecification(
       String name, boolean rowSemantics, boolean pruneWhenEmpty, boolean passThroughColumns) {
     // table arguments are always required
     super(name, true, Optional.empty());
@@ -95,8 +95,9 @@ public class TableArgumentSpecification extends ArgumentSpecification {
       return this;
     }
 
-    public TableArgumentSpecification build() {
-      return new TableArgumentSpecification(name, rowSemantics, pruneWhenEmpty, passThroughColumns);
+    public TableParameterSpecification build() {
+      return new TableParameterSpecification(
+          name, rowSemantics, pruneWhenEmpty, passThroughColumns);
     }
   }
 }

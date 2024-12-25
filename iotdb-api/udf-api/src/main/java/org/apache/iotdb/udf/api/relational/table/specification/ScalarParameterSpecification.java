@@ -23,10 +23,10 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.Optional;
 
-public class ScalarArgumentSpecification extends ArgumentSpecification {
+public class ScalarParameterSpecification extends ParameterSpecification {
   private final Type type;
 
-  private ScalarArgumentSpecification(
+  private ScalarParameterSpecification(
       String name, Type type, boolean required, Object defaultValue) {
     super(name, required, Optional.ofNullable(defaultValue));
     this.type = type;
@@ -69,8 +69,8 @@ public class ScalarArgumentSpecification extends ArgumentSpecification {
       return this;
     }
 
-    public ScalarArgumentSpecification build() {
-      return new ScalarArgumentSpecification(name, type, required, defaultValue);
+    public ScalarParameterSpecification build() {
+      return new ScalarParameterSpecification(name, type, required, defaultValue);
     }
   }
 }

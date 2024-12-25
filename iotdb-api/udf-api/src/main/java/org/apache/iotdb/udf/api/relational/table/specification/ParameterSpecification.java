@@ -48,14 +48,14 @@ import java.util.Optional;
  * <p>Default values are allowed for all arguments except Table arguments.
  */
 // TODO:函数注册的时候需要检查 name 不重复
-public abstract class ArgumentSpecification {
+public abstract class ParameterSpecification {
   private final String name;
   private final boolean required;
 
   // native representation
   private final Optional<Object> defaultValue;
 
-  ArgumentSpecification(String name, boolean required, Optional<Object> defaultValue) {
+  ParameterSpecification(String name, boolean required, Optional<Object> defaultValue) {
     this.name = name;
     this.required = required;
     this.defaultValue = defaultValue;

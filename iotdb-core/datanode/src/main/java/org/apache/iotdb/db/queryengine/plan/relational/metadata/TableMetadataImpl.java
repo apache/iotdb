@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -55,6 +56,7 @@ import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.table.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -769,6 +771,12 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    // TODO(UDF): implement it, mock here
+    return new HOPTableFunction();
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

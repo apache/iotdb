@@ -61,4 +61,8 @@ public class TableArgument implements Argument {
   public List<String> getOrderBy() {
     return orderBy;
   }
+
+  public int size() {
+    return fieldTypes.size();
+  }
 }

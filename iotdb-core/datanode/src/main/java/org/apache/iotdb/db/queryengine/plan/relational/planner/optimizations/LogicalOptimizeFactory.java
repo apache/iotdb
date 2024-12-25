@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
@@ -151,11 +152,13 @@ public class LogicalOptimizeFactory {
                 // addAll(new PushCastIntoRow().rules())
                 .addAll(
                     ImmutableSet.of(
+                        new ImplementTableFunctionSource(),
                         new MergeFilters(),
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
                         new MergeLimits(),
                         new RemoveTrivialFilters(),
+                        //                            TODO(UDF): new RemoveRedundantTableFunction(),
                         //                        new RemoveRedundantLimit(),
                         //                        new RemoveRedundantOffset(),
                         //                        new RemoveRedundantSort(),

@@ -3,11 +3,9 @@ package org.apache.iotdb.udf.api.relational.table.argument;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -19,18 +17,7 @@ public class Descriptor {
     if (fields.isEmpty()) {
       throw new IllegalArgumentException("descriptor has no fields");
     }
-    if (!fields.stream().allMatch(field -> field.getName().isPresent())) {
-      throw new IllegalArgumentException("All fields of a descriptor argument must have names");
-    }
     this.fields = fields;
-  }
-
-  public static Descriptor descriptor(String... names) {
-    List<Field> fields =
-        Arrays.stream(names)
-            .map(name -> new Field(name, Optional.empty()))
-            .collect(Collectors.toList());
-    return new Descriptor(fields);
   }
 
   public static Descriptor descriptor(List<String> names, List<Type> types) {
@@ -72,19 +59,15 @@ public class Descriptor {
   }
 
   public static class Field {
-    private final Optional<String> name;
+    private final String name;
     private final Optional<Type> type;
 
     public Field(String name, Optional<Type> type) {
-      this(Optional.of(name), type);
+      this.name = name;
+      this.type = type;
     }
 
-    public Field(Optional<String> name, Optional<Type> type) {
-      this.name = requireNonNull(name, "name is null");
-      this.type = requireNonNull(type, "type is null");
-    }
-
-    public Optional<String> getName() {
+    public String getName() {
       return name;
     }
 

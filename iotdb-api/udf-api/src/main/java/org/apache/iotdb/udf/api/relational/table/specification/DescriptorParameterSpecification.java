@@ -23,8 +23,8 @@ import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
 
 import java.util.Optional;
 
-public class DescriptorArgumentSpecification extends ArgumentSpecification {
-  private DescriptorArgumentSpecification(String name, boolean required, Descriptor defaultValue) {
+public class DescriptorParameterSpecification extends ParameterSpecification {
+  private DescriptorParameterSpecification(String name, boolean required, Descriptor defaultValue) {
     super(name, required, Optional.ofNullable(defaultValue));
   }
 
@@ -50,8 +50,8 @@ public class DescriptorArgumentSpecification extends ArgumentSpecification {
       return this;
     }
 
-    public DescriptorArgumentSpecification build() {
-      return new DescriptorArgumentSpecification(name, required, defaultValue);
+    public DescriptorParameterSpecification build() {
+      return new DescriptorParameterSpecification(name, required, defaultValue);
     }
   }
 }
