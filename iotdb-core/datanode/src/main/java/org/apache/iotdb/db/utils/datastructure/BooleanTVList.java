@@ -80,7 +80,7 @@ public abstract class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBoolean(long timestamp, boolean value) {
+  public synchronized void putBoolean(long timestamp, boolean value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
@@ -164,7 +164,8 @@ public abstract class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBooleans(long[] time, boolean[] value, BitMap bitMap, int start, int end) {
+  public synchronized void putBooleans(
+      long[] time, boolean[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;

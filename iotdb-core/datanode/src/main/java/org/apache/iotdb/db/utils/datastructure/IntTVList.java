@@ -80,7 +80,7 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
-  public void putInt(long timestamp, int value) {
+  public synchronized void putInt(long timestamp, int value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
@@ -163,7 +163,7 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
-  public void putInts(long[] time, int[] value, BitMap bitMap, int start, int end) {
+  public synchronized void putInts(long[] time, int[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;

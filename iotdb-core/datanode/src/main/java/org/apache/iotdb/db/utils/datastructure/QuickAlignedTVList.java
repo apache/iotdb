@@ -31,10 +31,11 @@ public class QuickAlignedTVList extends AlignedTVList {
   }
 
   @Override
-  public void sort() {
+  public synchronized void sort() {
     if (!sorted) {
       policy.qsort(0, rowCount - 1);
     }
     sorted = true;
+    seqRowCount = rowCount;
   }
 }

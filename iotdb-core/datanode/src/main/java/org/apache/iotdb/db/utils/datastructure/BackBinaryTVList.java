@@ -26,11 +26,12 @@ public class BackBinaryTVList extends QuickBinaryTVList {
   }
 
   @Override
-  public void sort() {
+  public synchronized void sort() {
     if (!sorted) {
       policy.backwardSort(timestamps, rowCount);
       policy.clearTmp();
     }
     sorted = true;
+    seqRowCount = rowCount;
   }
 }

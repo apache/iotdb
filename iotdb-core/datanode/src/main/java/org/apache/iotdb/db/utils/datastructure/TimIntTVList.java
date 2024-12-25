@@ -26,7 +26,7 @@ public class TimIntTVList extends IntTVList {
   }
 
   @Override
-  public void sort() {
+  public synchronized void sort() {
     policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
       policy.sort(0, rowCount);
@@ -34,6 +34,7 @@ public class TimIntTVList extends IntTVList {
     policy.clearSortedValue();
     policy.clearSortedTime();
     sorted = true;
+    seqRowCount = rowCount;
   }
 
   @Override

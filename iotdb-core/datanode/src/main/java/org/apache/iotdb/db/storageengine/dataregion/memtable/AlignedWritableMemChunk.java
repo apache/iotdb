@@ -130,10 +130,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
-    synchronized (list) {
-      list.putAlignedValue(t, v);
-      return list.reachChunkSizeOrPointNumThreshold();
-    }
+    list.putAlignedValue(t, v);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -171,10 +169,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
-    synchronized (list) {
-      list.putAlignedValues(t, v, bitMaps, start, end, results);
-      return list.reachChunkSizeOrPointNumThreshold();
-    }
+    list.putAlignedValues(t, v, bitMaps, start, end, results);
+    return list.reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -195,7 +191,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       if (list.isSorted()) {
         sortedList.add(list);
       } else if (list.getQueryContextList().isEmpty()) {
-        list.safelySort();
+        list.sort();
         sortedList.add(list);
       } else {
         QueryContext firstQuery = list.getQueryContextList().get(0);
@@ -384,7 +380,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public synchronized void sortTvListForFlush() {
     if (!list.isSorted()) {
-      list.safelySort();
+      list.sort();
     }
   }
 

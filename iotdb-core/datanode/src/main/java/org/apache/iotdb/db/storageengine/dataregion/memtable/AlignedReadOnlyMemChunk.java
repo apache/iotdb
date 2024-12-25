@@ -118,7 +118,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList alignedTvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
-        alignedTvList.safelySort();
+        alignedTvList.sort();
       }
     }
   }
@@ -420,7 +420,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.safelySort();
+        tvList.sort();
       }
     }
     TsBlock tsBlock = buildTsBlock();

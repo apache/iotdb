@@ -132,7 +132,7 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
-        tvList.safelySort();
+        tvList.sort();
       }
     }
   }
@@ -220,7 +220,7 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.safelySort();
+        tvList.sort();
       }
     }
     TsBlock tsBlock = buildTsBlock();

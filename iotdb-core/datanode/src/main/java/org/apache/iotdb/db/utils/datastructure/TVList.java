@@ -149,11 +149,6 @@ public abstract class TVList implements WALEntryValue {
 
   public abstract void sort();
 
-  public synchronized void safelySort() {
-    sort();
-    seqRowCount = rowCount;
-  }
-
   public void increaseReferenceCount() {
     referenceCount.incrementAndGet();
   }

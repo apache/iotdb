@@ -179,7 +179,7 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValue(long timestamp, Object[] value) {
+  public synchronized void putAlignedValue(long timestamp, Object[] value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
@@ -764,7 +764,7 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(
+  public synchronized void putAlignedValues(
       long[] time, Object[] value, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     checkExpansion();
     int idx = start;
