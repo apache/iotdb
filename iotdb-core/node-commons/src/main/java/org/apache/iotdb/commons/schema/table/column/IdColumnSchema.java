@@ -39,7 +39,7 @@ public class IdColumnSchema extends TsTableColumnSchema {
 
   @Override
   public TsTableColumnCategory getColumnCategory() {
-    return TsTableColumnCategory.ID;
+    return TsTableColumnCategory.TAG;
   }
 
   static IdColumnSchema deserialize(final InputStream stream) throws IOException {

@@ -311,11 +311,11 @@ public class InsertTabletNodeSerdeTest {
             columns,
             times.length,
             new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.MEASUREMENT,
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.FIELD,
               TsTableColumnCategory.ATTRIBUTE,
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.MEASUREMENT
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.FIELD
             });
 
     return tabletNode;
@@ -357,11 +357,11 @@ public class InsertTabletNodeSerdeTest {
             columns,
             times.length,
             new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.MEASUREMENT,
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.FIELD,
               TsTableColumnCategory.ATTRIBUTE,
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.MEASUREMENT
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.FIELD
             });
     insertTabletNode.setMeasurementSchemas(
         new MeasurementSchema[] {

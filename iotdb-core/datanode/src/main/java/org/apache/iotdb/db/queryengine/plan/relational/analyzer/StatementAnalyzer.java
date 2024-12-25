@@ -1580,7 +1580,7 @@ public class StatementAnalyzer {
               Field.newUnqualified(
                   field.map(Identifier::getValue),
                   analysis.getType(expression),
-                  TsTableColumnCategory.MEASUREMENT,
+                  TsTableColumnCategory.FIELD,
                   originTable,
                   originColumn,
                   column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use
@@ -1975,7 +1975,7 @@ public class StatementAnalyzer {
               .map(
                   valueType ->
                       Field.newUnqualified(
-                          Optional.empty(), valueType, TsTableColumnCategory.MEASUREMENT))
+                          Optional.empty(), valueType, TsTableColumnCategory.FIELD))
               .collect(toImmutableList());
 
       return createAndAssignScope(node, scope, fields);

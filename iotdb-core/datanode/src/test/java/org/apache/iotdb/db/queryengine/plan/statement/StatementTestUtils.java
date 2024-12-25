@@ -76,7 +76,7 @@ public class StatementTestUtils {
 
   public static TsTableColumnCategory[] genColumnCategories() {
     return new TsTableColumnCategory[] {
-      TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.MEASUREMENT
+      TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
     };
   }
 
@@ -238,13 +238,13 @@ public class StatementTestUtils {
     TsTableColumnCategory[] columnCategories = genColumnCategories();
     for (int i = 0; i < columnCategories.length; i++) {
       switch (columnCategories[i]) {
-        case ID:
+        case TAG:
           tsTable.addColumnSchema(new IdColumnSchema(measurements[i], dataTypes[i]));
           break;
         case ATTRIBUTE:
           tsTable.addColumnSchema(new AttributeColumnSchema(measurements[i], dataTypes[i]));
           break;
-        case MEASUREMENT:
+        case FIELD:
         default:
           tsTable.addColumnSchema(
               new MeasurementColumnSchema(

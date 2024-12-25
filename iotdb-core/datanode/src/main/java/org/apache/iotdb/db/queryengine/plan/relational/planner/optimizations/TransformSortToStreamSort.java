@@ -96,8 +96,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       int streamSortIndex = -1;
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (!tableColumnSchema.containsKey(orderBy)
-            || tableColumnSchema.get(orderBy).getColumnCategory()
-                == TsTableColumnCategory.MEASUREMENT
+            || tableColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.FIELD
             || tableColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.TIME) {
           break;
         } else {
@@ -152,7 +151,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       OrderingScheme orderingScheme,
       int streamSortIndex) {
     for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
+      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG
           && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
         return false;
       }

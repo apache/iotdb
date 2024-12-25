@@ -48,7 +48,7 @@ public class CompactionTableSchema extends TableSchema {
 
     for (int i = 0; i < otherSchemaColumnCategories.size(); i++) {
       ColumnCategory columnCategory = otherSchemaColumnCategories.get(i);
-      if (columnCategory != ColumnCategory.ID) {
+      if (columnCategory != ColumnCategory.TAG) {
         continue;
       }
       idColumnSchemasToMerge.add(otherSchemaColumnSchemas.get(i));
@@ -72,7 +72,7 @@ public class CompactionTableSchema extends TableSchema {
     List<IMeasurementSchema> newIdColumns =
         idColumnSchemasToMerge.subList(prefixLength, idColumnSchemasToMerge.size());
     for (IMeasurementSchema newIdColumn : newIdColumns) {
-      columnCategories.add(ColumnCategory.ID);
+      columnCategories.add(ColumnCategory.TAG);
       measurementSchemas.add(newIdColumn);
     }
   }

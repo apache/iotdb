@@ -68,7 +68,7 @@ public class MeasurementColumnSchema extends TsTableColumnSchema {
 
   @Override
   public TsTableColumnCategory getColumnCategory() {
-    return TsTableColumnCategory.MEASUREMENT;
+    return TsTableColumnCategory.FIELD;
   }
 
   public TSEncoding getEncoding() {

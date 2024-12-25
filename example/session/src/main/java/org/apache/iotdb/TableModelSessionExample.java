@@ -90,12 +90,12 @@ public class TableModelSessionExample {
       List<Tablet.ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
                   Tablet.ColumnCategory.ATTRIBUTE,
-                  Tablet.ColumnCategory.MEASUREMENT,
-                  Tablet.ColumnCategory.MEASUREMENT));
+                  Tablet.ColumnCategory.FIELD,
+                  Tablet.ColumnCategory.FIELD));
       Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();

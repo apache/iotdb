@@ -133,7 +133,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 ? row[i]
                 : DateUtils.parseIntToLocalDate((Integer) row[i]);
         tablet.addValue(columnNames.get(i), rowIndex, value);
-        if (value != null && columnTypes.get(i) == Tablet.ColumnCategory.MEASUREMENT) {
+        if (value != null && columnTypes.get(i) == Tablet.ColumnCategory.FIELD) {
           isAllNull = false;
         }
       }

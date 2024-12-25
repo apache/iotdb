@@ -191,7 +191,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           symbol,
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
-      if (category == TsTableColumnCategory.ID) {
+      if (category == TsTableColumnCategory.TAG) {
         idAndAttributeIndexMap.put(symbol, idIndex++);
       }
     }

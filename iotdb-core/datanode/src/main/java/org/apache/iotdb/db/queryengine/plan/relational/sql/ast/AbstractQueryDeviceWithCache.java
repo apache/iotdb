@@ -77,7 +77,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
         .filter(
             columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
                     || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
         .map(
             columnSchema ->

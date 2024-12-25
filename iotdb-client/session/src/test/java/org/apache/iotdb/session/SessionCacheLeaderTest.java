@@ -643,9 +643,9 @@ public class SessionCacheLeaderTest {
     dataTypes.add(TSDataType.INT64);
     dataTypes.add(TSDataType.INT64);
     List<ColumnCategory> columnTypeList = new ArrayList<>();
-    columnTypeList.add(ColumnCategory.ID);
-    columnTypeList.add(ColumnCategory.MEASUREMENT);
-    columnTypeList.add(ColumnCategory.MEASUREMENT);
+    columnTypeList.add(ColumnCategory.TAG);
+    columnTypeList.add(ColumnCategory.FIELD);
+    columnTypeList.add(ColumnCategory.FIELD);
     Tablet tablet = new Tablet(tableName, measurements, dataTypes, columnTypeList, 50);
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
@@ -1038,9 +1038,9 @@ public class SessionCacheLeaderTest {
     schemaList.add(new MeasurementSchema("id", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-    columnTypeList.add(ColumnCategory.ID);
-    columnTypeList.add(ColumnCategory.MEASUREMENT);
-    columnTypeList.add(ColumnCategory.MEASUREMENT);
+    columnTypeList.add(ColumnCategory.TAG);
+    columnTypeList.add(ColumnCategory.FIELD);
+    columnTypeList.add(ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,

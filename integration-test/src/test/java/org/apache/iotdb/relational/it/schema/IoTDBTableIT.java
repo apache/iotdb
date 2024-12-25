@@ -91,7 +91,7 @@ public class IoTDBTableIT {
 
       // or use full qualified table name
       // test "TTL=INF"
-      // "MEASUREMENT" can be omitted when type is specified
+      // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when id/attribute is specified
       statement.execute(
           "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE) with (TTL='INF')");
@@ -347,7 +347,7 @@ public class IoTDBTableIT {
       String[] dataTypes =
           new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       String[] categories =
-          new String[] {"TIME", "ID", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
+          new String[] {"TIME", "TAG", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
       try (final ResultSet resultSet = statement.executeQuery("describe test1.table1")) {
         int cnt = 0;
@@ -368,7 +368,7 @@ public class IoTDBTableIT {
 
       columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
-      categories = new String[] {"TIME", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
+      categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
       try (final ResultSet resultSet = statement.executeQuery("desc table2")) {
         int cnt = 0;
@@ -397,7 +397,7 @@ public class IoTDBTableIT {
 
         columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
         dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
-        categories = new String[] {"TIME", "ID", "ID", "MEASUREMENT", "MEASUREMENT"};
+        categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
         final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
         try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
           int cnt = 0;

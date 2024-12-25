@@ -280,7 +280,7 @@ public class TableHeaderSchemaValidator {
   public static TsTableColumnSchema generateColumnSchema(
       final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
     switch (category) {
-      case ID:
+      case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
               "DataType of ID Column should only be STRING, current is " + dataType);
@@ -295,7 +295,7 @@ public class TableHeaderSchemaValidator {
       case TIME:
         throw new SemanticException(
             "Create table or add column statement shall not specify column category TIME");
-      case MEASUREMENT:
+      case FIELD:
         return new MeasurementColumnSchema(
             columnName,
             dataType,
@@ -341,7 +341,7 @@ public class TableHeaderSchemaValidator {
     final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(inputColumnList.size());
     for (final ColumnSchema inputColumn : inputColumnList) {
       switch (inputColumn.getColumnCategory()) {
-        case ID:
+        case TAG:
           if (!inputColumn.getType().equals(StringType.STRING)) {
             throw new SemanticException("Id column only support data type STRING.");
           }
@@ -353,7 +353,7 @@ public class TableHeaderSchemaValidator {
           }
           columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
-        case MEASUREMENT:
+        case FIELD:
           final TSDataType dataType = InternalTypeManager.getTSDataType(inputColumn.getType());
           columnSchemaList.add(
               new MeasurementColumnSchema(

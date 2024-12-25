@@ -28,10 +28,10 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableColumnCategory {
-  ID((byte) 0),
+  TAG((byte) 0),
   ATTRIBUTE((byte) 1),
   TIME((byte) 2),
-  MEASUREMENT((byte) 3);
+  FIELD((byte) 3);
 
   private final byte category;
 
@@ -64,13 +64,13 @@ public enum TsTableColumnCategory {
   public static TsTableColumnCategory deserialize(byte category) {
     switch (category) {
       case 0:
-        return ID;
+        return TAG;
       case 1:
         return ATTRIBUTE;
       case 2:
         return TIME;
       case 3:
-        return MEASUREMENT;
+        return FIELD;
       default:
         throw new IllegalArgumentException();
     }
@@ -78,12 +78,12 @@ public enum TsTableColumnCategory {
 
   public ColumnCategory toTsFileColumnType() {
     switch (this) {
-      case ID:
-        return ColumnCategory.ID;
+      case TAG:
+        return ColumnCategory.TAG;
       case ATTRIBUTE:
         return ColumnCategory.ATTRIBUTE;
-      case MEASUREMENT:
-        return ColumnCategory.MEASUREMENT;
+      case FIELD:
+        return ColumnCategory.FIELD;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
@@ -91,10 +91,10 @@ public enum TsTableColumnCategory {
 
   public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
     switch (columnType) {
-      case MEASUREMENT:
-        return MEASUREMENT;
-      case ID:
-        return ID;
+      case FIELD:
+        return FIELD;
+      case TAG:
+        return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;
       default:

@@ -146,24 +146,18 @@ public class TestMatadata implements Metadata {
     final List<ColumnSchema> columnSchemas =
         Arrays.asList(
             ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
-            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
             ColumnSchema.builder(ATTR1_CM)
                 .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
                 .build(),
             ColumnSchema.builder(ATTR2_CM)
                 .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
                 .build(),
-            ColumnSchema.builder(S1_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S2_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S3_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build());
+            ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+            ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+            ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
     return Optional.of(new TableSchema(TABLE1, columnSchemas));
   }

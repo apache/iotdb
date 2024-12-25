@@ -468,7 +468,7 @@ public class TableDeviceSchemaFetcher {
       if (columnSchema == null) {
         continue;
       }
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (columns[j].isNull(rowIndex)) {
           nodes[currentIndex] = null;
         } else {
