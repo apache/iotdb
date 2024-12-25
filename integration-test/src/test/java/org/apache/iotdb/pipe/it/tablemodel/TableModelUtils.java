@@ -58,7 +58,7 @@ import static org.junit.Assert.fail;
  * Please note that the Table pattern defined by this class is fixed, and it is recommended to use
  * all methods together to ensure data consistency and integrity.
  *
- * <p>This class provtages a structured approach to inserting data, suitable for scenarios where
+ * <p>This class provides a structured approach to inserting data, suitable for scenarios where
  * batch data insertion is required. Due to the fixed pattern, users should ensure that the data
  * format matches the pattern defined by the class.
  */
