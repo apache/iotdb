@@ -67,7 +67,7 @@ def session_test(use_session_pool=False):
             TSDataType.STRING,
             TSDataType.DOUBLE,
         ]
-        column_types = [ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT]
+        column_types = [ColumnType.TAG, ColumnType.ATTRIBUTE, ColumnType.FIELD]
         timestamps = []
         values = []
         for row in range(15):

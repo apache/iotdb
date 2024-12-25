@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadFileException extends IoTDBException {
+public class LoadReadOnlyException extends IoTDBException {
 
-  public LoadFileException(String message) {
-    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-  }
+  public static final String MESSAGE =
+      "Current system mode is read only, does not support load file";
 
-  public LoadFileException(Exception exception) {
-    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  public LoadReadOnlyException() {
+    super(MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
   }
 }

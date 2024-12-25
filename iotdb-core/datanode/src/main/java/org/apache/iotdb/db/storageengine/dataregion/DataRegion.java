@@ -42,10 +42,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
@@ -3710,8 +3710,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
-      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
@@ -3726,6 +3724,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
+      MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
