@@ -171,7 +171,8 @@ public class SettleRequestHandler {
         }
 
         TsFileResource tsFileResource = new TsFileResource(currentTsFile);
-        tsFileResource.setModFileManagement(tsFileManager.getModFileManagement(tsFileResource.getTimePartition()));
+        tsFileResource.setModFileManagement(
+            tsFileManager.getModFileManagement(tsFileResource.getTimePartition()));
         try {
           tsFileResource.deserialize();
         } catch (IOException e) {

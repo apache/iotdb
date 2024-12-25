@@ -306,7 +306,8 @@ public class TsFileResource implements PersistentResource {
   }
 
   /**
-   * Should only be called outside IoTDB, e.g., TsFileValidationTool, otherwise, please use {@code  deserialize()}.
+   * Should only be called outside IoTDB, e.g., TsFileValidationTool, otherwise, please use {@code
+   * deserialize()}.
    */
   public void deserializeWithoutModFile() throws IOException {
     deserialize(false);
