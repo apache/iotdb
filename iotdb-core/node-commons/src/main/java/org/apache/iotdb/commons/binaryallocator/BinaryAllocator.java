@@ -33,7 +33,11 @@ import org.apache.tsfile.utils.PooledBinary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.ref.ReferenceQueue;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class BinaryAllocator {
@@ -49,13 +53,22 @@ public class BinaryAllocator {
 
   private final BinaryAllocatorMetrics metrics;
   private Evictor sampleEvictor;
+  // private TinyGC tinyGC;
   private static final ThreadLocal<ThreadArenaRegistry> arenaRegistry =
       ThreadLocal.withInitial(ThreadArenaRegistry::new);
 
-  private static final int WARNING_GC_TIME_PERCENTAGE = 10;
-  private static final int HALF_GC_TIME_PERCENTAGE = 20;
+  private static final int WARNING_GC_TIME_PERCENTAGE = 20;
+  private static final int HALF_GC_TIME_PERCENTAGE = 25;
   private static final int SHUTDOWN_GC_TIME_PERCENTAGE = 30;
   private static final int RESTART_GC_TIME_PERCENTAGE = 5;
+
+  private final AutoReleaseThread autoReleaseThread = new AutoReleaseThread();
+  public final ReferenceQueue<PooledBinary> referenceQueue = new ReferenceQueue<>();
+
+  // JDK 9+ Cleaner uses double-linked list and synchronized to manage references, which has worse
+  // performance than lock-free hash set
+  public final Set<PooledBinaryPhantomReference> phantomRefs =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public BinaryAllocator(AllocatorConfig allocatorConfig) {
     this.allocatorConfig = allocatorConfig;
@@ -89,6 +102,7 @@ public class BinaryAllocator {
             ThreadName.BINARY_ALLOCATOR_SAMPLE_EVICTOR.getName(),
             allocatorConfig.durationEvictorShutdownTimeout);
     sampleEvictor.startEvictor(allocatorConfig.durationBetweenEvictorRuns);
+    autoReleaseThread.start();
   }
 
   public synchronized void close(boolean forceClose) {
@@ -105,7 +119,7 @@ public class BinaryAllocator {
     }
   }
 
-  public PooledBinary allocateBinary(int reqCapacity) {
+  public PooledBinary allocateBinary(int reqCapacity, boolean autoRelease) {
     if (reqCapacity < allocatorConfig.minAllocateSize
         || reqCapacity > allocatorConfig.maxAllocateSize
         || state.get() != BinaryAllocatorState.OPEN) {
@@ -114,7 +128,7 @@ public class BinaryAllocator {
 
     Arena arena = arenaStrategy.choose(heapArenas);
 
-    return new PooledBinary(arena.allocate(reqCapacity), reqCapacity, arena.getArenaID());
+    return arena.allocate(reqCapacity, autoRelease);
   }
 
   public void deallocateBinary(PooledBinary binary) {
@@ -125,7 +139,7 @@ public class BinaryAllocator {
       int arenaIndex = binary.getArenaIndex();
       if (arenaIndex != -1) {
         Arena arena = heapArenas[arenaIndex];
-        arena.deallocate(binary.getValues());
+        arena.deallocate(binary);
       }
     }
   }
@@ -261,6 +275,22 @@ public class BinaryAllocator {
         evictedSize += arena.runSampleEviction();
       }
       metrics.updateSampleEvictionCounter(evictedSize);
+    }
+  }
+
+  /** Process phantomly reachable objects and return their byte arrays to pool. */
+  public class AutoReleaseThread extends Thread {
+    @Override
+    public void run() {
+      PooledBinaryPhantomReference ref;
+      try {
+        while ((ref = (PooledBinaryPhantomReference) referenceQueue.remove()) != null) {
+          phantomRefs.remove(ref);
+          ref.slabRegion.deallocate(ref.byteArray);
+        }
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }
