@@ -670,6 +670,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
+      resource.setModFileManagement(seqResource.getModFileManagement());
       resource.deserialize();
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertTrue(resource.anyModFileExists());
@@ -805,6 +806,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
+      resource.setModFileManagement(seqResource.getModFileManagement());
       resource.deserialize();
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertTrue(resource.anyModFileExists());

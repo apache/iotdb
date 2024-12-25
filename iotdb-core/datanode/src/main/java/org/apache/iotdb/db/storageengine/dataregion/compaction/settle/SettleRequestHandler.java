@@ -134,14 +134,6 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
-        TsFileResource tsFileResource = new TsFileResource(currentTsFile);
-        try {
-          tsFileResource.deserialize();
-        } catch (IOException e) {
-          return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-              .setMessage(e.getMessage());
-        }
-        hasModsFiles |= tsFileResource.anyModFileExists();
 
         ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
         if (!currentInfo.isValid) {
@@ -157,6 +149,16 @@ public class SettleRequestHandler {
           return validationResult;
         }
 
+        if (tsFileManager == null) {
+          DataRegion dataRegion =
+              StorageEngine.getInstance()
+                  .getDataRegion(new DataRegionId(targetConsistentSettleInfo.dataRegionId));
+          if (dataRegion == null) {
+            return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
+          }
+          tsFileManager = dataRegion.getTsFileManager();
+        }
+
         if (TsFileUtils.isSequence(currentTsFile)) {
           hasSeqFiles = true;
         } else {
@@ -167,6 +169,16 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION, "Settle by cross compaction is not allowed.");
         }
+
+        TsFileResource tsFileResource = new TsFileResource(currentTsFile);
+        tsFileResource.setModFileManagement(tsFileManager.getModFileManagement(tsFileResource.getTimePartition()));
+        try {
+          tsFileResource.deserialize();
+        } catch (IOException e) {
+          return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+              .setMessage(e.getMessage());
+        }
+        hasModsFiles |= tsFileResource.anyModFileExists();
       }
 
       if (!hasModsFiles) {
@@ -174,13 +186,6 @@ public class SettleRequestHandler {
             TSStatusCode.ILLEGAL_PARAMETER,
             "Every selected TsFile does not contains the mods file.");
       }
-      DataRegion dataRegion =
-          StorageEngine.getInstance()
-              .getDataRegion(new DataRegionId(targetConsistentSettleInfo.dataRegionId));
-      if (dataRegion == null) {
-        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
-      }
-      tsFileManager = dataRegion.getTsFileManager();
 
       validationResult = checkCompactionConfigs();
       if (!isSuccess(validationResult)) {

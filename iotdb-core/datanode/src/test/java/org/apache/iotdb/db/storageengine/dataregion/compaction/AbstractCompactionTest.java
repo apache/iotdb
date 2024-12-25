@@ -740,6 +740,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 
@@ -760,6 +761,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 

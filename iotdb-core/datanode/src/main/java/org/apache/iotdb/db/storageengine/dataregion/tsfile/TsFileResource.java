@@ -302,6 +302,17 @@ public class TsFileResource implements PersistentResource {
 
   /** deserialize from disk */
   public void deserialize() throws IOException {
+    deserialize(true);
+  }
+
+  /**
+   * Should only be called outside IoTDB, e.g., TsFileValidationTool, otherwise, please use {@code  deserialize()}.
+   */
+  public void deserializeWithoutModFile() throws IOException {
+    deserialize(false);
+  }
+
+  private void deserialize(boolean initModFile) throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
@@ -321,7 +332,7 @@ public class TsFileResource implements PersistentResource {
       } else {
         sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
       }
-      if (modFilePath != null) {
+      if (modFilePath != null && initModFile) {
         sharedModFile = modFileManagement.recover(modFilePath, this);
       }
 

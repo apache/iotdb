@@ -314,6 +314,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     InsertionCrossSpaceCompactionTask task =
         new InsertionCrossSpaceCompactionTask(new Phaser(), 0, tsFileManager, taskResource, 0);
     TsFileResource targetFile = new TsFileResource(task.generateTargetFile());
+    targetFile.setModFileManagement(modFileManagement);
     File logFile =
         new File(
             targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);

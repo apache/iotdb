@@ -439,6 +439,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
@@ -743,6 +744,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
@@ -1046,6 +1048,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.setModFileManagement(seqResource.getModFileManagement());
               targetResource.deserialize();
               targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
