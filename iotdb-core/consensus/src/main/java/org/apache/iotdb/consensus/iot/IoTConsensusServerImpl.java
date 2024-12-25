@@ -700,27 +700,11 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
-      logger.info(
-          "[IoTConsensus Configuration] start persist configuration, {}", this.configuration);
       removeDuplicateConfiguration();
-      logger.info(
-          "[IoTConsensus Configuration] removeDuplicateConfiguration completed, {}",
-          this.configuration);
       renameTmpConfigurationFileToRemoveSuffix();
-      logger.info(
-          "[IoTConsensus Configuration] first renameTmpConfigurationFileToRemoveSuffix completed, {}",
-          this.configuration);
       serializeConfigurationAndFsyncToDisk();
-      logger.info(
-          "[IoTConsensus Configuration] serializeConfigurationAndFsyncToDisk completed, {}",
-          this.configuration);
       deleteConfiguration();
-      logger.info(
-          "[IoTConsensus Configuration] deleteConfiguration completed, {}", this.configuration);
       renameTmpConfigurationFileToRemoveSuffix();
-      logger.info(
-          "[IoTConsensus Configuration] second renameTmpConfigurationFileToRemoveSuffix, completed {}",
-          this.configuration);
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
