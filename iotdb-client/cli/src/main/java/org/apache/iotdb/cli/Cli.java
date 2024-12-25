@@ -143,7 +143,7 @@ public class Cli extends AbstractCli {
               "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
                   + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       ctx.getPrinter().println("For more information, please check the following hint.");
-      hf.printHelp(IOTDB_CLI_PREFIX, options, true);
+      hf.printHelp(IOTDB, options, true);
       return false;
     } catch (NumberFormatException e) {
       ctx.getPrinter()
