@@ -551,11 +551,11 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into sg19(time, tag1, ss1, ss2) values(1, 'd1','1', 1)");
       st1.execute("insert into sg19(time, tag1, ss1, ss2) values(2, 'd2', 2, 2)");
       // upper case
-      st1.execute("insert into sg19(TIME, ID1, SS1, SS2) values(3, 'd3','3', 3)");
-      st1.execute("insert into sg19(TIME, ID1, SS1, SS2) values(4, 'd4', 4, 4)");
+      st1.execute("insert into sg19(TIME, TAG1, SS1, SS2) values(3, 'd3','3', 3)");
+      st1.execute("insert into sg19(TIME, TAG1, SS1, SS2) values(4, 'd4', 4, 4)");
       // mixed
-      st1.execute("insert into sg19(TIme, Id1, Ss1, Ss2) values(5, 'd5','5', 5)");
-      st1.execute("insert into sg19(TIme, Id1, sS1, sS2) values(6, 'd6', 6, 6)");
+      st1.execute("insert into sg19(TIme, Tag1, Ss1, Ss2) values(5, 'd5','5', 5)");
+      st1.execute("insert into sg19(TIme, Tag1, sS1, sS2) values(6, 'd6', 6, 6)");
 
       ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from sg19 order by time");
       for (int i = 1; i <= 6; i++) {
@@ -779,16 +779,16 @@ public class IoTDBInsertTableIT {
           "create table table20 ("
               + "device_id string tag,"
               + "attribute STRING ATTRIBUTE,"
-              + "boolean boolean MEASUREMENT,"
-              + "int32 int32 MEASUREMENT,"
-              + "int64 int64 MEASUREMENT,"
-              + "float float MEASUREMENT,"
-              + "double double MEASUREMENT,"
-              + "text text MEASUREMENT,"
-              + "string string MEASUREMENT,"
-              + "blob blob MEASUREMENT,"
-              + "timestamp01 timestamp MEASUREMENT,"
-              + "date date MEASUREMENT)");
+              + "boolean boolean FIELD,"
+              + "int32 int32 FIELD,"
+              + "int64 int64 FIELD,"
+              + "float float FIELD,"
+              + "double double FIELD,"
+              + "text text FIELD,"
+              + "string string FIELD,"
+              + "blob blob FIELD,"
+              + "timestamp01 timestamp FIELD,"
+              + "date date FIELD)");
 
       List<IMeasurementSchema> schemas = new ArrayList<>();
       schemas.add(new MeasurementSchema("device_id", TSDataType.STRING));
