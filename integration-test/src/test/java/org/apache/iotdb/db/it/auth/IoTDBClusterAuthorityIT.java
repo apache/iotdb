@@ -160,9 +160,11 @@ public class IoTDBClusterAuthorityIT {
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq(
-              "tempuser0",
+                  "tempuser0",
                   PrivilegeModelType.TREE.ordinal(),
-              PrivilegeType.MANAGE_USER.ordinal(), false).setPaths(AuthUtils.serializePartialPathList(paths));
+                  PrivilegeType.MANAGE_USER.ordinal(),
+                  false)
+              .setPaths(AuthUtils.serializePartialPathList(paths));
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -283,9 +285,11 @@ public class IoTDBClusterAuthorityIT {
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq(
-              "tempuser0",
-              PrivilegeModelType.TREE.ordinal(),
-              PrivilegeType.READ_DATA.ordinal(), false).setPaths(AuthUtils.serializePartialPathList(nodeNameList));
+                  "tempuser0",
+                  PrivilegeModelType.TREE.ordinal(),
+                  PrivilegeType.READ_DATA.ordinal(),
+                  false)
+              .setPaths(AuthUtils.serializePartialPathList(nodeNameList));
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -368,9 +372,11 @@ public class IoTDBClusterAuthorityIT {
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       assertEquals(ColumnHeaderConstant.PRIVILEGES, authorizerResp.getTag());
-      assertEquals("tempuser0", authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getName());
       assertEquals(
-          new ArrayList<>(), authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getPrivilegeList());
+          "tempuser0", authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getName());
+      assertEquals(
+          new ArrayList<>(),
+          authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getPrivilegeList());
       assertEquals(1, authorizerResp.getPermissionInfo().getUserInfo().getRoleSet().size());
 
       // list privileges role
@@ -444,17 +450,27 @@ public class IoTDBClusterAuthorityIT {
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       assertNull(authorizerResp.getMemberInfo());
       assertEquals(new HashMap<>(), authorizerResp.getPermissionInfo().getRoleInfo());
-      assertEquals(
-          new HashSet<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleSet());
+      assertEquals(new HashSet<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleSet());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE),
-          authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getPrivilegeList().get(0).priSet.size());
+          authorizerResp
+              .getPermissionInfo()
+              .getUserInfo()
+              .getBasicInfo()
+              .getPrivilegeList()
+              .get(0)
+              .priSet
+              .size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getSysPriSet().size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
-          authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getSysPriSetGrantOptSize());
+          authorizerResp
+              .getPermissionInfo()
+              .getUserInfo()
+              .getBasicInfo()
+              .getSysPriSetGrantOptSize());
 
       authorizerReq =
           new TAuthorizerReq(
@@ -475,7 +491,8 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               PrivilegeModelType.SYSTEM.ordinal(),
-              PrivilegeType.MANAGE_USER.ordinal(), false);
+              PrivilegeType.MANAGE_USER.ordinal(),
+              false);
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -498,7 +515,8 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               PrivilegeModelType.SYSTEM.ordinal(),
-              PrivilegeType.MANAGE_DATABASE.ordinal(), false);
+              PrivilegeType.MANAGE_DATABASE.ordinal(),
+              false);
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

@@ -1314,13 +1314,12 @@ public class ConfigManager implements IManager {
     }
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) {
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union) {
     TSStatus status = confirmLeader();
     TPermissionInfoResp resp = new TPermissionInfoResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
-        resp = permissionManager.checkUserPrivilegeGrantOpt(username, paths, permission);
+        resp = permissionManager.checkUserPrivilegeGrantOpt(username, union);
       } catch (AuthException e) {
         status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
         resp.setStatus(status);

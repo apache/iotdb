@@ -293,6 +293,48 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return false;
   }
 
+  @Override
+  public boolean checkUserPrivilegeGrantOption(String username, PrivilegeUnion union)
+      throws AuthException {
+    if (isAdmin(username)) {
+      return true;
+    }
+    User user = userManager.getEntry(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+    }
+    if (checkEntryPrivilegeGrantOption(user, union)) {
+      return true;
+    }
+
+    for (String roleName : user.getRoleSet()) {
+      Role role = roleManager.getEntry(roleName);
+      if (checkEntryPrivilegeGrantOption(role, union)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean checkEntryPrivilegeGrantOption(Role role, PrivilegeUnion union) {
+    switch (union.getModelType()) {
+      case TREE:
+        return role.checkPathPrivilegeGrantOpt(union.getPath(), union.getPrivilegeType());
+      case RELATIONAL:
+        if (union.getTbName() == null) {
+          return role.checkDatabasePrivilegeGrantOption(
+              union.getDBName(), union.getPrivilegeType());
+        } else {
+          return role.checkTablePrivilegeGrantOption(
+              union.getDBName(), union.getTbName(), union.getPrivilegeType());
+        }
+      case SYSTEM:
+        return role.checkSysPriGrantOpt(union.getPrivilegeType());
+    }
+    return false;
+  }
+
   private boolean checkEntryPrivileges(Role role, PrivilegeUnion union) {
     switch (union.getModelType()) {
       case TREE:
@@ -300,13 +342,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       case RELATIONAL:
         if (union.getTbName() == null) {
           if (union.getPrivilegeType() == PrivilegeType.INVALID) {
-            return role.checkTBVisible(union.getDBName(), union.getTbName());
+            return role.checkDBVisible(union.getDBName());
           }
+          LOGGER.warn("go in there, check db");
           return role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType());
         } else {
           if (union.getPrivilegeType() == PrivilegeType.INVALID) {
-            return role.checkDBVisible(union.getDBName());
+            return role.checkTBVisible(union.getDBName(), union.getTbName());
           }
+          LOGGER.warn("go in there, check tb");
           return role.checkTablePrivilege(
               union.getDBName(), union.getTbName(), union.getPrivilegeType());
         }

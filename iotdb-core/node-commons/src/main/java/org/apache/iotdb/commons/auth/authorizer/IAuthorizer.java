@@ -164,6 +164,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    */
   boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException;
 
+  boolean checkUserPrivilegeGrantOption(String username, PrivilegeUnion union) throws AuthException;
+
   /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;
 

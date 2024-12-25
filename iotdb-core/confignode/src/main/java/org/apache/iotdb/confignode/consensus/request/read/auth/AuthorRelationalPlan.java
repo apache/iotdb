@@ -40,8 +40,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final String roleName,
       final String databaseName,
       final String tableName,
-      final boolean grantOpt,
       final int permission,
+      final boolean grantOpt,
       final String password) {
     super(authorType);
     this.userName = userName;

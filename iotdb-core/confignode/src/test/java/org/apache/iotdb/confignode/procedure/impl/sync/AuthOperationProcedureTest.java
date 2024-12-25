@@ -109,8 +109,8 @@ public class AuthOperationProcedureTest {
                     "role1",
                     "database",
                     "table",
-                    false,
                     PrivilegeType.CREATE.ordinal(),
+                    false,
                     "password"),
                 datanodes,
                 false);

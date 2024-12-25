@@ -738,8 +738,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
-            req.isGrantopt(),
             req.getPrivilege(),
+            req.isGrantopt(),
             req.getPassword()));
   }
 
@@ -758,8 +758,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getRoleName(),
                     req.getDatabase(),
                     req.getTable(),
-                    req.isGrantopt(),
                     req.getPrivilege(),
+                    req.isGrantopt(),
                     req.getPassword()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
@@ -789,8 +789,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         return configManager.checkUserPrivileges(
             req.getUsername(),
             req.isSetTable()
-                ? new PrivilegeUnion(req.getDatabase(), permission)
-                : new PrivilegeUnion(req.getDatabase(), req.getTable(), permission));
+                ? new PrivilegeUnion(
+                    req.getDatabase(), req.getTable(), permission, req.isGrantOpt())
+                : new PrivilegeUnion(req.getDatabase(), permission, req.isGrantOpt()));
       default:
         return AuthUtils.generateEmptyPermissionInfoResp();
     }
@@ -803,10 +804,23 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req) {
-    List<PartialPath> partialPath =
-        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
-    return configManager.checkUserPrivilegeGrantOpt(
-        req.getUsername(), partialPath, req.getPermission());
+    PrivilegeType type = PrivilegeType.values()[req.getPermission()];
+    PrivilegeModelType model = PrivilegeModelType.values()[req.getReqtype()];
+    switch (model) {
+      case TREE:
+        List<PartialPath> partialPath =
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
+        return configManager.checkUserPrivilegeGrantOpt(
+            req.getUsername(), new PrivilegeUnion(partialPath, type, true));
+      case RELATIONAL:
+        return configManager.checkUserPrivilegeGrantOpt(
+            req.getUsername(), new PrivilegeUnion(req.getDatabase(), req.getTable(), type, true));
+
+      case SYSTEM:
+        return configManager.checkUserPrivilegeGrantOpt(
+            req.getUsername(), new PrivilegeUnion(type));
+    }
+    return AuthUtils.generateEmptyPermissionInfoResp();
   }
 
   @Override
