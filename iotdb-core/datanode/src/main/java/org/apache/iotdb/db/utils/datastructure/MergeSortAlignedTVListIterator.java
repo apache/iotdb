@@ -74,7 +74,8 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
         if (i == 0 || iterator.currentTime() < time) {
           for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
             int rowIndex = iterator.getValidRowIndex(columnIndex);
-            columnAccessInfo[columnIndex] = new int[] {i, rowIndex};
+            columnAccessInfo[columnIndex][0] = i;
+            columnAccessInfo[columnIndex][1] = rowIndex;
             if (iterator.isNull(rowIndex, columnIndex)) {
               bitMap.mark(columnIndex);
             }

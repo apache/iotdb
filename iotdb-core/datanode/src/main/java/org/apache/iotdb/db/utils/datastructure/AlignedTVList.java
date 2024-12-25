@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
@@ -85,14 +86,13 @@ public abstract class AlignedTVList extends TVList {
 
   AlignedTVList(List<TSDataType> types) {
     super();
-    indices = new ArrayList<>(types.size());
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
     reachMaxChunkSizeFlag = false;
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(new ArrayList<>());
+      values.add(new CopyOnWriteArrayList<>());
     }
   }
 
@@ -166,7 +166,7 @@ public abstract class AlignedTVList extends TVList {
           }
         }
         if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
+          List<BitMap> cloneColumnBitMaps = new CopyOnWriteArrayList<>();
           for (BitMap bitMap : columnBitMaps) {
             cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
           }
@@ -350,8 +350,8 @@ public abstract class AlignedTVList extends TVList {
         bitMaps.add(null);
       }
     }
-    List<Object> columnValue = new ArrayList<>();
-    List<BitMap> columnBitMaps = new ArrayList<>();
+    List<Object> columnValue = new CopyOnWriteArrayList<>();
+    List<BitMap> columnBitMaps = new CopyOnWriteArrayList<>();
     for (int i = 0; i < timestamps.size(); i++) {
       switch (dataType) {
         case TEXT:
@@ -879,7 +879,7 @@ public abstract class AlignedTVList extends TVList {
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>();
+      List<BitMap> columnBitMaps = new CopyOnWriteArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
         columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
