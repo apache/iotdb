@@ -33,7 +33,7 @@ public class AlignedPriorityMergeReaderTest {
    * priority is used to fill the above [null, 2, 3] expected result: [10, 2, 3]
    */
   @Test
-  public void testAscPriorityMergeReader1() {
+  public void test1() {
     TsPrimitiveType[] vector = new TsPrimitiveType[3];
     vector[0] = new TsInt(10);
     TimeValuePair v = new TimeValuePair(1, new TsVector(vector));
@@ -52,7 +52,7 @@ public class AlignedPriorityMergeReaderTest {
    * priority is used to fill the above [null, 2, 3] expected result: [10, 20, 3]
    */
   @Test
-  public void testAscPriorityMergeReader2() {
+  public void test2() {
     TsPrimitiveType[] vector = new TsPrimitiveType[3];
     vector[0] = new TsInt(10);
     vector[1] = new TsInt(20);
@@ -72,7 +72,7 @@ public class AlignedPriorityMergeReaderTest {
    * priority is used to fill the above [null, 2, 3] expected result: [10, 20, 30]
    */
   @Test
-  public void testAscPriorityMergeReader3() {
+  public void test3() {
     TsPrimitiveType[] vector = new TsPrimitiveType[3];
     vector[0] = new TsInt(10);
     vector[1] = new TsInt(20);
