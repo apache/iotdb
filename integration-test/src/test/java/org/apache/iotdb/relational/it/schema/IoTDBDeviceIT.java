@@ -63,11 +63,11 @@ public class IoTDBDeviceIT {
       statement.execute("create database test");
       statement.execute("use test");
       statement.execute(
-          "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
+          "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
       statement.execute(
-          "create table table0(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
+          "create table table0(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
 
       // Test plain show / count
       TestUtils.assertResultSetEqual(
@@ -245,7 +245,7 @@ public class IoTDBDeviceIT {
 
       // Test limit / offset from multi regions
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('2', '5', '3', 'A', 37.6, 111.1)");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', '5', '3', 'A', 37.6, 111.1)");
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
@@ -257,7 +257,7 @@ public class IoTDBDeviceIT {
 
         // Test successfully Invalidate cache
         statement.execute(
-            "insert into table0(region_id, plant_id, device_id, model, temperature, humtagity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+            "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
         TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
 
         // Test successfully delete data

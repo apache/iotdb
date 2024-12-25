@@ -32,7 +32,7 @@ void insertRelationalTablet() {
         make_pair("device_id", TSDataType::TEXT),
         make_pair("model", TSDataType::TEXT),
         make_pair("temperature", TSDataType::FLOAT),
-        make_pair("humtagity", TSDataType::DOUBLE)
+        make_pair("humidity", TSDataType::DOUBLE)
     };
 
     vector<ColumnCategory> columnTypes = {
@@ -54,7 +54,7 @@ void insertRelationalTablet() {
         tablet.addValue("device_id", rowIndex, "3");
         tablet.addValue("model", rowIndex, "A");
         tablet.addValue("temperature", rowIndex, 37.6F);
-        tablet.addValue("humtagity", rowIndex, 111.1);
+        tablet.addValue("humidity", rowIndex, 111.1);
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insert(tablet);
             tablet.reset();
@@ -101,7 +101,7 @@ int main() {
 
         cout << "Create Table table1,table2" << endl;
         try {
-            session->executeNonQueryStatement(" db1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=3600000)");
+            session->executeNonQueryStatement(" db1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
             session->executeNonQueryStatement("create table db2.table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
         } catch (IoTDBException &e) {
             cout << e.what() << endl;

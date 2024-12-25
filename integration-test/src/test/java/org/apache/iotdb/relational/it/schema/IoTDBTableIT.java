@@ -72,7 +72,7 @@ public class IoTDBTableIT {
       // should specify database before create table
       try {
         statement.execute(
-            "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
+            "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: database is not specified", e.getMessage());
@@ -94,11 +94,11 @@ public class IoTDBTableIT {
       // "FIELD" can be omitted when type is specified
       // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE) with (TTL='INF')");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) with (TTL='INF')");
 
       try {
         statement.execute(
-            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
+            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
@@ -188,11 +188,11 @@ public class IoTDBTableIT {
 
       // Create if not exist
       statement.execute(
-          "create table if not exists test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD)");
+          "create table if not exists test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
 
       try {
         statement.execute(
-            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (UNKNOWN=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (UNKNOWN=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: Table property 'unknown' is currently not allowed.", e.getMessage());
@@ -200,7 +200,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=null)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=null)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -210,7 +210,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=-1)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=-1)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -219,7 +219,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id TEXT TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=3600000)");
+            "create table table2(region_id TEXT TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -228,7 +228,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id INT32 TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=3600000)");
+            "create table table2(region_id INT32 TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -237,7 +237,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model TEXT ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model TEXT ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -247,7 +247,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model DOUBLE ATTRIBUTE, temperature FLOAT FIELD, humtagity DOUBLE FIELD) with (TTL=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model DOUBLE ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -342,7 +342,7 @@ public class IoTDBTableIT {
 
       String[] columnNames =
           new String[] {
-            "time", "region_id", "plant_id", "device_id", "model", "temperature", "humtagity"
+            "time", "region_id", "plant_id", "device_id", "model", "temperature", "humidity"
           };
       String[] dataTypes =
           new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
