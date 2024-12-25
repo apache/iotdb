@@ -2323,6 +2323,11 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select last_by(s2, time),last(time) from table1 where device_id = 'd01'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0", "device_id", "_col2", "_col3"};
     retArray =
@@ -2460,6 +2465,11 @@ public class IoTDBTableAggregationIT {
           "shanghai,pudong,d07,null,",
           "shanghai,pudong,d08,null,",
         };
+    tableResultSetEqualTest(
+        "select city,region,device_id,last_by(s5,time) from table1 group by city,region,device_id order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
     tableResultSetEqualTest(
         "select city,region,device_id,last_by(s5,time) from table1 group by city,region,device_id order by 1,2,3",
         expectedHeader,
