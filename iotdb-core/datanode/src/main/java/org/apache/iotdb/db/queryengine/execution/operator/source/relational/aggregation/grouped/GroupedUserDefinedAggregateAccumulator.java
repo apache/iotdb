@@ -114,11 +114,10 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
     if (stateArray.get(groupId) == null) {
-      columnBuilder.writeBinary(new Binary(new byte[0]));
-    } else {
-      byte[] bytes = stateArray.get(groupId).serialize();
-      columnBuilder.writeBinary(new Binary(bytes));
+      throw new IllegalStateException(String.format("State for group %d is not found", groupId));
     }
+    byte[] bytes = stateArray.get(groupId).serialize();
+    columnBuilder.writeBinary(new Binary(bytes));
   }
 
   @Override

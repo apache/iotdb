@@ -89,7 +89,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
 
-  private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.95;
+  private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.9;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();

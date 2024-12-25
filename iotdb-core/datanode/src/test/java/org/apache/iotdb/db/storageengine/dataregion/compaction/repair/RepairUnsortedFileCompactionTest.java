@@ -39,6 +39,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -795,6 +797,48 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
           reader.getAlignedChunkMetadata(
               IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       Assert.assertEquals(3, chunkMetadataList.size());
+    }
+  }
+
+  @Test
+  public void testResourceFileLostDevices() throws IOException {
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("d2");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    // lost d1
+    ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+    timeIndex.updateStartTime(d2, 10);
+    timeIndex.updateEndTime(d2, 40);
+    resource.setTimeIndex(timeIndex);
+    resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
+      List<IDeviceID> devicesInTargetFile = reader.getAllDevices();
+      Assert.assertEquals(Arrays.asList(d1, d2), devicesInTargetFile);
     }
   }
 }

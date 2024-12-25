@@ -34,9 +34,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -125,11 +125,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
             continue;
           }
         } catch (IllegalPathException e) {
-          LOGGER.warn(
-              "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
-              device,
-              timeseriesMetadata.getMeasurementId(),
-              e);
+          // In aligned devices, there may be empty measurements which will cause
+          // IllegalPathException.
+          if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+            LOGGER.warn(
+                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
         }
 
         final TSDataType dataType = timeseriesMetadata.getTsDataType();

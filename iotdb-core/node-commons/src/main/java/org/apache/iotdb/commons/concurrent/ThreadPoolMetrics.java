@@ -29,6 +29,7 @@ import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @SuppressWarnings("java:S6548")
 public class ThreadPoolMetrics implements IMetricSet {
@@ -57,35 +58,50 @@ public class ThreadPoolMetrics implements IMetricSet {
         SystemMetric.THREAD_POOL_ACTIVE_THREAD_COUNT.toString(),
         MetricLevel.IMPORTANT,
         registeredPoolMap,
-        map -> registeredPoolMap.get(name).getActiveCount(),
+        map ->
+            Optional.ofNullable(registeredPoolMap.get(name))
+                .map(IThreadPoolMBean::getActiveCount)
+                .orElse(0),
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_CORE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         registeredPoolMap,
-        map -> registeredPoolMap.get(name).getCorePoolSize(),
+        map ->
+            Optional.ofNullable(registeredPoolMap.get(name))
+                .map(IThreadPoolMBean::getCorePoolSize)
+                .orElse(0),
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_WAITING_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
         registeredPoolMap,
-        map -> registeredPoolMap.get(name).getQueueLength(),
+        map ->
+            Optional.ofNullable(registeredPoolMap.get(name))
+                .map(IThreadPoolMBean::getQueueLength)
+                .orElse(0),
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_DONE_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
         registeredPoolMap,
-        map -> registeredPoolMap.get(name).getCompletedTaskCount(),
+        map ->
+            Optional.ofNullable(registeredPoolMap.get(name))
+                .map(IThreadPoolMBean::getCompletedTaskCount)
+                .orElse(0L),
         SystemTag.POOL_NAME.toString(),
         name);
     metricService.createAutoGauge(
         SystemMetric.THREAD_POOL_LARGEST_POOL_SIZE.toString(),
         MetricLevel.IMPORTANT,
         registeredPoolMap,
-        map -> registeredPoolMap.get(name).getLargestPoolSize(),
+        map ->
+            Optional.ofNullable(registeredPoolMap.get(name))
+                .map(IThreadPoolMBean::getLargestPoolSize)
+                .orElse(0),
         SystemTag.POOL_NAME.toString(),
         name);
   }

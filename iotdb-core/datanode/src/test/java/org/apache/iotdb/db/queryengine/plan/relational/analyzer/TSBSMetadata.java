@@ -340,7 +340,11 @@ public class TSBSMetadata implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
@@ -445,11 +449,6 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
         return SCHEMA_PARTITION;
       }
     };

@@ -204,6 +204,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     setProperty("schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
     return this;
@@ -499,6 +505,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
         "pipe_connector_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 

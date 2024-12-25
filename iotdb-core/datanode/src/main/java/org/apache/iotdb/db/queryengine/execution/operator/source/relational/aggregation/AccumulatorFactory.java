@@ -45,6 +45,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -123,9 +124,7 @@ public class AccumulatorFactory {
     aggregateFunction.beforeStart(functionParameters, config);
     return new UserDefinedAggregateFunctionAccumulator(
         aggregateFunction,
-        inputDataTypes.stream()
-            .map(UDFDataTypeTransformer::transformTSDataTypeToReadType)
-            .collect(Collectors.toList()));
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
   }
 
   private static GroupedAccumulator createGroupedUDAFAccumulator(
@@ -138,9 +137,7 @@ public class AccumulatorFactory {
     aggregateFunction.beforeStart(functionParameters, config);
     return new GroupedUserDefinedAggregateAccumulator(
         aggregateFunction,
-        inputDataTypes.stream()
-            .map(UDFDataTypeTransformer::transformTSDataTypeToReadType)
-            .collect(Collectors.toList()));
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
   }
 
   private static GroupedAccumulator createBuiltinGroupedAccumulator(

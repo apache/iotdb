@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -50,6 +51,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -192,7 +194,13 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
-    return !intersectedPaths.isEmpty()
+    final Set<Integer> permissions =
+        !intersectedPaths.isEmpty()
+            ? pathRelatedAuthorPlan.getPermissions()
+            : pathRelatedAuthorPlan.getPermissions().stream()
+                .filter(permission -> !PrivilegeType.values()[permission].isPathRelevant())
+                .collect(Collectors.toSet());
+    return !permissions.isEmpty()
         ? Optional.of(
             new AuthorPlan(
                 pathRelatedAuthorPlan.getAuthorType(),
@@ -200,7 +208,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
                 pathRelatedAuthorPlan.getRoleName(),
                 pathRelatedAuthorPlan.getPassword(),
                 pathRelatedAuthorPlan.getNewPassword(),
-                pathRelatedAuthorPlan.getPermissions(),
+                permissions,
                 pathRelatedAuthorPlan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();

@@ -168,7 +168,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                 PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY,
                 PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY,
                 PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY,
-                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY)) {
+                PipeExtractorConstant.SOURCE_TABLE_NAME_KEY,
+                PipeExtractorConstant.EXTRACTOR_DATABASE_KEY,
+                PipeExtractorConstant.SOURCE_DATABASE_KEY,
+                PipeExtractorConstant.EXTRACTOR_TABLE_KEY,
+                PipeExtractorConstant.SOURCE_TABLE_KEY)) {
       throw new PipeException(
           "The pipe cannot extract table model data when sql dialect is set to tree.");
     }

@@ -1169,10 +1169,14 @@ public class IoTDBConfig {
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
 
+  private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
+
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
+
+  private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
@@ -2476,7 +2480,19 @@ public class IoTDBConfig {
     return defaultStorageGroupLevel;
   }
 
-  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
+    if (defaultStorageGroupLevel < 1) {
+      if (startUp) {
+        logger.warn(
+            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
+            defaultStorageGroupLevel);
+        defaultStorageGroupLevel = 1;
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+      }
+    }
     this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
@@ -4091,6 +4107,14 @@ public class IoTDBConfig {
         loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
 
+  public long getLoadChunkMetadataMemorySizeInBytes() {
+    return loadChunkMetadataMemorySizeInBytes;
+  }
+
+  public void setLoadChunkMetadataMemorySizeInBytes(long loadChunkMetadataMemorySizeInBytes) {
+    this.loadChunkMetadataMemorySizeInBytes = loadChunkMetadataMemorySizeInBytes;
+  }
+
   public long getLoadMemoryAllocateRetryIntervalMs() {
     return loadMemoryAllocateRetryIntervalMs;
   }
@@ -4114,6 +4138,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public int getLoadTsFileRetryCountOnRegionChange() {
+    return loadTsFileRetryCountOnRegionChange;
+  }
+
+  public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
+    this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
   }
 
   public double getLoadWriteThroughputBytesPerSecond() {

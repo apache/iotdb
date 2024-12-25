@@ -98,7 +98,7 @@ public class ExportTsFileTestIT extends AbstractScript {
             "exit",
             "%^errorlevel%");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 1);
+    testOutput(builder, output, 0);
 
     prepareData();
 
@@ -148,7 +148,7 @@ public class ExportTsFileTestIT extends AbstractScript {
             "-q",
             "select * from root.**");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 1);
+    testOutput(builder, output, 0);
 
     prepareData();
 

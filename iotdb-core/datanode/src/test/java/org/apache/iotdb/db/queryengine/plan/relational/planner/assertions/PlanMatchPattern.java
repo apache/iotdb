@@ -131,6 +131,18 @@ public final class PlanMatchPattern {
                 dataNodeId));
   }
 
+  public static PlanMatchPattern infoSchemaTableScan(
+      String expectedTableName, Optional<Integer> dataNodeId, List<String> outputSymbols) {
+    return node(InformationSchemaTableScanNode.class)
+        .with(
+            new InformationSchemaTableScanMatcher(
+                expectedTableName,
+                Optional.empty(),
+                outputSymbols,
+                Collections.emptySet(),
+                dataNodeId));
+  }
+
   public static PlanMatchPattern tableScan(String expectedTableName) {
     return node(DeviceTableScanNode.class)
         .with(
@@ -834,7 +846,7 @@ public final class PlanMatchPattern {
 
   public static GroupingSetDescriptor singleGroupingSet(List<String> groupingKeys) {
     Set<Integer> globalGroupingSets;
-    if (groupingKeys.size() == 0) {
+    if (groupingKeys.isEmpty()) {
       globalGroupingSets = ImmutableSet.of(0);
     } else {
       globalGroupingSets = ImmutableSet.of();

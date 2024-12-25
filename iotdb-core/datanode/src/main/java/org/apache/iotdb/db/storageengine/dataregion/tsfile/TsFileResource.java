@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -601,7 +601,17 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
+  // cannot use FileTimeIndex
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  // can use FileTimeIndex
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 

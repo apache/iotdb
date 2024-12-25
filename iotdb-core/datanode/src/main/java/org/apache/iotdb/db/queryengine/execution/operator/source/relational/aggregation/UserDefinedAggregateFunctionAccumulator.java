@@ -113,6 +113,7 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public void addStatistics(Statistics[] statistics) {
     // UDAF not support calculate from statistics now
+    throw new UnsupportedOperationException("UDAF not support calculate from statistics now");
   }
 
   @Override

@@ -86,7 +86,7 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), i));
       }
       compactionTasks[i] =
-          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);
+          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, i % 2 == 0, resources, 0);
       compactionTaskQueue.put(compactionTasks[i]);
     }
 

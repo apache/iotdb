@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -255,7 +255,7 @@ public class LoadTsFileTableSchemaCache {
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
       throws VerifyMetadataException {
     final TableSchema realSchema =
-        metadata.validateTableHeaderSchema(database, fileSchema, context, true).orElse(null);
+        metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new VerifyMetadataException(
           String.format(

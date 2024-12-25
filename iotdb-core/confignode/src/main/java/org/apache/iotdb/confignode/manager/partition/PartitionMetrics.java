@@ -274,7 +274,8 @@ public class PartitionMetrics implements IMetricSet {
         Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
         clusterSchemaManager,
-        c -> c.getDatabaseNames(null).size());
+        // Add 1 for information schema
+        c -> c.getDatabaseNames(null).size() + 1);
 
     List<String> databases = clusterSchemaManager.getDatabaseNames(null);
     for (String database : databases) {

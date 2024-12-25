@@ -1143,7 +1143,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void AddTableColumnPlanTest() throws IOException {
     final AddTableColumnPlan addTableColumnPlan0 =
         new AddTableColumnPlan(
-            "root.database1",
+            "database1",
             "table1",
             Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
             false);
@@ -1161,7 +1161,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CommitCreateTablePlanTest() throws IOException {
     final CommitCreateTablePlan commitCreateTablePlan0 =
-        new CommitCreateTablePlan("root.database1", "table1");
+        new CommitCreateTablePlan("database1", "table1");
     final CommitCreateTablePlan commitCreateTablePlan1 =
         (CommitCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(commitCreateTablePlan0.serializeToByteBuffer());
@@ -1178,7 +1178,7 @@ public class ConfigPhysicalPlanSerDeTest {
     table.addColumnSchema(
         new MeasurementColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("root.database1", table);
+    final PreCreateTablePlan preCreateTablePlan0 = new PreCreateTablePlan("database1", table);
     final PreCreateTablePlan preCreateTablePlan1 =
         (PreCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(preCreateTablePlan0.serializeToByteBuffer());
@@ -1197,7 +1197,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void RollbackCreateTablePlanTest() throws IOException {
     final RollbackCreateTablePlan rollbackCreateTablePlan0 =
-        new RollbackCreateTablePlan("root.database1", "table1");
+        new RollbackCreateTablePlan("database1", "table1");
     final RollbackCreateTablePlan rollbackCreateTablePlan1 =
         (RollbackCreateTablePlan)
             ConfigPhysicalPlan.Factory.create(rollbackCreateTablePlan0.serializeToByteBuffer());
@@ -1210,7 +1210,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void RenameTableColumnPlan() throws IOException {
     final RenameTableColumnPlan renameTablePropertiesPlan0 =
-        new RenameTableColumnPlan("root.database1", "table1", "attr1", "att2");
+        new RenameTableColumnPlan("database1", "table1", "attr1", "att2");
     final RenameTableColumnPlan renameTablePropertiesPlan1 =
         (RenameTableColumnPlan)
             ConfigPhysicalPlan.Factory.create(renameTablePropertiesPlan0.serializeToByteBuffer());
@@ -1227,7 +1227,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void SetTablePropertiesPlanTest() throws IOException {
     final SetTablePropertiesPlan setTablePropertiesPlan0 =
-        new SetTablePropertiesPlan("root.database1", "table1", Collections.singletonMap("a", null));
+        new SetTablePropertiesPlan("database1", "table1", Collections.singletonMap("a", null));
     final SetTablePropertiesPlan setTablePropertiesPlan1 =
         (SetTablePropertiesPlan)
             ConfigPhysicalPlan.Factory.create(setTablePropertiesPlan0.serializeToByteBuffer());
@@ -1241,8 +1241,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void PreDeleteTablePlanTest() throws IOException {
-    final PreDeleteTablePlan preDeleteTablePlan =
-        new PreDeleteTablePlan("root.database1", "table1");
+    final PreDeleteTablePlan preDeleteTablePlan = new PreDeleteTablePlan("database1", "table1");
     final PreDeleteTablePlan preDeleteTablePlan1 =
         (PreDeleteTablePlan)
             ConfigPhysicalPlan.Factory.create(preDeleteTablePlan.serializeToByteBuffer());
@@ -1253,7 +1252,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CommitDeleteTablePlanTest() throws IOException {
     final CommitDeleteTablePlan commitDeleteTablePlan =
-        new CommitDeleteTablePlan("root.database1", "table1");
+        new CommitDeleteTablePlan("database1", "table1");
     final CommitDeleteTablePlan commitDeleteTablePlan1 =
         (CommitDeleteTablePlan)
             ConfigPhysicalPlan.Factory.create(commitDeleteTablePlan.serializeToByteBuffer());
@@ -1265,7 +1264,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void PreDeleteColumnPlanTest() throws IOException {
     final PreDeleteColumnPlan preDeleteColumnPlan =
-        new PreDeleteColumnPlan("root.database1", "table1", "measurement");
+        new PreDeleteColumnPlan("database1", "table1", "measurement");
     final PreDeleteColumnPlan preDeleteColumnPlan1 =
         (PreDeleteColumnPlan)
             ConfigPhysicalPlan.Factory.create(preDeleteColumnPlan.serializeToByteBuffer());
@@ -1277,7 +1276,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CommitDeleteColumnPlanTest() throws IOException {
     final CommitDeleteColumnPlan commitDeleteColumnPlan =
-        new CommitDeleteColumnPlan("root.database1", "table1", "measurement");
+        new CommitDeleteColumnPlan("database1", "table1", "measurement");
     final CommitDeleteColumnPlan commitDeleteColumnPlan1 =
         (CommitDeleteColumnPlan)
             ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
