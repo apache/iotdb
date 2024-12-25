@@ -192,14 +192,20 @@ public abstract class TVList implements WALEntryValue {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
-  protected void set(int index, long timestamp, int value) {
+  protected void set(int src, int dest) {
+    long srcT = getTime(src);
+    int srcV = getValueIndex(src);
+    set(dest, srcT, srcV);
+  }
+
+  protected void set(int index, long timestamp, int valueIndex) {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    indices.get(arrayIndex)[elementIndex] = value;
+    indices.get(arrayIndex)[elementIndex] = valueIndex;
   }
 
   protected int[] cloneIndex(int[] array) {
@@ -393,8 +399,6 @@ public abstract class TVList implements WALEntryValue {
   public long getVersion() {
     return version;
   }
-
-  protected abstract void set(int src, int dest);
 
   protected abstract void expandValues();
 
