@@ -21,7 +21,7 @@ package org.apache.iotdb.relational.it.query.recent.subquery;
 
 public class SubqueryDataSetUtils {
   protected static final String DATABASE_NAME = "subqueryTest";
-  protected static final String[] NUMERIC_FIELDS = new String[] {"s1", "s2", "s3", "s4"};
+  protected static final String[] NUMERIC_MEASUREMENTS = new String[] {"s1", "s2", "s3", "s4"};
   protected static final String[] CREATE_SQLS =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
