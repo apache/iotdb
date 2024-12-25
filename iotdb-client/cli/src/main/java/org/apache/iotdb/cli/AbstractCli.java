@@ -271,15 +271,12 @@ public abstract class AbstractCli {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       if (isRequired) {
-        String msg =
-            String.format(
-                "%s: Required values for option '%s' not provided", IOTDB, name);
+        String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
         ctx.getPrinter().println("Use -help for more information");
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
-        String msg =
-            String.format("%s: Required values for option '%s' is null.", IOTDB, name);
+        String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
         throw new ArgsErrorException(msg);
       } else {
         return defaultValue;
