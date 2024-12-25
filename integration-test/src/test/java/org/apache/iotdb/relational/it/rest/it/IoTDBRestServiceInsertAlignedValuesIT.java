@@ -283,7 +283,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
                 "t1",
                 "insert into wf07(tag1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)"));
     assertEquals(
-        "701: Insertion contains duplicated field: status",
+        "701: Insertion contains duplicated measurement: status",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
   }
 
