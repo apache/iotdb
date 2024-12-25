@@ -121,10 +121,10 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "create table courses(course_tag STRING TAG, course_name STRING FIELD, teacher_tag INT32 FIELD)",
         "create table grades(grade_tag STRING TAG, course_tag INT32 FIELD, student_tag INT32 FIELD, score INT32 FIELD)",
         "insert into students(time,region,student_tag,name,genders,date_of_birth) values"
-            + "(1,'hatagian',1,'Lucy','女','2015-10-10'),(2,'hatagian',2,'Jack','男','2015-09-24'),(3,'chaoyang',3,'Sam','男','2014-07-20'),(4,'chaoyang',4,'Lily','女','2015-03-28'),"
+            + "(1,'haidian',1,'Lucy','女','2015-10-10'),(2,'haidian',2,'Jack','男','2015-09-24'),(3,'chaoyang',3,'Sam','男','2014-07-20'),(4,'chaoyang',4,'Lily','女','2015-03-28'),"
             + "(5,'xicheng',5,'Helen','女','2016-01-22'),(6,'changping',6,'Nancy','女','2017-12-20'),(7,'changping',7,'Mike','男','2016-11-22'),(8,'shunyi',8,'Bob','男','2016-05-12')",
         "insert into teachers(time,region,teacher_tag,course_tag,age) values"
-            + "(1,'hatagian',1001,10000001,25),(2,'hatagian',1002,10000002,26),(3,'chaoyang',1003,10000003,28),"
+            + "(1,'haidian',1001,10000001,25),(2,'haidian',1002,10000002,26),(3,'chaoyang',1003,10000003,28),"
             + "(4,'chaoyang',1004,10000004,27),(5,'xicheng',1005,10000005,26)",
         "insert into courses(time,course_tag,course_name,teacher_tag) values"
             + "(1,10000001,'数学',1001),(2,10000002,'语文',1002),(3,10000003,'英语',1003),"
@@ -1772,7 +1772,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
 
     retArray =
         new String[] {
-          "hatagian,Lucy,1005,数学,99,",
+          "haidian,Lucy,1005,数学,99,",
         };
     sql =
         "select s.region, s.name,"
