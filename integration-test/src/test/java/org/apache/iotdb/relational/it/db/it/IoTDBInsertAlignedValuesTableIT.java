@@ -357,7 +357,7 @@ public class IoTDBInsertAlignedValuesTableIT {
       fail("Exception expected");
     } catch (SQLException e) {
       assertEquals(
-          "700: line 1:58: Invalid numeric literal: 271840880000000000000000", e.getMessage());
+          "700: line 1:59: Invalid numeric literal: 271840880000000000000000", e.getMessage());
     }
   }
 
