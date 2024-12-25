@@ -296,6 +296,8 @@ public class FastCompactionPerformer
   private void abortAllSubTasks(List<Future<Void>> futures) {
     for (Future<Void> future : futures) {
       future.cancel(true);
+    }
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (Exception ignored) {

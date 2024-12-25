@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -272,6 +273,7 @@ public class CompactionWorkerTest {
     AtomicReference<CompactionWorker.CompactionTaskFuture> compactionTaskSummary =
         new AtomicReference<>();
     AtomicBoolean isInterrupted = new AtomicBoolean(false);
+    CountDownLatch latch = new CountDownLatch(1);
     Phaser phaser = new Phaser(2);
     Thread t =
         new Thread(
@@ -280,7 +282,7 @@ public class CompactionWorkerTest {
                   new CompactionWorker.CompactionTaskFuture(new CompactionTaskSummary()));
               phaser.arriveAndAwaitAdvance();
               try {
-                Thread.sleep(10000);
+                latch.await();
               } catch (InterruptedException ignored) {
                 isInterrupted.set(true);
               }
