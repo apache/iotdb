@@ -334,8 +334,8 @@ public class CompactionTaskManager implements IService {
 
   /**
    * Abort all compactions of a database. The running compaction tasks will be returned as a list,
-   * the compaction threads for the database are not terminated util all the tasks in the list is
-   * finish. The outer caller can use function isAnyTaskInListStillRunning to determine this.
+   * the compaction threads for the database are interrupted immediately. The outer caller can use
+   * function isAnyTaskInListStillRunning to determine whether the tasks in list are finished.
    */
   public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
