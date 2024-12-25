@@ -82,6 +82,8 @@ public class CompactionWorker implements Runnable {
           .updateCompactionMemoryMetrics(taskType, task.getEstimatedMemoryCost());
       CompactionMetrics.getInstance()
           .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectedFileSize(taskType, task.getSelectedFileSize());
       CompactionTaskSummary summary = task.getSummary();
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);
@@ -97,16 +99,21 @@ public class CompactionWorker implements Runnable {
     return taskSuccess;
   }
 
-  static class CompactionTaskFuture implements Future<CompactionTaskSummary> {
+  public static class CompactionTaskFuture implements Future<CompactionTaskSummary> {
     CompactionTaskSummary summary;
+    Thread thread;
 
     public CompactionTaskFuture(CompactionTaskSummary summary) {
+      this.thread = Thread.currentThread();
       this.summary = summary;
     }
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
       summary.cancel();
+      if (mayInterruptIfRunning) {
+        this.thread.interrupt();
+      }
       return true;
     }
 

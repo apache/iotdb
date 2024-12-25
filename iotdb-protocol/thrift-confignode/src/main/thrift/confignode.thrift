@@ -106,6 +106,7 @@ struct TRuntimeConfiguration {
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
   6: optional string clusterId
+  7: optional binary tableInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -126,13 +127,14 @@ struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -164,6 +166,7 @@ struct TDeleteDatabaseReq {
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
+  3: optional bool isTableModel
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -208,6 +211,7 @@ struct TDatabaseSchema {
     8: optional i32 minDataRegionGroupNum
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
+    11: optional bool isTableModel
 }
 
 // Schema
@@ -256,7 +260,7 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional common.TTimePartitionSlot startTimeSlot
     5: optional common.TTimePartitionSlot endTimeSlot
 }
@@ -268,7 +272,7 @@ struct TGetRegionIdResp {
 
 struct TGetTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -281,7 +285,7 @@ struct TGetTimeSlotListResp {
 
 struct TCountTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -389,8 +393,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -438,10 +442,17 @@ struct TCreateFunctionReq {
   4: optional string jarName
   5: optional binary jarFile
   6: optional string jarMD5
+  7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+  2: optional common.Model model
+}
+
+struct TGetUdfTableReq {
+  1: required common.Model model
 }
 
 // Get UDF table from config node
@@ -513,8 +524,9 @@ struct TShowClusterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
-  5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+  4: required list<common.TAINodeLocation> aiNodeList
+  5: required map<i32, string> nodeStatus
+  6: required map<i32, TNodeVersionInfo> nodeVersionInfo
 }
 
 struct TGetClusterIdResp {
@@ -547,9 +559,21 @@ struct TDataNodeInfo {
   7: optional i32 cpuCoreNum
 }
 
+struct TAINodeInfo{
+  1: required i32 aiNodeId
+  2: required string status
+  3: required string internalAddress
+  4: required i32 internalPort
+}
+
 struct TShowDataNodesResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo> dataNodesInfoList
+}
+
+struct TShowAINodesResp {
+  1: required common.TSStatus status
+  2: optional list<TAINodeInfo> aiNodesInfoList
 }
 
 // Show confignodes
@@ -585,6 +609,7 @@ struct TDatabaseInfo {
 struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
+  3: optional bool isTableModel
 }
 
 struct TShowDatabaseResp {
@@ -597,6 +622,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {
@@ -611,6 +637,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsFileSize
 }
 
 struct TShowRegionResp {
@@ -673,10 +700,12 @@ struct TCreatePipePluginReq {
   3: required string jarName
   4: required binary jarFile
   5: required string jarMD5
+  6: optional bool ifNotExistsCondition
 }
 
 struct TDropPipePluginReq {
   1: required string pluginName
+  2: optional bool ifExistsCondition
 }
 
 // Get PipePlugin table from config node
@@ -709,6 +738,8 @@ struct TCreatePipeReq {
     2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
+    5: optional bool ifNotExistsCondition
+    6: optional bool needManuallyStart
 }
 
 struct TAlterPipeReq {
@@ -719,6 +750,12 @@ struct TAlterPipeReq {
     5: required bool isReplaceAllConnectorAttributes
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
+    8: optional bool ifExistsCondition
+}
+
+struct TDropPipeReq {
+    1: required string pipeName
+    2: optional bool ifExistsCondition
 }
 
 // Deprecated, restored for compatibility
@@ -773,6 +810,12 @@ struct TAlterLogicalViewReq {
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
+    3: optional bool ifNotExistsCondition
+}
+
+struct TDropTopicReq {
+    1: required string topicName
+    2: optional bool ifExistsCondition
 }
 
 struct TShowTopicReq {
@@ -892,6 +935,34 @@ struct TUnsetSchemaTemplateReq {
   4: optional bool isGeneratedByPipe
 }
 
+struct TCreateModelReq {
+  1: required string modelName
+  2: required string uri
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<binary> modelInfoList
+}
+
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: optional binary modelInfo
+  3: optional common.TEndPoint aiNodeAddress
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -910,6 +981,7 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+
 // ====================================================
 // Activation
 // ====================================================
@@ -923,11 +995,98 @@ enum TActivationControl {
 }
 
 // ====================================================
+// AINode
+// ====================================================
+
+struct TAINodeConfigurationResp {
+  1: required common.TSStatus status
+  2: optional map<i32, common.TAINodeConfiguration> aiNodeConfigurationMap
+}
+
+
+struct TAINodeRegisterReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+}
+
+struct TAINodeRegisterResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional i32 aiNodeId
+}
+
+struct TAINodeRestartReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
+}
+
+struct TAINodeRestartResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+}
+
+struct TAINodeRemoveReq{
+  1: required common.TAINodeLocation aiNodeLocation
+}
+
+// ====================================================
 // Test only
 // ====================================================
 enum TTestOperation {
   TEST_PROCEDURE_RECOVER,
   TEST_SUB_PROCEDURE,
+}
+
+// ====================================================
+// Table
+// ====================================================
+
+struct TAlterOrDropTableReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required byte operationType
+    5: required binary updateInfo
+}
+
+struct TDeleteTableDeviceReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required binary patternInfo
+    5: required binary filterInfo
+    6: required binary modInfo
+}
+
+struct TDeleteTableDeviceResp {
+   1: required common.TSStatus status
+   2: optional i64 deletedNum
+}
+
+struct TShowTableResp {
+   1: required common.TSStatus status
+   2: optional list<TTableInfo> tableInfoList
+}
+
+struct TDescTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfo
+   3: optional set<string> preDeletedColumns
+}
+
+struct TFetchTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfoMap
+}
+
+struct TTableInfo {
+   1: required string tableName
+   // TTL is stored as string in table props
+   2: required string TTL
+   3: optional i32 state
 }
 
 service IConfigNodeRPCService {
@@ -962,6 +1121,24 @@ service IConfigNodeRPCService {
    *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+
+   // ======================================================
+   // AINode
+   // ======================================================
+
+  /**
+  * node management for ainode, it's similar to datanode above
+  */
+  TAINodeRegisterResp registerAINode(TAINodeRegisterReq req)
+
+  TAINodeRestartResp restartAINode(TAINodeRestartReq req)
+
+  common.TSStatus removeAINode(TAINodeRemoveReq req)
+
+  TShowAINodesResp showAINodes()
+
+  TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -1070,6 +1247,11 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
 
   /**
+  * Get SchemaPartitionTable by specific database name and series slots.
+  **/
+  TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
+
+  /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable always contains all the SeriesPartitionSlots
    * since the unallocated SeriesPartitionSlots will be allocated by the way
@@ -1079,6 +1261,11 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
+
+  /**
+   * Get or create SchemaPartitionTable by specific database name and series slots.
+   **/
+   TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
 
   // ======================================================
   // Node Management
@@ -1235,7 +1422,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF table
    */
-  TGetUDFTableResp getUDFTable()
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req)
 
   /**
    * Return the UDF jar list of the jar name list
@@ -1330,8 +1517,8 @@ service IConfigNodeRPCService {
   /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
-  common.TSStatus clearCache()
+  /** Clear the specific caches of all DataNodes */
+  common.TSStatus clearCache(set<i32> cacheClearOptions)
 
   /** Set configuration on specified node */
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
@@ -1484,6 +1671,9 @@ service IConfigNodeRPCService {
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
 
+  /** Drop Pipe */
+  common.TSStatus dropPipeExtended(TDropPipeReq req)
+
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
@@ -1504,6 +1694,9 @@ service IConfigNodeRPCService {
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
+
+  /** Drop Topic */
+  common.TSStatus dropTopicExtended(TDropTopicReq req)
 
   /** Show Topic by name, if name is empty, show all Topic */
   TShowTopicResp showTopic(TShowTopicReq req)
@@ -1573,6 +1766,34 @@ service IConfigNodeRPCService {
    */
   TShowCQResp showCQ()
 
+  // ====================================================
+  // AI Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+   /**
+   * Return the model info by model_id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
   // ======================================================
   // Quota
   // ======================================================
@@ -1593,5 +1814,21 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  // ======================================================
+  // Table
+  // ======================================================
+
+  common.TSStatus createTable(binary tableInfo)
+
+  common.TSStatus alterOrDropTable(TAlterOrDropTableReq req)
+
+  TShowTableResp showTables(string database, bool isDetails)
+
+  TDescTableResp describeTable(string database, string tableName, bool isDetails)
+
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+
+  TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 }
 

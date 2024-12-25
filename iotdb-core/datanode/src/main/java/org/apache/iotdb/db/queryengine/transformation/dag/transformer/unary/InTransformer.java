@@ -87,6 +87,7 @@ public class InTransformer extends UnaryTransformer {
       case STRING:
         stringSet = values;
         break;
+      case BLOB:
       default:
         throw new UnsupportedOperationException("unsupported data type: " + layerReaderDataType);
     }
@@ -122,6 +123,7 @@ public class InTransformer extends UnaryTransformer {
       case STRING:
         transformBinary(columns, builder);
         return;
+      case BLOB:
       default:
         throw new QueryProcessException("unsupported data type: " + layerReaderDataType);
     }

@@ -137,6 +137,12 @@ public class UDTFM4 implements UDTF {
       case DOUBLE:
         transformDouble(rowWindow, collector);
         break;
+      case BLOB:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      case BOOLEAN:
+      case TEXT:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(

@@ -115,6 +115,19 @@ public class FragmentInstance implements IConsensusRequest {
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
+      QueryType type,
+      long timeOut,
+      SessionInfo sessionInfo,
+      boolean isExplainAnalyze,
+      boolean isRoot) {
+    this(fragment, id, null, type, timeOut, sessionInfo);
+    this.isRoot = isRoot;
+    this.isExplainAnalyze = isExplainAnalyze;
+  }
+
+  public FragmentInstance(
+      PlanFragment fragment,
+      FragmentInstanceId id,
       TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,

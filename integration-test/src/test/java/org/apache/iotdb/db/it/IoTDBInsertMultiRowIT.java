@@ -56,7 +56,7 @@ public class IoTDBInsertMultiRowIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxInnerCompactionCandidateFileNum(2);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setInnerCompactionCandidateFileNum(2);
     EnvFactory.getEnv().initClusterEnvironment();
     initCreateSQLStatement();
     insertData();

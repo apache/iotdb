@@ -63,6 +63,7 @@ public class MinValueAccumulator implements Accumulator {
         addBinaryInput(columns, bitMap);
         return;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -96,6 +97,7 @@ public class MinValueAccumulator implements Accumulator {
         updateBinaryResult(partialResult[0].getBinary(0));
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -127,6 +129,7 @@ public class MinValueAccumulator implements Accumulator {
         updateBinaryResult((Binary) statistics.getMinValue());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -160,6 +163,7 @@ public class MinValueAccumulator implements Accumulator {
         minResult.setBinary(finalResult.getBinary(0));
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -194,6 +198,7 @@ public class MinValueAccumulator implements Accumulator {
         columnBuilders[0].writeBinary(minResult.getBinary());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -226,6 +231,7 @@ public class MinValueAccumulator implements Accumulator {
         columnBuilder.writeBinary(minResult.getBinary());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(

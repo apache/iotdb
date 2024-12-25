@@ -32,6 +32,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -234,6 +235,13 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       totalSize += writer.getPos();
     }
     return totalSize;
+  }
+
+  @Override
+  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+    for (int i = 0; i < targetFileWriters.size(); i++) {
+      targetFileWriters.get(i).setSchema(schemas.get(i));
+    }
   }
 
   protected abstract TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException;

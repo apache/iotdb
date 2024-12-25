@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -48,7 +48,7 @@ public class SeriesDataBlockReader implements IDataBlockReader {
   private boolean hasCachedBatchData = false;
 
   public SeriesDataBlockReader(
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Set<String> allSensors,
       FragmentInstanceContext context,
       QueryDataSource dataSource,
@@ -56,14 +56,14 @@ public class SeriesDataBlockReader implements IDataBlockReader {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(allSensors);
 
-    if (seriesPath instanceof AlignedPath) {
+    if (seriesPath instanceof AlignedFullPath) {
       this.seriesScanUtil =
           new AlignedSeriesScanUtil(
-              seriesPath,
+              (AlignedFullPath) seriesPath,
               ascending ? Ordering.ASC : Ordering.DESC,
               scanOptionsBuilder.build(),
               context);
-    } else if (seriesPath instanceof MeasurementPath) {
+    } else if (seriesPath instanceof NonAlignedFullPath) {
       this.seriesScanUtil =
           new SeriesScanUtil(
               seriesPath,
@@ -78,23 +78,24 @@ public class SeriesDataBlockReader implements IDataBlockReader {
 
   @TestOnly
   public SeriesDataBlockReader(
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       FragmentInstanceContext context,
       List<TsFileResource> seqFileResource,
       List<TsFileResource> unseqFileResource,
       boolean ascending) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
-    if (seriesPath instanceof AlignedPath) {
+    if (seriesPath instanceof AlignedFullPath) {
       scanOptionsBuilder.withAllSensors(
-          new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
+          new HashSet<>(((AlignedFullPath) seriesPath).getMeasurementList()));
       this.seriesScanUtil =
           new AlignedSeriesScanUtil(
-              seriesPath,
+              (AlignedFullPath) seriesPath,
               ascending ? Ordering.ASC : Ordering.DESC,
               scanOptionsBuilder.build(),
               context);
     } else {
-      scanOptionsBuilder.withAllSensors(Sets.newHashSet(seriesPath.getMeasurement()));
+      scanOptionsBuilder.withAllSensors(
+          Sets.newHashSet(((NonAlignedFullPath) seriesPath).getMeasurement()));
       this.seriesScanUtil =
           new SeriesScanUtil(
               seriesPath,

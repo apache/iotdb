@@ -19,46 +19,9 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
-import java.util.function.BiConsumer;
-import java.util.function.LongUnaryOperator;
-
-public class PipeTabletMemoryBlock extends PipeMemoryBlock {
+public class PipeTabletMemoryBlock extends PipeFixedMemoryBlock {
 
   public PipeTabletMemoryBlock(long memoryUsageInBytes) {
     super(memoryUsageInBytes);
-  }
-
-  @Override
-  boolean shrink() {
-    return false;
-  }
-
-  @Override
-  boolean expand() {
-    return false;
-  }
-
-  @Override
-  public PipeMemoryBlock setShrinkMethod(LongUnaryOperator shrinkMethod) {
-    throw new UnsupportedOperationException(
-        "Shrink method is not supported in PipeTabletMemoryBlock");
-  }
-
-  @Override
-  public PipeMemoryBlock setShrinkCallback(BiConsumer<Long, Long> shrinkCallback) {
-    throw new UnsupportedOperationException(
-        "Shrink callback is not supported in PipeTabletMemoryBlock");
-  }
-
-  @Override
-  public PipeMemoryBlock setExpandMethod(LongUnaryOperator extendMethod) {
-    throw new UnsupportedOperationException(
-        "Expand method is not supported in PipeTabletMemoryBlock");
-  }
-
-  @Override
-  public PipeMemoryBlock setExpandCallback(BiConsumer<Long, Long> expandCallback) {
-    throw new UnsupportedOperationException(
-        "Expand callback is not supported in PipeTabletMemoryBlock");
   }
 }

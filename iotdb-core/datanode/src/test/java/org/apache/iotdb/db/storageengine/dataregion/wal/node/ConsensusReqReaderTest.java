@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -97,7 +98,10 @@ public class ConsensusReqReaderTest {
     insertRowNode.setSearchIndex(1);
     walNode.log(0, insertRowNode); // 1
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {2});
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // -1
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // -1
     walNode.rollWALFile();
     // _1-1-1.wal
     insertRowsNode = getInsertRowsNode(devicePath);
@@ -113,21 +117,36 @@ public class ConsensusReqReaderTest {
     walNode.log(0, insertRowNode); // 3
     walNode.rollWALFile();
     // _3-3-1.wal
-    insertRowNode.setDevicePath(new PartialPath(devicePath + "test"));
+    insertRowNode.setTargetPath(new PartialPath(devicePath + "test"));
     walNode.log(0, insertRowNode); // 3
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {4});
     insertTabletNode.setSearchIndex(4);
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // 4
     walNode.rollWALFile();
     // _4-4-1.wal
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // 4
     walNode.rollWALFile();
     // _5-4-1.wal
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // 4
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // 4
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {5});
     insertTabletNode.setSearchIndex(5);
-    walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 5
+    walNode.log(
+        0,
+        insertTabletNode,
+        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()})); // 5
     walNode.rollWALFile();
     // _6-5-1.wal
     insertRowNode = getInsertRowNode(devicePath);
@@ -786,7 +805,7 @@ public class ConsensusReqReaderTest {
   private DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
     return new DeleteDataNode(
         new PlanNodeId(""),
-        Collections.singletonList(new PartialPath(devicePath)),
+        Collections.singletonList(new MeasurementPath(devicePath, "**")),
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }

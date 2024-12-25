@@ -24,16 +24,18 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -45,6 +47,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -247,7 +250,13 @@ public class DistributionPlannerBasicTest {
     Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+        new MPPQueryContext(
+            "",
+            queryId,
+            new SessionInfo(
+                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+            new TEndPoint(),
+            new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
@@ -295,7 +304,13 @@ public class DistributionPlannerBasicTest {
     Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+        new MPPQueryContext(
+            "",
+            queryId,
+            new SessionInfo(
+                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+            new TEndPoint(),
+            new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));

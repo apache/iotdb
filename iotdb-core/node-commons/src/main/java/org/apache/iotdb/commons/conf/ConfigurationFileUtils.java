@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.io.StringReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -158,7 +159,7 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
-  public static void getConfigurationDefaultValue() throws IOException {
+  public static void loadConfigurationDefaultValueFromTemplate() throws IOException {
     if (configuration2DefaultValue != null) {
       return;
     }
@@ -185,6 +186,7 @@ public class ConfigurationFileUtils {
         }
       }
     } catch (IOException e) {
+      configuration2DefaultValue = null;
       logger.warn("Failed to read configuration template", e);
       throw e;
     }
@@ -197,7 +199,7 @@ public class ConfigurationFileUtils {
     if (configuration2DefaultValue != null) {
       return configuration2DefaultValue.get(parameterName);
     } else {
-      getConfigurationDefaultValue();
+      loadConfigurationDefaultValueFromTemplate();
       return configuration2DefaultValue.getOrDefault(parameterName, null);
     }
   }
@@ -225,30 +227,53 @@ public class ConfigurationFileUtils {
     return content.toString();
   }
 
-  public static List<String> filterImmutableConfigItems(Map<String, String> configItems) {
+  public static List<String> filterInvalidConfigItems(Map<String, String> configItems) {
+    boolean successLoadDefaultValueMap = true;
+    try {
+      loadConfigurationDefaultValueFromTemplate();
+    } catch (IOException e) {
+      successLoadDefaultValueMap = false;
+    }
+
     List<String> ignoredConfigItems = new ArrayList<>();
-    for (String ignoredKey : ignoreConfigKeys) {
-      if (configItems.containsKey(ignoredKey)) {
-        configItems.remove(ignoredKey);
-        ignoredConfigItems.add(ignoredKey);
+    for (String key : configItems.keySet()) {
+      if (ignoreConfigKeys.contains(key)) {
+        ignoredConfigItems.add(key);
+      }
+      if (successLoadDefaultValueMap && !configuration2DefaultValue.containsKey(key)) {
+        ignoredConfigItems.add(key);
       }
     }
+    ignoredConfigItems.forEach(configItems::remove);
     return ignoredConfigItems;
   }
 
-  public static void updateConfigurationFile(File file, Properties newConfigItems)
+  public static void updateConfiguration(
+      File file, Properties newConfigItems, LoadHotModifiedPropsFunc loadHotModifiedPropertiesFunc)
       throws IOException, InterruptedException {
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
     try {
       // read configuration file
       List<String> lines = new ArrayList<>();
+      TrimProperties mergedProps = new TrimProperties();
       try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
         String line = null;
         while ((line = reader.readLine()) != null) {
           lines.add(line);
+          mergedProps.load(new StringReader(line));
         }
       }
+      // overwrite old configuration with new value
+      for (String key : newConfigItems.stringPropertyNames()) {
+        mergedProps.put(key, newConfigItems.getProperty(key));
+      }
+
+      // load hot modified properties
+      if (loadHotModifiedPropertiesFunc != null) {
+        loadHotModifiedPropertiesFunc.loadHotModifiedProperties(mergedProps);
+      }
+
       // generate new configuration file content in memory
       StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
       for (String currentLine : lines) {
@@ -299,7 +324,7 @@ public class ConfigurationFileUtils {
     }
     byte[] bytes = Files.readAllBytes(file.toPath());
     String content = new String(bytes);
-    return content.replace(license, "");
+    return lineSeparator + content.replace(license, "");
   }
 
   private static String readConfigLines(File file) throws IOException {
@@ -329,5 +354,11 @@ public class ConfigurationFileUtils {
 
   private static void releaseFileLock(File file) throws IOException {
     Files.deleteIfExists(file.toPath());
+  }
+
+  @FunctionalInterface
+  public interface LoadHotModifiedPropsFunc {
+    void loadHotModifiedProperties(TrimProperties properties)
+        throws IOException, InterruptedException;
   }
 }

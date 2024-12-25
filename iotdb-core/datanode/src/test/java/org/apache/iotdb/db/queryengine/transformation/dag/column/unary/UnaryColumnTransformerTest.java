@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -35,6 +36,7 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -122,6 +124,19 @@ public class UnaryColumnTransformerTest {
       // check input type
       new RegularColumnTransformer(
           TypeFactory.getType(TSDataType.BOOLEAN), operand, Pattern.compile("%d"));
+      Assert.fail();
+    } catch (Exception ignored) {
+    }
+  }
+
+  @Test
+  public void testLike() {
+    try {
+      // check input type
+      new LikeColumnTransformer(
+          TypeFactory.getType(TSDataType.BOOLEAN),
+          operand,
+          LikePattern.compile("%d", Optional.empty()));
       Assert.fail();
     } catch (Exception ignored) {
     }

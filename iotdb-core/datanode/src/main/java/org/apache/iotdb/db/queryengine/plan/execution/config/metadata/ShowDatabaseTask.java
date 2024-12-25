@@ -30,12 +30,12 @@ public class ShowDatabaseTask implements IConfigTask {
 
   private final ShowDatabaseStatement showDatabaseStatement;
 
-  public ShowDatabaseTask(ShowDatabaseStatement showDatabaseStatement) {
+  public ShowDatabaseTask(final ShowDatabaseStatement showDatabaseStatement) {
     this.showDatabaseStatement = showDatabaseStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showDatabase(showDatabaseStatement);
   }

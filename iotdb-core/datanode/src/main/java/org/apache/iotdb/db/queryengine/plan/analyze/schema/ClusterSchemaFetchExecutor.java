@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -90,7 +91,8 @@ class ClusterSchemaFetchExecutor {
         sql,
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
-        timeout);
+        timeout,
+        false);
   }
 
   /**
@@ -195,7 +197,7 @@ class ClusterSchemaFetchExecutor {
     PathPatternTree patternTree = new PathPatternTree();
     for (String fullPath : fullPathList) {
       try {
-        patternTree.appendFullPath(new PartialPath(fullPath));
+        patternTree.appendFullPath(new MeasurementPath(fullPath));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }
@@ -244,9 +246,10 @@ class ClusterSchemaFetchExecutor {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
-            String.format(
-                "cannot fetch schema, status is: %s, msg is: %s",
-                executionResult.status.getCode(), executionResult.status.getMessage()));
+            new IoTDBException(
+                String.format(
+                    "Fetch Schema failed, because %s", executionResult.status.getMessage()),
+                executionResult.status.getCode()));
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();

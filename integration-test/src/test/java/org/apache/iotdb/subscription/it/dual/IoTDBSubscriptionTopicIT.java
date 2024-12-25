@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
@@ -44,6 +44,7 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -68,10 +69,16 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Override
   protected void setUpConfig() {
@@ -162,7 +169,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -263,7 +270,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -360,7 +367,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -484,7 +491,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -658,7 +665,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     try {
@@ -769,7 +776,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName())));
+            String.format("%s - consumer", testName.getDisplayName())));
 
     // Insert some realtime data on sender
     threads.add(
@@ -792,7 +799,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               }
               dataPrepared.set(true);
             },
-            String.format("%s - data inserter", testName.getMethodName())));
+            String.format("%s - data inserter", testName.getDisplayName())));
 
     for (final Thread thread : threads) {
       thread.start();

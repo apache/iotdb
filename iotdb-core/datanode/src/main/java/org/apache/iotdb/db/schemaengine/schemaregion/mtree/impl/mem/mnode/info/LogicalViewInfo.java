@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -68,7 +69,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
       if (this.getExpression().getExpressionType() == ViewExpressionType.TIMESERIES) {
         String pathString = ((TimeSeriesViewOperand) this.getExpression()).getPathString();
         try {
-          return new PartialPath(pathString);
+          return new MeasurementPath(pathString);
         } catch (IllegalPathException e) {
           throw new RuntimeException(e);
         }

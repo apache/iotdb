@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.PriorityQueue;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
@@ -35,7 +33,7 @@ public class PriorityMergeReader implements IPointReader {
 
   // max time of all added readers in PriorityMergeReader
   // or min time of all added readers in DescPriorityMergeReader
-  protected long currentReadStopTime;
+  protected long currentReadStopTime = Long.MIN_VALUE;
 
   protected PriorityQueue<Element> heap;
 
@@ -58,23 +56,12 @@ public class PriorityMergeReader implements IPointReader {
     this.memoryReservationManager = memoryReservationManager;
   }
 
-  @TestOnly
-  public void addReader(IPointReader reader, long priority) throws IOException {
-    if (reader.hasNextTimeValuePair()) {
-      heap.add(
-          new Element(
-              reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0, false)));
-    } else {
-      reader.close();
-    }
-  }
-
   public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       Element element = new Element(reader, reader.nextTimeValuePair(), priority);
       heap.add(element);
-      currentReadStopTime = Math.max(currentReadStopTime, endTime);
+      updateCurrentReadStopTime(endTime);
       long size = element.getReader().getUsedMemorySize();
       usedMemorySize += size;
       if (memoryReservationManager != null) {
@@ -83,6 +70,10 @@ public class PriorityMergeReader implements IPointReader {
     } else {
       reader.close();
     }
+  }
+
+  protected void updateCurrentReadStopTime(long endTime) {
+    currentReadStopTime = Math.max(currentReadStopTime, endTime);
   }
 
   public long getCurrentReadStopTime() {
@@ -187,49 +178,5 @@ public class PriorityMergeReader implements IPointReader {
       memoryReservationManager.releaseMemoryCumulatively(usedMemorySize);
     }
     usedMemorySize = 0;
-  }
-
-  public static class MergeReaderPriority implements Comparable<MergeReaderPriority> {
-    final long version;
-    final long offset;
-
-    final boolean isSeq;
-
-    public MergeReaderPriority(long version, long offset, boolean isSeq) {
-      this.version = version;
-      this.offset = offset;
-      this.isSeq = isSeq;
-    }
-
-    @Override
-    public int compareTo(MergeReaderPriority o) {
-      if (isSeq != o.isSeq) {
-        // one is seq and another is unseq, unseq always win
-        return isSeq ? -1 : 1;
-      } else {
-        // both seq or both unseq, using version + offset to compare
-        if (version < o.version) {
-          return -1;
-        }
-        return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
-      }
-    }
-
-    @Override
-    public boolean equals(Object object) {
-      if (this == object) {
-        return true;
-      }
-      if (object == null || getClass() != object.getClass()) {
-        return false;
-      }
-      MergeReaderPriority that = (MergeReaderPriority) object;
-      return (this.version == that.version && this.offset == that.offset);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(version, offset);
-    }
   }
 }

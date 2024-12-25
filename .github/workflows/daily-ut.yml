@@ -1,0 +1,57 @@
+name: Daily UT
+
+on:
+  schedule:
+    # Run at UTC 19:00 every day (CST 03:00 AM)
+    - cron: '0 19 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  unit-test:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [ 8 ]
+        os: [ ubuntu-latest, windows-latest ]
+        it_task: [ 'others', 'datanode' ]
+        include:
+          - java: 17
+            os: macos-latest
+            it_task: 'datanode'
+          - java: 17
+            os: macos-latest
+            it_task: 'others'
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Test Datanode Module with Maven
+        shell: bash
+        if: ${{ matrix.it_task == 'datanode'}}
+        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true
+      - name: Test Other Modules with Maven
+        shell: bash
+        if: ${{ matrix.it_task == 'others'}}
+        run: |
+          mvn clean install -DskipTests
+          mvn -P get-jar-with-dependencies,with-integration-tests clean test -Dtest.port.closed=true -Diotdb.test.skip=true

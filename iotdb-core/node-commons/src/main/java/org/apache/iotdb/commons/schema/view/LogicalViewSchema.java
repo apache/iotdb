@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.view;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -45,14 +46,14 @@ import java.util.Map;
 public class LogicalViewSchema
     implements IMeasurementSchema, Comparable<LogicalViewSchema>, Serializable {
 
-  private String measurementId;
+  private String measurementName;
 
   private ViewExpression expression;
 
   private TSDataType dataType = TSDataType.UNKNOWN;
 
   public LogicalViewSchema(String measurementId, ViewExpression expression) {
-    this.measurementId = measurementId;
+    this.measurementName = measurementId;
     this.expression = expression;
   }
 
@@ -61,7 +62,7 @@ public class LogicalViewSchema
     if (equals(o)) {
       return 0;
     } else {
-      return this.measurementId.compareTo(o.measurementId);
+      return this.measurementName.compareTo(o.measurementName);
     }
   }
 
@@ -71,8 +72,8 @@ public class LogicalViewSchema
   }
 
   @Override
-  public String getMeasurementId() {
-    return this.measurementId;
+  public String getMeasurementName() {
+    return this.measurementName;
   }
 
   @Override
@@ -98,7 +99,7 @@ public class LogicalViewSchema
   }
 
   @Override
-  public void setType(TSDataType dataType) {
+  public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
 
@@ -147,7 +148,7 @@ public class LogicalViewSchema
 
   @Override
   public int getSubMeasurementIndex(String measurementId) {
-    return this.measurementId.equals(measurementId) ? 0 : -1;
+    return this.measurementName.equals(measurementId) ? 0 : -1;
   }
 
   @Override
@@ -157,7 +158,7 @@ public class LogicalViewSchema
 
   @Override
   public boolean containsSubMeasurement(String measurementId) {
-    return this.measurementId.equals(measurementId);
+    return this.measurementName.equals(measurementId);
   }
 
   // region serialize and deserialize
@@ -172,7 +173,7 @@ public class LogicalViewSchema
   @Override
   public int serializeTo(ByteBuffer buffer) {
     // TODO: CRTODO: the size of buffer is not calculated!
-    ReadWriteIOUtils.write(measurementId, buffer);
+    ReadWriteIOUtils.write(measurementName, buffer);
 
     ViewExpression.serialize(this.expression, buffer);
     return 0;
@@ -181,7 +182,7 @@ public class LogicalViewSchema
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     // TODO: CRTODO: the size of buffer is not calculated!
-    ReadWriteIOUtils.write(measurementId, outputStream);
+    ReadWriteIOUtils.write(measurementName, outputStream);
 
     ViewExpression.serialize(this.expression, outputStream);
     return 0;
@@ -242,13 +243,13 @@ public class LogicalViewSchema
   public PartialPath getSourcePathIfWritable() {
     if (this.isWritable()) {
       try {
-        return new PartialPath(((TimeSeriesViewOperand) this.expression).getPathString());
+        return new MeasurementPath(((TimeSeriesViewOperand) this.expression).getPathString());
       } catch (IllegalPathException e) {
         throw new RuntimeException(
             new MetadataException(
                 String.format(
                     "View with measurementID [%s] is broken. It stores illegal path [%s].",
-                    this.measurementId, this.getSourcePathStringIfWritable())));
+                    this.measurementName, this.getSourcePathStringIfWritable())));
       }
     }
     return null;

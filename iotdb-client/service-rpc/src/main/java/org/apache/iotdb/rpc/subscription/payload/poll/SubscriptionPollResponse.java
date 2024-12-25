@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SubscriptionPollResponse {
 
@@ -110,16 +112,18 @@ public class SubscriptionPollResponse {
     return new SubscriptionPollResponse(responseType, payload, commitContext);
   }
 
-  /////////////////////////////// object ///////////////////////////////
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
-    return "SubscriptionPollResponse{responseType="
-        + SubscriptionPollResponseType.valueOf(responseType).toString()
-        + ", payload="
-        + payload
-        + ", commitContext="
-        + commitContext
-        + "}";
+    return "SubscriptionPollResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = new HashMap<>();
+    result.put("responseType", SubscriptionPollResponseType.valueOf(responseType).toString());
+    result.put("payload", payload.toString());
+    result.put("commitContext", commitContext.toString());
+    return result;
   }
 }

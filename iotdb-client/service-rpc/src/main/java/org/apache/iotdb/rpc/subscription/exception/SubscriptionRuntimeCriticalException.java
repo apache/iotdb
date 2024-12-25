@@ -21,7 +21,7 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionRuntimeCriticalException extends SubscriptionException {
+public class SubscriptionRuntimeCriticalException extends SubscriptionRuntimeException {
 
   public SubscriptionRuntimeCriticalException(final String message) {
     super(message);
@@ -37,5 +37,10 @@ public class SubscriptionRuntimeCriticalException extends SubscriptionException 
         && Objects.equals(getMessage(), ((SubscriptionRuntimeCriticalException) obj).getMessage())
         && Objects.equals(
             getTimeStamp(), ((SubscriptionRuntimeCriticalException) obj).getTimeStamp());
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 }

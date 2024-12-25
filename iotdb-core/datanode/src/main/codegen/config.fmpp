@@ -19,7 +19,9 @@
 data: {
     allDataTypes: tdd(../dataModel/AllDataType.tdd),
     decimalDataTypes: tdd(../dataModel/DecimalDataType.tdd),
-    compareTypes: tdd(../dataModel/CompareType.tdd)
+    compareTypes: tdd(../dataModel/CompareType.tdd),
+    mathematicalOperator: tdd(../dataModel/MathematicalOperator.tdd),
+    mathematicalDataType: tdd(../dataModel/MathematicalDataType.tdd)
 }
 freemarkerLinks: {
     includes: includes/

@@ -27,17 +27,18 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class TemplateFilter extends SchemaFilter {
   private final String templateName;
   private final boolean isEqual;
 
-  public TemplateFilter(String templateName, boolean isEqual) {
+  public TemplateFilter(final String templateName, final boolean isEqual) {
     this.templateName = templateName;
     this.isEqual = isEqual;
   }
 
-  public TemplateFilter(ByteBuffer byteBuffer) {
+  public TemplateFilter(final ByteBuffer byteBuffer) {
     this.templateName = ReadWriteIOUtils.readString(byteBuffer);
     this.isEqual = ReadWriteIOUtils.readBool(byteBuffer);
   }
@@ -51,7 +52,7 @@ public class TemplateFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, C node) {
     return visitor.visitTemplateFilter(this, node);
   }
 
@@ -61,14 +62,31 @@ public class TemplateFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(templateName, byteBuffer);
     ReadWriteIOUtils.write(isEqual, byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(isEqual, stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final TemplateFilter that = (TemplateFilter) o;
+    return Objects.equals(templateName, that.templateName) && Objects.equals(isEqual, that.isEqual);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(templateName, isEqual);
   }
 }

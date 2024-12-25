@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;

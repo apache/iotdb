@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+
+import java.io.IOException;
+import java.util.List;
 
 public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEstimator {
   @Override
@@ -65,5 +69,11 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
                 taskInfo.getMaxChunkMetadataNumInSeries() * maxConcurrentSeriesNum);
 
     return targetChunkWriterSize + inMemorySortedDataSize + taskInfo.getModificationFileSize();
+  }
+
+  @Override
+  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
+      throws IOException {
+    throw new RuntimeException("unimplemented");
   }
 }

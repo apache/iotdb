@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,20 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
+  private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
+      "Skip subscription-related operations and do nothing";
+
   private static final int RETRY_THRESHOLD = 1;
+
+  // Only used in rollback to reduce the number of network calls
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // Only used in rollback to avoid executing rollbackFromValidate multiple times
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  // TODO: consider serializing this variable later
+  protected boolean isRollbackFromValidateSuccessful = false;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
@@ -156,7 +170,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract SubscriptionOperation getOperation();
 
-  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env)
+  protected abstract boolean executeFromValidate(ConfigNodeProcedureEnv env)
       throws SubscriptionException;
 
   protected abstract void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
@@ -179,7 +193,14 @@ public abstract class AbstractOperateSubscriptionProcedure
     try {
       switch (state) {
         case VALIDATE:
-          executeFromValidate(env);
+          if (!executeFromValidate(env)) {
+            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
+            // On client side, the message returned after the successful execution of the
+            // subscription command corresponding to this procedure is "Msg: The statement is
+            // executed successfully."
+            this.setResult(SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperateSubscriptionState.OPERATE_ON_CONFIG_NODES);
           break;
         case OPERATE_ON_CONFIG_NODES:
@@ -239,20 +260,25 @@ public abstract class AbstractOperateSubscriptionProcedure
 
     switch (state) {
       case VALIDATE:
-        try {
-          rollbackFromValidate(env);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
-              getProcId(),
-              state,
-              e.getMessage(),
-              e);
+        if (!isRollbackFromValidateSuccessful) {
+          try {
+            rollbackFromValidate(env);
+            isRollbackFromValidateSuccessful = true;
+          } catch (Exception e) {
+            LOGGER.warn(
+                "ProcedureId {}: Failed to rollback from state [{}], because {}",
+                getProcId(),
+                state,
+                e.getMessage(),
+                e);
+          }
         }
         break;
       case OPERATE_ON_CONFIG_NODES:
         try {
-          rollbackFromOperateOnConfigNodes(env);
+          if (!isRollbackFromOperateOnDataNodesSuccessful) {
+            rollbackFromOperateOnConfigNodes(env);
+          }
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -264,7 +290,9 @@ public abstract class AbstractOperateSubscriptionProcedure
         break;
       case OPERATE_ON_DATA_NODES:
         try {
+          rollbackFromOperateOnConfigNodes(env);
           rollbackFromOperateOnDataNodes(env);
+          isRollbackFromOperateOnDataNodesSuccessful = true;
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -282,10 +310,11 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromValidate(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException;
 
   protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws IOException;
+      throws SubscriptionException, IOException;
 
   /**
    * Pushing all the topicMeta's to all the dataNodes.

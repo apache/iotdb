@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
@@ -33,7 +35,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -167,10 +168,10 @@ public class CompactionFileGeneratorUtils {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
-      PartialPath partialPath = new PartialPath(fullPath);
+      PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
@@ -225,10 +226,10 @@ public class CompactionFileGeneratorUtils {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
-      PartialPath partialPath = new PartialPath(fullPath);
+      PartialPath partialPath = new MeasurementPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     int currChunksIndex = 0;
@@ -279,20 +280,17 @@ public class CompactionFileGeneratorUtils {
       throws IllegalPathException, IOException {
     ModificationFile modificationFile;
     if (isCompactionMods) {
-      modificationFile = ModificationFile.getCompactionMods(targetTsFileResource);
+      modificationFile = targetTsFileResource.getCompactionModFile();
     } else {
-      modificationFile = ModificationFile.getNormalMods(targetTsFileResource);
+      modificationFile = targetTsFileResource.getModFileForWrite();
     }
     for (Entry<String, Pair<Long, Long>> toDeleteTimeseriesAndTimeEntry :
         toDeleteTimeseriesAndTime.entrySet()) {
       String fullPath = toDeleteTimeseriesAndTimeEntry.getKey();
       Pair<Long, Long> startTimeEndTime = toDeleteTimeseriesAndTimeEntry.getValue();
-      Deletion deletion =
-          new Deletion(
-              new PartialPath(fullPath),
-              Long.MAX_VALUE,
-              startTimeEndTime.left,
-              startTimeEndTime.right);
+      ModEntry deletion =
+          new TreeDeletionEntry(
+              new MeasurementPath(fullPath), startTimeEndTime.left, startTimeEndTime.right);
       modificationFile.write(deletion);
     }
     modificationFile.close();
@@ -320,7 +318,7 @@ public class CompactionFileGeneratorUtils {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {

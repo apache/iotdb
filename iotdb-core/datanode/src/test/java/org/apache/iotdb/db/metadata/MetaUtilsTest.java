@@ -45,7 +45,6 @@ public class MetaUtilsTest {
 
   private final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
-  ;
 
   @Test
   public void testGetMultiFullPaths() {
@@ -111,12 +110,12 @@ public class MetaUtilsTest {
   }
 
   @Test
-  public void testGetStorageGroupPathByLevel() {
+  public void testGetDatabasePathByLevel() {
     int level = 1;
     try {
       assertEquals(
           "root.laptop",
-          MetaUtils.getStorageGroupPathByLevel(new PartialPath("root.laptop.d1.s1"), level)
+          MetaUtils.getDatabasePathByLevel(new PartialPath("root.laptop.d1.s1"), level)
               .getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -125,19 +124,23 @@ public class MetaUtilsTest {
 
     boolean caughtException = false;
     try {
-      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
+      MetaUtils.getDatabasePathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
     } catch (MetadataException e) {
       caughtException = true;
-      assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
+      assertEquals(
+          "root1.laptop.d1.s1 is not a legal path, because it does not start with root",
+          e.getMessage());
     }
     assertTrue(caughtException);
 
     caughtException = false;
     try {
-      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root"), level);
+      MetaUtils.getDatabasePathByLevel(new PartialPath("root"), level);
     } catch (MetadataException e) {
       caughtException = true;
-      assertEquals("root is not a legal path", e.getMessage());
+      assertEquals(
+          "root is not a legal path, because it is no longer than default sg level: 1",
+          e.getMessage());
     }
     assertTrue(caughtException);
   }

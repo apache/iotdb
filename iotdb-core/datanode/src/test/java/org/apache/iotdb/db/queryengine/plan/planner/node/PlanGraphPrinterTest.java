@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -56,8 +57,10 @@ public class PlanGraphPrinterTest {
             Collections.emptyList(),
             Collections.emptyMap());
 
-    SeriesScanNode scanNode = new SeriesScanNode(new PlanNodeId("3"), new MeasurementPath("s1"));
-    deviceViewNode.addChildDeviceNode("d1", scanNode);
+    SeriesScanNode scanNode =
+        new SeriesScanNode(new PlanNodeId("3"), new MeasurementPath("root.db.d1.s1"));
+    deviceViewNode.addChildDeviceNode(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), scanNode);
 
     topKNode.addChild(deviceViewNode);
 

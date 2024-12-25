@@ -30,6 +30,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -194,7 +195,7 @@ public class BloomFilterCacheTest {
       int rowNum = 1000000;
       // the number of values to include in the tablet
       int sensorNum = 10;
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file metadata (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
@@ -213,21 +214,21 @@ public class BloomFilterCacheTest {
         long timestamp = 1;
         long value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
-          int row = tablet.rowSize++;
-          timestamps[row] = timestamp++;
+          int row = tablet.getRowSize();
+          tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
             long[] sensor = (long[]) values[i];
             sensor[row] = value;
           }
           // write Tablet to TsFile
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
-            tsFileWriter.write(tablet);
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+            tsFileWriter.writeTree(tablet);
             tablet.reset();
           }
         }
         // write Tablet to TsFile
-        if (tablet.rowSize != 0) {
-          tsFileWriter.write(tablet);
+        if (tablet.getRowSize() != 0) {
+          tsFileWriter.writeTree(tablet);
           tablet.reset();
         }
       }

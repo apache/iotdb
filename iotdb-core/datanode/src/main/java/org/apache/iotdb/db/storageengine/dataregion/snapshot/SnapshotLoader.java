@@ -82,12 +82,7 @@ public class SnapshotLoader {
     if (sourceDataDir.exists()) {
       File[] files =
           sourceDataDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
-      if (files == null || files.length == 0) {
-        LOGGER.warn("Failed to find snapshot log file, cannot recover it");
-      } else if (files.length > 1) {
-        LOGGER.warn(
-            "Found more than one snapshot log file, cannot recover it. {}", Arrays.toString(files));
-      } else {
+      if (files != null && files.length == 1) {
         LOGGER.info("Reading snapshot log file {}", files[0]);
         return files[0];
       }

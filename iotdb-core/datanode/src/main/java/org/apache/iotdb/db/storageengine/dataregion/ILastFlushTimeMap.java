@@ -27,15 +27,14 @@ import java.util.Map;
 public interface ILastFlushTimeMap {
 
   // region update
-  /** Update partitionLatestFlushedTime. */
-  void updateOneDeviceFlushedTime(long timePartitionId, IDeviceID deviceId, long time);
-
   void updateMultiDeviceFlushedTime(long timePartitionId, Map<IDeviceID, Long> flushedTimeMap);
 
-  /** Update globalLatestFlushedTimeForEachDevice. */
-  void updateOneDeviceGlobalFlushedTime(IDeviceID path, long time);
+  void updatePartitionFlushedTime(long timePartitionId, long maxFlushedTime);
 
   void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap);
+
+  void upgradeAndUpdateMultiDeviceFlushedTime(
+      long timePartitionId, Map<IDeviceID, Long> flushedTimeMap);
 
   /** Update both partitionLatestFlushedTime and globalLatestFlushedTimeForEachDevice. */
   void updateLatestFlushTime(long partitionId, Map<IDeviceID, Long> updateMap);
@@ -43,7 +42,7 @@ public interface ILastFlushTimeMap {
   // endregion
 
   // region ensure
-  boolean checkAndCreateFlushedTimePartition(long timePartitionId);
+  boolean checkAndCreateFlushedTimePartition(long timePartitionId, boolean usingDeviceFlushTime);
 
   // endregion
 

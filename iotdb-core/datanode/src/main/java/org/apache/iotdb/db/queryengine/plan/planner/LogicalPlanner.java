@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -31,6 +32,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -45,19 +48,25 @@ public class LogicalPlanner {
 
   public LogicalQueryPlan plan(Analysis analysis) {
     long startTime = System.nanoTime();
-    PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+    PlanNode rootNode =
+        new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
 
     // optimize the query logical plan
     if (analysis.isQuery()) {
 
       long planFinishTime = System.nanoTime();
+      long logicalPlanCost = planFinishTime - startTime;
+      context.setLogicalPlanCost(logicalPlanCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - planFinishTime);
-      context.setLogicalPlanCost(planFinishTime - startTime);
+          .recordPlanCost(TREE_TYPE, LOGICAL_PLANNER, logicalPlanCost);
+
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
       }
-      context.setLogicalOptimizationCost(System.nanoTime() - planFinishTime);
+      long logicalOptimizationCost = System.nanoTime() - planFinishTime;
+      context.setLogicalOptimizationCost(logicalOptimizationCost);
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TREE_TYPE, LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(context, rootNode);

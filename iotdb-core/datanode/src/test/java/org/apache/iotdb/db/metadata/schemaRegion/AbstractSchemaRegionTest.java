@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
@@ -93,9 +92,9 @@ public abstract class AbstractSchemaRegionTest {
 
   protected ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
       throws Exception {
-    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+    final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
-      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+      SchemaEngine.getInstance().createSchemaRegion(database, regionId);
     }
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }

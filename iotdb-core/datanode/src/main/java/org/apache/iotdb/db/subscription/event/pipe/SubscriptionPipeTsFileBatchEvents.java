@@ -21,62 +21,52 @@ package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
 
-import java.io.File;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTsFileEventBatch batch;
-  private final File tsFile;
-
   private final AtomicInteger referenceCount; // shared between the same batch
-  private final AtomicBoolean isAcked = new AtomicBoolean(false);
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final int count; // snapshot the initial reference count, used for event count calculation
 
   public SubscriptionPipeTsFileBatchEvents(
-      final SubscriptionPipeTsFileEventBatch batch,
-      final File tsFile,
-      final AtomicInteger referenceCount) {
+      final SubscriptionPipeTsFileEventBatch batch, final AtomicInteger referenceCount) {
     this.batch = batch;
-    this.tsFile = tsFile;
     this.referenceCount = referenceCount;
-  }
-
-  @Override
-  public File getTsFile() {
-    return tsFile;
+    this.count = Math.max(1, referenceCount.get());
   }
 
   @Override
   public void ack() {
-    if (!isAcked.get() && referenceCount.decrementAndGet() == 0) {
-      isAcked.set(true);
+    if (referenceCount.decrementAndGet() == 0) {
       batch.ack();
     }
   }
 
   @Override
-  public void cleanup() {
-    if (!isClosed.get() && referenceCount.decrementAndGet() == 0) {
-      isClosed.set(true);
-      // close batch, it includes clearing the reference count of events
-      batch.cleanup();
+  public void cleanUp() {
+    if (referenceCount.decrementAndGet() == 0) {
+      batch.cleanUp();
     }
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionPipeTsFileBatchEvents{batch="
         + batch
-        + ", tsFile="
-        + tsFile
         + ", referenceCount="
         + referenceCount
-        + ", isAcked="
-        + isAcked
-        + ", isClosed="
-        + isClosed
         + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    // Since multiple events will share the same batch, equal division is performed here.
+    // If it is not exact, round up to remain pessimistic.
+    return (batch.getPipeEventCount() + count - 1) / count;
   }
 }

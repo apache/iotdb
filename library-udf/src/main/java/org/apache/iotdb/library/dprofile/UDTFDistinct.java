@@ -86,6 +86,10 @@ public class UDTFDistinct implements UDTF {
       case BOOLEAN:
         booleanSet = new BooleanHashSet();
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         break;
     }
@@ -112,6 +116,10 @@ public class UDTFDistinct implements UDTF {
       case BOOLEAN:
         booleanSet.add(row.getBoolean(0));
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         break;
     }
@@ -162,6 +170,10 @@ public class UDTFDistinct implements UDTF {
           i++;
         }
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         break;
     }
@@ -188,6 +200,10 @@ public class UDTFDistinct implements UDTF {
       case BOOLEAN:
         booleanSet.clear();
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         break;
     }

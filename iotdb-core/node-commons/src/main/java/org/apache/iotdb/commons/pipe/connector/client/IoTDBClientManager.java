@@ -39,6 +39,12 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
+  protected final String username;
+  protected final String password;
+
+  protected final boolean shouldReceiverConvertOnTypeMismatch;
+  protected final String loadTsFileStrategy;
+
   // This flag indicates whether the receiver supports mods transferring if
   // it is a DataNode receiver. The flag is useless for configNode receiver.
   protected boolean supportModsIfIsDataNodeReceiver = true;
@@ -48,9 +54,23 @@ public abstract class IoTDBClientManager {
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
-  protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
+  protected IoTDBClientManager(
+      final List<TEndPoint> endPointList,
+      /* The following parameters are used locally. */
+      final boolean useLeaderCache,
+      /* The following parameters are used to handshake with the receiver. */
+      final String username,
+      final String password,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy) {
     this.endPointList = endPointList;
+
     this.useLeaderCache = useLeaderCache;
+
+    this.username = username;
+    this.password = password;
+    this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
+    this.loadTsFileStrategy = loadTsFileStrategy;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

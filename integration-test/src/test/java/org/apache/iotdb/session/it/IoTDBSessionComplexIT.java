@@ -35,6 +35,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -274,7 +275,7 @@ public class IoTDBSessionComplexIT {
   private void insertTablet(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
@@ -282,43 +283,45 @@ public class IoTDBSessionComplexIT {
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
     for (long time = 0; time < 100; time++) {
-      int rowIndex = tablet.rowSize++;
+      int rowIndex = tablet.getRowSize();
       long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         value++;
       }
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
         tablet.reset();
       }
     }
 
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       session.insertTablet(tablet);
       tablet.reset();
+      tablet.bitMaps = null;
     }
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
     for (long time = 0; time < 100; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[row] = i;
       }
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
         tablet.reset();
       }
     }
 
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       session.insertTablet(tablet);
       tablet.reset();
+      tablet.bitMaps = null;
     }
   }
 
@@ -374,7 +377,7 @@ public class IoTDBSessionComplexIT {
   private void insertMultiTablets(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
     long timePartition = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -387,12 +390,12 @@ public class IoTDBSessionComplexIT {
     for (long time = 0; time < 10 * timePartition; time += timePartition / 10) {
       for (Tablet tablet : tabletMap.values()) {
         long value = 0;
-        tablet.addTimestamp(tablet.rowSize, time);
+        int rowSize = tablet.getRowSize();
+        tablet.addTimestamp(rowSize, time);
         for (int s = 0; s < 3; s++) {
-          tablet.addValue(schemaList.get(s).getMeasurementId(), tablet.rowSize, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), rowSize, value);
           value++;
         }
-        tablet.rowSize++;
       }
     }
 

@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -101,6 +102,18 @@ public class IoTDBConnection implements Connection {
 
   private String userName;
 
+  // default is tree
+  public String getSqlDialect() {
+    if (params != null && StringUtils.isNotBlank(params.getSqlDialect())) {
+      return params.getSqlDialect();
+    } else {
+      return "tree";
+    }
+  }
+
+  // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
+  private int timeFactor = 1_000;
+
   public IoTDBConnection() {
     // allowed to create an instance without parameter input.
   }
@@ -130,6 +143,10 @@ public class IoTDBConnection implements Connection {
 
   public String getUrl() {
     return url;
+  }
+
+  public IoTDBConnectionParams getParams() {
+    return params;
   }
 
   @Override
@@ -497,7 +514,9 @@ public class IoTDBConnection implements Connection {
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
     openReq.setZoneId(getTimeZone());
-    openReq.putToConfiguration("version", params.getVersion().toString());
+    openReq.putToConfiguration(Config.VERSION, params.getVersion().toString());
+    openReq.putToConfiguration(Config.SQL_DIALECT, params.getSqlDialect());
+    params.getDb().ifPresent(db -> openReq.putToConfiguration(Config.DATABASE, db));
 
     TSOpenSessionResp openResp = null;
     try {
@@ -506,6 +525,7 @@ public class IoTDBConnection implements Connection {
       // validate connection
       RpcUtils.verifySuccess(openResp.getStatus());
 
+      this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
             "Protocol differ, Client version is {}}, but Server version is {}",
@@ -591,5 +611,13 @@ public class IoTDBConnection implements Connection {
 
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
+  }
+
+  protected void changeDefaultDatabase(String database) {
+    params.setDb(database);
+  }
+
+  public int getTimeFactor() {
+    return timeFactor;
   }
 }

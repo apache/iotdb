@@ -19,20 +19,28 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -53,23 +61,24 @@ public class TsFilePlanRedoer {
   }
 
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
-    List<PartialPath> paths = deleteDataNode.getPathList();
-    for (PartialPath path : paths) {
+    List<MeasurementPath> paths = deleteDataNode.getPathList();
+    List<ModEntry> deletionEntries = new ArrayList<>(paths.size());
+    for (MeasurementPath path : paths) {
       // path here is device path pattern
-      recoveryMemTable.delete(
-          path,
-          path.getDevicePath(),
-          deleteDataNode.getDeleteStartTime(),
-          deleteDataNode.getDeleteEndTime());
-      tsFileResource
-          .getModFile()
-          .write(
-              new Deletion(
-                  path,
-                  tsFileResource.getTsFileSize(),
-                  deleteDataNode.getDeleteStartTime(),
-                  deleteDataNode.getDeleteEndTime()));
+      TreeDeletionEntry deletionEntry =
+          new TreeDeletionEntry(
+              path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
+      recoveryMemTable.delete(deletionEntry);
+      deletionEntries.add(deletionEntry);
     }
+    tsFileResource.getModFileForWrite().write(deletionEntries);
+  }
+
+  void redoDelete(RelationalDeleteDataNode node) throws IOException {
+    for (TableDeletionEntry modEntry : node.getModEntries()) {
+      recoveryMemTable.delete(modEntry);
+    }
+    tsFileResource.getModFileForWrite().write(node.getModEntries());
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {
@@ -91,24 +100,29 @@ public class TsFilePlanRedoer {
       }
     }
 
+    int pointsInserted;
     if (node instanceof InsertRowNode) {
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedRow((InsertRowNode) node);
+        pointsInserted = recoveryMemTable.insertAlignedRow((InsertRowNode) node);
       } else {
-        recoveryMemTable.insert((InsertRowNode) node);
+        pointsInserted = recoveryMemTable.insert((InsertRowNode) node);
       }
     } else {
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+        pointsInserted =
+            recoveryMemTable.insertAlignedTablet(
+                (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount(), null);
       } else {
-        recoveryMemTable.insertTablet(
-            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+        pointsInserted =
+            recoveryMemTable.insertTablet(
+                (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
       }
     }
+    updatePointsInsertedMetric(node, pointsInserted);
   }
 
   void redoInsertRows(InsertRowsNode insertRowsNode) {
+    int pointsInserted = 0;
     for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
       if (!node.hasValidMeasurements()) {
         continue;
@@ -125,10 +139,42 @@ public class TsFilePlanRedoer {
         }
       }
       if (node.isAligned()) {
-        recoveryMemTable.insertAlignedRow(node);
+        pointsInserted += recoveryMemTable.insertAlignedRow(node);
       } else {
-        recoveryMemTable.insert(node);
+        pointsInserted += recoveryMemTable.insert(node);
       }
+    }
+    updatePointsInsertedMetric(insertRowsNode, pointsInserted);
+  }
+
+  private void updatePointsInsertedMetric(InsertNode insertNode, int pointsInserted) {
+    MetricService.getInstance()
+        .count(
+            pointsInserted,
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            tsFileResource.getDatabaseName(),
+            Tag.REGION.toString(),
+            tsFileResource.getDataRegionId(),
+            Tag.TYPE.toString(),
+            Metric.MEMTABLE_POINT_COUNT.toString());
+    if (!insertNode.isGeneratedByRemoteConsensusLeader()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.POINTS_IN.toString(),
+              Tag.DATABASE.toString(),
+              tsFileResource.getDatabaseName(),
+              Tag.REGION.toString(),
+              tsFileResource.getDataRegionId(),
+              Tag.TYPE.toString(),
+              Metric.MEMTABLE_POINT_COUNT.toString());
     }
   }
 

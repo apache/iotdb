@@ -67,7 +67,7 @@ public class CreateCQProcedureTest {
     Mockito.when(cqManager.getExecutor()).thenReturn(executor);
     ConfigManager configManager = Mockito.mock(ConfigManager.class);
     Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
-    ConfigNode configNode = ConfigNode.getInstance();
+    ConfigNode configNode = new ConfigNode();
     configNode.setConfigManager(configManager);
 
     try {

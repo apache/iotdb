@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.db.storageengine.buffer;
 
+import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -42,8 +44,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.LongConsumer;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_ALL;
+import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_CACHE;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_FILE;
 
 /**
@@ -64,7 +68,7 @@ public class ChunkCache {
       SeriesScanCostMetricSet.getInstance();
 
   // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
-  private final LoadingCache<ChunkCacheKey, Chunk> lruCache;
+  private final Cache<ChunkCacheKey, Chunk> lruCache;
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
@@ -78,21 +82,7 @@ public class ChunkCache {
                     (key, chunk) ->
                         (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
             .recordStats()
-            .build(
-                key -> {
-                  long startTime = System.nanoTime();
-                  try {
-                    TsFileSequenceReader reader =
-                        FileReaderManager.getInstance().get(key.getFilePath(), key.closed);
-                    Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader);
-                    // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
-                    chunk.getHeader().setMeasurementID(null);
-                    return chunk;
-                  } finally {
-                    SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-                        READ_CHUNK_FILE, System.nanoTime() - startTime);
-                  }
-                });
+            .build();
 
     // add metrics
     MetricService.getInstance().addMetricSet(new ChunkCacheMetrics(this));
@@ -106,34 +96,90 @@ public class ChunkCache {
     return ChunkCacheHolder.INSTANCE;
   }
 
+  @TestOnly
+  public Chunk get(
+      ChunkCacheKey chunkCacheKey, List<TimeRange> timeRangeList, Statistics chunkStatistic)
+      throws IOException {
+    LongConsumer emptyConsumer = l -> {};
+    return get(
+        chunkCacheKey,
+        timeRangeList,
+        chunkStatistic,
+        false,
+        emptyConsumer,
+        emptyConsumer,
+        emptyConsumer);
+  }
+
   public Chunk get(
       ChunkCacheKey chunkCacheKey,
       List<TimeRange> timeRangeList,
       Statistics chunkStatistic,
-      boolean debug)
+      QueryContext queryContext)
+      throws IOException {
+    LongConsumer ioSizeRecorder =
+        queryContext.getQueryStatistics().getLoadChunkActualIOSize()::addAndGet;
+    LongConsumer cacheHitAdder =
+        queryContext.getQueryStatistics().getLoadChunkFromCacheCount()::addAndGet;
+    LongConsumer cacheMissAdder =
+        queryContext.getQueryStatistics().getLoadChunkFromDiskCount()::addAndGet;
+    return get(
+        chunkCacheKey,
+        timeRangeList,
+        chunkStatistic,
+        queryContext.isDebug(),
+        ioSizeRecorder,
+        cacheHitAdder,
+        cacheMissAdder);
+  }
+
+  private Chunk get(
+      ChunkCacheKey chunkCacheKey,
+      List<TimeRange> timeRangeList,
+      Statistics chunkStatistic,
+      boolean debug,
+      LongConsumer ioSizeRecorder,
+      LongConsumer cacheHitAdder,
+      LongConsumer cacheMissAdder)
       throws IOException {
     long startTime = System.nanoTime();
+    ChunkLoader chunkLoader = new ChunkLoader(ioSizeRecorder);
     try {
       if (!CACHE_ENABLE) {
-        TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(chunkCacheKey.getFilePath(), true);
-        Chunk chunk = reader.readMemChunk(chunkCacheKey.offsetOfChunkHeader);
-        return new Chunk(
-            chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
+        Chunk chunk = chunkLoader.apply(chunkCacheKey);
+        return constructChunk(chunk, timeRangeList, chunkStatistic);
       }
 
-      Chunk chunk = lruCache.get(chunkCacheKey);
+      Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
 
       if (debug) {
         DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
       }
 
-      return new Chunk(
-          chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
+      return constructChunk(chunk, timeRangeList, chunkStatistic);
+    } catch (IoTDBIORuntimeException e) {
+      throw e.getCause();
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          READ_CHUNK_ALL, System.nanoTime() - startTime);
+      if (chunkLoader.isCacheMiss()) {
+        cacheMissAdder.accept(1);
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_CHUNK_FILE, System.nanoTime() - startTime);
+      } else {
+        cacheHitAdder.accept(1);
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_CHUNK_CACHE, System.nanoTime() - startTime);
+      }
     }
+  }
+
+  private Chunk constructChunk(
+      Chunk chunk, List<TimeRange> timeRangeList, Statistics chunkStatistic) {
+    return new Chunk(
+        chunk.getHeader(),
+        chunk.getData().duplicate(),
+        timeRangeList,
+        chunkStatistic,
+        chunk.getEncryptParam());
   }
 
   public double calculateChunkHitRatio() {
@@ -242,6 +288,40 @@ public class ChunkCache {
           + ", offsetOfChunkHeader="
           + offsetOfChunkHeader
           + '}';
+    }
+  }
+
+  private static class ChunkLoader implements Function<ChunkCacheKey, Chunk> {
+
+    private boolean cacheMiss = false;
+    private final LongConsumer ioSizeRecorder;
+
+    private ChunkLoader(LongConsumer ioSizeRecorder) {
+      this.ioSizeRecorder = ioSizeRecorder;
+    }
+
+    @Override
+    public Chunk apply(ChunkCacheKey key) {
+
+      long startTime = System.nanoTime();
+      try {
+        cacheMiss = true;
+        TsFileSequenceReader reader =
+            FileReaderManager.getInstance().get(key.getFilePath(), key.closed, ioSizeRecorder);
+        Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader, ioSizeRecorder);
+        // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
+        chunk.getHeader().setMeasurementID(null);
+        return chunk;
+      } catch (IOException e) {
+        throw new IoTDBIORuntimeException(e);
+      } finally {
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            READ_CHUNK_FILE, System.nanoTime() - startTime);
+      }
+    }
+
+    public boolean isCacheMiss() {
+      return cacheMiss;
     }
   }
 

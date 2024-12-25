@@ -30,9 +30,9 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
-import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -43,6 +43,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
@@ -66,7 +67,7 @@ public class ClientManagerTest {
     service = new MockInternalRPCService(endPoint);
     IDataNodeRPCService.Iface processor = mock(IDataNodeRPCService.Iface.class);
     // timeout method
-    when(processor.clearCache())
+    when(processor.clearCache(Collections.singleton(CacheClearOptions.DEFAULT.ordinal())))
         .thenAnswer(
             invocation -> {
               Thread.sleep(CONNECTION_TIMEOUT + 1000);
@@ -205,7 +206,7 @@ public class ClientManagerTest {
                 .createClientManager(
                     new TestSyncDataNodeInternalServiceClientPoolFactory() {
                       @Override
-                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                      public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
                           createClientPool(
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
@@ -285,7 +286,7 @@ public class ClientManagerTest {
                 .createClientManager(
                     new TestSyncDataNodeInternalServiceClientPoolFactory() {
                       @Override
-                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                      public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
                           createClientPool(
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
@@ -359,7 +360,7 @@ public class ClientManagerTest {
                 .createClientManager(
                     new TestSyncDataNodeInternalServiceClientPoolFactory() {
                       @Override
-                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                      public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
                           createClientPool(
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
@@ -530,7 +531,7 @@ public class ClientManagerTest {
 
     // timeout RPC
     try (SyncDataNodeInternalServiceClient syncClient = syncClusterManager.borrowClient(endPoint)) {
-      syncClient.clearCache();
+      syncClient.clearCache(Collections.singleton(CacheClearOptions.DEFAULT.ordinal()));
       Assert.fail("A timeout exception should occur here");
     } catch (Exception ignored) {
       // no handling
@@ -581,6 +582,7 @@ public class ClientManagerTest {
     AtomicBoolean finalFailed1 = failed;
     CountDownLatch finalLatch1 = latch;
     asyncClient.clearCache(
+        Collections.singleton(CacheClearOptions.DEFAULT.ordinal()),
         new AsyncMethodCallback<TSStatus>() {
           @Override
           public void onComplete(TSStatus response) {
@@ -607,7 +609,7 @@ public class ClientManagerTest {
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 
     @Override
-    public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
+    public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new SyncDataNodeInternalServiceClient.Factory(
@@ -623,7 +625,7 @@ public class ClientManagerTest {
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
     @Override
-    public KeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
+    public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new AsyncDataNodeInternalServiceClient.Factory(

@@ -58,6 +58,12 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
       case DOUBLE:
         transformDouble(rowWindow, collector);
         break;
+      case TIMESTAMP:
+      case BOOLEAN:
+      case DATE:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(

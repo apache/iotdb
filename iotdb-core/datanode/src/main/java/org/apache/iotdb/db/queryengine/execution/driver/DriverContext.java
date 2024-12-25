@@ -121,8 +121,10 @@ public class DriverContext {
   }
 
   public void failed(Throwable cause) {
-    fragmentInstanceContext.failed(cause);
-    finished.set(true);
+    if (finished.compareAndSet(false, true)) {
+      fragmentInstanceContext.failed(cause);
+      finished.set(true);
+    }
   }
 
   public void finished() {

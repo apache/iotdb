@@ -76,6 +76,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    cnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
+    dnConfig.setProperty("encrypt_flag", String.valueOf(encryptFlag));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    cnConfig.setProperty("encrypt_type", encryptType);
+    dnConfig.setProperty("encrypt_type", encryptType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    cnConfig.setProperty("encrypt_key_path", encryptKeyPath);
+    dnConfig.setProperty("encrypt_key_path", encryptKeyPath);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
@@ -118,10 +139,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
-    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
-    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     return this;
   }
 
@@ -179,6 +199,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     cnConfig.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
     dnConfig.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
     return this;
   }
 
@@ -454,9 +481,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
-    cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    dnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
+    cnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
     return this;
   }
 
@@ -482,6 +509,28 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     dnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
     cnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    dnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    dnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    cnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     return this;
   }
 }

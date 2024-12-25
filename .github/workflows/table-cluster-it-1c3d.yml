@@ -1,0 +1,66 @@
+name: Table Cluster IT - 1C3D
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/1.*'
+      - 'rc/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/1.*'
+      - 'rc/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  Simple:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [ 17 ]
+    runs-on: [self-hosted, iotdb]
+#      group: self-hosted
+#      labels: iotdb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
+      - name: IT/UT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -pl integration-test \
+          -am -PTableClusterIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: table-cluster-log-java${{ matrix.java }}-${{ runner.os }}
+          path: integration-test/target/cluster-logs
+          retention-days: 1

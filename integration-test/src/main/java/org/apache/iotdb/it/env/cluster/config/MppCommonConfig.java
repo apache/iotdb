@@ -98,6 +98,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    setProperty("encrypt_flag", String.valueOf(encryptFlag));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    setProperty("encrypt_type", encryptType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    setProperty("encrypt_key_path", encryptKeyPath);
+    return this;
+  }
+
+  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -124,11 +142,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     setProperty(
-        "max_inner_compaction_candidate_file_num",
-        String.valueOf(maxInnerCompactionCandidateFileNum));
+        "inner_compaction_candidate_file_num", String.valueOf(maxInnerCompactionCandidateFileNum));
     return this;
   }
 
@@ -184,6 +200,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     setProperty("data_region_consensus_protocol_class", dataRegionConsensusProtocolClass);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
     return this;
   }
 
@@ -445,8 +467,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
     return this;
   }
 
@@ -473,6 +495,28 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty(
         "pipe_meta_syncer_sync_interval_minutes",
         String.valueOf(pipeMetaSyncerSyncIntervalMinutes));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    setProperty(
+        "pipe_connector_request_slice_threshold_bytes",
+        String.valueOf(pipeConnectorRequestSliceThresholdBytes));
+
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 

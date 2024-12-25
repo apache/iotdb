@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -466,6 +467,17 @@ public class SourceHandle implements ISourceHandle {
 
   private void checkState() {
     if (aborted) {
+      if (blocked.isDone()) {
+        // try throw underlying exception instead of "Source handle is aborted."
+        try {
+          blocked.get();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(e);
+        } catch (ExecutionException e) {
+          throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
+        }
+      }
       throw new IllegalStateException("Source handle is aborted.");
     } else if (closed) {
       throw new IllegalStateException("SourceHandle is closed.");

@@ -46,8 +46,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
       final TSStatus status, final List<ByteBuffer> byteBuffers) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    // resp.events = events;
-
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.ACK.getType();

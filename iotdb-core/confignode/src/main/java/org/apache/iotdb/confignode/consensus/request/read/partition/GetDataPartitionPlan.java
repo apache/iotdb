@@ -20,39 +20,28 @@
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Get or create DataPartition by the specific partitionSlotsMap. */
-public class GetDataPartitionPlan extends ConfigPhysicalPlan {
+public class GetDataPartitionPlan extends ConfigPhysicalReadPlan {
 
   // Map<StorageGroup, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
   protected Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap;
 
-  public GetDataPartitionPlan() {
-    super(ConfigPhysicalPlanType.GetDataPartition);
-  }
-
-  public GetDataPartitionPlan(ConfigPhysicalPlanType configPhysicalPlanType) {
+  public GetDataPartitionPlan(final ConfigPhysicalPlanType configPhysicalPlanType) {
     super(configPhysicalPlanType);
   }
 
   public GetDataPartitionPlan(
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
-    this();
+      final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
+    super(ConfigPhysicalPlanType.GetDataPartition);
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
@@ -66,58 +55,19 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
    * @param req TDataPartitionReq
    * @return GetDataPartitionPlan
    */
-  public static GetDataPartitionPlan convertFromRpcTDataPartitionReq(TDataPartitionReq req) {
+  public static GetDataPartitionPlan convertFromRpcTDataPartitionReq(final TDataPartitionReq req) {
     return new GetDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    stream.writeInt(partitionSlotsMap.size());
-    for (Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> entry :
-        partitionSlotsMap.entrySet()) {
-      String storageGroup = entry.getKey();
-      Map<TSeriesPartitionSlot, TTimeSlotList> seriesPartitionTimePartitionSlots = entry.getValue();
-      BasicStructureSerDeUtil.write(storageGroup, stream);
-      stream.writeInt(seriesPartitionTimePartitionSlots.size());
-      for (Entry<TSeriesPartitionSlot, TTimeSlotList> e :
-          seriesPartitionTimePartitionSlots.entrySet()) {
-        TSeriesPartitionSlot seriesPartitionSlot = e.getKey();
-        TTimeSlotList timePartitionSlotList = e.getValue();
-        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream);
-        ThriftCommonsSerDeUtils.serializeTTimePartitionSlotList(timePartitionSlotList, stream);
-      }
-    }
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    partitionSlotsMap = new HashMap<>();
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      partitionSlotsMap.put(storageGroup, new HashMap<>());
-      int seriesPartitionSlotNum = buffer.getInt();
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-        TTimeSlotList timePartitionSlotList =
-            ThriftCommonsSerDeUtils.deserializeTTimePartitionSlotList(buffer);
-        partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, timePartitionSlotList);
-      }
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetDataPartitionPlan that = (GetDataPartitionPlan) o;
+    final GetDataPartitionPlan that = (GetDataPartitionPlan) o;
     return partitionSlotsMap.equals(that.partitionSlotsMap);
   }
 

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.tool.data.AbstractDataTool;
+
+import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +32,18 @@ import java.util.List;
 import static org.junit.Assert.assertTrue;
 
 public class WriteDataFileTest {
+
+  /**
+   * Create the 'target' directory before the tests run. When running tests with multiple threads,
+   * the working directory might be 'target/fork_#' which would changes the assumption that the
+   * 'target' directory exists already. When running tests via an IDE, the working directory might
+   * be the project directory, and the target directory likely already exists.
+   */
+  @Before
+  public void createTestDirectory() {
+    new File("target").mkdirs();
+  }
+
   @Test
   public void writeCsvFileTest() {
     List<String> headerNames =

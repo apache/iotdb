@@ -108,7 +108,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   public synchronized boolean serializeToFile(final File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error(
+      LOGGER.warn(
           "Failed to serialize to file, because file {} is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
@@ -132,7 +132,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   public synchronized void deserializeFromFile(final File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
-      LOGGER.error(
+      LOGGER.warn(
           "Failed to deserialize from file, file {} does not exist.",
           snapshotFile.getAbsolutePath());
       return;

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.schema;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
@@ -40,7 +41,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   public PipeSchemaRegionWritePlanEvent(final PlanNode planNode, final boolean isGeneratedByPipe) {
-    this(planNode, null, 0, null, null, isGeneratedByPipe);
+    this(planNode, null, 0, null, null, null, isGeneratedByPipe);
   }
 
   public PipeSchemaRegionWritePlanEvent(
@@ -48,9 +49,10 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final boolean isGeneratedByPipe) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
+    super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, isGeneratedByPipe);
     this.planNode = planNode;
   }
 
@@ -63,11 +65,18 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionWritePlanEvent(
-        planNode, pipeName, creationTime, pipeTaskMeta, pattern, isGeneratedByPipe);
+        planNode,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        isGeneratedByPipe);
   }
 
   @Override

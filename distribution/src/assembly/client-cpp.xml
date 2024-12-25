@@ -28,7 +28,7 @@
     <baseDirectory>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
+            <directory>${project.basedir}/../iotdb-client/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>

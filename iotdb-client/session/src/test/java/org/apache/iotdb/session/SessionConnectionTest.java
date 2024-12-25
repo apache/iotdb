@@ -84,7 +84,7 @@ public class SessionConnectionTest {
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException, TException {
     MockitoAnnotations.initMocks(this);
-    sessionConnection = new SessionConnection();
+    sessionConnection = new SessionConnection("tree");
     Whitebox.setInternalState(sessionConnection, "transport", transport);
     Whitebox.setInternalState(sessionConnection, "client", client);
     session =
@@ -172,7 +172,9 @@ public class SessionConnectionTest {
             ZoneId.systemDefault(),
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
-            SessionConfig.RETRY_INTERVAL_IN_MS);
+            SessionConfig.RETRY_INTERVAL_IN_MS,
+            "tree",
+            null);
   }
 
   @Test(expected = IoTDBConnectionException.class)
@@ -192,7 +194,9 @@ public class SessionConnectionTest {
             ZoneId.systemDefault(),
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
-            SessionConfig.RETRY_INTERVAL_IN_MS);
+            SessionConfig.RETRY_INTERVAL_IN_MS,
+            "tree",
+            null);
   }
 
   @Test

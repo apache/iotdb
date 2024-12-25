@@ -19,26 +19,12 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.subscription;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-public class ShowSubscriptionPlan extends ConfigPhysicalPlan {
+public class ShowSubscriptionPlan extends ConfigPhysicalReadPlan {
 
   public ShowSubscriptionPlan() {
     super(ConfigPhysicalPlanType.ShowSubscription);
-  }
-
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    // Empty method, since it is not needed now
   }
 }

@@ -106,6 +106,8 @@ public abstract class UDTFSelectK implements UDTF {
       case STRING:
         transformString(row.getTime(), row.getString(0));
         break;
+      case BLOB:
+      case BOOLEAN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -177,6 +179,8 @@ public abstract class UDTFSelectK implements UDTF {
           collector.putString(pair.left, pair.right);
         }
         break;
+      case BLOB:
+      case BOOLEAN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

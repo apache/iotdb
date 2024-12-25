@@ -25,7 +25,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,9 +42,9 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   }
 
   @Override
-  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
+  public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     dataOfCurrentSeriesArr[subTaskId] = new ArrayList<>();
-    super.startMeasurement(measurementSchemaList, subTaskId);
+    super.startMeasurement(measurement, chunkWriter, subTaskId);
   }
 
   @Override
@@ -105,6 +105,5 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     dataOfCurrentSeriesArr[subTaskId].add(timeValuePair);
-    isEmptyFile = false;
   }
 }

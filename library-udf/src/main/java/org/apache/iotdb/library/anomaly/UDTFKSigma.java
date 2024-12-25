@@ -91,6 +91,12 @@ public class UDTFKSigma implements UDTF {
           case FLOAT:
             v.push(row.getFloat(0));
             break;
+          case TIMESTAMP:
+          case DATE:
+          case TEXT:
+          case STRING:
+          case BLOB:
+          case BOOLEAN:
           default:
             break;
         }
@@ -118,6 +124,12 @@ public class UDTFKSigma implements UDTF {
           case FLOAT:
             v.push(row.getFloat(0));
             break;
+          case BLOB:
+          case BOOLEAN:
+          case STRING:
+          case TEXT:
+          case DATE:
+          case TIMESTAMP:
           default:
             break;
         }

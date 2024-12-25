@@ -27,12 +27,14 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -56,8 +58,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +76,6 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
-  private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   // whether close method is called
@@ -84,7 +83,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage checkpoints
   private final CheckpointManager checkpointManager;
   // WALEntries
-  private final BlockingQueue<WALEntry> walEntries = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  private final MemoryControlledWALEntryQueue walEntries = new MemoryControlledWALEntryQueue();
   // lock to provide synchronization for double buffers mechanism, protecting buffers status
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers
@@ -197,8 +196,9 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void write(WALEntry walEntry) {
     if (isClosed) {
-      logger.error(
-          "Fail to write WALEntry into wal node-{} because this node is closed.", identifier);
+      logger.warn(
+          "Fail to write WALEntry into wal node-{} because this node is closed. It's ok to see this log during data region deletion.",
+          identifier);
       walEntry.getWalFlushListener().fail(new WALNodeClosedException(identifier));
       return;
     }
@@ -328,6 +328,8 @@ public class WALBuffer extends AbstractWALBuffer {
       if (walEntry.getType().needSearch()) {
         if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
+        } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
+          searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
         } else {
           searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
         }
@@ -383,8 +385,18 @@ public class WALBuffer extends AbstractWALBuffer {
    * This view uses workingBuffer lock-freely because workingBuffer is only updated by
    * serializeThread and this class is only used by serializeThread.
    */
-  private class ByteBufferView implements IWALByteBufferView {
+  private class ByteBufferView extends IWALByteBufferView {
     private int flushedBytesNum = 0;
+
+    @Override
+    public void write(int b) {
+      put((byte) b);
+    }
+
+    @Override
+    public void write(byte[] b) {
+      put(b);
+    }
 
     private void ensureEnoughSpace(int bytesNum) {
       if (workingBuffer.remaining() < bytesNum) {
@@ -669,6 +681,7 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void close() {
     // first waiting serialize and sync tasks finished, then release all resources
+    isClosed = true;
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
       try {
@@ -677,7 +690,6 @@ public class WALBuffer extends AbstractWALBuffer {
         logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
         Thread.currentThread().interrupt();
       }
-      isClosed = true;
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {

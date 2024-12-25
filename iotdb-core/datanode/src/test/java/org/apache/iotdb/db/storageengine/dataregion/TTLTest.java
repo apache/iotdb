@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -54,6 +54,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -77,14 +78,14 @@ import static org.junit.Assert.fail;
 
 public class TTLTest {
 
-  private String sg1 = "root.TTL_SG1";
+  private String sg1Device = "root.TTL_SG1.d1";
   private DataRegionId dataRegionId1 = new DataRegionId(1);
-  private String sg2 = "root.TTL_SG2";
+  private String sg2Device = "root.TTL_SG2.d1";
   private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
   private DataRegion dataRegion;
   private String s1 = "s1";
-  private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
+  private String g1s1 = sg1Device + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
   @Before
@@ -97,7 +98,7 @@ public class TTLTest {
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
-            sg1);
+            sg1Device);
     //    createSchemas();
   }
 
@@ -107,7 +108,7 @@ public class TTLTest {
     dataRegion.abortCompaction();
     EnvironmentUtils.cleanEnv();
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
-    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   @Test
@@ -116,7 +117,7 @@ public class TTLTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
-            new PartialPath(sg1),
+            new PartialPath(sg1Device),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT64},
@@ -128,7 +129,7 @@ public class TTLTest {
 
     // ok without ttl
     dataRegion.insert(node);
-    DataNodeTTLCache.getInstance().setTTL(sg1, 1000);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1000);
     // with ttl
     node.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
@@ -146,7 +147,7 @@ public class TTLTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
-            new PartialPath(sg1),
+            new PartialPath(sg1Device),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT64},
@@ -184,7 +185,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -193,21 +194,22 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    DataNodeTTLCache.getInstance().setTTL(sg1, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 500);
 
     // files after ttl
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
+
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
-    MeasurementPath path = mockMeasurementPath();
+    NonAlignedFullPath path = mockMeasurementPath();
 
     IDataBlockReader reader =
         new SeriesDataBlockReader(
@@ -226,11 +228,11 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1);
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -257,9 +259,9 @@ public class TTLTest {
     assertTrue(cnt == 0);
   }
 
-  private MeasurementPath mockMeasurementPath() throws MetadataException {
-    return new MeasurementPath(
-        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+  private NonAlignedFullPath mockMeasurementPath() {
+    return new NonAlignedFullPath(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
         new MeasurementSchema(
             s1,
             TSDataType.INT64,
@@ -282,8 +284,8 @@ public class TTLTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
-    File seqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, true), sg1);
-    File unseqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, false), sg1);
+    File seqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, true), sg1Device);
+    File unseqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, false), sg1Device);
 
     List<File> seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {
@@ -323,10 +325,10 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    DataNodeTTLCache.getInstance().setTTL(sg1, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 500);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()
@@ -382,14 +384,14 @@ public class TTLTest {
     SetTTLStatement statement1 =
         (SetTTLStatement)
             StatementGenerator.createStatement(
-                "SET TTL TO " + sg1 + " 10000", ZoneId.systemDefault());
-    assertEquals(sg1, statement1.getPath().getFullPath());
+                "SET TTL TO " + sg1Device + " 10000", ZoneId.systemDefault());
+    assertEquals(sg1Device, statement1.getPath().getFullPath());
     assertEquals(10000, statement1.getTTL());
 
     UnSetTTLStatement statement2 =
         (UnSetTTLStatement)
-            StatementGenerator.createStatement("UNSET TTL TO " + sg2, ZoneId.systemDefault());
-    assertEquals(sg2, statement2.getPath().getFullPath());
+            StatementGenerator.createStatement("UNSET TTL TO " + sg2Device, ZoneId.systemDefault());
+    assertEquals(sg2Device, statement2.getPath().getFullPath());
     assertEquals(TTLCache.NULL_TTL, statement2.getTTL());
   }
 
@@ -414,10 +416,10 @@ public class TTLTest {
     assertEquals(4, dataRegion.getSequenceFileList().size());
     assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()
@@ -425,7 +427,7 @@ public class TTLTest {
         != 0) {
       sleep(200);
       totalWaitingTime += 200;
-      if (totalWaitingTime >= 5000) {
+      if (totalWaitingTime >= 50000) {
         fail();
       }
     }

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -92,8 +92,12 @@ public class FileTimeIndex implements ITimeIndex {
         FSFactoryProducer.getFSFactory()
             .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-      ReadWriteIOUtils.readBytes(inputStream, 2);
-      return DeviceTimeIndex.getDevices(inputStream);
+      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
+      if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
+        return ArrayDeviceTimeIndex.getDevices(inputStream);
+      } else {
+        return PlainDeviceTimeIndex.getDevices(inputStream);
+      }
     } catch (NoSuchFileException e) {
       // deleted by ttl
       if (tsFileResource.isDeleted()) {
@@ -212,7 +216,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
-    if (timeIndex instanceof DeviceTimeIndex) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
       return 1;
     } else if (timeIndex instanceof FileTimeIndex) {
       return Long.compare(startTime, timeIndex.getMinStartTime());

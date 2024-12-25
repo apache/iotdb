@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -124,7 +125,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Execute non-query plan failed", e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
@@ -166,17 +167,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
-    ConfigPhysicalPlan plan;
-    if (request instanceof ByteBufferConsensusRequest) {
-      try {
-        plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (Exception e) {
-        LOGGER.error("Deserialization error for write plan : {}", request);
-        return null;
-      }
-    } else if (request instanceof ConfigPhysicalPlan) {
-      plan = (ConfigPhysicalPlan) request;
+  public DataSet read(final IConsensusRequest request) {
+    final ConfigPhysicalReadPlan plan;
+    if (request instanceof ConfigPhysicalReadPlan) {
+      plan = (ConfigPhysicalReadPlan) request;
     } else {
       LOGGER.error("Unexpected read plan : {}", request);
       return null;
@@ -184,13 +178,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return read(plan);
   }
 
-  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
-  protected DataSet read(ConfigPhysicalPlan plan) {
+  /** Transmit {@link ConfigPhysicalReadPlan} to {@link ConfigPlanExecutor} */
+  protected DataSet read(final ConfigPhysicalReadPlan plan) {
     DataSet result;
     try {
       result = executor.executeQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
-      LOGGER.error(e.getMessage());
+    } catch (final UnknownPhysicalPlanTypeException | AuthException e) {
+      LOGGER.error("Execute query plan failed", e);
       result = null;
     }
     return result;
@@ -216,7 +210,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     try {
       executor.loadSnapshot(latestSnapshotRootDir);
       // We recompute the snapshot for pipe listener when loading snapshot
@@ -224,7 +218,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       PipeConfigNodeAgent.runtime()
           .listener()
           .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
             "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
@@ -240,40 +234,48 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
+          "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
               + "the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
-
-      // Stop leader scheduling services
-      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
-      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
-      configManager
-          .getSubscriptionManager()
-          .getSubscriptionCoordinator()
-          .stopSubscriptionMetaSync();
-      configManager.getLoadManager().stopLoadServices();
-      configManager.getProcedureManager().stopExecutor();
-      configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-      configManager.getPartitionManager().stopRegionCleaner();
-      configManager.getCQManager().stopCQScheduler();
-      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
-      // Remove Metric after leader change
-      configManager.removeMetrics();
-
-      // Shutdown leader related service for config pipe
-      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
-
-      // Clean receiver file dir
-      PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
-
-      LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
-              + "all services on old leader are unavailable now.",
-          currentNodeId,
-          currentNodeTEndPoint);
     }
+  }
+
+  @Override
+  public void notifyNotLeader() {
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the ConfigRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+    LOGGER.info(
+        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+            + "start cleaning up related services",
+        currentNodeId,
+        currentNodeTEndPoint);
+    // Stop leader scheduling services
+    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
+    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
+    configManager.getSubscriptionManager().getSubscriptionCoordinator().stopSubscriptionMetaSync();
+    configManager.getLoadManager().stopLoadServices();
+    configManager.getProcedureManager().stopExecutor();
+    configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
+    configManager.getPartitionManager().stopRegionCleaner();
+    configManager.getCQManager().stopCQScheduler();
+    configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+    // Remove Metric after leader change
+    configManager.removeMetrics();
+
+    // Shutdown leader related service for config pipe
+    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
+
+    // Clean receiver file dir
+    PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+
+    LOGGER.info(
+        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+            + "all services on old leader are unavailable now.",
+        currentNodeId,
+        currentNodeTEndPoint);
   }
 
   @Override
@@ -430,7 +432,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("Try listen to plan failed", e);
           }
         }
         logReader.close();
@@ -482,6 +484,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   static class FileComparator implements Comparator<String> {
+
     @Override
     public int compare(String filename1, String filename2) {
       long id1 = parseEndIndex(filename1);

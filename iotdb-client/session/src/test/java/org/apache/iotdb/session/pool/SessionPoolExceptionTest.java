@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -117,12 +118,12 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertTablet(any(Tablet.class), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     boolean[][] values = new boolean[][] {{true, false}, {true, false}};
@@ -136,12 +137,12 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertTablets(anyMap(), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     Object[] values = new Object[] {true, false};
@@ -178,12 +179,12 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertAlignedTablets(anyMap(), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
-    schema.setMeasurementId("pressure");
-    schema.setType(TSDataType.BOOLEAN);
-    schema.setCompressor(CompressionType.SNAPPY.serialize());
-    schema.setEncoding(TSEncoding.PLAIN.serialize());
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
     Object[] values = new Object[] {true, false};

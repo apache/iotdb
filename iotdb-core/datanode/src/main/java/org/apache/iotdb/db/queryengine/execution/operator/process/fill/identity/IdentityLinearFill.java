@@ -22,24 +22,29 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public class IdentityLinearFill implements ILinearFill {
 
   @Override
-  public Column fill(TimeColumn timeColumn, Column valueColumn, long currentRowIndex) {
+  public Column fill(Column timeColumn, Column valueColumn, long currentRowIndex) {
     return valueColumn;
   }
 
   @Override
-  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
+  public boolean needPrepareForNext(
+      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
     return false;
   }
 
   @Override
   public boolean prepareForNext(
-      long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn) {
+      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
     throw new UnsupportedOperationException(
         "IdentityLinearFill's needPrepareForNext() method should always return false.");
+  }
+
+  @Override
+  public void reset() {
+    // do nothing
   }
 }

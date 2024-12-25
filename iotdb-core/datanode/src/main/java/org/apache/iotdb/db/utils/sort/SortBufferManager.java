@@ -19,33 +19,30 @@
 
 package org.apache.iotdb.db.utils.sort;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import org.apache.tsfile.common.conf.TSFileDescriptor;
-
 public class SortBufferManager {
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
-  public static final long SORT_BUFFER_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+  private final int maxTsBlockSizeInBytes;
+  private final long sortBufferSize;
 
   private long bufferUsed;
 
-  private static final long BUFFER_SIZE_FOR_ONE_BRANCH = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  private final long bufferSizeForOneBranch;
 
   private final long bufferAvailableForAllBranch;
   private long readerBuffer = 0;
   private long branchNum = 0;
 
-  public SortBufferManager() {
-    this.bufferAvailableForAllBranch = SORT_BUFFER_SIZE - DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  public SortBufferManager(int maxTsBlockSizeInBytes, long sortBufferSize) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+    this.sortBufferSize = sortBufferSize;
+    this.bufferAvailableForAllBranch = sortBufferSize - maxTsBlockSizeInBytes;
+    this.bufferSizeForOneBranch = maxTsBlockSizeInBytes;
     // the initial value is the buffer for output.
-    this.bufferUsed = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.bufferUsed = maxTsBlockSizeInBytes;
   }
 
   public void allocateOneSortBranch() {
-    boolean success = allocate(BUFFER_SIZE_FOR_ONE_BRANCH);
+    boolean success = allocate(bufferSizeForOneBranch);
     if (!success) {
       throw new IllegalArgumentException("Not enough memory for sorting");
     }
@@ -53,7 +50,7 @@ public class SortBufferManager {
   }
 
   private boolean check(long size) {
-    return bufferUsed + size < SORT_BUFFER_SIZE;
+    return bufferUsed + size < sortBufferSize;
   }
 
   public boolean allocate(long size) {
@@ -77,5 +74,13 @@ public class SortBufferManager {
     }
     readerBuffer = bufferAvailableForAllBranch / branchNum;
     return readerBuffer;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public long getSortBufferSize() {
+    return sortBufferSize;
   }
 }

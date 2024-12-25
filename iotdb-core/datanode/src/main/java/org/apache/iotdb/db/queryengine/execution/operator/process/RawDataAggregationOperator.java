@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -69,7 +69,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
@@ -195,7 +195,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
 
       TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
-      for (Aggregator aggregator : aggregators) {
+      for (TreeAggregator aggregator : aggregators) {
         // Current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
@@ -255,7 +255,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private void initWindowAndAggregators() {
     windowManager.initCurWindow();
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       aggregator.reset();
     }
   }

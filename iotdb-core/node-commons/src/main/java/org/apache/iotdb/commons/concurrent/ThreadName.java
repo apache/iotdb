@@ -45,7 +45,6 @@ public enum ThreadName {
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
-
   // -------------------------- Compaction --------------------------
   COMPACTION_WORKER("Compaction-Worker"),
   COMPACTION_SUB_TASK("Compaction-Sub-Task"),
@@ -69,6 +68,7 @@ public enum ThreadName {
   PBTREE_RELEASE_MONITOR("PBTree-Release-Task-Monitor"),
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
+  GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE("General-Region-Attribute-Security-Service"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -102,6 +102,8 @@ public enum ThreadName {
   PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
   PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
+  PIPE_CONSENSUS_DELETION_SERIALIZE("WAL-Serialize"),
+  PIPE_CONSENSUS_DELETION_SYNC("WAL-Sync"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -138,8 +140,11 @@ public enum ThreadName {
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
+  PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER(
+      "Pipe-Runtime-Periodical-Phantom-Reference-Cleaner"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
+  PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
@@ -172,15 +177,22 @@ public enum ThreadName {
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
+  ACTIVE_LOAD_TSFILE_LOADER("Active-Load-TsFile-Loader"),
+  ACTIVE_LOAD_DIR_SCANNER("Active-Load-Dir-Scanner"),
+  ACTIVE_LOAD_METRICS_COLLECTOR("Active-Load-Metrics-Collector"),
   SETTLE("Settle"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
-  IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
+  AINODE_RPC_SERVICE("AINodeRpc-Service"),
+  DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   REPAIR_DATA("RepairData"),
+  FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
+
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
@@ -231,7 +243,8 @@ public enum ThreadName {
               PBTREE_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
-              PBTREE_WORKER_POOL));
+              PBTREE_WORKER_POOL,
+              GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -283,9 +296,12 @@ public enum ThreadName {
               PIPE_RUNTIME_HEARTBEAT,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
               PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
+              PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER,
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
+              PIPE_AIR_GAP_RECEIVER,
               SUBSCRIPTION_EXECUTOR_POOL,
+              SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
 
@@ -355,11 +371,15 @@ public enum ThreadName {
   private static final Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
+              ACTIVE_LOAD_TSFILE_LOADER,
+              ACTIVE_LOAD_DIR_SCANNER,
+              ACTIVE_LOAD_METRICS_COLLECTOR,
               SETTLE,
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
-              IOTDB_SHUTDOWN_HOOK,
+              AINODE_RPC_SERVICE,
+              DATANODE_SHUTDOWN_HOOK,
               UPGRADE_TASK,
               REGION_MIGRATE,
               STORAGE_ENGINE_RECOVER_TRIGGER));

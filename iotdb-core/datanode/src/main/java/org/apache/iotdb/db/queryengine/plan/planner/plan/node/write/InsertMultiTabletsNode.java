@@ -169,11 +169,6 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
   public void addChild(PlanNode child) {}
 
   @Override

@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -57,7 +56,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
-  protected final List<Aggregator> aggregators;
+  protected final List<TreeAggregator> aggregators;
 
   protected boolean finished = false;
 
@@ -69,7 +68,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   private long leftRuntimeOfOneNextCall;
 
   /** Some special data types(like BLOB) cannot use statistics. */
-  private final boolean canUseStatistics;
+  protected final boolean canUseStatistics;
 
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
@@ -77,12 +76,13 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       OperatorContext context,
       SeriesScanUtil seriesScanUtil,
       int subSensorSize,
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
       boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize,
+      long cachedRawDataSize,
       boolean canUseStatistics) {
     this.sourceId = sourceId;
     this.operatorContext = context;
@@ -93,8 +93,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
 
-    this.cachedRawDataSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.cachedRawDataSize = cachedRawDataSize;
     this.maxReturnSize = maxReturnSize;
     this.outputEndTime = outputEndTime;
     this.canUseStatistics = canUseStatistics;
@@ -134,7 +133,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         // move to the next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
         // clear previous aggregation result
-        for (Aggregator aggregator : aggregators) {
+        for (TreeAggregator aggregator : aggregators) {
           aggregator.reset();
         }
       }
@@ -230,7 +229,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       if (aggregator.hasFinalResult()) {
         continue;
       }
@@ -377,7 +376,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     if (outputEndTime) {
       dataTypes.add(TSDataType.INT64);
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     return dataTypes;

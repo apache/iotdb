@@ -20,11 +20,11 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -152,7 +152,7 @@ public class PipeInfoTest {
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     // Drop pipe plugin test plugin
-    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName, false);
     DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan(pluginName);
     pipeInfo.getPipePluginInfo().dropPipePlugin(dropPipePluginPlan);
   }

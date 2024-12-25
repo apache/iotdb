@@ -38,6 +38,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
@@ -177,6 +178,15 @@ public class SharedTsBlockQueue {
    */
   public TsBlock remove() {
     if (closed) {
+      // try throw underlying exception instead of "Source handle is aborted."
+      try {
+        blocked.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(e);
+      } catch (ExecutionException e) {
+        throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
+      }
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();

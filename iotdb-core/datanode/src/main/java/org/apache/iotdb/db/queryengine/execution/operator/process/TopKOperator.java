@@ -39,7 +39,6 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -52,10 +51,10 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class TopKOperator implements ProcessOperator {
+public abstract class TopKOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TopKOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TreeTopKOperator.class);
   private final OperatorContext operatorContext;
 
   private final List<Operator> childrenOperators;
@@ -67,13 +66,13 @@ public class TopKOperator implements ProcessOperator {
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
 
-  // max heap, revered of MergeSortHeap in MergeSortOperator
+  // max heap, revered of MergeSortHeap in TreeMergeSortOperator
   private final MergeSortHeap mergeSortHeap;
   private final Comparator<SortKey> comparator;
   // value in LIMIT
   private final int topValue;
 
-  // final query result of TopKOperator and the returned size of topKResult
+  // final query result of TreeTopKOperator and the returned size of topKResult
   private MergeSortKey[] topKResult;
   private int resultReturnSize = 0;
 
@@ -87,7 +86,7 @@ public class TopKOperator implements ProcessOperator {
 
   public static final int OPERATOR_BATCH_UPPER_BOUND = 100000;
 
-  public TopKOperator(
+  TopKOperator(
       OperatorContext operatorContext,
       List<Operator> childrenOperators,
       List<TSDataType> dataTypes,
@@ -281,11 +280,13 @@ public class TopKOperator implements ProcessOperator {
                   new boolean[positionCount]);
           break;
         case INT32:
+        case DATE:
           columns[i] =
               new IntColumn(
                   positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
           break;
         case INT64:
+        case TIMESTAMP:
           columns[i] =
               new LongColumn(
                   positionCount, Optional.of(new boolean[positionCount]), new long[positionCount]);
@@ -303,6 +304,8 @@ public class TopKOperator implements ProcessOperator {
                   new double[positionCount]);
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           columns[i] =
               new BinaryColumn(
                   positionCount,
@@ -313,9 +316,10 @@ public class TopKOperator implements ProcessOperator {
           throw new UnSupportedDataTypeException("Unknown datatype: " + dataTypes.get(i));
       }
     }
-    this.tmpResultTsBlock =
-        new TsBlock(positionCount, new TimeColumn(positionCount, new long[positionCount]), columns);
+    this.tmpResultTsBlock = constrcutResultTsBlock(positionCount, columns);
   }
+
+  protected abstract TsBlock constrcutResultTsBlock(int positionCount, Column[] columns);
 
   private TsBlock getResultFromCachedTopKResult() {
     if (mergeSortHeap.getHeapSize() > 0) {
@@ -366,14 +370,18 @@ public class TopKOperator implements ProcessOperator {
           break;
         case INT32:
         case FLOAT:
+        case DATE:
           memory += 4;
           break;
         case INT64:
         case DOUBLE:
         case VECTOR:
+        case TIMESTAMP:
           memory += 8;
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           memory += 16;
           break;
         default:
@@ -385,14 +393,16 @@ public class TopKOperator implements ProcessOperator {
 
   private void updateTsBlockValue(TsBlock sourceTsBlock, int sourceIndex, int peekIndex) {
     if (peekIndex < 0) {
-      tmpResultTsBlock.update(tmpResultTsBlockIdx, sourceTsBlock, sourceIndex);
+      updateTsBlock(tmpResultTsBlock, tmpResultTsBlockIdx, sourceTsBlock, sourceIndex);
       mergeSortHeap.push(new MergeSortKey(tmpResultTsBlock, tmpResultTsBlockIdx++));
       return;
     }
-
-    tmpResultTsBlock.update(peekIndex, sourceTsBlock, sourceIndex);
+    updateTsBlock(tmpResultTsBlock, peekIndex, sourceTsBlock, sourceIndex);
     mergeSortHeap.push(new MergeSortKey(tmpResultTsBlock, peekIndex));
   }
+
+  protected abstract void updateTsBlock(
+      TsBlock resultTsBlock, int updateIdx, TsBlock sourceTsBlock, int sourceIndex);
 
   private Operator getOperator(int i) {
     return childrenOperators.get(i);

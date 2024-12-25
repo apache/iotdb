@@ -77,7 +77,10 @@ public class PipeProcessorConstant {
   public static final long PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE =
       Long.MAX_VALUE;
 
-  public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
+  public static final String _PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
+  public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output.series";
+
+  public static final String PROCESSOR_RENAME_DATABASE_NEW_DB_NAME = "processor.new-db-name";
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");

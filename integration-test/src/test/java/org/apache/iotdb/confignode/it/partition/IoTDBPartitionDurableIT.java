@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.it.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -32,8 +31,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -120,133 +117,6 @@ public class IoTDBPartitionDurableIT {
   @After
   public void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  // TODO: Fix this when replica completion is supported
-  @Test
-  public void testRemovingDataNode() throws Exception {
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-
-      /* Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartition and return */
-      TSchemaPartitionReq schemaPartitionReq =
-          new TSchemaPartitionReq()
-              .setPathPatternTree(ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d0}));
-      TSchemaPartitionTableResp schemaPartitionTableResp =
-          client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-          schemaPartitionTableResp.getSchemaPartitionTable();
-      // Successfully create a SchemaPartition
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg));
-      Assert.assertEquals(1, schemaPartitionTable.get(sg).size());
-
-      /* Check Region distribution */
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      // Create exactly one RegionGroup
-      Assert.assertEquals(3, showRegionResp.getRegionInfoListSize());
-      // Each DataNode has exactly one Region
-      Set<Integer> dataNodeIdSet = new HashSet<>();
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(regionInfo -> dataNodeIdSet.add(regionInfo.getDataNodeId()));
-      Assert.assertEquals(3, dataNodeIdSet.size());
-
-      /* Change the NodeStatus of the test DataNode to Removing */
-      TSetDataNodeStatusReq setDataNodeStatusReq = new TSetDataNodeStatusReq();
-      DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId);
-      setDataNodeStatusReq.setTargetDataNode(
-          new TDataNodeLocation(defaultDataNode)
-              .setInternalEndPoint(
-                  new TEndPoint()
-                      .setIp(dataNodeWrapper.getInternalAddress())
-                      .setPort(dataNodeWrapper.getInternalPort())));
-      setDataNodeStatusReq.setStatus(NodeStatus.Removing.getStatus());
-      client.setDataNodeStatus(setDataNodeStatusReq);
-      // Waiting for heartbeat update
-      while (true) {
-        AtomicBoolean containRemoving = new AtomicBoolean(false);
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Removing.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containRemoving.set(true);
-                  }
-                });
-
-        if (containRemoving.get()) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-
-      /* Test getOrCreateSchemaPartition, the result should be NO_ENOUGH_DATANODE */
-      schemaPartitionReq =
-          new TSchemaPartitionReq()
-              .setPathPatternTree(ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d1}));
-      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-
-      /* Register a new DataNode */
-      EnvFactory.getEnv().registerNewDataNode(true);
-
-      /* Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartition and return */
-      schemaPartitionReq =
-          new TSchemaPartitionReq()
-              .setPathPatternTree(ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d1}));
-      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      // Successfully create a SchemaPartition
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg));
-      Assert.assertEquals(1, schemaPartitionTable.get(sg).size());
-
-      /* Check Region distribution */
-      showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      // There should be 2 RegionGroups
-      Assert.assertEquals(6, showRegionResp.getRegionInfoListSize());
-      // The new RegionGroup should keep away from the Removing DataNode
-      Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo ->
-                  regionCounter
-                      .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
-                      .getAndIncrement());
-      dataNodeIdSet.forEach(dataNodeId -> regionCounter.get(dataNodeId).getAndDecrement());
-      TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showDataNodesResp.getStatus().getCode());
-      regionCounter.forEach(
-          (dataNodeId, regionCount) -> {
-            String nodeStatus =
-                showDataNodesResp.getDataNodesInfoList().stream()
-                    .filter(dataNodeInfo -> dataNodeInfo.getDataNodeId() == dataNodeId)
-                    .findFirst()
-                    .orElse(new TDataNodeInfo().setStatus("ERROR"))
-                    .getStatus();
-            if (NodeStatus.Removing.getStatus().equals(nodeStatus)) {
-              Assert.assertEquals(0, regionCount.get());
-            } else if (NodeStatus.Running.getStatus().equals(nodeStatus)) {
-              Assert.assertEquals(1, regionCount.get());
-            } else {
-              Assert.fail();
-            }
-          });
-    }
   }
 
   // TODO: Fix this when replica completion is supported

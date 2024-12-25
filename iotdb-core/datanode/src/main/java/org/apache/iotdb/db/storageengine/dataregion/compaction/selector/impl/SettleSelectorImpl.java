@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,19 +26,18 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,18 +66,21 @@ public class SettleSelectorImpl implements ISettleSelector {
   private final long timePartition;
   private final TsFileManager tsFileManager;
   private boolean isSeq;
+  private final CompactionScheduleContext context;
 
   public SettleSelectorImpl(
       boolean heavySelect,
       String storageGroupName,
       String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     this.heavySelect = heavySelect;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
+    this.context = context;
   }
 
   static class FileDirtyInfo {
@@ -113,7 +113,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
 
     public boolean checkHasReachedThreshold() {
-      return resources.size() >= config.getFileLimitPerInnerTask()
+      return resources.size() >= config.getInnerCompactionCandidateFileNum()
           || totalFileSize >= config.getTargetCompactionFileSize();
     }
   }
@@ -180,11 +180,8 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
-    ModificationFile modFile = resource.getModFile();
-    if (modFile == null || !modFile.exists()) {
-      return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
-    }
-    return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
+    long totalModSize = resource.getTotalModSizeInByte();
+    return totalModSize > config.getInnerCompactionTaskSelectionModsFileThreshold()
             || !CompactionUtils.isDiskHasSpace(
                 config.getInnerCompactionTaskSelectionDiskRedundancy())
         ? new FileDirtyInfo(PARTIALLY_DIRTY)
@@ -198,25 +195,31 @@ public class SettleSelectorImpl implements ISettleSelector {
    *
    * @return dirty status means the status of current resource.
    */
-  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
-      throws IOException, IllegalPathException {
-    ModificationFile modFile = resource.getModFile();
+  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource) throws IOException {
+
+    Collection<ModEntry> modifications = resource.getAllModEntries();
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
-      timeIndex = resource.buildDeviceTimeIndex();
+      timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
     }
     Set<IDeviceID> deletedDevices = new HashSet<>();
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
-    Collection<Modification> modifications = modFile.getModifications();
-    for (IDeviceID device : ((DeviceTimeIndex) timeIndex).getDevices()) {
+    for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) device).toStringID());
-      boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
+
+      long ttl;
+      String tableName = device.getTableName();
+      if (tableName.startsWith("root.")) {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
+      } else {
+        ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
+      }
+      boolean hasSetTTL = ttl != Long.MAX_VALUE;
       boolean isDeleted =
-          !timeIndex.isDeviceAlive(device, deviceTTL)
+          !timeIndex.isDeviceAlive(device, ttl)
               || isDeviceDeletedByMods(
                   modifications,
                   device,
@@ -231,8 +234,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
         long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
         hasExpiredTooLong =
-            hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
+            hasExpiredTooLong || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * ttl);
       }
 
       if (isDeleted) {
@@ -241,7 +243,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
 
     double deletedDeviceRatio =
-        ((double) deletedDevices.size()) / ((DeviceTimeIndex) timeIndex).getDevices().size();
+        ((double) deletedDevices.size()) / ((ArrayDeviceTimeIndex) timeIndex).getDevices().size();
     if (deletedDeviceRatio == 1d) {
       // the whole file is completely dirty
       return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY);
@@ -257,17 +259,8 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
-      throws IllegalPathException {
-    for (Modification modification : modifications) {
-      PartialPath path = modification.getPath();
-      if (path.endWithMultiLevelWildcard()
-          && path.getDevicePath().matchFullPath(new PartialPath(device))
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
-        return true;
-      }
-    }
-    return false;
+      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
+    return ModificationUtils.isAllDeletedByMods(modifications, device, startTime, endTime);
   }
 
   private List<SettleCompactionTask> createTask(
@@ -308,15 +301,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private ICompactionPerformer createCompactionPerformer() {
-    return isSeq
-        ? IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerSeqCompactionPerformer()
-            .createInstance()
-        : IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerUnseqCompactionPerformer()
-            .createInstance();
+    return isSeq ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
   }
 
   enum DirtyStatus {

@@ -118,11 +118,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public synchronized void start() {
-    if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
-        && (config.isEnableSeqSpaceCompaction()
-            || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction())) {
+    if (!init) {
       initThreadPool();
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
@@ -132,18 +128,24 @@ public class CompactionTaskManager implements IService {
     logger.info("Compaction task manager started.");
   }
 
+  public boolean isInit() {
+    return this.init;
+  }
+
   private void initThreadPool() {
     int compactionThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
+    this.taskExecutionPool.disableErrorLog();
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
+    this.subCompactionTaskExecutionPool.disableErrorLog();
     for (int i = 0; i < compactionThreadNum; ++i) {
       taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
     }
@@ -220,6 +222,7 @@ public class CompactionTaskManager implements IService {
     }
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
+    init = false;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -321,17 +324,18 @@ public class CompactionTaskManager implements IService {
     finishedTaskNum.incrementAndGet();
   }
 
-  public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
+  public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask)
+      throws InterruptedException {
     if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
       return subCompactionTaskExecutionPool.submit(subCompactionTask);
     }
-    return null;
+    throw new InterruptedException();
   }
 
   /**
    * Abort all compactions of a database. The running compaction tasks will be returned as a list,
-   * the compaction threads for the database are not terminated util all the tasks in the list is
-   * finish. The outer caller can use function isAnyTaskInListStillRunning to determine this.
+   * the compaction threads for the database are interrupted immediately. The outer caller can use
+   * function isAnyTaskInListStillRunning to determine whether the tasks in list are finished.
    */
   public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();

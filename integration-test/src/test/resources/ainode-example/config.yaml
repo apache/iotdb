@@ -1,0 +1,5 @@
+configs:                
+    input_shape: [7, 3]   
+    output_shape: [7, 3] 
+    input_type: ["float32", "float32","float32"]
+    output_type: ["float32", "float32","float32"]

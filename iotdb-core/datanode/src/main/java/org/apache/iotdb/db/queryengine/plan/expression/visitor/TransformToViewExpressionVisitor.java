@@ -137,10 +137,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   public ViewExpression visitLikeExpression(LikeExpression likeExpression, Void context) {
     ViewExpression child = this.process(likeExpression.getExpression(), context);
     return new LikeViewExpression(
-        child,
-        likeExpression.getPatternString(),
-        likeExpression.getPattern(),
-        likeExpression.isNot());
+        child, likeExpression.getPattern(), likeExpression.getEscape(), likeExpression.isNot());
   }
 
   @Override

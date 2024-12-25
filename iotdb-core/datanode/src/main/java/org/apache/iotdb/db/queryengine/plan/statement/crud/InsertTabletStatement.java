@@ -26,13 +26,22 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -40,8 +49,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,27 +59,48 @@ import java.util.Map;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
-
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
-  private long[] times; // times should be sorted. It is done in the session API.
-  private BitMap[] bitMaps;
-  private Object[] columns;
+  protected long[] times; // times should be sorted. It is done in the session API.
+  protected BitMap[] nullBitMaps;
+  protected Object[] columns;
 
-  private int rowCount = 0;
+  protected IDeviceID[] deviceIDs;
+
+  protected boolean singleDevice;
+
+  protected int rowCount = 0;
 
   /**
    * This param record whether the source of logical view is aligned. Only used when there are
    * views.
    */
-  private boolean[] measurementIsAligned;
+  protected boolean[] measurementIsAligned;
 
   public InsertTabletStatement() {
     super();
     statementType = StatementType.BATCH_INSERT;
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
+  }
+
+  public InsertTabletStatement(InsertTabletNode node) {
+    this();
+    setDevicePath(node.getTargetPath());
+    setMeasurements(node.getMeasurements());
+    setTimes(node.getTimes());
+    setColumns(node.getColumns());
+    setBitMaps(node.getBitMaps());
+    setRowCount(node.getRowCount());
+    setDataTypes(node.getDataTypes());
+    setAligned(node.isAligned());
+    setMeasurementSchemas(node.getMeasurementSchemas());
+  }
+
+  public InsertTabletStatement(RelationalInsertTabletNode node) {
+    this(((InsertTabletNode) node));
+    setColumnCategories(node.getColumnCategories());
+    setWriteToTable(true);
   }
 
   public int getRowCount() {
@@ -92,11 +120,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   public BitMap[] getBitMaps() {
-    return bitMaps;
+    return nullBitMaps;
   }
 
   public void setBitMaps(BitMap[] bitMaps) {
-    this.bitMaps = bitMaps;
+    this.nullBitMaps = bitMaps;
   }
 
   public long[] getTimes() {
@@ -132,6 +160,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     return result;
   }
 
+  public TTimePartitionSlot getTimePartitionSlot(int i) {
+    return TimePartitionUtils.getTimePartitionSlot(times[i]);
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertTablet(this, context);
@@ -141,7 +173,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
@@ -159,15 +191,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      LOGGER.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
-      columns[columnIndex] =
-          CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
+      columns[columnIndex] = dataType.castFromArray(dataTypes[columnIndex], columns[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -192,6 +217,20 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     measurements[index] = null;
     dataTypes[index] = null;
     columns[index] = null;
+  }
+
+  @Override
+  public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          columns[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
   }
 
   @Override
@@ -236,8 +275,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
-        if (this.bitMaps != null) {
-          copiedBitMaps[i] = this.bitMaps[realIndex];
+        if (this.nullBitMaps != null) {
+          copiedBitMaps[i] = this.nullBitMaps[realIndex];
         }
         if (this.measurementIsAligned != null) {
           statement.setAligned(this.measurementIsAligned[realIndex]);
@@ -247,7 +286,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
-      if (this.bitMaps != null) {
+      if (this.nullBitMaps != null) {
         statement.setBitMaps(copiedBitMaps);
       }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
@@ -316,7 +355,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes != null ? dataTypes[index] : null;
   }
 
   @Override
@@ -403,5 +442,92 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+  }
+
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return new InsertTablet(this, context);
+  }
+
+  public IDeviceID getTableDeviceID(int rowIdx) {
+    if (deviceIDs == null) {
+      deviceIDs = new IDeviceID[rowCount];
+    }
+    if (deviceIDs[rowIdx] == null) {
+      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      deviceIdSegments[0] = this.getTableName();
+      for (int i = 0; i < getIdColumnIndices().size(); i++) {
+        final Integer columnIndex = getIdColumnIndices().get(i);
+        boolean isNull = isNull(rowIdx, i);
+        deviceIdSegments[i + 1] =
+            isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();
+      }
+      deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceIDs[rowIdx];
+  }
+
+  public IDeviceID[] getRawTableDeviceIDs() {
+    return deviceIDs;
+  }
+
+  public void setSingleDevice() {
+    singleDevice = true;
+  }
+
+  public boolean isSingleDevice() {
+    return singleDevice;
+  }
+
+  @Override
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    super.insertColumn(pos, columnSchema);
+
+    if (nullBitMaps == null) {
+      nullBitMaps = new BitMap[measurements.length];
+      nullBitMaps[pos] = new BitMap(rowCount);
+      for (int i = 0; i < rowCount; i++) {
+        nullBitMaps[pos].mark(i);
+      }
+    } else {
+      BitMap[] tmpBitmaps = new BitMap[nullBitMaps.length + 1];
+      System.arraycopy(nullBitMaps, 0, tmpBitmaps, 0, pos);
+      tmpBitmaps[pos] = new BitMap(rowCount);
+      for (int i = 0; i < rowCount; i++) {
+        tmpBitmaps[pos].mark(i);
+      }
+      System.arraycopy(nullBitMaps, pos, tmpBitmaps, pos + 1, nullBitMaps.length - pos);
+      nullBitMaps = tmpBitmaps;
+    }
+
+    Object[] tmpColumns = new Object[columns.length + 1];
+    System.arraycopy(columns, 0, tmpColumns, 0, pos);
+    tmpColumns[pos] =
+        CommonUtils.createValueColumnOfDataType(
+            InternalTypeManager.getTSDataType(columnSchema.getType()),
+            columnSchema.getColumnCategory(),
+            rowCount);
+    System.arraycopy(columns, pos, tmpColumns, pos + 1, columns.length - pos);
+    columns = tmpColumns;
+
+    deviceIDs = null;
+  }
+
+  @Override
+  public void swapColumn(int src, int target) {
+    super.swapColumn(src, target);
+    if (nullBitMaps != null) {
+      CommonUtils.swapArray(nullBitMaps, src, target);
+    }
+    CommonUtils.swapArray(columns, src, target);
+    deviceIDs = null;
+  }
+
+  public boolean isNull(int row, int col) {
+    if (nullBitMaps == null || nullBitMaps[col] == null) {
+      return false;
+    }
+    return nullBitMaps[col].isMarked(row);
   }
 }

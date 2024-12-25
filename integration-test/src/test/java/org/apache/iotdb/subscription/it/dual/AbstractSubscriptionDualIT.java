@@ -26,14 +26,14 @@ import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
+public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     MultiEnvFactory.createEnv(2);
@@ -52,16 +52,16 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
   }
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
+
+    super.tearDown();
   }
 }

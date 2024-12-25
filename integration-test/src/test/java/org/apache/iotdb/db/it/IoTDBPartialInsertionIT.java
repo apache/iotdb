@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -108,7 +109,7 @@ public class IoTDBPartialInsertionIT {
       EnvironmentUtils.restartDaemon();
       StorageEngine.getInstance().recover();
       // wait for recover
-      while (!StorageEngine.getInstance().isAllSgReady()) {
+      while (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
         Thread.sleep(500);
         time += 500;
         if (time > 10000) {
@@ -146,28 +147,28 @@ public class IoTDBPartialInsertionIT {
           "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
       session.createTimeseries(
           "root.sg1.d1.s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         }
         timestamp++;
       }
       timestamp = System.currentTimeMillis();
       for (long row = 0; row < 100; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         for (int s = 0; s < 3; s++) {
           long value = timestamp;
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+          tablet.addValue(schemaList.get(s).getMeasurementName(), rowIndex, value);
         }
         timestamp++;
       }

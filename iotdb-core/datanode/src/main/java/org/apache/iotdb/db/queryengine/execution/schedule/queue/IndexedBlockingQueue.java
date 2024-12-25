@@ -38,6 +38,9 @@ import com.google.common.base.Preconditions;
  */
 public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
+  public static final String TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG =
+      "The system can't allow more queries.";
+
   protected final int capacity;
   protected final E queryHolder;
   protected int size;
@@ -87,7 +90,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    Preconditions.checkState(size < capacity, "The system can't allow more queries.");
+    Preconditions.checkState(size < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
     pushToQueue(element);
     size++;
     this.notifyAll();

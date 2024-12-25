@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -35,7 +36,7 @@ import java.util.Objects;
 
 public class SingleDeviceViewNode extends SingleChildProcessNode {
 
-  private final String device;
+  private final IDeviceID device;
 
   // To reduce memory cost, SingleDeviceViewNode doesn't serialize and deserialize
   // outputColumnNames.It just rebuilds using the infos from parent node.
@@ -48,7 +49,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   public SingleDeviceViewNode(
       PlanNodeId id,
       List<String> outputColumnNames,
-      String device,
+      IDeviceID device,
       List<Integer> deviceToMeasurementIndexes) {
     super(id);
     this.device = device;
@@ -60,7 +61,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
       PlanNodeId id,
       boolean cacheOutputColumnNames,
       List<String> outputColumnNames,
-      String device,
+      IDeviceID device,
       List<Integer> deviceToMeasurementIndexes) {
     super(id);
     this.device = device;
@@ -93,7 +94,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     this.cacheOutputColumnNames = cacheOutputColumnNames;
   }
 
-  public String getDevice() {
+  public IDeviceID getDevice() {
     return device;
   }
 
@@ -113,7 +114,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(byteBuffer);
-    ReadWriteIOUtils.write(device, byteBuffer);
+    device.serialize(byteBuffer);
     ReadWriteIOUtils.write(cacheOutputColumnNames, byteBuffer);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), byteBuffer);
     for (Integer index : deviceToMeasurementIndexes) {
@@ -130,7 +131,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
-    ReadWriteIOUtils.write(device, stream);
+    device.serialize(stream);
     ReadWriteIOUtils.write(cacheOutputColumnNames, stream);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), stream);
     for (Integer index : deviceToMeasurementIndexes) {
@@ -145,7 +146,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   }
 
   public static SingleDeviceViewNode deserialize(ByteBuffer byteBuffer) {
-    String device = ReadWriteIOUtils.readString(byteBuffer);
+    IDeviceID deviceID = IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer);
     boolean cacheOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
     int listSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Integer> deviceToMeasurementIndexes = new ArrayList<>(listSize);
@@ -165,7 +166,11 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SingleDeviceViewNode(
-        planNodeId, cacheOutputColumnNames, outputColumnNames, device, deviceToMeasurementIndexes);
+        planNodeId,
+        cacheOutputColumnNames,
+        outputColumnNames,
+        deviceID,
+        deviceToMeasurementIndexes);
   }
 
   @Override
@@ -173,7 +178,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
       throws IOException {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
     id.serialize(stream);
-    ReadWriteIOUtils.write(device, stream);
+    device.serialize(stream);
     ReadWriteIOUtils.write(cacheOutputColumnNames, stream);
     ReadWriteIOUtils.write(getChildren().size(), stream);
     for (PlanNode planNode : getChildren()) {
@@ -184,14 +189,14 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   public static SingleDeviceViewNode deserializeUseTemplate(
       ByteBuffer byteBuffer, TypeProvider typeProvider) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    String device = ReadWriteIOUtils.readString(byteBuffer);
+    IDeviceID deviceID = IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer);
     boolean cacheOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
 
     return new SingleDeviceViewNode(
         planNodeId,
         cacheOutputColumnNames,
         typeProvider.getTemplatedInfo().getDeviceViewOutputNames(),
-        device,
+        deviceID,
         typeProvider.getTemplatedInfo().getDeviceToMeasurementIndexes());
   }
 

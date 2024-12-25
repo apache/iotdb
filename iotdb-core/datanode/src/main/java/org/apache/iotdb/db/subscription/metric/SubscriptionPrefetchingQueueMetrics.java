@@ -92,7 +92,7 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
         Metric.SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         queue,
-        SubscriptionPrefetchingQueue::getUncommittedEventCount,
+        SubscriptionPrefetchingQueue::getSubscriptionUncommittedEventCount,
         Tag.NAME.toString(),
         queue.getPrefetchingQueueId());
     // current commit id

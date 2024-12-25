@@ -50,7 +50,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +59,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -301,7 +301,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
       for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
         if (fragmentRelatedTasks != null) {
           for (DriverTask task : fragmentRelatedTasks) {
-            task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+            task.setAbortCause(
+                new DriverTaskAbortedException(
+                    task.getDriverTaskId().getFullId(),
+                    DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED));
             clearDriverTask(task);
           }
         }
@@ -310,7 +313,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId) {
+  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable t) {
     Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
         queryMap.get(instanceId.getQueryId());
     if (queryRelatedTasks != null) {
@@ -321,7 +324,12 @@ public class DriverScheduler implements IDriverScheduler, IService {
             if (task == null) {
               return;
             }
-            task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+            task.setAbortCause(
+                t == null
+                    ? new DriverTaskAbortedException(
+                        task.getDriverTaskId().getFullId(),
+                        DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED)
+                    : t);
             clearDriverTask(task);
           }
         }
@@ -380,12 +388,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
       try {
         task.lock();
-        if (task.getAbortCause() != null) {
+        if (task.getAbortCause().isPresent()) {
           try {
-            task.getDriver()
-                .failed(
-                    new DriverTaskAbortedException(
-                        task.getDriver().getDriverTaskId().getFullId(), task.getAbortCause()));
+            task.getDriver().failed(task.getAbortCause().get());
           } catch (Exception e) {
             logger.error("Clear DriverTask failed", e);
           }
@@ -586,7 +591,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           task.unlock();
         }
         clearDriverTask(task);
-        String abortCause = task.getAbortCause();
+        Optional<Throwable> abortCause = task.getAbortCause();
         QueryId queryId = task.getDriverTaskId().getQueryId();
         Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
         if (queryRelatedTasks != null) {
@@ -598,9 +603,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     continue;
                   }
                   otherTask.setAbortCause(
-                      StringUtils.isEmpty(abortCause)
-                          ? DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED
-                          : abortCause);
+                      abortCause.orElse(
+                          new DriverTaskAbortedException(
+                              otherTask.getDriverTaskId().getFullId(),
+                              DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED)));
                   clearDriverTask(otherTask);
                 }
               }

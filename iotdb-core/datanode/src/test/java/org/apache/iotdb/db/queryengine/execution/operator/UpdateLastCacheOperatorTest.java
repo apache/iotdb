@@ -21,11 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -47,12 +48,13 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -70,7 +72,7 @@ public class UpdateLastCacheOperatorTest {
 
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.UpdateLastCacheOperator";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -96,7 +98,7 @@ public class UpdateLastCacheOperatorTest {
   @Test
   public void testUpdateLastCacheOperatorTestWithoutTimeFilter() {
     try {
-      List<Aggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
       UpdateLastCacheOperator updateLastCacheOperator =
           initUpdateLastCacheOperator(aggregators, null, false, null);
 
@@ -125,7 +127,7 @@ public class UpdateLastCacheOperatorTest {
   @Test
   public void testUpdateLastCacheOperatorTestWithTimeFilter1() {
     try {
-      List<Aggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
       Filter timeFilter = TimeFilterApi.gtEq(200);
       UpdateLastCacheOperator updateLastCacheOperator =
           initUpdateLastCacheOperator(aggregators, timeFilter, false, null);
@@ -155,7 +157,7 @@ public class UpdateLastCacheOperatorTest {
   @Test
   public void testUpdateLastCacheOperatorTestWithTimeFilter2() {
     try {
-      List<Aggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
       Filter timeFilter = TimeFilterApi.ltEq(120);
       UpdateLastCacheOperator updateLastCacheOperator =
           initUpdateLastCacheOperator(aggregators, timeFilter, false, null);
@@ -183,7 +185,7 @@ public class UpdateLastCacheOperatorTest {
   }
 
   public UpdateLastCacheOperator initUpdateLastCacheOperator(
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter)
@@ -218,12 +220,12 @@ public class UpdateLastCacheOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             planNodeId1,
-            measurementPath,
+            IFullPath.convertToIFullPath(measurementPath),
             ascending ? Ordering.ASC : Ordering.DESC,
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, ascending, true),
+            initTimeRangeIterator(groupByTimeParameter, ascending, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);

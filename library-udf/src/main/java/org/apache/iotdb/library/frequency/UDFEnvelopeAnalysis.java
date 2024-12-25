@@ -226,6 +226,12 @@ public class UDFEnvelopeAnalysis implements UDTF {
       case DOUBLE:
         ans = row.getDouble(index);
         break;
+      case TEXT:
+      case STRING:
+      case BOOLEAN:
+      case BLOB:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UDFOutputSeriesDataTypeNotValidException(
             index, "Fail to get data type in row " + row.getTime());

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -29,43 +30,82 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
   protected CompactionTsFileWriter fileWriter;
+  protected List<TsFileResource> targetResources;
+  protected int currentFileIndex;
+  protected long endedFileSize = 0;
+  protected List<Schema> schemas;
 
-  protected boolean isEmptyFile;
+  protected final long memoryBudgetForFileWriter =
+      (long)
+          ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
-  protected TsFileResource targetResource;
+  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {
+    this(Collections.singletonList(targetFileResource));
+  }
 
-  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    this.targetResource = targetFileResource;
-    this.fileWriter =
-        new CompactionTsFileWriter(
-            targetFileResource.getTsFile(),
-            sizeForFileWriter,
-            targetResource.isSeq()
-                ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION);
-    isEmptyFile = true;
+  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources) {
+    this.targetResources = targetFileResources;
   }
 
   @Override
   public void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException {
+    fileWriter = getAvailableWriter();
     fileWriter.startChunkGroup(deviceId);
     this.isAlign = isAlign;
     this.deviceId = deviceId;
   }
 
+  private CompactionTsFileWriter getAvailableWriter() throws IOException {
+    if (fileWriter == null) {
+      useNewWriter();
+      return fileWriter;
+    }
+    boolean shouldSwitchToNextWriter =
+        fileWriter.getPos()
+                >= IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize()
+            && (currentFileIndex != targetResources.size() - 1);
+    if (shouldSwitchToNextWriter) {
+      rollCompactionFileWriter();
+    }
+    return fileWriter;
+  }
+
+  private void rollCompactionFileWriter() throws IOException {
+    fileWriter.endFile();
+    endedFileSize += fileWriter.getFile().length();
+    if (fileWriter.isEmptyTargetFile()) {
+      targetResources.get(currentFileIndex).forceMarkDeleted();
+    }
+    fileWriter = null;
+
+    currentFileIndex++;
+    useNewWriter();
+  }
+
+  private void useNewWriter() throws IOException {
+    fileWriter =
+        new CompactionTsFileWriter(
+            targetResources.get(currentFileIndex).getTsFile(),
+            memoryBudgetForFileWriter,
+            targetResources.get(currentFileIndex).isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION);
+    fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
+  }
+
   @Override
   public void endChunkGroup() throws IOException {
-    CompactionUtils.updateResource(targetResource, fileWriter, deviceId);
+    CompactionUtils.updateResource(targetResources.get(currentFileIndex), fileWriter, deviceId);
     fileWriter.endChunkGroup();
   }
 
@@ -80,7 +120,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
-    isEmptyFile = false;
     lastTime[subTaskId] = timeValuePair.getTimestamp();
   }
 
@@ -89,10 +128,14 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endFile() throws IOException {
-    fileWriter.endFile();
-    if (isEmptyFile) {
-      targetResource.forceMarkDeleted();
+    for (int i = currentFileIndex + 1; i < targetResources.size(); i++) {
+      targetResources.get(i).forceMarkDeleted();
     }
+    if (fileWriter == null || fileWriter.isEmptyTargetFile()) {
+      targetResources.get(currentFileIndex).forceMarkDeleted();
+      return;
+    }
+    fileWriter.endFile();
   }
 
   @Override
@@ -109,7 +152,12 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
+  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+    this.schemas = schemas;
+  }
+
+  @Override
   public long getWriterSize() throws IOException {
-    return fileWriter.getPos();
+    return endedFileSize + (fileWriter == null ? 0 : fileWriter.getPos());
   }
 }

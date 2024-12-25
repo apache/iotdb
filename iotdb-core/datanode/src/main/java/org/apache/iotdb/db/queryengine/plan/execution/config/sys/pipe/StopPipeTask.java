@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +34,11 @@ public class StopPipeTask implements IConfigTask {
 
   public StopPipeTask(StopPipeStatement stopPipeStatement) {
     this.stopPipeStatement = stopPipeStatement;
+  }
+
+  public StopPipeTask(StopPipe node) {
+    stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
+    stopPipeStatement.setPipeName(node.getPipeName());
   }
 
   @Override

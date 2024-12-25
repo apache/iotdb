@@ -110,6 +110,10 @@ public class UDAFExample implements UDAF {
         return;
       case TEXT:
       case BOOLEAN:
+      case TIMESTAMP:
+      case STRING:
+      case BLOB:
+      case DATE:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", dataType));

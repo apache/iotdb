@@ -86,7 +86,7 @@ public class IoTDBFuzzyQueryIT {
     sqls.add(
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)");
     sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\\\',10.3)");
+        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\\\\\\\',10.3)");
     sqls.add("insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
   }
 
@@ -106,13 +106,15 @@ public class IoTDBFuzzyQueryIT {
     Connection connection = EnvFactory.getEnv().getConnection();
     Statement st0 = connection.createStatement();
     ResultSet resultSet =
-        st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1'");
+        st0.executeQuery("select status from root.t1.wf01.wt01 where status not like '1'");
 
-    Assert.assertEquals("1", outputResultStr(resultSet));
+    Assert.assertEquals(
+        "14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\\\\\", outputResultStr(resultSet));
 
     resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%'");
 
-    Assert.assertEquals("1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\", outputResultStr(resultSet));
+    Assert.assertEquals(
+        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\\\\\", outputResultStr(resultSet));
 
     resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1%'");
 
@@ -134,22 +136,28 @@ public class IoTDBFuzzyQueryIT {
 
     Assert.assertEquals("6116,6%16", outputResultStr(resultSet));
 
-    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '6\\%%'");
+    resultSet =
+        st0.executeQuery(
+            "select status from root.t1.wf01.wt01 where status like '6\\%%' escape '\\'");
 
     Assert.assertEquals("6%16", outputResultStr(resultSet));
 
-    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '\\%%'");
+    resultSet =
+        st0.executeQuery(
+            "select status from root.t1.wf01.wt01 where status like '\\%%' escape '\\'");
 
     Assert.assertEquals("%123", outputResultStr(resultSet));
 
-    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%\\%'");
+    resultSet =
+        st0.executeQuery(
+            "select status from root.t1.wf01.wt01 where status like '%\\%' escape '\\'");
 
     Assert.assertEquals("123%", outputResultStr(resultSet));
 
     resultSet =
         st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
 
-    Assert.assertEquals("\\\\", outputResultStr(resultSet));
+    Assert.assertEquals("\\\\\\\\", outputResultStr(resultSet));
   }
 
   @Test(expected = Exception.class)

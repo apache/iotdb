@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -58,12 +56,12 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void getSeriesTypeByPath() throws IllegalPathException {
-    MeasurementPath measurementPath = new MeasurementPath("s1", TSDataType.INT64);
+  public void getSeriesTypeByPath() {
     Assert.assertEquals(
-        TSDataType.DOUBLE, SchemaUtils.getSeriesTypeByPath(measurementPath, SqlConstant.SUM));
+        TSDataType.DOUBLE, SchemaUtils.getSeriesTypeByPath(TSDataType.INT64, SqlConstant.SUM));
     Assert.assertEquals(
-        TSDataType.INT64, SchemaUtils.getSeriesTypeByPath(measurementPath, SqlConstant.LAST_VALUE));
+        TSDataType.INT64,
+        SchemaUtils.getSeriesTypeByPath(TSDataType.INT64, SqlConstant.LAST_VALUE));
   }
 
   @Test

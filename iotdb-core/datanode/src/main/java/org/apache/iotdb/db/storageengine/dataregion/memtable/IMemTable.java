@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
@@ -93,9 +94,9 @@ public interface IMemTable extends WALEntryValue {
    *
    * @param insertRowNode insertRowNode
    */
-  void insert(InsertRowNode insertRowNode);
+  int insert(InsertRowNode insertRowNode);
 
-  void insertAlignedRow(InsertRowNode insertRowNode);
+  int insertAlignedRow(InsertRowNode insertRowNode);
 
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
@@ -106,25 +107,25 @@ public interface IMemTable extends WALEntryValue {
    * @param start included
    * @param end excluded
    */
-  void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
+  int insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+  int insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(
       QueryContext context,
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForSeriesRegionScan(
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForDeviceRegionScan(
@@ -133,7 +134,7 @@ public interface IMemTable extends WALEntryValue {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */
@@ -142,15 +143,11 @@ public interface IMemTable extends WALEntryValue {
   boolean isEmpty();
 
   /**
-   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries path. Only called
-   * for non-flushing MemTable.
+   * Delete data in the MemTable according to the modEntry.
    *
-   * @param path the PartialPath the timeseries to be deleted.
-   * @param devicePath the device path of the timeseries to be deleted.
-   * @param startTimestamp the lower-bound of deletion time.
-   * @param endTimestamp the upper-bound of deletion time
+   * @return
    */
-  void delete(PartialPath path, PartialPath devicePath, long startTimestamp, long endTimestamp);
+  long delete(ModEntry modEntry);
 
   /**
    * Make a copy of this MemTable.
@@ -169,7 +166,7 @@ public interface IMemTable extends WALEntryValue {
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
-  boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
+  boolean chunkNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   long getCurrentTVListSize(IDeviceID deviceId, String measurement);

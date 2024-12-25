@@ -156,15 +156,14 @@ public class TreeModelPlanner implements IPlanner {
   }
 
   @Override
-  public void setRedirectInfo(
-      IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
+  public void setRedirectInfo(IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus) {
     Analysis analysis = (Analysis) iAnalysis;
 
     // Get the inner statement of PipeEnrichedStatement
     Statement statementToRedirect =
-        analysis.getStatement() instanceof PipeEnrichedStatement
-            ? ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
-            : analysis.getStatement();
+        analysis.getTreeStatement() instanceof PipeEnrichedStatement
+            ? ((PipeEnrichedStatement) analysis.getTreeStatement()).getInnerStatement()
+            : analysis.getTreeStatement();
 
     if (statementToRedirect instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()) {
@@ -173,7 +172,7 @@ public class TreeModelPlanner implements IPlanner {
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+        if (tsstatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           boolean needRedirect = false;
           List<TSStatus> subStatus = new ArrayList<>();
           for (TEndPoint endPoint : redirectNodeList) {

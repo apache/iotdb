@@ -46,7 +46,7 @@ dn_wal_dirs=$(echo $(grep '^dn_wal_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data
 dn_tracing_dir=$(echo $(grep '^dn_tracing_dir=' ${IOTDB_DATANODE_CONFIG} || echo "datanode/tracing") | sed 's/.*=//')
 dn_sync_dir=$(echo $(grep '^dn_sync_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/sync") | sed 's/.*=//')
 pipe_receiver_file_dirs=$(echo $(grep '^pipe_receiver_file_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system/pipe/receiver") | sed 's/.*=//')
-pipe_consensus_receiver_file_dirs=$(echo $(grep '^pipe_consensus_receiver_file_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system/pipe/consensus/receiver") | sed 's/.*=//')
+iot_consensus_v2_receiver_file_dirs=$(echo $(grep '^iot_consensus_v2_receiver_file_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system/pipe/consensus/receiver") | sed 's/.*=//')
 sort_tmp_dir=$(echo $(grep '^sort_tmp_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/tmp") | sed 's/.*=//')
 
 function clearPath {
@@ -71,7 +71,7 @@ clearPath $dn_wal_dirs
 clearPath $dn_tracing_dir
 clearPath $dn_sync_dir
 clearPath $pipe_receiver_file_dirs
-clearPath $pipe_consensus_receiver_file_dirs
+clearPath $iot_consensus_v2_receiver_file_dirs
 clearPath $sort_tmp_dir
 
 echo "DataNode clean done ..."

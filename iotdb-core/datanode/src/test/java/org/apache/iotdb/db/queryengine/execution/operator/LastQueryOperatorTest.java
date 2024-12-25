@@ -21,11 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -47,12 +48,13 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -69,7 +71,7 @@ public class LastQueryOperatorTest {
 
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQueryOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -95,10 +97,10 @@ public class LastQueryOperatorTest {
   @Test
   public void testLastQueryOperator1() throws Exception {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
@@ -139,12 +141,12 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
-              measurementPath1,
+              IFullPath.convertToIFullPath(measurementPath1),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -165,12 +167,12 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId3,
-              measurementPath2,
+              IFullPath.convertToIFullPath(measurementPath2),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -223,10 +225,10 @@ public class LastQueryOperatorTest {
   @Test
   public void testLastQueryOperator2() {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
@@ -268,12 +270,12 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
-              measurementPath1,
+              IFullPath.convertToIFullPath(measurementPath1),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);
@@ -293,12 +295,12 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId3,
-              measurementPath2,
+              IFullPath.convertToIFullPath(measurementPath2),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
-              initTimeRangeIterator(null, false, true),
+              initTimeRangeIterator(null, false, true, ZoneId.systemDefault()),
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               true);

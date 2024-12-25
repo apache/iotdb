@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelp
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,7 +41,7 @@ public class SingleDeviceViewNodeSerdeTest {
         new SingleDeviceViewNode(
             new PlanNodeId("TestSingleDeviceViewNode"),
             outputColumnNames,
-            "TestDevice",
+            IDeviceID.Factory.DEFAULT_FACTORY.create("TestDevice"),
             Arrays.asList(1, 2));
 
     // when cache is false

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -42,13 +43,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -160,7 +164,7 @@ public class WritePlanNodeSplitTest {
         result = new HashMap<>();
 
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParamList) {
-      String devicePath = dataPartitionQueryParam.getDevicePath();
+      String devicePath = dataPartitionQueryParam.getDeviceID().toString();
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           seriesPartitionSlotMap = null;
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
@@ -174,7 +178,7 @@ public class WritePlanNodeSplitTest {
       }
 
       TSeriesPartitionSlot seriesPartitionSlot =
-          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap =
           seriesPartitionSlotMap.get(seriesPartitionSlot);
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMapResult =
@@ -194,7 +198,7 @@ public class WritePlanNodeSplitTest {
   public void testSplitInsertTablet() throws IllegalPathException {
     InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 1"));
 
-    insertTabletNode.setDevicePath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
     insertTabletNode.setTimes(
         new long[] {-200, -101, 1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
     insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
@@ -202,7 +206,8 @@ public class WritePlanNodeSplitTest {
         new Object[] {new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
+    dataPartitionQueryParam.setDeviceID(
+        insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
 
     DataPartition dataPartition =
@@ -222,13 +227,14 @@ public class WritePlanNodeSplitTest {
 
     insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 2"));
 
-    insertTabletNode.setDevicePath(new PartialPath("root.sg2.d1"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg2.d1"));
     insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
     insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
     insertTabletNode.setColumns(new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
 
     dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
+    dataPartitionQueryParam.setDeviceID(
+        insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
 
     dataPartition = getDataPartition(Collections.singletonList(dataPartitionQueryParam));
@@ -237,9 +243,62 @@ public class WritePlanNodeSplitTest {
 
     insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
-    Assert.assertEquals(5, insertTabletNodeList.size());
+    Assert.assertEquals(1, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
-      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 2);
+      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 10);
+    }
+  }
+
+  @Test
+  public void testSplitRelationalInsertTablet() throws IllegalPathException {
+    RelationalInsertTabletNode relationalInsertTabletNode =
+        new RelationalInsertTabletNode(new PlanNodeId("plan node 1"));
+
+    relationalInsertTabletNode.setTargetPath(new PartialPath("root.sg1"));
+    relationalInsertTabletNode.setTimes(
+        new long[] {-200, -101, 1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    relationalInsertTabletNode.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT32});
+    Binary d1 = new Binary("d1", StandardCharsets.UTF_8);
+    Binary d2 = new Binary("d2", StandardCharsets.UTF_8);
+    relationalInsertTabletNode.setColumns(
+        new Object[] {
+          new Binary[] {
+            d1, d2, d1, d2, d1, d2, d1, d2, d1, d2, d1, d2,
+          },
+          new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
+        });
+    relationalInsertTabletNode.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.ID, TsTableColumnCategory.MEASUREMENT});
+    relationalInsertTabletNode.setRowCount(12);
+
+    List<DataPartitionQueryParam> dataPartitionQueryParamList = new ArrayList<>();
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(relationalInsertTabletNode.getDeviceID(0));
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        relationalInsertTabletNode.getTimePartitionSlots());
+
+    dataPartitionQueryParamList.add(dataPartitionQueryParam);
+    dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(relationalInsertTabletNode.getDeviceID(1));
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        relationalInsertTabletNode.getTimePartitionSlots());
+    dataPartitionQueryParamList.add(dataPartitionQueryParam);
+
+    DataPartition dataPartition = getDataPartition(dataPartitionQueryParamList);
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+
+    List<WritePlanNode> insertTabletNodeList =
+        relationalInsertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(6, insertTabletNodeList.size());
+    for (WritePlanNode insertNode : insertTabletNodeList) {
+      InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+      Assert.assertEquals(2, tabletNode.getTimes().length);
+      // keep the time order after split
+      Assert.assertTrue(tabletNode.getTimes()[0] < tabletNode.getTimes()[1]);
+      TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
+      Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
     }
   }
 
@@ -250,7 +309,7 @@ public class WritePlanNodeSplitTest {
 
     for (int i = 0; i < 5; i++) {
       InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 3"));
-      insertTabletNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
+      insertTabletNode.setTargetPath(new PartialPath(String.format("root.sg1.d%d", i)));
       insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
       insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertTabletNode.setColumns(
@@ -258,7 +317,7 @@ public class WritePlanNodeSplitTest {
       insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, 2 * i);
 
       insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 3"));
-      insertTabletNode.setDevicePath(new PartialPath(String.format("root.sg2.d%d", i)));
+      insertTabletNode.setTargetPath(new PartialPath(String.format("root.sg2.d%d", i)));
       insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
       insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertTabletNode.setColumns(
@@ -269,7 +328,8 @@ public class WritePlanNodeSplitTest {
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
     for (InsertTabletNode insertTabletNode : insertMultiTabletsNode.getInsertTabletNodeList()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(
+          insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
@@ -290,12 +350,12 @@ public class WritePlanNodeSplitTest {
 
     for (int i = 0; i < 7; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
-      insertRowNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
+      insertRowNode.setTargetPath(new PartialPath(String.format("root.sg1.d%d", i)));
       insertRowNode.setTime((i - 2) * TimePartitionUtils.getTimePartitionInterval());
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 
       insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
-      insertRowNode.setDevicePath(new PartialPath(String.format("root.sg2.d%d", i)));
+      insertRowNode.setTargetPath(new PartialPath(String.format("root.sg2.d%d", i)));
       insertRowNode.setTime(1);
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i + 1);
     }
@@ -303,7 +363,7 @@ public class WritePlanNodeSplitTest {
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowNode.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(insertRowNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(insertRowNode.getTimePartitionSlots());
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
@@ -311,6 +371,7 @@ public class WritePlanNodeSplitTest {
     DataPartition dataPartition = getDataPartition(dataPartitionQueryParams);
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
+    analysis.setDatabaseName("root.sg2");
 
     List<WritePlanNode> insertRowsNodeList = insertRowsNode.splitByPartition(analysis);
 
@@ -328,7 +389,7 @@ public class WritePlanNodeSplitTest {
     long[] times = new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470};
     for (int i = 0; i < 10; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 4"));
-      insertRowNode.setDevicePath(new PartialPath("root.sg1.d1"));
+      insertRowNode.setTargetPath(new PartialPath("root.sg1.d1"));
       insertRowNode.setMeasurements(new String[] {"s1"});
       insertRowNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertRowNode.setTime(times[i]);
@@ -341,7 +402,7 @@ public class WritePlanNodeSplitTest {
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowsOfOneDeviceNode.getInsertRowNodeList()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowNode.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(insertRowNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(insertRowNode.getTimePartitionSlots());
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
@@ -365,7 +426,7 @@ public class WritePlanNodeSplitTest {
     insertRowNodeIndexList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 5"));
-      insertRowNode.setDevicePath(new PartialPath("root.sg2.d1"));
+      insertRowNode.setTargetPath(new PartialPath("root.sg2.d1"));
       insertRowNode.setMeasurements(new String[] {"s1"});
       insertRowNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertRowNode.setTime(times[i]);
@@ -378,7 +439,7 @@ public class WritePlanNodeSplitTest {
     dataPartitionQueryParams = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowsOfOneDeviceNode.getInsertRowNodeList()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowNode.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(insertRowNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(insertRowNode.getTimePartitionSlots());
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }

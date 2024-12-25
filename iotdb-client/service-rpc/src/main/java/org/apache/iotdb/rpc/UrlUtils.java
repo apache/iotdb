@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 /** The UrlUtils */
 public class UrlUtils {
-  private static final String POINT_COLON = ":";
+  private static final String PORT_SEPARATOR = ":";
   private static final String ABB_COLON = "[";
 
   private UrlUtils() {}
@@ -37,10 +37,11 @@ public class UrlUtils {
    */
   public static TEndPoint parseTEndPointIpv4AndIpv6Url(String endPointUrl) {
     TEndPoint endPoint = new TEndPoint();
-    if (endPointUrl.contains(POINT_COLON)) {
-      int point_position = endPointUrl.lastIndexOf(POINT_COLON);
-      String port = endPointUrl.substring(endPointUrl.lastIndexOf(POINT_COLON) + 1);
+    if (endPointUrl.contains(PORT_SEPARATOR)) {
+      int point_position = endPointUrl.lastIndexOf(PORT_SEPARATOR);
+      String port = endPointUrl.substring(endPointUrl.lastIndexOf(PORT_SEPARATOR) + 1);
       String ip = endPointUrl.substring(0, point_position);
+      // If the ip/host part is provided as IPv6 address, cut off the surrounding square brackets.
       if (ip.contains(ABB_COLON)) {
         ip = ip.substring(1, ip.length() - 1);
       }

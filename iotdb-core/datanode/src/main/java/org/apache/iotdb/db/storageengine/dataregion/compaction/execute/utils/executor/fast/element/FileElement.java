@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 @SuppressWarnings("squid:S1104")
@@ -26,8 +28,16 @@ public class FileElement {
   public TsFileResource resource;
 
   public boolean isSelected = false;
+  public MergeReaderPriority priority;
 
   public FileElement(TsFileResource resource) {
     this.resource = resource;
+    TsFileID tsFileID = resource.getTsFileID();
+    this.priority =
+        new MergeReaderPriority(tsFileID.timestamp, tsFileID.fileVersion, 0, resource.isSeq());
+  }
+
+  public MergeReaderPriority getPriority() {
+    return this.priority;
   }
 }

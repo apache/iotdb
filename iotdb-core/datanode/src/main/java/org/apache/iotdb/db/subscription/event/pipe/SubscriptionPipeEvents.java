@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import java.io.File;
-
 public interface SubscriptionPipeEvents {
-
-  /**
-   * @return {@code null} if the pipe events do not contain the corresponding tsfile.
-   */
-  File getTsFile();
 
   void ack();
 
-  void cleanup();
+  void cleanUp();
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  int getPipeEventCount();
 }

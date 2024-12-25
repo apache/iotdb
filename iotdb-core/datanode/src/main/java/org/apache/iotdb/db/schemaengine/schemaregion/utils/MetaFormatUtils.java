@@ -102,11 +102,12 @@ public class MetaFormatUtils {
   }
 
   /** check whether the database name uses illegal characters */
-  public static void checkDatabase(String database) throws IllegalPathException {
+  public static void checkDatabase(final String database) throws IllegalPathException {
     if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(database).matches()) {
       throw new IllegalPathException(
           String.format(
-              "The database name can only be characters, numbers and underscores. %s", database));
+              "The database name can only contain english or chinese characters, numbers, backticks and underscores. %s",
+              database));
     }
   }
 

@@ -37,4 +37,9 @@ public class SubscriptionRuntimeException extends SubscriptionException {
         && Objects.equals(getMessage(), ((SubscriptionRuntimeException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((SubscriptionRuntimeException) obj).getTimeStamp());
   }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

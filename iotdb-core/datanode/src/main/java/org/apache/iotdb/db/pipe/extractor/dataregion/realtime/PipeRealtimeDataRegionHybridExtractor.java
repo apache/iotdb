@@ -21,10 +21,11 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -56,8 +57,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       extractTsFileInsertion(event);
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
-    } else if (eventToExtract instanceof PipeSchemaRegionWritePlanEvent) {
-      extractDeletion(event);
+    } else if (eventToExtract instanceof PipeDeleteDataNodeEvent) {
+      extractDirectly(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -201,19 +202,27 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore() {
-    // In the following 5 cases, we should not extract any more tablet events. all the data
+    // In the following 7 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
+    //  0. If the pipe task is currently restarted.
     //  1. If Wal size > maximum size of wal buffer,
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  2. The number of pinned memtables has reached the dangerous threshold.
     //  3. The number of historical tsFile events to transfer has exceeded the limit.
     //  4. The number of realtime tsfile events to transfer has exceeded the limit.
     //  5. The number of linked tsfiles has reached the dangerous threshold.
-    return mayWalSizeReachThrottleThreshold()
+    //  6. The shallow memory usage of the insert node has reached the dangerous threshold.
+    return isPipeTaskCurrentlyRestarted()
+        || mayWalSizeReachThrottleThreshold()
         || mayMemTablePinnedCountReachDangerousThreshold()
         || isHistoricalTsFileEventCountExceededLimit()
         || isRealtimeTsFileEventCountExceededLimit()
-        || mayTsFileLinkedCountReachDangerousThreshold();
+        || mayTsFileLinkedCountReachDangerousThreshold()
+        || mayInsertNodeMemoryReachDangerousThreshold();
+  }
+
+  private boolean isPipeTaskCurrentlyRestarted() {
+    return PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
@@ -244,6 +253,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
+  private boolean mayInsertNodeMemoryReachDangerousThreshold() {
+    return 3
+            * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
+            * PipeDataNodeAgent.task().getPipeCount()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+  }
+
   @Override
   public Event supply() {
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
@@ -259,8 +275,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
       } else if (eventToSupply instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeletion(realtimeEvent);
+      } else if (eventToSupply instanceof PipeDeleteDataNodeEvent
+          || eventToSupply instanceof ProgressReportEvent) {
+        suppliedEvent = supplyDirectly(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(

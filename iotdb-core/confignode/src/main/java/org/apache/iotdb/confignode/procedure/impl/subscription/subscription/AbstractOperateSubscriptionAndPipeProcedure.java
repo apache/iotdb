@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2.copyAndFilterOutNonWorkingDataRegionPipeTasks;
 
 public abstract class AbstractOperateSubscriptionAndPipeProcedure
     extends AbstractOperateSubscriptionProcedure {
@@ -135,7 +137,7 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
         LOGGER.warn("Pipe {} not found in PipeTaskInfo, can not push its meta.", pipeName);
         continue;
       }
-      pipeMetaBinaryList.add(pipeMeta.serialize());
+      pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
     }
 
     return env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);

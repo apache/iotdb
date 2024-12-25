@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 
 import java.util.Arrays;
 import java.util.HashSet;

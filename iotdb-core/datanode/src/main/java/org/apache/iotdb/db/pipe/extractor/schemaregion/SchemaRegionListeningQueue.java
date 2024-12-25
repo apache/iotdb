@@ -103,7 +103,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   public synchronized boolean createSnapshot(final File snapshotDir) {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       LOGGER.warn("Take snapshot error: {}", e.getMessage());
       return false;
     }
@@ -112,7 +112,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   public synchronized void loadSnapshot(final File snapshotDir) {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       LOGGER.error("Failed to load snapshot {}", e.getMessage());
     }
   }

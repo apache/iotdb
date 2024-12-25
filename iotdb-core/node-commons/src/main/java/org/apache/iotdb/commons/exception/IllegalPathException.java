@@ -24,15 +24,17 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class IllegalPathException extends MetadataException {
   private static final long serialVersionUID = 2693272249167539978L;
 
-  public IllegalPathException(String path) {
-    super(String.format("%s is not a legal path", path));
-    errorCode = TSStatusCode.ILLEGAL_PATH.getStatusCode();
-    this.isUserException = true;
+  public IllegalPathException(final String path) {
+    super(
+        String.format("%s is not a legal path", path),
+        TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+        true);
   }
 
-  public IllegalPathException(String path, String reason) {
-    super(String.format("%s is not a legal path, because %s", path, reason));
-    errorCode = TSStatusCode.ILLEGAL_PATH.getStatusCode();
-    this.isUserException = true;
+  public IllegalPathException(final String path, final String reason) {
+    super(
+        String.format("%s is not a legal path, because %s", path, reason),
+        TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+        true);
   }
 }

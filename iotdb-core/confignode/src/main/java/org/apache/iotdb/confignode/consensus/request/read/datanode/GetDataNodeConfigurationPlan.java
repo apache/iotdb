@@ -19,25 +19,18 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.datanode;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
+public class GetDataNodeConfigurationPlan extends ConfigPhysicalReadPlan {
 
-  private int dataNodeId;
+  private final int dataNodeId;
 
-  public GetDataNodeConfigurationPlan() {
+  public GetDataNodeConfigurationPlan(final int dataNodeId) {
     super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
-  }
-
-  public GetDataNodeConfigurationPlan(int dataNodeId) {
-    this();
     this.dataNodeId = dataNodeId;
   }
 
@@ -46,25 +39,14 @@ public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    stream.writeInt(dataNodeId);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    this.dataNodeId = buffer.getInt();
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
+    final GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
     return dataNodeId == that.dataNodeId;
   }
 

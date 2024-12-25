@@ -129,7 +129,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void countWithTimeFilterTest() {
-    String[] retArray = new String[] {"0,3,7,4,5,1"};
+    String[] retArray = new String[] {"3,7,4,5,1"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -141,9 +141,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count(d0s0))
+              resultSet.getString(count(d0s0))
                   + ","
                   + resultSet.getString(count(d0s1))
                   + ","
@@ -165,7 +163,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void countWithoutFilterTest() {
-    String[] retArray = new String[] {"0,4,0,6,1"};
+    String[] retArray = new String[] {"4,0,6,1"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -177,9 +175,7 @@ public class IoTDBAggregationSmallDataIT {
               "SELECT count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count(d0s0))
+              resultSet.getString(count(d0s0))
                   + ","
                   + resultSet.getString(count(d1s1))
                   + ","
@@ -199,7 +195,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void maxValueWithoutFilterTest() {
-    String[] retArray = new String[] {"0,22222,null"};
+    String[] retArray = new String[] {"22222,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -220,11 +216,7 @@ public class IoTDBAggregationSmallDataIT {
           statement.executeQuery("SELECT max_value(d0.s0),max_value(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxValue(d0s0))
-                  + ","
-                  + resultSet.getString(maxValue(d1s1));
+              resultSet.getString(maxValue(d0s0)) + "," + resultSet.getString(maxValue(d1s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -238,7 +230,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void extremeWithoutFilterTest() {
-    String[] retArray = new String[] {"0,22222,null"};
+    String[] retArray = new String[] {"22222,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -259,11 +251,7 @@ public class IoTDBAggregationSmallDataIT {
           statement.executeQuery("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(extreme(d0s0))
-                  + ","
-                  + resultSet.getString(extreme(d1s1));
+              resultSet.getString(extreme(d0s0)) + "," + resultSet.getString(extreme(d1s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -277,7 +265,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void firstValueWithoutFilterTest() {
-    String[] retArray = new String[] {"0,90,null,aaaaa"};
+    String[] retArray = new String[] {"90,null,aaaaa"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -289,9 +277,7 @@ public class IoTDBAggregationSmallDataIT {
               "SELECT first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(firstValue(d0s0))
+              resultSet.getString(firstValue(d0s0))
                   + ","
                   + resultSet.getString(firstValue(d1s1))
                   + ","
@@ -309,7 +295,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void lastValueWithoutFilterTest() {
-    String[] retArray = new String[] {"0,22222,null,good"};
+    String[] retArray = new String[] {"22222,null,good"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -321,9 +307,7 @@ public class IoTDBAggregationSmallDataIT {
               "SELECT last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(lastValue(d0s0))
+              resultSet.getString(lastValue(d0s0))
                   + ","
                   + resultSet.getString(lastValue(d1s1))
                   + ","
@@ -341,7 +325,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void sumWithoutFilterTest() {
-    String[] retArray = new String[] {"0,22610.0,null"};
+    String[] retArray = new String[] {"22610.0,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -351,12 +335,7 @@ public class IoTDBAggregationSmallDataIT {
       try (ResultSet resultSet =
           statement.executeQuery("SELECT sum(d0.s0),sum(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(sum(d1s1));
+          String ans = resultSet.getString(sum(d0s0)) + "," + resultSet.getString(sum(d1s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -370,7 +349,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void lastValueWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,22222,55555"};
+    String[] retArray = new String[] {"22222,55555"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -380,11 +359,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(lastValue(d0s0))
-                  + ","
-                  + resultSet.getString(lastValue(d0s1));
+              resultSet.getString(lastValue(d0s0)) + "," + resultSet.getString(lastValue(d0s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -398,7 +373,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void firstValueWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,99,180"};
+    String[] retArray = new String[] {"99,180"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -408,11 +383,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(firstValue(d0s0))
-                  + ","
-                  + resultSet.getString(firstValue(d0s1));
+              resultSet.getString(firstValue(d0s0)) + "," + resultSet.getString(firstValue(d0s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -426,7 +397,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void sumWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,22321.0,55934.0,1029"};
+    String[] retArray = new String[] {"22321.0,55934.0,1029"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -436,9 +407,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
+              resultSet.getString(sum(d0s0))
                   + ","
                   + resultSet.getString(sum(d0s1))
                   + ","
@@ -456,7 +425,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void avgWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,11160.5,18645,206"};
+    String[] retArray = new String[] {"11160.5,18645,206"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -466,9 +435,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(avg(d0s0))
+              resultSet.getString(avg(d0s0))
                   + ","
                   + Math.round(resultSet.getDouble(avg(d0s1)))
                   + ","
@@ -486,7 +453,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void countWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,2,3,5,1,0"};
+    String[] retArray = new String[] {"2,3,5,1,0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -498,9 +465,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count(d0s0))
+              resultSet.getString(count(d0s0))
                   + ","
                   + resultSet.getString(count(d0s1))
                   + ","
@@ -522,7 +487,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void minTimeWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,104,1,2,101,100"};
+    String[] retArray = new String[] {"104,1,2,101,100"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -534,9 +499,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(minTime(d0s0))
+              resultSet.getString(minTime(d0s0))
                   + ","
                   + resultSet.getString(minTime(d0s1))
                   + ","
@@ -558,7 +521,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void maxTimeWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,105,105,105,102,100"};
+    String[] retArray = new String[] {"105,105,105,102,100"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -570,9 +533,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxTime(d0s0))
+              resultSet.getString(maxTime(d0s0))
                   + ","
                   + resultSet.getString(maxTime(d0s1))
                   + ","
@@ -594,7 +555,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void minValueWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,90,180,2.22"};
+    String[] retArray = new String[] {"90,180,2.22"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -606,9 +567,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(minValue(d0s0))
+              resultSet.getString(minValue(d0s0))
                   + ","
                   + resultSet.getString(minValue(d0s1))
                   + ","
@@ -627,7 +586,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void maxValueWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,99,40000,11.11"};
+    String[] retArray = new String[] {"99,40000,11.11"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -639,9 +598,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxValue(d0s0))
+              resultSet.getString(maxValue(d0s0))
                   + ","
                   + resultSet.getString(maxValue(d0s1))
                   + ","
@@ -659,7 +616,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void extremeWithMultiValueFiltersTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,99,40000,11.11"};
+    String[] retArray = new String[] {"99,40000,11.11"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -672,9 +629,7 @@ public class IoTDBAggregationSmallDataIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(extreme(d0s0))
+              resultSet.getString(extreme(d0s0))
                   + ","
                   + resultSet.getString(extreme(d0s1))
                   + ","

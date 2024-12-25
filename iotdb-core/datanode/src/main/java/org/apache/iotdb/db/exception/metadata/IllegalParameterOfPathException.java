@@ -25,8 +25,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class IllegalParameterOfPathException extends MetadataException {
 
   public IllegalParameterOfPathException(String msg, String path) {
-    super(String.format("%s. Failed to create timeseries for path %s", msg, path));
-    errorCode = TSStatusCode.ILLEGAL_PARAMETER.getStatusCode();
-    this.isUserException = true;
+    super(
+        String.format("%s. Failed to create timeseries for path %s", msg, path),
+        TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(),
+        true);
   }
 }

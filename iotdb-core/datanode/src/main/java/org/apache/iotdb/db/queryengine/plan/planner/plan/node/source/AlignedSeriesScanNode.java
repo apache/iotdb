@@ -131,7 +131,7 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     List<String> outputColumnNames = new ArrayList<>();
-    String deviceName = alignedPath.getDevice();
+    String deviceName = alignedPath.getIDeviceID().toString();
     for (String measurement : alignedPath.getMeasurementList()) {
       outputColumnNames.add(deviceName.concat(TsFileConstant.PATH_SEPARATOR + measurement));
     }

@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
@@ -101,7 +101,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     int templateId = device.getTemplateId();
-    long ttl = DataNodeTTLCache.getInstance().getTTLInMS(device.getPartialPath().getNodes());
+    long ttl = DataNodeTTLCache.getInstance().getTTLInMSForTree(device.getPartialPath().getNodes());
     // TODO: make it more readable, like "30 days" or "10 hours"
     String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
     if (hasSgCol) {

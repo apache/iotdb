@@ -86,6 +86,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
         addBinaryInput(column, bitMap);
         return;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
@@ -438,6 +439,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
         updateBinaryResult(time, binaryMaxVal, columnBuilder.build(), 0);
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));

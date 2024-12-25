@@ -274,9 +274,10 @@ public class PartitionMetrics implements IMetricSet {
         Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
         clusterSchemaManager,
-        c -> c.getDatabaseNames().size());
+        // Add 1 for information schema
+        c -> c.getDatabaseNames(null).size() + 1);
 
-    List<String> databases = clusterSchemaManager.getDatabaseNames();
+    List<String> databases = clusterSchemaManager.getDatabaseNames(null);
     for (String database : databases) {
       int dataReplicationFactor = 1;
       int schemaReplicationFactor = 1;
@@ -297,7 +298,7 @@ public class PartitionMetrics implements IMetricSet {
     // Remove the number of Databases
     metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
 
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
     for (String database : databases) {
       unbindDatabaseRelatedMetricsWhenUpdate(metricService, database);
     }
@@ -345,8 +346,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.SchemaRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.warn("Error when counting SchemaRegionGroups in Database: {}", database, e);
-            return -1;
+            LOGGER.info("Error when counting SchemaRegionGroups in Database: {}", database, e);
+            return 0;
           }
         },
         Tag.NAME.toString(),
@@ -361,8 +362,8 @@ public class PartitionMetrics implements IMetricSet {
           try {
             return manager.getRegionGroupCount(database, TConsensusGroupType.DataRegion);
           } catch (DatabaseNotExistsException e) {
-            LOGGER.warn("Error when counting DataRegionGroups in Database: {}", database, e);
-            return -1;
+            LOGGER.info("Error when counting DataRegionGroups in Database: {}", database, e);
+            return 0;
           }
         },
         Tag.NAME.toString(),

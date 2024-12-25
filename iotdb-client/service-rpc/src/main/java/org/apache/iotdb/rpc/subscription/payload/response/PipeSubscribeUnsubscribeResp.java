@@ -62,11 +62,7 @@ public class PipeSubscribeUnsubscribeResp extends TPipeSubscribeResp {
    */
   public static PipeSubscribeUnsubscribeResp toTPipeSubscribeResp(
       final TSStatus status, final Map<String, TopicConfig> topics) throws IOException {
-    final PipeSubscribeUnsubscribeResp resp = new PipeSubscribeUnsubscribeResp();
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    final PipeSubscribeUnsubscribeResp resp = toTPipeSubscribeResp(status);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

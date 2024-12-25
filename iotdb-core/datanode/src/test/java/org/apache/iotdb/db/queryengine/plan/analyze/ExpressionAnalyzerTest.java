@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
 import org.junit.Test;
 
@@ -54,7 +55,9 @@ public class ExpressionAnalyzerTest {
             gt(timeSeries("root.sg.d1.s2"), intValue("1")),
             gt(timeSeries("root.sg.d2.s2"), intValue("1"))),
         ExpressionAnalyzer.bindSchemaForPredicate(
-            and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1"))),
+            and(
+                gt(new TimeSeriesOperand(new PartialPath("s1")), intValue("1")),
+                gt(new TimeSeriesOperand(new PartialPath("s2")), intValue("1"))),
             prefixPaths,
             fakeSchemaTree,
             true,
@@ -79,7 +82,10 @@ public class ExpressionAnalyzerTest {
                     gt(timeSeries("root.sg.d2.s1"), intValue("1")),
                     gt(timeSeries("root.sg.d2.s2"), intValue("1"))))),
         ExpressionAnalyzer.bindSchemaForPredicate(
-            count(and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1")))),
+            count(
+                and(
+                    gt(new TimeSeriesOperand(new PartialPath("s1")), intValue("1")),
+                    gt(new TimeSeriesOperand(new PartialPath("s2")), intValue("1")))),
             prefixPaths,
             fakeSchemaTree,
             true,

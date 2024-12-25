@@ -43,4 +43,12 @@ public class ConsensusGroupStatisticsChangeEvent {
       getDifferentConsensusGroupStatisticsMap() {
     return differentConsensusGroupStatisticsMap;
   }
+
+  @Override
+  public String toString() {
+    return "ConsensusGroupStatisticsChangeEvent{"
+        + "differentConsensusGroupStatisticsMap="
+        + differentConsensusGroupStatisticsMap
+        + '}';
+  }
 }

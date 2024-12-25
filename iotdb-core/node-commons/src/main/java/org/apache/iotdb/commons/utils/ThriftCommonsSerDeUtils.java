@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -39,6 +41,8 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
@@ -50,33 +54,55 @@ public class ThriftCommonsSerDeUtils {
     // Empty constructor
   }
 
-  private static TBinaryProtocol generateWriteProtocol(DataOutputStream stream)
+  private static TBinaryProtocol generateWriteProtocol(final OutputStream stream)
       throws TTransportException {
-    TTransport transport = new TIOStreamTransport(stream);
-    return new TBinaryProtocol(transport);
+    return new TBinaryProtocol(new TIOStreamTransport(stream));
   }
 
-  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
-      throws TTransportException {
-    TTransport transport = generateTByteBuffer(buffer);
-    return new TBinaryProtocol(transport);
-  }
-
-  private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
+  private static TBinaryProtocol generateWriteProtocol(final ByteBuffer buffer)
       throws TTransportException {
     TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
-  public static void serializeTEndPoint(TEndPoint endPoint, DataOutputStream stream) {
+  private static TBinaryProtocol generateReadProtocol(final InputStream stream)
+      throws TTransportException {
+    return new TBinaryProtocol(new TIOStreamTransport(stream));
+  }
+
+  private static TBinaryProtocol generateReadProtocol(final ByteBuffer buffer)
+      throws TTransportException {
+    TTransport transport = generateTByteBuffer(buffer);
+    return new TBinaryProtocol(transport);
+  }
+
+  public static void serializeTEndPoint(final TEndPoint endPoint, final OutputStream stream) {
     try {
       endPoint.write(generateWriteProtocol(stream));
-    } catch (TException e) {
+    } catch (final TException e) {
       throw new ThriftSerDeException("Write TEndPoint failed: ", e);
     }
   }
 
-  public static TEndPoint deserializeTEndPoint(ByteBuffer buffer) {
+  public static void serializeTEndPoint(final TEndPoint endPoint, final ByteBuffer buffer) {
+    try {
+      endPoint.write(generateWriteProtocol(buffer));
+    } catch (final TException e) {
+      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
+    }
+  }
+
+  public static TEndPoint deserializeTEndPoint(final InputStream stream) {
+    final TEndPoint endPoint = new TEndPoint();
+    try {
+      endPoint.read(generateReadProtocol(stream));
+    } catch (final TException e) {
+      throw new ThriftSerDeException("Read TEndPoint failed: ", e);
+    }
+    return endPoint;
+  }
+
+  public static TEndPoint deserializeTEndPoint(final ByteBuffer buffer) {
     TEndPoint endPoint = new TEndPoint();
     try {
       endPoint.read(generateReadProtocol(buffer));
@@ -285,5 +311,62 @@ public class ThriftCommonsSerDeUtils {
   private static ConfigurableTByteBuffer generateTByteBuffer(ByteBuffer buffer)
       throws TTransportException {
     return new ConfigurableTByteBuffer(buffer, defaultTConfiguration);
+  }
+
+  public static void serializeTAINodeInfo(
+      TAINodeConfiguration aiNodeInfo, DataOutputStream stream) {
+    try {
+      aiNodeInfo.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TAINodeInfo failed: ", e);
+    }
+  }
+
+  public static TAINodeConfiguration deserializeTAINodeInfo(ByteBuffer buffer) {
+    TAINodeConfiguration aiNodeInfo = new TAINodeConfiguration();
+    try {
+      aiNodeInfo.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TAINodeInfo failed: ", e);
+    }
+    return aiNodeInfo;
+  }
+
+  public static void serializeTAINodeConfiguration(
+      TAINodeConfiguration aiNodeConfiguration, DataOutputStream stream) {
+    try {
+      aiNodeConfiguration.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+    }
+  }
+
+  public static TAINodeConfiguration deserializeTAINodeConfiguration(ByteBuffer buffer) {
+    TAINodeConfiguration aiNodeConfiguration = new TAINodeConfiguration();
+    try {
+      aiNodeConfiguration.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TAINodeConfiguration failed: ", e);
+    }
+    return aiNodeConfiguration;
+  }
+
+  public static void serializeTAINodeLocation(
+      TAINodeLocation aiNodeLocation, DataOutputStream stream) {
+    try {
+      aiNodeLocation.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TAINodeLocation failed: ", e);
+    }
+  }
+
+  public static TAINodeLocation deserializeTAINodeLocation(ByteBuffer buffer) {
+    TAINodeLocation aiNodeLocation = new TAINodeLocation();
+    try {
+      aiNodeLocation.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TDataNodeLocation failed: ", e);
+    }
+    return aiNodeLocation;
   }
 }

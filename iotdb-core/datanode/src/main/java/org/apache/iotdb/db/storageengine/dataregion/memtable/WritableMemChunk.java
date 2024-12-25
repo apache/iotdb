@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -123,7 +125,8 @@ public class WritableMemChunk implements IWritableMemChunk {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end) {
+      int end,
+      TSStatus[] results) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -208,7 +211,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
@@ -221,7 +224,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> measurementSchema) {
+  public synchronized TVList getSortedTvListForQuery(
+      List<IMeasurementSchema> measurementSchema, boolean ignoreAllNullRows) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 

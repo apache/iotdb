@@ -35,18 +35,18 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.MNode
 public abstract class MNodeCollector<R, N extends IMNode<N>> extends MNodeTraverser<R, N> {
 
   protected MNodeCollector(
-      N startNode,
-      PartialPath path,
-      IMTreeStore<N> store,
-      boolean isPrefixMatch,
-      PathPatternTree scope)
+      final N startNode,
+      final PartialPath path,
+      final IMTreeStore<N> store,
+      final boolean isPrefixMatch,
+      final PathPatternTree scope)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
-  protected final R transferToResult(N node) {
+  protected final R transferToResult(final N node) {
     return collectMNode(node);
   }
 
-  protected abstract R collectMNode(N node);
+  protected abstract R collectMNode(final N node);
 }

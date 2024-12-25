@@ -32,15 +32,21 @@ import java.util.List;
 
 public abstract class ChunkLoader {
 
+  protected String file;
   protected ChunkMetadata chunkMetadata;
   protected ModifiedStatus modifiedStatus;
 
-  protected ChunkLoader(ChunkMetadata chunkMetadata) {
+  protected ChunkLoader(String file, ChunkMetadata chunkMetadata) {
+    this.file = file;
     this.chunkMetadata = chunkMetadata;
     calculateModifiedStatus();
   }
 
   protected ChunkLoader() {}
+
+  public String getFile() {
+    return file;
+  }
 
   private void calculateModifiedStatus() {
     this.modifiedStatus = ModifiedStatus.NONE_DELETED;

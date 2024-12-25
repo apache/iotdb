@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -53,7 +53,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1115,8 +1115,8 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    assertEquals(3, columnNamesResult.size());
-    assertEquals(3, valuesResult.size());
+    assertEquals(4, columnNamesResult.size());
+    assertEquals(4, valuesResult.size());
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
@@ -1767,8 +1767,8 @@ public class IoTDBRestServiceIT {
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    assertEquals(3, columnNamesResult.size());
-    assertEquals(3, valuesResult.size());
+    assertEquals(4, columnNamesResult.size());
+    assertEquals(4, valuesResult.size());
   }
 
   public void showTimeseriesV2(CloseableHttpClient httpClient) {

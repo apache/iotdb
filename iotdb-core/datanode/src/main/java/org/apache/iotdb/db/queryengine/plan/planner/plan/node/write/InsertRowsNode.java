@@ -65,6 +65,8 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   /** The {@link InsertRowNode} list */
   private List<InsertRowNode> insertRowNodeList;
 
+  private boolean isMixingAlignment = false;
+
   public InsertRowsNode(PlanNodeId id) {
     super(id);
     insertRowNodeList = new ArrayList<>();
@@ -102,6 +104,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowNodeIndexList.add(index);
   }
 
+  public boolean isMixingAlignment() {
+    return isMixingAlignment;
+  }
+
+  public void setMixingAlignment(boolean mixingAlignment) {
+    isMixingAlignment = mixingAlignment;
+  }
+
   @Override
   public void setSearchIndex(long index) {
     searchIndex = index;
@@ -118,11 +128,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
   }
 
   @Override
@@ -143,6 +148,16 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     InsertRowsNode that = (InsertRowsNode) o;
     return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
         && Objects.equals(insertRowNodeList, that.insertRowNodeList);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowsNode{"
+        + "insertRowNodeIndexList="
+        + insertRowNodeIndexList
+        + ", insertRowNodeList="
+        + insertRowNodeList
+        + '}';
   }
 
   @Override
@@ -193,7 +208,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
@@ -207,7 +222,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INSERT_ROWS.serialize(stream);
+    getType().serialize(stream);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
 
@@ -238,12 +253,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // Data region for insert row node
+      // each row may belong to different database, pass null for auto-detection
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
+                  insertRowNode.targetPath.getIDeviceIDAsFullDevice(),
+                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
+                  null);
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -312,7 +329,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     subSerialize(buffer);
   }
@@ -364,5 +381,10 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowsNode.setSearchIndex(searchIndex);
     return insertRowsNode;
   }
+
+  public InsertRowsNode emptyClone() {
+    return new InsertRowsNode(this.getPlanNodeId());
+  }
+
   // endregion
 }

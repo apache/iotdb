@@ -40,9 +40,12 @@ public abstract class AbstractOperator implements Operator {
     if (maxTupleSizeOfTsBlock != -1) {
       return;
     }
+    // oneTupleSize should be greater than 0 to avoid division by zero
     long oneTupleSize =
-        (tsBlock.getRetainedSizeInBytes() - tsBlock.getTotalInstanceSize())
-            / tsBlock.getPositionCount();
+        Math.max(
+            1,
+            (tsBlock.getRetainedSizeInBytes() - tsBlock.getTotalInstanceSize())
+                / tsBlock.getPositionCount());
     if (oneTupleSize > maxReturnSize) {
       // make sure at least one-tuple-at-a-time
       this.maxTupleSizeOfTsBlock = 1;
@@ -58,6 +61,10 @@ public abstract class AbstractOperator implements Operator {
   public TsBlock checkTsBlockSizeAndGetResult() {
     if (resultTsBlock == null) {
       throw new IllegalArgumentException("Result tsBlock cannot be null");
+    } else if (resultTsBlock.isEmpty()) {
+      TsBlock res = resultTsBlock;
+      resultTsBlock = null;
+      return res;
     }
     if (maxTupleSizeOfTsBlock == -1) {
       initializeMaxTsBlockLength(resultTsBlock);

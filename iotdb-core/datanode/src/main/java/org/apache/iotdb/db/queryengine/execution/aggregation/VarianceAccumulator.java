@@ -69,7 +69,11 @@ public class VarianceAccumulator implements Accumulator {
         addDoubleInput(columns, bitMap);
         return;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation variance : %s", seriesDataType));

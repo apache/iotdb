@@ -83,7 +83,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public List<Integer> checkUserPathPrivileges(
-      String username, List<PartialPath> allPath, int permission) {
+      String username, List<? extends PartialPath> allPath, int permission) {
     checkCacheAvailable();
     List<Integer> posList = new ArrayList<>();
     User user = iAuthorCache.getUserCache(username);
@@ -461,7 +461,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   private List<Integer> checkPathFromConfigNode(
-      String username, List<PartialPath> allPath, int permission) {
+      String username, List<? extends PartialPath> allPath, int permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
             username, AuthUtils.serializePartialPathList(allPath), permission);

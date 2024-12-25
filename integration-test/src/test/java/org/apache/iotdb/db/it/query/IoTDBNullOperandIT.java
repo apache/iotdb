@@ -104,7 +104,7 @@ public class IoTDBNullOperandIT {
           "root.test.sg1.s1 = root.test.sg1.s2",
           "root.test.sg1.s1 > root.test.sg1.s2",
           "root.test.sg1.s1 < root.test.sg1.s2",
-          "root.test.sg1.s5 LIKE '^test$'",
+          "root.test.sg1.s5 LIKE pattern = 'test'",
           "root.test.sg1.s2 IN (1,2)",
           "root.test.sg1.s2 BETWEEN 1 AND 3",
         };

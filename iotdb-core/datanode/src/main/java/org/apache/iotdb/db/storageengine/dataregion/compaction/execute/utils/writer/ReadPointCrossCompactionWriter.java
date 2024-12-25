@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -46,7 +48,7 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
 
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
-    TimeColumn timestamps = tsBlock.getTimeColumn();
+    TimeColumn timestamps = (TimeColumn) tsBlock.getTimeColumn();
     Column[] columns = tsBlock.getValueColumns();
     int batchSize = tsBlock.getPositionCount();
     // Since a batch of data is written, the end time of the current aligned device may exceed the
@@ -75,32 +77,44 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
 
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
-  public boolean flushAlignedChunk(
-      Chunk timeChunk,
-      IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
-      List<IChunkMetadata> valueChunkMetadatas,
-      int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+  public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValueChunk(
+      ChunkMetadataElement chunkMetadataElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController) {
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 
   @Override
-  public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointCrossCompactionWriter");
+  public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
+  }
+
+  @Override
+  public boolean flushBatchedValuePage(
+      AlignedPageElement alignedPageElement,
+      int subTaskId,
+      AbstractCompactionFlushController flushController) {
+    throw new UnsupportedOperationException(
+        "Does not support this method in ReadPointCrossCompactionWriter");
   }
 }

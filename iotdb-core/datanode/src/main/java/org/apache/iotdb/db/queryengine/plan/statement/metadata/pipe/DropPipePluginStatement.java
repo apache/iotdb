@@ -35,16 +35,28 @@ import java.util.List;
 
 public class DropPipePluginStatement extends Statement implements IConfigStatement {
 
-  private final String pluginName;
+  private String pluginName;
+  private boolean ifExistsCondition;
 
-  public DropPipePluginStatement(String pluginName) {
+  public DropPipePluginStatement() {
     super();
     statementType = StatementType.DROP_PIPEPLUGIN;
-    this.pluginName = pluginName;
   }
 
   public String getPluginName() {
     return pluginName;
+  }
+
+  public boolean hasIfExistsCondition() {
+    return ifExistsCondition;
+  }
+
+  public void setPluginName(String pluginName) {
+    this.pluginName = pluginName;
+  }
+
+  public void setIfExists(boolean ifExistsCondition) {
+    this.ifExistsCondition = ifExistsCondition;
   }
 
   @Override

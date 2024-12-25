@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -199,8 +198,7 @@ public class TemplatedInfo {
     for (int i = 0; i < measurementList.size(); i++) {
       projectExpressions[i] =
           new TimeSeriesOperand(
-              new MeasurementPath(
-                  new PartialPath(new String[] {measurementList.get(i)}), schemaList.get(i)));
+              new PartialPath(new String[] {measurementList.get(i)}), schemaList.get(i).getType());
     }
     return projectExpressions;
   }
@@ -439,7 +437,7 @@ public class TemplatedInfo {
         new HashMap<>(measurementSchemaList.size());
     measurementSchemaList.forEach(
         measurementSchema ->
-            measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema));
+            measurementSchemaMap.put(measurementSchema.getMeasurementName(), measurementSchema));
 
     Expression pushDownPredicate = null;
     byte hasPushDownFilter = ReadWriteIOUtils.readByte(byteBuffer);

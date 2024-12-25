@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -169,11 +171,19 @@ public class PathPatternTree {
         && (pathPatternList == null || pathPatternList.isEmpty());
   }
 
-  public List<String> getAllDevicePatterns() {
+  public List<IDeviceID> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
-    Set<String> results = new HashSet<>();
-    searchDevicePattern(root, nodes, results);
-    return new ArrayList<>(results);
+    Set<List<String>> resultNodesSet = new HashSet<>();
+    searchDevicePath(root, nodes, resultNodesSet);
+
+    Set<IDeviceID> resultPaths = new HashSet<>();
+    for (List<String> resultNodes : resultNodesSet) {
+      if (resultNodes != null && !resultNodes.isEmpty()) {
+        resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+      }
+    }
+
+    return new ArrayList<>(resultPaths);
   }
 
   public List<PartialPath> getAllDevicePaths() {
@@ -245,16 +255,24 @@ public class PathPatternTree {
   public List<PartialPath> getAllPathPatterns() {
     List<PartialPath> result = new ArrayList<>();
     Deque<String> ancestors = new ArrayDeque<>();
-    searchPathPattern(root, ancestors, result);
+    searchPathPattern(root, ancestors, result, false);
     return result;
   }
 
-  private void searchPathPattern(
+  public List<MeasurementPath> getAllPathPatterns(boolean asMeasurementPath) {
+    List<MeasurementPath> result = new ArrayList<>();
+    Deque<String> ancestors = new ArrayDeque<>();
+    searchPathPattern(root, ancestors, result, asMeasurementPath);
+    return result;
+  }
+
+  private <T extends PartialPath> void searchPathPattern(
       PathPatternNode<Void, VoidSerializer> node,
       Deque<String> ancestors,
-      List<PartialPath> fullPaths) {
+      List<T> fullPaths,
+      boolean asMeasurementPath) {
     if (node.isPathPattern()) {
-      fullPaths.add(convertNodesToPartialPath(node, ancestors));
+      fullPaths.add((T) convertNodesToPartialPath(node, ancestors, asMeasurementPath));
       if (node.isLeaf()) {
         return;
       }
@@ -262,7 +280,7 @@ public class PathPatternTree {
 
     ancestors.push(node.getName());
     for (PathPatternNode<Void, VoidSerializer> child : node.getChildren().values()) {
-      searchPathPattern(child, ancestors, fullPaths);
+      searchPathPattern(child, ancestors, fullPaths, asMeasurementPath);
     }
     ancestors.pop();
   }
@@ -290,14 +308,20 @@ public class PathPatternTree {
   }
 
   private PartialPath convertNodesToPartialPath(
-      PathPatternNode<Void, VoidSerializer> node, Deque<String> ancestors) {
+      PathPatternNode<Void, VoidSerializer> node,
+      Deque<String> ancestors,
+      boolean asMeasurementPath) {
     Iterator<String> iterator = ancestors.descendingIterator();
     List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
     while (iterator.hasNext()) {
       nodeList.add(iterator.next());
     }
     nodeList.add(node.getName());
-    return new PartialPath(nodeList.toArray(new String[0]));
+    if (asMeasurementPath) {
+      return new MeasurementPath(nodeList.toArray(new String[0]));
+    } else {
+      return new PartialPath(nodeList.toArray(new String[0]));
+    }
   }
 
   public boolean isOverlapWith(PathPatternTree patternTree) {

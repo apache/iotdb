@@ -105,7 +105,9 @@ public class ClusterScheduler implements IScheduler {
   private boolean needRetry(TSStatus failureStatus) {
     return failureStatus != null
         && queryType == QueryType.READ
-        && failureStatus.getCode() == TSStatusCode.DISPATCH_ERROR.getStatusCode();
+        && (failureStatus.getCode() == TSStatusCode.DISPATCH_ERROR.getStatusCode()
+            || failureStatus.getCode()
+                == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
   }
 
   @Override

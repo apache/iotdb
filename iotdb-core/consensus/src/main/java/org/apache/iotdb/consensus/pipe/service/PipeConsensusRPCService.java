@@ -29,8 +29,6 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
-import org.apache.thrift.TBaseAsyncProcessor;
-
 public class PipeConsensusRPCService extends ThriftService implements PipeConsensusRPCServiceMBean {
 
   private final TEndPoint thisNode;
@@ -48,15 +46,15 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
   }
 
   @Override
-  public void initAsyncedServiceImpl(Object pipeConsensusRPCServiceProcessor) {
+  public void initSyncedServiceImpl(Object pipeConsensusRPCServiceProcessor) {
     this.pipeConsensusRPCServiceProcessor =
         (PipeConsensusRPCServiceProcessor) pipeConsensusRPCServiceProcessor;
-    super.initAsyncedServiceImpl(this.pipeConsensusRPCServiceProcessor);
+    super.initSyncedServiceImpl(this.pipeConsensusRPCServiceProcessor);
   }
 
   @Override
   public void initTProcessor() {
-    processor = new PipeConsensusIService.AsyncProcessor<>(pipeConsensusRPCServiceProcessor);
+    processor = new PipeConsensusIService.Processor<>(pipeConsensusRPCServiceProcessor);
   }
 
   @Override
@@ -64,20 +62,15 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
     try {
       thriftServiceThread =
           new ThriftServiceThread(
-              (TBaseAsyncProcessor<?>) processor,
+              processor,
               getID().getName(),
               ThreadName.PIPE_CONSENSUS_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpc().getRpcSelectorThreadNum(),
-              config.getRpc().getRpcMinConcurrentClientNum(),
               config.getRpc().getRpcMaxConcurrentClientNum(),
               config.getRpc().getThriftServerAwaitTimeForStopService(),
               new PipeConsensusRPCServiceHandler(pipeConsensusRPCServiceProcessor),
               config.getRpc().isRpcThriftCompressionEnabled(),
-              config.getRpc().getConnectionTimeoutInMs(),
-              config.getRpc().getThriftMaxFrameSize(),
-              ThriftServiceThread.ServerType.SELECTOR,
               ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());

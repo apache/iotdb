@@ -117,7 +117,7 @@ public class SettleRequestHandler {
             TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
       }
 
-      int maxInnerCompactionCandidateFileNum = config.getFileLimitPerInnerTask();
+      int maxInnerCompactionCandidateFileNum = config.getInnerCompactionCandidateFileNum();
       if (paths.size() > maxInnerCompactionCandidateFileNum) {
         return RpcUtils.getStatus(
             TSStatusCode.UNSUPPORTED_OPERATION,
@@ -135,8 +135,8 @@ public class SettleRequestHandler {
           return RpcUtils.getStatus(
               TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
-        File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
-        hasModsFiles |= modsFile.exists();
+        File modFile = ModificationFile.getExclusiveMods(currentTsFile);
+        hasModsFiles |= modFile.exists();
 
         ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
         if (!currentInfo.isValid) {

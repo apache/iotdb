@@ -61,6 +61,7 @@ public abstract class PipeWALResourceManager {
             Math.max(PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
   }
 
+  @SuppressWarnings("java:S2222")
   private void ttlCheck() {
     final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
         memtableIdToPipeWALResourceMap.entrySet().iterator();
@@ -72,6 +73,7 @@ public abstract class PipeWALResourceManager {
                 PipeConfig.getInstance().getPipeWalPinMaxLogIntervalRounds(),
                 memtableIdToPipeWALResourceMap.size());
 
+    final StringBuilder logBuilder = new StringBuilder();
     try {
       while (iterator.hasNext()) {
         final Map.Entry<Long, PipeWALResource> entry = iterator.next();
@@ -83,12 +85,9 @@ public abstract class PipeWALResourceManager {
           if (entry.getValue().invalidateIfPossible()) {
             iterator.remove();
           } else {
-            logger.ifPresent(
-                l ->
-                    l.info(
-                        "WAL (memtableId {}) is still referenced {} times",
-                        entry.getKey(),
-                        entry.getValue().getReferenceCount()));
+            logBuilder.append(
+                String.format(
+                    "<%d , %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
           }
         } finally {
           lock.unlock();
@@ -98,6 +97,10 @@ public abstract class PipeWALResourceManager {
       LOGGER.error(
           "Concurrent modification issues happened, skipping the WAL in this round of ttl check",
           e);
+    } finally {
+      if (logBuilder.length() > 0) {
+        logger.ifPresent(l -> l.info("WAL {}are still referenced", logBuilder));
+      }
     }
   }
 

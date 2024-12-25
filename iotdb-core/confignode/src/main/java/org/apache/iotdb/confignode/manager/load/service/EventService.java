@@ -195,6 +195,7 @@ public class EventService {
     }
   }
 
+  @SuppressWarnings("java:S2259")
   private void recordRegionGroupStatistics(
       Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
           differentRegionGroupStatisticsMap) {

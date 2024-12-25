@@ -26,7 +26,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -58,8 +57,10 @@ import static org.junit.Assert.assertTrue;
 
 public class SealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
-  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE1_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME.concat(".d2"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
@@ -192,6 +193,7 @@ public class SealedTsFileRecoverPerformerTest {
     reader.close();
     // check .resource file in memory
     assertEquals(1, tsFileResource.getStartTime(DEVICE1_NAME));
+
     assertEquals(2, tsFileResource.getEndTime(DEVICE1_NAME));
     assertEquals(3, tsFileResource.getStartTime(DEVICE2_NAME));
     assertEquals(4, tsFileResource.getEndTime(DEVICE2_NAME));
@@ -210,20 +212,20 @@ public class SealedTsFileRecoverPerformerTest {
           new Path(DEVICE2_NAME), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       writer.registerTimeseries(
           new Path(DEVICE2_NAME), new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
     }
@@ -280,27 +282,27 @@ public class SealedTsFileRecoverPerformerTest {
           new Path(DEVICE2_NAME), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       writer.registerTimeseries(
           new Path(DEVICE2_NAME), new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = channel.size();
       }
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
-      writer.flushAllChunkGroups();
+      writer.flush();
       try (FileChannel channel = new FileInputStream(tsFile).getChannel()) {
         truncateSize = (truncateSize + channel.size()) / 2;
       }

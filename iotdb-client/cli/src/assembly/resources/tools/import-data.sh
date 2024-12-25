@@ -18,9 +18,9 @@
 # under the License.
 #
 
-echo ------------------------------------------
-echo Starting IoTDB Client Import Script
-echo ------------------------------------------
+#echo ------------------------------------------
+#echo Starting IoTDB Client Import Script
+#echo ------------------------------------------
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
   #do nothing
@@ -53,7 +53,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.tool.ImportData
+MAIN_CLASS=org.apache.iotdb.tool.data.ImportData
 
 "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

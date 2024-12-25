@@ -16,13 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,17 +60,33 @@ public class SchemaPartition extends Partition {
     return schemaPartitionMap;
   }
 
+  @TestOnly
   public void setSchemaPartitionMap(
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
-  public TRegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
+  // table model usage
+
+  /**
+   * For table model usage.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID) {
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    return schemaPartitionMap.get(database).get(seriesPartitionSlot);
+  }
+
+  // [root, db, ....]
+  public TRegionReplicaSet getSchemaRegionReplicaSet(final IDeviceID deviceID) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    final String storageGroup = getStorageGroupByDevice(deviceID);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
@@ -74,9 +94,9 @@ public class SchemaPartition extends Partition {
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }
 
-  private String getStorageGroupByDevice(String deviceName) {
-    for (String storageGroup : schemaPartitionMap.keySet()) {
-      if (PathUtils.isStartWith(deviceName, storageGroup)) {
+  private String getStorageGroupByDevice(final IDeviceID deviceID) {
+    for (final String storageGroup : schemaPartitionMap.keySet()) {
+      if (PathUtils.isStartWith(deviceID, storageGroup)) {
         return storageGroup;
       }
     }
@@ -96,5 +116,10 @@ public class SchemaPartition extends Partition {
           }
         });
     return new ArrayList<>(distributionMap.values());
+  }
+
+  @Override
+  public String toString() {
+    return "SchemaPartition{" + "schemaPartitionMap=" + schemaPartitionMap + '}';
   }
 }

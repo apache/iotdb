@@ -68,7 +68,10 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CONSENSUS_FOLDER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DELETION_FOLDER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
@@ -175,6 +178,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of memtable memory for WAL queue */
+  private double walBufferQueueProportion = 0.1;
+
   /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
 
@@ -219,8 +225,8 @@ public class IoTDBConfig {
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
-  /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 500;
+  /** Blocking queue capacity of each page cache deletion buffer */
+  private int pageCacheDeletionBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
@@ -243,6 +249,13 @@ public class IoTDBConfig {
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
+
+  /**
+   * Enables or disables the automatic clearing of the WAL cache when a memory compaction is
+   * triggered. When enabled, the WAL cache will be cleared to release memory during the compaction
+   * process.
+   */
+  private volatile boolean WALCacheShrinkClearEnabled = true;
 
   // endregion
   /**
@@ -432,6 +445,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private volatile boolean enableCrossSpaceCompaction = true;
 
+  /** Enable auto repair compaction */
+  private volatile boolean enableAutoRepairCompaction = true;
+
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -440,13 +456,13 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
       InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
       InnerUnseqCompactionPerformer.FAST;
@@ -468,6 +484,12 @@ public class IoTDBConfig {
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
+
+  private long innerCompactionTotalFileSizeThresholdInByte = 10737418240L;
+
+  private int innerCompactionTotalFileNumThreshold = 100;
+
+  private int maxLevelGapInInnerCompaction = 2;
 
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
@@ -496,8 +518,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in one inner space compaction task */
-  private volatile int fileLimitPerInnerTask = 30;
+  /**
+   * When the number of selected files reaches this value, the conditions for constructing a merge
+   * task are met.
+   */
+  private volatile int innerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in one cross space compaction task */
   private volatile int fileLimitPerCrossTask = 500;
@@ -637,7 +662,7 @@ public class IoTDBConfig {
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
    * join cluster
    */
-  private int dataNodeId = -1;
+  private volatile int dataNodeId = -1;
 
   /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -718,6 +743,12 @@ public class IoTDBConfig {
    */
   private int compactionThreadCount = 10;
 
+  /**
+   * How many chunk will be compact in aligned series compaction, 10 by default. Set to
+   * Integer.MAX_VALUE when less than or equal to 0.
+   */
+  private int compactionMaxAlignedSeriesNumInOneBatch = 10;
+
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
    */
@@ -795,7 +826,7 @@ public class IoTDBConfig {
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
    */
-  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX;
 
   // just for test
   // wait for 60 second by default.
@@ -1017,6 +1048,16 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  private int dataNodeTableCacheSemaphorePermitNum = 5;
+
+  /** GRASS Service */
+  private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+
+  private long generalRegionAttributeSecurityServiceTimeoutSeconds = 20L;
+  private long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch = 600L;
+  private int generalRegionAttributeSecurityServiceFailureTimesToFetch = 20;
+  private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1105,28 +1146,72 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
-  // PipeConsensus Config
-  private int pipeConsensusPipelineSize = 5;
+  // IoTConsensusV2 Config
+  private int iotConsensusV2PipelineSize = 5;
+  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
+  private String[] iotConsensusV2ReceiverFileDirs = new String[0];
+  private String iotConsensusV2DeletionFileDir =
+      systemDir
+          + File.separator
+          + PIPE_FOLDER_NAME
+          + File.separator
+          + CONSENSUS_FOLDER_NAME
+          + File.separator
+          + DELETION_FOLDER_NAME;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
+  private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
+
+  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
+
+  private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private int loadTsFileRetryCountOnRegionChange = 10;
+
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private boolean loadActiveListeningEnable = true;
+
+  private String[] loadActiveListeningDirs =
+      new String[] {
+        IoTDBConstant.EXT_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
+      };
+
+  private String loadActiveListeningPipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.PIPE_FOLDER_NAME;
+
+  private String loadActiveListeningFailDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
+
+  private long loadActiveListeningCheckIntervalSeconds = 5L;
+
+  private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
-
-  private String[] pipeConsensusReceiverFileDirs = new String[0];
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1171,12 +1256,12 @@ public class IoTDBConfig {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
-  public int getPipeConsensusPipelineSize() {
-    return pipeConsensusPipelineSize;
+  public int getIotConsensusV2PipelineSize() {
+    return iotConsensusV2PipelineSize;
   }
 
-  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
-    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
+  public void setIotConsensusV2PipelineSize(int iotConsensusV2PipelineSize) {
+    this.iotConsensusV2PipelineSize = iotConsensusV2PipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1282,11 +1367,17 @@ public class IoTDBConfig {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     consensusDir = addDataHomeDir(consensusDir);
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
+    for (int i = 0; i < loadActiveListeningDirs.length; i++) {
+      loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+    }
+    loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
+    loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
@@ -1296,9 +1387,10 @@ public class IoTDBConfig {
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
       pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
     }
-    for (int i = 0; i < pipeConsensusReceiverFileDirs.length; i++) {
-      pipeConsensusReceiverFileDirs[i] = addDataHomeDir(pipeConsensusReceiverFileDirs[i]);
+    for (int i = 0; i < iotConsensusV2ReceiverFileDirs.length; i++) {
+      iotConsensusV2ReceiverFileDirs[i] = addDataHomeDir(iotConsensusV2ReceiverFileDirs[i]);
     }
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -1331,12 +1423,17 @@ public class IoTDBConfig {
     formulateLoadTsFileDirs(tierDataDirs);
   }
 
-  void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
+  void reloadDataDirs(String[][] newTierDataDirs) throws LoadConfigurationException {
     // format data directories
-    formulateDataDirs(tierDataDirs);
+    formulateDataDirs(newTierDataDirs);
+    if (newTierDataDirs.length < this.tierDataDirs.length) {
+      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      logger.error(msg);
+      throw new LoadConfigurationException(msg);
+    }
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
+      List<String> newDirs = Arrays.asList(newTierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
         if (newDirs.stream()
             .noneMatch(
@@ -1350,7 +1447,7 @@ public class IoTDBConfig {
         }
       }
     }
-    this.tierDataDirs = tierDataDirs;
+    this.tierDataDirs = newTierDataDirs;
     reloadSystemMetrics();
   }
 
@@ -1367,7 +1464,7 @@ public class IoTDBConfig {
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
   // In this way, we can keep consistent with v0.13.0~2.
-  private String addDataHomeDir(String dir) {
+  public static String addDataHomeDir(final String dir) {
     String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
     if (dataHomeDir == null) {
       dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -1430,6 +1527,7 @@ public class IoTDBConfig {
     return tierDataDirs;
   }
 
+  @SuppressWarnings("javabugs:S6466")
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
@@ -1468,6 +1566,14 @@ public class IoTDBConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getIotConsensusV2DeletionFileDir() {
+    return iotConsensusV2DeletionFileDir;
+  }
+
+  public void setIotConsensusV2DeletionFileDir(String iotConsensusV2DeletionFileDir) {
+    this.iotConsensusV2DeletionFileDir = iotConsensusV2DeletionFileDir;
   }
 
   public String[] getLoadTsFileDirs() {
@@ -1885,12 +1991,12 @@ public class IoTDBConfig {
     this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
   }
 
-  public int getWalBufferQueueCapacity() {
-    return walBufferQueueCapacity;
+  public int getPageCacheDeletionBufferQueueCapacity() {
+    return pageCacheDeletionBufferQueueCapacity;
   }
 
-  void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
-    this.walBufferQueueCapacity = walBufferQueueCapacity;
+  void setPageCacheDeletionBufferQueueCapacity(int pageCacheDeletionBufferQueueCapacity) {
+    this.pageCacheDeletionBufferQueueCapacity = pageCacheDeletionBufferQueueCapacity;
   }
 
   public long getWalFileSizeThresholdInByte() {
@@ -1939,6 +2045,14 @@ public class IoTDBConfig {
 
   void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
     this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
+  }
+
+  public boolean getWALCacheShrinkClearEnabled() {
+    return WALCacheShrinkClearEnabled;
+  }
+
+  void setWALCacheShrinkClearEnabled(boolean WALCacheShrinkClearEnabled) {
+    this.WALCacheShrinkClearEnabled = WALCacheShrinkClearEnabled;
   }
 
   public boolean isChunkBufferPoolEnable() {
@@ -2071,6 +2185,15 @@ public class IoTDBConfig {
 
   public void setCompactionThreadCount(int compactionThreadCount) {
     this.compactionThreadCount = compactionThreadCount;
+  }
+
+  public int getCompactionMaxAlignedSeriesNumInOneBatch() {
+    return compactionMaxAlignedSeriesNumInOneBatch;
+  }
+
+  public void setCompactionMaxAlignedSeriesNumInOneBatch(
+      int compactionMaxAlignedSeriesNumInOneBatch) {
+    this.compactionMaxAlignedSeriesNumInOneBatch = compactionMaxAlignedSeriesNumInOneBatch;
   }
 
   public int getContinuousQueryThreadNum() {
@@ -2357,7 +2480,19 @@ public class IoTDBConfig {
     return defaultStorageGroupLevel;
   }
 
-  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
+    if (defaultStorageGroupLevel < 1) {
+      if (startUp) {
+        logger.warn(
+            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
+            defaultStorageGroupLevel);
+        defaultStorageGroupLevel = 1;
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+      }
+    }
     this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
@@ -2784,6 +2919,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableAutoRepairCompaction() {
+    return enableAutoRepairCompaction;
+  }
+
+  public void setEnableAutoRepairCompaction(boolean enableAutoRepairCompaction) {
+    this.enableAutoRepairCompaction = enableAutoRepairCompaction;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -2850,6 +2993,31 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public int getMaxLevelGapInInnerCompaction() {
+    return maxLevelGapInInnerCompaction;
+  }
+
+  public void setMaxLevelGapInInnerCompaction(int maxLevelGapInInnerCompaction) {
+    this.maxLevelGapInInnerCompaction = maxLevelGapInInnerCompaction;
+  }
+
+  public long getInnerCompactionTotalFileSizeThresholdInByte() {
+    return innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public void setInnerCompactionTotalFileSizeThresholdInByte(
+      long innerCompactionTotalFileSizeThresholdInByte) {
+    this.innerCompactionTotalFileSizeThresholdInByte = innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public int getInnerCompactionTotalFileNumThreshold() {
+    return innerCompactionTotalFileNumThreshold;
+  }
+
+  public void setInnerCompactionTotalFileNumThreshold(int innerCompactionTotalFileNumThreshold) {
+    this.innerCompactionTotalFileNumThreshold = innerCompactionTotalFileNumThreshold;
   }
 
   public long getTargetChunkSize() {
@@ -2928,12 +3096,12 @@ public class IoTDBConfig {
     this.expiredDataRatio = expiredDataRatio;
   }
 
-  public int getFileLimitPerInnerTask() {
-    return fileLimitPerInnerTask;
+  public int getInnerCompactionCandidateFileNum() {
+    return innerCompactionCandidateFileNum;
   }
 
-  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
-    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
+  public void setInnerCompactionCandidateFileNum(int innerCompactionCandidateFileNum) {
+    this.innerCompactionCandidateFileNum = innerCompactionCandidateFileNum;
   }
 
   public int getFileLimitPerCrossTask() {
@@ -2984,7 +3152,6 @@ public class IoTDBConfig {
     return cachedMNodeSizeInPBTreeMode;
   }
 
-  @TestOnly
   public void setCachedMNodeSizeInPBTreeMode(int cachedMNodeSizeInPBTreeMode) {
     this.cachedMNodeSizeInPBTreeMode = cachedMNodeSizeInPBTreeMode;
   }
@@ -3075,6 +3242,14 @@ public class IoTDBConfig {
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getIotConsensusV2Mode() {
+    return iotConsensusV2Mode;
+  }
+
+  public void setIotConsensusV2Mode(String iotConsensusV2Mode) {
+    this.iotConsensusV2Mode = iotConsensusV2Mode;
   }
 
   public String getSchemaRegionConsensusProtocolClass() {
@@ -3330,6 +3505,63 @@ public class IoTDBConfig {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
   }
 
+  public int getDataNodeTableCacheSemaphorePermitNum() {
+    return dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
+    this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceIntervalSeconds() {
+    return generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+      long generalRegionAttributeSecurityServiceIntervalSeconds) {
+    this.generalRegionAttributeSecurityServiceIntervalSeconds =
+        generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceTimeoutSeconds() {
+    return generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+      long generalRegionAttributeSecurityServiceTimeoutSeconds) {
+    this.generalRegionAttributeSecurityServiceTimeoutSeconds =
+        generalRegionAttributeSecurityServiceTimeoutSeconds;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch() {
+    return generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureDurationSecondsToFetch(
+      long generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch =
+        generalRegionAttributeSecurityServiceFailureDurationSecondsToFetch;
+  }
+
+  public int getGeneralRegionAttributeSecurityServiceFailureTimesToFetch() {
+    return generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceFailureTimesToFetch(
+      int generalRegionAttributeSecurityServiceFailureTimesToFetch) {
+    this.generalRegionAttributeSecurityServiceFailureTimesToFetch =
+        generalRegionAttributeSecurityServiceFailureTimesToFetch;
+  }
+
+  public long getDetailContainerMinDegradeMemoryInBytes() {
+    return detailContainerMinDegradeMemoryInBytes;
+  }
+
+  public void setDetailContainerMinDegradeMemoryInBytes(
+      long detailContainerMinDegradeMemoryInBytes) {
+    this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
+  }
+
   public String getReadConsistencyLevel() {
     return readConsistencyLevel;
   }
@@ -3356,6 +3588,14 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getWalBufferQueueProportion() {
+    return walBufferQueueProportion;
+  }
+
+  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
+    this.walBufferQueueProportion = walBufferQueueProportion;
   }
 
   public double getDevicePathCacheProportion() {
@@ -3838,6 +4078,16 @@ public class IoTDBConfig {
         loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
 
+  public int getLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber() {
+    return loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber) {
+    this.loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber =
+        loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber;
+  }
+
   public long getLoadTsFileAnalyzeSchemaMemorySizeInBytes() {
     return loadTsFileAnalyzeSchemaMemorySizeInBytes;
   }
@@ -3845,6 +4095,24 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
+    return loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
+  }
+
+  public void setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+      int loadTsFileMaxDeviceCountToUseDeviceTimeIndex) {
+    this.loadTsFileMaxDeviceCountToUseDeviceTimeIndex =
+        loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
+  }
+
+  public long getLoadChunkMetadataMemorySizeInBytes() {
+    return loadChunkMetadataMemorySizeInBytes;
+  }
+
+  public void setLoadChunkMetadataMemorySizeInBytes(long loadChunkMetadataMemorySizeInBytes) {
+    this.loadChunkMetadataMemorySizeInBytes = loadChunkMetadataMemorySizeInBytes;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {
@@ -3872,12 +4140,87 @@ public class IoTDBConfig {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public int getLoadTsFileRetryCountOnRegionChange() {
+    return loadTsFileRetryCountOnRegionChange;
+  }
+
+  public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
+    this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
+  }
+
   public double getLoadWriteThroughputBytesPerSecond() {
     return loadWriteThroughputBytesPerSecond;
   }
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadActiveListeningMaxThreadNum() {
+    return loadActiveListeningMaxThreadNum;
+  }
+
+  public void setLoadActiveListeningMaxThreadNum(int loadActiveListeningMaxThreadNum) {
+    this.loadActiveListeningMaxThreadNum = loadActiveListeningMaxThreadNum;
+  }
+
+  public long getLoadActiveListeningCheckIntervalSeconds() {
+    return loadActiveListeningCheckIntervalSeconds;
+  }
+
+  public void setLoadActiveListeningCheckIntervalSeconds(
+      long loadActiveListeningCheckIntervalSeconds) {
+    this.loadActiveListeningCheckIntervalSeconds = loadActiveListeningCheckIntervalSeconds;
+  }
+
+  public String getLoadActiveListeningFailDir() {
+    return loadActiveListeningFailDir == null || Objects.equals(loadActiveListeningFailDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME
+        : loadActiveListeningFailDir;
+  }
+
+  public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
+    this.loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
+  }
+
+  public String getLoadActiveListeningPipeDir() {
+    return loadActiveListeningPipeDir;
+  }
+
+  public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
+    this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
+  }
+
+  public String[] getLoadActiveListeningDirs() {
+    return (Objects.isNull(this.loadActiveListeningDirs)
+            || this.loadActiveListeningDirs.length == 0)
+        ? new String[] {
+          extDir
+              + File.separator
+              + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+              + File.separator
+              + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
+        }
+        : this.loadActiveListeningDirs;
+  }
+
+  public void setLoadActiveListeningDirs(String[] loadActiveListeningDirs) {
+    for (int i = 0; i < loadActiveListeningDirs.length; i++) {
+      loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
+    }
+    this.loadActiveListeningDirs = loadActiveListeningDirs;
+  }
+
+  public boolean getLoadActiveListeningEnable() {
+    return loadActiveListeningEnable;
+  }
+
+  public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
+    this.loadActiveListeningEnable = loadActiveListeningEnable;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
@@ -3890,13 +4233,13 @@ public class IoTDBConfig {
         : this.pipeReceiverFileDirs;
   }
 
-  public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
-    this.pipeConsensusReceiverFileDirs = pipeConsensusReceiverFileDirs;
+  public void setIotConsensusV2ReceiverFileDirs(String[] iotConsensusV2ReceiverFileDirs) {
+    this.iotConsensusV2ReceiverFileDirs = iotConsensusV2ReceiverFileDirs;
   }
 
-  public String[] getPipeConsensusReceiverFileDirs() {
-    return (Objects.isNull(this.pipeConsensusReceiverFileDirs)
-            || this.pipeConsensusReceiverFileDirs.length == 0)
+  public String[] getIotConsensusV2ReceiverFileDirs() {
+    return (Objects.isNull(this.iotConsensusV2ReceiverFileDirs)
+            || this.iotConsensusV2ReceiverFileDirs.length == 0)
         ? new String[] {
           systemDir
               + File.separator
@@ -3906,7 +4249,7 @@ public class IoTDBConfig {
               + File.separator
               + "receiver"
         }
-        : this.pipeConsensusReceiverFileDirs;
+        : this.iotConsensusV2ReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {

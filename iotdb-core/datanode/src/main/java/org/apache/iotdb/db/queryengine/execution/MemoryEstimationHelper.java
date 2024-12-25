@@ -60,29 +60,34 @@ public class MemoryEstimationHelper {
       totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
     }
     // String member of Path
-    totalSize += RamUsageEstimator.sizeOf(partialPath.getDevice());
-    totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
-
     if (partialPath instanceof AlignedPath) {
+      totalSize += partialPath.getIDeviceID().ramBytesUsed();
+      totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
+
       totalSize += ALIGNED_PATH_INSTANCE_SIZE;
       AlignedPath alignedPath = (AlignedPath) partialPath;
       totalSize +=
           alignedPath.getMeasurementList().stream().mapToLong(RamUsageEstimator::sizeOf).sum();
       totalSize +=
           alignedPath.getSchemaList().stream()
-              .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementId()))
+              .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementName()))
               .sum();
     } else if (partialPath instanceof MeasurementPath) {
+      totalSize += partialPath.getIDeviceID().ramBytesUsed();
+      totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
+
       totalSize += MEASUREMENT_PATH_INSTANCE_SIZE;
       MeasurementPath measurementPath = (MeasurementPath) partialPath;
       totalSize += RamUsageEstimator.sizeOf(measurementPath.getMeasurementAlias());
       if (measurementPath.getMeasurementSchema() != null) {
         totalSize +=
-            RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
+            RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementName());
       }
     } else {
+      // the whole path is a device
       totalSize += PARTIAL_PATH_INSTANCE_SIZE;
-      totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());
+      totalSize += partialPath.getIDeviceID().ramBytesUsed();
+      totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
     }
     return totalSize;
   }

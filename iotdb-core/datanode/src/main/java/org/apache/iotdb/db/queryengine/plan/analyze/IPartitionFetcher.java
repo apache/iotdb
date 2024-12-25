@@ -26,6 +26,10 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Map;
 
@@ -73,7 +77,7 @@ public interface IPartitionFetcher {
    * @param userName
    */
   DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
@@ -90,4 +94,27 @@ public interface IPartitionFetcher {
 
   /** Invalid all partition cache */
   void invalidAllCache();
+
+  // ======================== Table Model Schema Partition Interface ========================
+
+  /**
+   * Get or create schema partition, used in data insertion with enable_auto_create_schema is true.
+   * if schemaPartition does not exist, then automatically create.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getOrCreateSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDs, final String userName);
+
+  /**
+   * For data query with completed id.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getSchemaPartition(
+      final String database, final @Nullable List<IDeviceID> deviceIDs);
 }

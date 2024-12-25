@@ -30,6 +30,12 @@ public class PipeConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
+  /////////////////////////////// Data Synchronization ///////////////////////////////
+
+  public int getPipeNonForwardingEventsProgressReportInterval() {
+    return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
+  }
+
   /////////////////////////////// File ///////////////////////////////
 
   public String getPipeHardlinkBaseDirName() {
@@ -48,14 +54,26 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
+  public boolean getPipeFileReceiverFsyncEnabled() {
+    return COMMON_CONFIG.getPipeFileReceiverFsyncEnabled();
+  }
+
   /////////////////////////////// Tablet ///////////////////////////////
 
   public int getPipeDataStructureTabletRowSize() {
     return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
+  public int getPipeDataStructureTabletSizeInBytes() {
+    return COMMON_CONFIG.getPipeDataStructureTabletSizeInBytes();
+  }
+
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  }
+
+  public double getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() {
+    return COMMON_CONFIG.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   }
 
   /////////////////////////////// Subtask Connector ///////////////////////////////
@@ -84,6 +102,10 @@ public class PipeConfig {
 
   public long getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() {
     return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  }
+
+  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
   }
 
   /////////////////////////////// Extractor ///////////////////////////////
@@ -136,6 +158,10 @@ public class PipeConfig {
 
   public int getRateLimiterHotReloadCheckIntervalMs() {
     return COMMON_CONFIG.getRateLimiterHotReloadCheckIntervalMs();
+  }
+
+  public int getPipeConnectorRequestSliceThresholdBytes() {
+    return COMMON_CONFIG.getPipeConnectorRequestSliceThresholdBytes();
   }
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
@@ -224,6 +250,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
 
+  public long getPipeStuckRestartMinIntervalMs() {
+    return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
+  }
+
   /////////////////////////////// Logger ///////////////////////////////
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -276,6 +306,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
+  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -290,10 +324,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
-  /////////////////////////////// Subscription ///////////////////////////////
+  /////////////////////////////// Ref ///////////////////////////////
 
-  public float getSubscriptionCacheMemoryUsagePercentage() {
-    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  public boolean getPipeEventReferenceTrackingEnabled() {
+    return COMMON_CONFIG.getPipeEventReferenceTrackingEnabled();
+  }
+
+  public long getPipeEventReferenceEliminateIntervalSeconds() {
+    return COMMON_CONFIG.getPipeEventReferenceEliminateIntervalSeconds();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -301,15 +339,24 @@ public class PipeConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info(
+        "PipeNonForwardingEventsProgressReportInterval: {}",
+        getPipeNonForwardingEventsProgressReportInterval());
+
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
+    LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
+    LOGGER.info("PipeDataStructureTabletSizeInBytes: {}", getPipeDataStructureTabletSizeInBytes());
     LOGGER.info(
         "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
+    LOGGER.info(
+        "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
+        getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
 
     LOGGER.info(
         "PipeRealTimeQueuePollHistoryThreshold: {}", getPipeRealTimeQueuePollHistoryThreshold());
@@ -327,6 +374,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
+    LOGGER.info(
+        "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
+        getPipeSubtaskExecutorForcedRestartIntervalMs());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
@@ -365,6 +415,10 @@ public class PipeConfig {
     LOGGER.info(
         "RateLimiterHotReloadCheckIntervalMs: {}", getRateLimiterHotReloadCheckIntervalMs());
 
+    LOGGER.info(
+        "PipeConnectorRequestSliceThresholdBytes: {}",
+        getPipeConnectorRequestSliceThresholdBytes());
+
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(
         "PipeHeartbeatIntervalSecondsForCollectingPipeMeta: {}",
@@ -392,6 +446,7 @@ public class PipeConfig {
         "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
+    LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
@@ -409,6 +464,9 @@ public class PipeConfig {
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
     LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
+    LOGGER.info(
+        "PipeTsFileParserCheckMemoryEnoughIntervalMs: {}",
+        getPipeTsFileParserCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",
@@ -420,8 +478,10 @@ public class PipeConfig {
         "TwoStageAggregateSenderEndPointsCacheInMs: {}",
         getTwoStageAggregateSenderEndPointsCacheInMs());
 
+    LOGGER.info("PipeEventReferenceTrackingEnabled: {}", getPipeEventReferenceTrackingEnabled());
     LOGGER.info(
-        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+        "PipeEventReferenceEliminateIntervalSeconds: {}",
+        getPipeEventReferenceEliminateIntervalSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

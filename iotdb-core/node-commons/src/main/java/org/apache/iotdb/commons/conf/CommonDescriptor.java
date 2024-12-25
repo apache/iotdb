@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Properties;
 
 public class CommonDescriptor {
 
@@ -71,7 +70,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) throws IOException {
+  public void loadCommonProps(TrimProperties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -121,11 +120,11 @@ public class CommonDescriptor {
                     String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setSelectorNumOfClientManager(
@@ -144,11 +143,11 @@ public class CommonDescriptor {
                     String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setDnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(config.getDnConnectionTimeoutInMS()))
                 .trim()));
 
     config.setRpcThriftCompressionEnabled(
@@ -213,9 +212,6 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
-    if (config.getSchemaEngineMode().equals("Rocksdb_based")) {
-      config.setLastCacheEnable(false);
-    }
 
     config.setTagAttributeTotalSize(
         Integer.parseInt(
@@ -248,9 +244,16 @@ public class CommonDescriptor {
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
     loadRetryProperties(properties);
+    loadBinaryAllocatorProps(properties);
   }
 
-  private void loadPipeProps(Properties properties) {
+  private void loadPipeProps(TrimProperties properties) {
+    config.setPipeNonForwardingEventsProgressReportInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_non_forwarding_events_progress_report_interval",
+                Integer.toString(config.getPipeNonForwardingEventsProgressReportInterval()))));
+
     config.setPipeHardlinkBaseDirName(
         properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
@@ -263,18 +266,34 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_hardlink_wal_enabled",
                 Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+    config.setPipeFileReceiverFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_file_receiver_fsync_enabled",
+                Boolean.toString(config.getPipeFileReceiverFsyncEnabled()))));
 
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_size_in_bytes",
+                String.valueOf(config.getPipeDataStructureTabletSizeInBytes()))));
     config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
         Double.parseDouble(
             properties.getProperty(
                 "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
+    config.setPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
+                String.valueOf(
+                    config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
 
     config.setPipeRealTimeQueuePollHistoryThreshold(
         Integer.parseInt(
@@ -312,6 +331,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
                 String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
+    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_forced_restart_interval_ms",
+                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -403,6 +427,12 @@ public class CommonDescriptor {
                 "rate_limiter_hot_reload_check_interval_ms",
                 String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
 
+    config.setPipeConnectorRequestSliceThresholdBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_request_slice_threshold_bytes",
+                String.valueOf(config.getPipeConnectorRequestSliceThresholdBytes()))));
+
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -474,6 +504,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
+    config.setPipeStuckRestartMinIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_stuck_restart_min_interval_ms",
+                String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
         Integer.parseInt(
@@ -536,6 +571,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
+    config.setPipeTsFileParserCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_parser_check_memory_enough_interval_ms",
+                String.valueOf(config.getPipeTsFileParserCheckMemoryEnoughIntervalMs()))));
     config.setPipeLeaderCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -585,14 +625,26 @@ public class CommonDescriptor {
             properties.getProperty(
                 "two_stage_aggregate_sender_end_points_cache_in_ms",
                 String.valueOf(config.getTwoStageAggregateSenderEndPointsCacheInMs()))));
+
+    config.setPipeEventReferenceTrackingEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_event_reference_tracking_enabled",
+                String.valueOf(config.getPipeEventReferenceTrackingEnabled()))));
+    config.setPipeEventReferenceEliminateIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_event_reference_eliminate_interval_seconds",
+                String.valueOf(config.getPipeEventReferenceEliminateIntervalSeconds()))));
   }
 
-  private void loadSubscriptionProps(Properties properties) {
+  private void loadSubscriptionProps(TrimProperties properties) {
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
+
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -626,11 +678,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_poll_max_blocking_time_ms",
                 String.valueOf(config.getSubscriptionPollMaxBlockingTimeMs()))));
-    config.setSubscriptionSerializeMaxBlockingTimeMs(
+    config.setSubscriptionDefaultTimeoutInMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_serialize_max_blocking_time_ms",
-                String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
+                "subscription_default_timeout_in_ms",
+                String.valueOf(config.getSubscriptionDefaultTimeoutInMs()))));
     config.setSubscriptionLaunchRetryIntervalMs(
         Long.parseLong(
             properties.getProperty(
@@ -646,14 +698,35 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionReadTabletBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_read_tablet_buffer_size",
+                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
     config.setSubscriptionTsFileDeduplicationWindowSeconds(
         Long.parseLong(
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_slicer_check_memory_enough_interval_ms",
+                String.valueOf(config.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs()))));
+
+    config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_meta_syncer_initial_sync_delay_minutes",
+                String.valueOf(config.getSubscriptionMetaSyncerInitialSyncDelayMinutes()))));
+    config.setSubscriptionMetaSyncerSyncIntervalMinutes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_meta_syncer_sync_interval_minutes",
+                String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
   }
 
-  public void loadRetryProperties(Properties properties) throws IOException {
+  public void loadRetryProperties(TrimProperties properties) throws IOException {
     config.setRemoteWriteMaxRetryDurationInMs(
         Long.parseLong(
             properties.getProperty(
@@ -667,6 +740,30 @@ public class CommonDescriptor {
                 "enable_retry_for_unknown_error",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "enable_retry_for_unknown_error"))));
+  }
+
+  public void loadBinaryAllocatorProps(TrimProperties properties) {
+    config.setEnableBinaryAllocator(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_binary_allocator", Boolean.toString(config.isEnableBinaryAllocator()))));
+    config.setMinAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "small_blob_object", String.valueOf(config.getMinAllocateSize()))));
+    config.setMaxAllocateSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "huge_blob_object", String.valueOf(config.getMaxAllocateSize()))));
+    int arenaNum =
+        Integer.parseInt(properties.getProperty("arena_num", String.valueOf(config.getArenaNum())));
+    if (arenaNum > 0) {
+      config.setArenaNum(arenaNum);
+    }
+    config.setLog2SizeClassGroup(
+        Integer.parseInt(
+            properties.getProperty(
+                "log2_size_class_group", String.valueOf(config.getLog2SizeClassGroup()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

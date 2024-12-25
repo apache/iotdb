@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -44,6 +44,11 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
     return obj instanceof PipeRuntimeNonCriticalException
         && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
   @Override

@@ -147,7 +147,7 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
       outputResultToTsBlock();
     }
 
-    return tsBlockBuilder.build();
+    return tsBlockBuilder.getPositionCount() > 0 ? tsBlockBuilder.build() : null;
   }
 
   private void outputResultToTsBlock() {
@@ -160,6 +160,7 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     }
     tsBlockBuilder.declarePosition();
     accumulators.forEach(Accumulator::reset);
+    lastDevice = null;
   }
 
   @Override

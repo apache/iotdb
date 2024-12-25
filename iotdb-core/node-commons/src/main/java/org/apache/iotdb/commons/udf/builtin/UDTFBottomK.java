@@ -72,6 +72,8 @@ public class UDTFBottomK extends UDTFSelectK {
                   return cs1.length() - cs2.length();
                 });
         break;
+      case BLOB:
+      case BOOLEAN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

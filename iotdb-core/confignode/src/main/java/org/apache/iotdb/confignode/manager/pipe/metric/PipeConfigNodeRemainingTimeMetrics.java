@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
@@ -41,6 +41,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigNodeRemainingTimeMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeConfigNodeRemainingTimeOperator> remainingTimeOperatorMap =
@@ -102,7 +103,11 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeConfigNodeRemainingTimeOperator())
+        .computeIfAbsent(
+            pipeID,
+            k ->
+                new PipeConfigNodeRemainingTimeOperator(
+                    extractor.getPipeName(), extractor.getCreationTime()))
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
@@ -156,7 +161,8 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   public double getRemainingTime(final String pipeName, final long creationTime) {
     return remainingTimeOperatorMap
         .computeIfAbsent(
-            pipeName + "_" + creationTime, k -> new PipeConfigNodeRemainingTimeOperator())
+            pipeName + "_" + creationTime,
+            k -> new PipeConfigNodeRemainingTimeOperator(pipeName, creationTime))
         .getRemainingTime();
   }
 

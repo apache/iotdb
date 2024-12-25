@@ -58,11 +58,17 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     actionMapBuilder = ImmutableMap.builder();
     initActionMapBuilder();
     this.actionMap = this.actionMapBuilder.build();
+    checkActionMapCompleteness();
   }
 
   protected abstract void initClientManager();
 
   protected abstract void initActionMapBuilder();
+
+  protected void checkActionMapCompleteness() {
+    // No check by default
+  }
+  ;
 
   /**
    * Send asynchronous requests to the specified Nodes with default retry num
@@ -73,7 +79,8 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
    * @param timeoutInMs timeout in milliseconds
    */
   public void sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext, long timeoutInMs) {
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      final long timeoutInMs) {
     sendAsyncRequest(requestContext, MAX_RETRY_NUM, timeoutInMs);
   }
 
@@ -85,33 +92,48 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
    * @param requestContext <RequestType, ResponseType> which will also contain the result
    */
   public final void sendAsyncRequestWithRetry(
-      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, MAX_RETRY_NUM, null);
   }
 
+  /**
+   * Send asynchronous requests to the specified Nodes with default retry num
+   *
+   * <p>Notice: The Nodes that failed to receive the requests will be reconnected
+   *
+   * @param requestContext <RequestType, ResponseType> which will also contain the result
+   */
+  public final void sendAsyncRequestWithTimeoutInMs(
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      final long timeoutInMs) {
+    sendAsyncRequest(requestContext, MAX_RETRY_NUM, timeoutInMs);
+  }
+
   public final void sendAsyncRequest(
-      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, 1, null);
   }
 
-  private void sendAsyncRequest(
-      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
-      int retryNum,
-      Long timeoutInMs) {
+  public void sendAsyncRequest(
+      final AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      final int retryNum,
+      final Long timeoutInMs) {
     if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
 
-    RequestType requestType = requestContext.getRequestType();
+    final RequestType requestType = requestContext.getRequestType();
     for (int retry = 0; retry < retryNum; retry++) {
       // Always Reset CountDownLatch first
       requestContext.resetCountDownLatch();
 
       // Send requests to all targetNodes
-      for (int requestId : requestContext.getRequestIndices()) {
-        NodeLocation targetNode = requestContext.getNodeLocation(requestId);
-        sendAsyncRequest(requestContext, requestId, targetNode, retry);
-      }
+      final int finalRetry = retry;
+      requestContext
+          .getNodeLocationMap()
+          .forEach(
+              (requestId, nodeLocation) ->
+                  sendAsyncRequest(requestContext, requestId, nodeLocation, finalRetry));
 
       // Wait for this batch of asynchronous RPC requests finish
       try {
@@ -119,13 +141,11 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           requestContext.getCountDownLatch().await();
         } else {
           if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
-            LOGGER.warn(
-                "Timeout during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
+            LOGGER.warn("Timeout during {}. Retry: {}/{}", requestType, retry, retryNum);
           }
         }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "Interrupted during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
+      } catch (final InterruptedException e) {
+        LOGGER.error("Interrupted during {}. Retry: {}/{}", requestType, retry, retryNum);
         Thread.currentThread().interrupt();
       }
 
@@ -137,7 +157,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
     if (!requestContext.getRequestIndices().isEmpty()) {
       LOGGER.warn(
-          "Failed to {} on ConfigNode after {} retries, requestIndices: {}",
+          "Failed to {} after {} retries, requestIndices: {}",
           requestType,
           retryNum,
           requestContext.getRequestIndices());

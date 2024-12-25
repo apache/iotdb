@@ -26,6 +26,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,6 +40,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class IoTDBSubscriptionIdempotentIT extends AbstractSubscriptionLocalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionIdempotentIT.class);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void testSubscribeOrUnsubscribeNonExistedTopicTest() {

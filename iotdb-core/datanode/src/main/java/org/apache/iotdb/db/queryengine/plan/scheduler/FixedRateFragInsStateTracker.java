@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
@@ -87,16 +89,22 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       return res;
     }
     for (FragmentInstanceId fragmentInstanceId : instanceIds) {
-      InstanceStateMetrics stateMetrics = instanceStateMap.get(fragmentInstanceId);
-      if (stateMetrics == null
-          || stateMetrics.lastState == null
-          || !stateMetrics.lastState.isDone()) {
+      if (unfinished(fragmentInstanceId)) {
         // FI whose state has not been updated is considered to be unfinished.(In Query with limit
         // clause, it's possible that the query is finished before the state of FI being recorded.)
         res.add(fragmentInstanceId);
       }
     }
     return res;
+  }
+
+  private boolean unfinished(FragmentInstanceId fragmentInstanceId) {
+    InstanceStateMetrics stateMetrics = instanceStateMap.get(fragmentInstanceId);
+    // FI whose state has not been updated is considered to be unfinished.(In Query with limit
+    // clause, it's possible that the query is finished before the state of FI being recorded.)
+    return stateMetrics == null
+        || stateMetrics.lastState == null
+        || !stateMetrics.lastState.isDone();
   }
 
   @Override
@@ -116,32 +124,42 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private void fetchStateAndUpdate() {
     for (FragmentInstance instance : instances) {
-      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        FragmentInstanceInfo instanceInfo = fetchInstanceInfo(instance);
-        synchronized (this) {
-          InstanceStateMetrics metrics =
-              instanceStateMap.computeIfAbsent(
-                  instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
-          if (needPrintState(
-              metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+      if (unfinished(instance.getId())) {
+        try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+          FragmentInstanceInfo instanceInfo = fetchInstanceInfo(instance);
+          synchronized (this) {
+            InstanceStateMetrics metrics =
+                instanceStateMap.computeIfAbsent(
+                    instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
+            if (needPrintState(
+                metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
+              if (logger.isDebugEnabled()) {
+                logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+              }
+              metrics.reset(instanceInfo.getState());
+            } else {
+              metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
             }
-            metrics.reset(instanceInfo.getState());
-          } else {
-            metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
-          }
 
-          updateQueryState(instance.getId(), instanceInfo);
+            updateQueryState(instance.getId(), instanceInfo);
+          }
+        } catch (ClientManagerException | TException e) {
+          // TODO: do nothing ?
+          logger.warn("error happened while fetching query state", e);
         }
-      } catch (ClientManagerException | TException e) {
-        // TODO: do nothing ?
-        logger.warn("error happened while fetching query state", e);
       }
     }
   }
 
   private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
+    // no such instance may be caused by DN restarting
+    if (instanceInfo.getState() == FragmentInstanceState.NO_SUCH_INSTANCE) {
+      stateMachine.transitionToFailed(
+          new RuntimeException(
+              String.format(
+                  "FragmentInstance[%s] is failed. %s, may be caused by DN restarting.",
+                  instanceId, instanceInfo.getMessage())));
+    }
     if (instanceInfo.getState().isFailed()) {
       if (instanceInfo.getFailureInfoList() == null
           || instanceInfo.getFailureInfoList().isEmpty()) {
@@ -149,16 +167,28 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             new RuntimeException(
                 String.format(
                     "FragmentInstance[%s] is failed. %s", instanceId, instanceInfo.getMessage())));
+      } else if (instanceInfo.getErrorCode().isPresent()) {
+        stateMachine.transitionToFailed(
+            new IoTDBException(
+                instanceInfo.getErrorCode().get().getMessage(),
+                instanceInfo.getErrorCode().get().getCode()));
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }
     }
-    boolean queryFinished =
+    boolean queryFinished = false;
+    List<InstanceStateMetrics> rootInstanceStateMetricsList =
         instanceStateMap.values().stream()
             .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
-            .allMatch(
-                instanceStateMetrics ->
-                    instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+            .collect(Collectors.toList());
+    if (!rootInstanceStateMetricsList.isEmpty()) {
+      queryFinished =
+          rootInstanceStateMetricsList.stream()
+              .allMatch(
+                  instanceStateMetrics ->
+                      instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+    }
+
     if (queryFinished) {
       stateMachine.transitionToFinished();
     }

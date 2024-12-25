@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -84,6 +85,11 @@ public class ExchangeNode extends SingleChildProcessNode {
     this.outputColumnNames = outputColumnNames;
   }
 
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    throw new UnsupportedOperationException();
+  }
+
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
@@ -108,6 +114,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
     exchangeNode.setIndexOfUpstreamSinkHandle(index);
+
     return exchangeNode;
   }
 

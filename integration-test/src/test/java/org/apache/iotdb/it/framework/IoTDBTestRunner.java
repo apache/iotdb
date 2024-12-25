@@ -37,33 +37,30 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
   private static final Logger logger = IoTDBTestLogger.logger;
   private IoTDBTestListener listener;
 
-  public IoTDBTestRunner(Class<?> testClass) throws InitializationError {
+  public IoTDBTestRunner(final Class<?> testClass) throws InitializationError {
     super(testClass);
   }
 
   @Override
-  public void run(RunNotifier notifier) {
-    TimeZone.setDefault(TimeZone.getTimeZone("Bejing"));
+  public void run(final RunNotifier notifier) {
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC+08:00"));
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);
   }
 
   @Override
-  protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
-    Description description = describeChild(method);
+  protected void runChild(final FrameworkMethod method, final RunNotifier notifier) {
+    final Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
-    } else {
-      // TestMethodName must be set globally in MultiEnvFactory, since the
-      // cluster environments are not created now
-      MultiEnvFactory.setTestMethodName(description.getMethodName());
     }
+    MultiEnvFactory.setTestMethodName(description.getMethodName());
     super.runChild(method, notifier);
-    double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
-    String testName = description.getClassName() + "." + description.getMethodName();
+    final double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
+    final String testName = description.getClassName() + "." + description.getMethodName();
     logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
     listener.addTestStat(new IoTDBTestStat(testName, timeCost));
   }

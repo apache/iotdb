@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -40,6 +42,7 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.PENDING_RETRY
 import static org.apache.iotdb.db.queryengine.execution.QueryState.PLANNED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.QUEUED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * State machine for a {@link QueryExecution}. It stores the states for the {@link QueryExecution}.
@@ -155,6 +158,16 @@ public class QueryStateMachine {
   }
 
   public TSStatus getFailureStatus() {
+    if (failureStatus != null) {
+      return failureStatus;
+    } else if (failureException != null) {
+      Throwable t = getRootCause(failureException);
+      if (t instanceof IoTDBRuntimeException) {
+        return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
+      } else if (t instanceof IoTDBException) {
+        return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), t.getMessage());
+      }
+    }
     return failureStatus;
   }
 }

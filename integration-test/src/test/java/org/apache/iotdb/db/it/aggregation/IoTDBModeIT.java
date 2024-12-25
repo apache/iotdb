@@ -161,7 +161,7 @@ public class IoTDBModeIT {
   public void testModeWithSlidingWindow() {
     assertTestFail(
         "select mode(s1) from root.db.d1 group by time([1,10),3ms,2ms)",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": MODE with slidingWindow is not supported now");
   }
 

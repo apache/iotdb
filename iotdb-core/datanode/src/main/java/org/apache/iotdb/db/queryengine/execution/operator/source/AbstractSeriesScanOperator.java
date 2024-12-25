@@ -87,7 +87,7 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
     }
   }
 
-  private boolean readFileData() throws IOException {
+  protected boolean readFileData() throws IOException {
     while (seriesScanUtil.hasNextFile()) {
       if (readChunkData()) {
         return true;
@@ -96,7 +96,7 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
     return false;
   }
 
-  private boolean readChunkData() throws IOException {
+  protected boolean readChunkData() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (readPageData()) {
         return true;
@@ -105,7 +105,7 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
     return false;
   }
 
-  private boolean readPageData() throws IOException {
+  protected boolean readPageData() throws IOException {
     if (seriesScanUtil.hasNextPage()) {
       TsBlock tsBlock = seriesScanUtil.nextPage();
       if (!isEmpty(tsBlock)) {
@@ -116,11 +116,11 @@ public abstract class AbstractSeriesScanOperator extends AbstractDataSourceOpera
     return false;
   }
 
-  private boolean isEmpty(TsBlock tsBlock) {
+  protected boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
   }
 
-  private void appendToBuilder(TsBlock tsBlock) {
+  protected void appendToBuilder(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
     if (resultTsBlockBuilder.isEmpty() && size >= resultTsBlockBuilder.getMaxTsBlockLineNumber()) {
       retainedTsBlock = tsBlock;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
@@ -69,10 +71,33 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
           }
           walNodes.add((WALNode) node);
         }
-        uniqueId2Nodes.put(applicantUniqueId, walNodes.get(nodeIdCounter));
+        uniqueId2Nodes.put(applicantUniqueId, walNodes.get(walNodes.size() - 1));
       }
 
       return uniqueId2Nodes.get(applicantUniqueId);
+    } finally {
+      nodesLock.unlock();
+    }
+  }
+
+  public void deleteUniqueIdAndMayDeleteWALNode(String applicantUniqueId) {
+    nodesLock.lock();
+    try {
+      WALNode walNode = uniqueId2Nodes.remove(applicantUniqueId);
+      if (!uniqueId2Nodes.containsValue(walNode)) {
+        if (walNode != null) {
+          walNode.close();
+          if (walNode.getLogDirectory().exists()) {
+            FileUtils.deleteFileOrDirectory(walNode.getLogDirectory());
+          }
+          WALManager.getInstance().subtractTotalDiskUsage(walNode.getDiskUsage());
+          WALManager.getInstance().subtractTotalFileNum(walNode.getFileNum());
+        }
+        walNodes.remove(walNode);
+        if (walNodes.isEmpty()) {
+          nodeIdCounter = -1;
+        }
+      }
     } finally {
       nodesLock.unlock();
     }

@@ -19,27 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.trigger;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class GetTriggerJarPlan extends ConfigPhysicalPlan {
+public class GetTriggerJarPlan extends ConfigPhysicalReadPlan {
 
-  private List<String> jarNames;
+  private final List<String> jarNames;
 
-  public GetTriggerJarPlan() {
-    super(ConfigPhysicalPlanType.GetTriggerJar);
-  }
-
-  public GetTriggerJarPlan(List<String> triggerNames) {
+  public GetTriggerJarPlan(final List<String> triggerNames) {
     super(ConfigPhysicalPlanType.GetTriggerJar);
     jarNames = triggerNames;
   }
@@ -49,27 +39,7 @@ public class GetTriggerJarPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    ReadWriteIOUtils.write(jarNames.size(), stream);
-    for (String jarName : jarNames) {
-      ReadWriteIOUtils.write(jarName, stream);
-    }
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int size = ReadWriteIOUtils.readInt(buffer);
-    jarNames = new ArrayList<>(size);
-    while (size > 0) {
-      jarNames.add(ReadWriteIOUtils.readString(buffer));
-      size--;
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -79,7 +49,7 @@ public class GetTriggerJarPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    GetTriggerJarPlan that = (GetTriggerJarPlan) o;
+    final GetTriggerJarPlan that = (GetTriggerJarPlan) o;
     return Objects.equals(jarNames, that.jarNames);
   }
 
