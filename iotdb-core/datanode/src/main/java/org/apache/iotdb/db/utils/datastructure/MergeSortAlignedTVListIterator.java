@@ -31,7 +31,7 @@ import java.util.List;
 
 public class MergeSortAlignedTVListIterator implements IPointReader {
   private final AlignedTVList.AlignedTVListIterator[] alignedTvListIterators;
-  private final List<TSDataType> tsDataTypes;
+  private final int columnNum;
 
   private boolean probeNext = false;
   private boolean hasNext = false;
@@ -58,12 +58,12 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
                   tsDataTypes, columnIndexList, ignoreAllNullRows, floatPrecision, encodingList);
     }
     this.alignedTvListOffsets = new int[alignedTvLists.size()];
-    this.tsDataTypes = tsDataTypes;
-    this.columnAccessInfo = new int[tsDataTypes.size()][];
+    this.columnNum = tsDataTypes.size();
+    this.columnAccessInfo = new int[columnNum][];
     for (int i = 0; i < columnAccessInfo.length; i++) {
       columnAccessInfo[i] = new int[2];
     }
-    this.bitMap = new BitMap(tsDataTypes.size());
+    this.bitMap = new BitMap(columnNum);
   }
 
   private void prepareNextRow() {
@@ -72,7 +72,7 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
       AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators[i];
       if (iterator.hasNext() && iterator.currentTime() <= time) {
         if (i == 0 || iterator.currentTime() < time) {
-          for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
+          for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
             int rowIndex = iterator.getValidRowIndex(columnIndex);
             columnAccessInfo[columnIndex][0] = i;
             columnAccessInfo[columnIndex][1] = rowIndex;
@@ -82,7 +82,7 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
           }
           time = iterator.currentTime();
         } else {
-          for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
+          for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
             int rowIndex = iterator.getValidRowIndex(columnIndex);
             // update if the column is not null
             if (!iterator.isNull(rowIndex, columnIndex)) {
@@ -125,7 +125,7 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
   }
 
   private TimeValuePair buildTimeValuePair() {
-    TsPrimitiveType[] vector = new TsPrimitiveType[tsDataTypes.size()];
+    TsPrimitiveType[] vector = new TsPrimitiveType[columnNum];
     for (int columnIndex = 0; columnIndex < vector.length; columnIndex++) {
       int[] accessInfo = columnAccessInfo[columnIndex];
       AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators[accessInfo[0]];
