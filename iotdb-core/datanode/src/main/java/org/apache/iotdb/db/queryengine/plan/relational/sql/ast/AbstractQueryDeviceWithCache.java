@@ -63,6 +63,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       return true;
     }
     final List<DeviceEntry> entries = new ArrayList<>();
+
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
@@ -71,7 +72,12 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
-                          deviceEntry, attributeColumns))
+                          deviceEntry,
+                          attributeColumns,
+                          isTreeViewQuery
+                              ? TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database)
+                                  .length
+                              : 0))
               .collect(Collectors.toList());
     }
     return needFetch;

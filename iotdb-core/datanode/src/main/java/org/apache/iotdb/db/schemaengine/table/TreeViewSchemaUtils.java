@@ -87,18 +87,24 @@ public class TreeViewSchemaUtils {
   }
 
   public static IDeviceID convertToIDeviceID(final String database, final String[] idValues) {
+    return IDeviceID.Factory.DEFAULT_FACTORY.create(
+        StringArrayDeviceID.splitDeviceIdString(
+            Stream.concat(
+                    Arrays.stream(forceSeparateStringToPartialPathNodes(database)),
+                    Arrays.stream(idValues))
+                .toArray(String[]::new)));
+  }
+
+  public static String[] forceSeparateStringToPartialPathNodes(final String string) {
     final String[] databaseNodes;
     try {
-      databaseNodes = new PartialPath(database).getNodes();
+      databaseNodes = new PartialPath(string).getNodes();
     } catch (final IllegalPathException e) {
       throw new SemanticException(
           String.format(
-              "Failed to parse the tree database %s when convert to IDeviceID", database));
+              "Failed to parse the tree view string %s when convert to IDeviceID", string));
     }
-    return IDeviceID.Factory.DEFAULT_FACTORY.create(
-        StringArrayDeviceID.splitDeviceIdString(
-            Stream.concat(Arrays.stream(databaseNodes), Arrays.stream(idValues))
-                .toArray(String[]::new)));
+    return databaseNodes;
   }
 
   private TreeViewSchemaUtils() {
