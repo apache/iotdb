@@ -412,7 +412,7 @@ public class IoTDBSessionRelationalIT {
           } catch (StatementExecutionException e) {
             // a partial insertion should be reported
             assertEquals(
-                "507: Fail to insert fields [m2] caused by [Column m2 does not exists or fails to be created]",
+                "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]",
                 e.getMessage());
           }
           tablet.reset();
@@ -425,7 +425,7 @@ public class IoTDBSessionRelationalIT {
         } catch (StatementExecutionException e) {
           if (!e.getMessage()
               .equals(
-                  "507: Fail to insert fields [m2] caused by [Column m2 does not exists or fails to be created]")) {
+                  "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
             throw e;
           }
         }
@@ -447,7 +447,7 @@ public class IoTDBSessionRelationalIT {
           } catch (StatementExecutionException e) {
             if (!e.getMessage()
                 .equals(
-                    "507: Fail to insert fields [m2] caused by [Column m2 does not exists or fails to be created]")) {
+                    "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
               throw e;
             }
           }
@@ -461,7 +461,7 @@ public class IoTDBSessionRelationalIT {
         } catch (StatementExecutionException e) {
           if (!e.getMessage()
               .equals(
-                  "507: Fail to insert fields [m2] caused by [Column m2 does not exists or fails to be created]")) {
+                  "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]")) {
             throw e;
           }
         }
@@ -1198,7 +1198,7 @@ public class IoTDBSessionRelationalIT {
             fail("Exception expected: from=" + from + ", to=" + to);
           } catch (StatementExecutionException e) {
             assertEquals(
-                "507: Fail to insert fields [m1] caused by [Incompatible data type of column m1: "
+                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
                     + from
                     + "/"
                     + to
@@ -1288,7 +1288,7 @@ public class IoTDBSessionRelationalIT {
             fail("Exception expected: from=" + from + ", to=" + to);
           } catch (StatementExecutionException e) {
             assertEquals(
-                "507: Fail to insert fields [m1] caused by [Incompatible data type of column m1: "
+                "507: Fail to insert measurements [m1] caused by [Incompatible data type of column m1: "
                     + from
                     + "/"
                     + to
