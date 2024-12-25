@@ -51,9 +51,9 @@ TEST_CASE("Create table success", "[createTable]") {
     session->executeNonQueryStatement("USE \"db1\"");
     REQUIRE(session->getDatabase() == "db1");
     session->executeNonQueryStatement("CREATE TABLE table0 ("
-            "id1 string id,"
-            "attr1 string attribute,"
-            "m1 double measurement)");
+            "id1 string TAG,"
+            "attr1 string ATTRIBUTE,"
+            "m1 double FIELD)");
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("SHOW TABLES");
     sessionDataSet->setFetchSize(1024);
     bool tableExist = false;
@@ -71,9 +71,9 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
     session->executeNonQueryStatement("USE db1");
     session->executeNonQueryStatement("CREATE TABLE table1 ("
-        "id1 string id,"
-        "attr1 string attribute,"
-        "m1 double measurement)");
+        "id1 string TAG,"
+        "attr1 string ATTRIBUTE,"
+        "m1 double FIELD)");
     vector<pair<string, TSDataType::TSDataType>> schemaList;
     schemaList.push_back(make_pair("id1", TSDataType::TEXT));
     schemaList.push_back(make_pair("attr1", TSDataType::TEXT));
