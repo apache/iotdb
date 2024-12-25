@@ -645,17 +645,12 @@ public class IoTConsensusServerImpl {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  /**
-   * build SyncLog channel with safeIndex as the default initial sync index.
-   *
-   * @throws ConsensusGroupModifyPeerException
-   */
-  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  /** build SyncLog channel with safeIndex as the default initial sync index. */
+  public void buildSyncLogChannel(Peer targetPeer) {
     buildSyncLogChannel(targetPeer, getMinSyncIndex());
   }
 
-  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
-      throws ConsensusGroupModifyPeerException {
+  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex) {
     KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     // step 1, build sync channel in LogDispatcher
     logger.info(

@@ -94,19 +94,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -145,6 +144,8 @@ class RatisConsensus implements IConsensus {
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
+
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead;
 
@@ -235,6 +236,27 @@ class RatisConsensus implements IConsensus {
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.get().start();
     registerAndStartDiskGuardian();
+
+    if (correctPeerListBeforeStart != null) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+          (consensusGroupId, peers) -> {
+            try {
+              resetPeerList(consensusGroupId, peers);
+            } catch (ConsensusGroupNotExistException ignore) {
+
+            } catch (Exception e) {
+              logger.warn("Failed to reset peer list while start", e);
+            }
+          };
+      // make peers which are in list correct
+      correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+      // clear peers which are not in the list
+      getAllConsensusGroupIds().stream()
+          .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          .forEach(
+              consensusGroupId ->
+                  resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+    }
   }
 
   @Override
@@ -592,9 +614,15 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerListBeforeStarting(
+      Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("Record correct peer list: {}", correctPeerList);
+    this.correctPeerListBeforeStart = correctPeerList;
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
@@ -610,7 +638,7 @@ class RatisConsensus implements IConsensus {
                         peer.getNodeId(), peer.getEndpoint(), DEFAULT_PRIORITY))
             .anyMatch(
                 raftPeer ->
-                    myself.getId() == raftPeer.getId()
+                    myself.getId().equals(raftPeer.getId())
                         && myself.getAddress().equals(raftPeer.getAddress()));
     if (!myselfInCorrectPeers) {
       logger.info(
@@ -624,6 +652,20 @@ class RatisConsensus implements IConsensus {
         Utils.fromPeersAndPriorityToRaftPeers(correctPeers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
+    Set<RaftPeer> localRaftPeerSet = new HashSet<>(group.getPeers());
+    Set<RaftPeer> correctRaftPeerSet = new HashSet<>(newGroupPeers);
+    if (localRaftPeerSet.equals(correctRaftPeerSet)) {
+      // configurations are the same
+      logger.info(
+          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          localRaftPeerSet);
+      return;
+    }
+
+    logger.info(
+        "[RESET PEER LIST] Peer list will be reset from {} to {}",
+        localRaftPeerSet,
+        correctRaftPeerSet);
     RaftClientReply reply = sendReconfiguration(newGroup);
     if (reply.isSuccess()) {
       logger.info("[RESET PEER LIST] Peer list has been reset to {}", newGroupPeers);
@@ -789,30 +831,6 @@ class RatisConsensus implements IConsensus {
     } catch (IOException e) {
       return Collections.emptyList();
     }
-  }
-
-  @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    if (!storageDir.exists()) {
-      return Collections.emptyList();
-    }
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-      for (Path path : stream) {
-        try {
-          RaftGroupId raftGroupId =
-              RaftGroupId.valueOf(UUID.fromString(path.getFileName().toString()));
-          consensusGroupIds.add(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-        } catch (Exception e) {
-          logger.info(
-              "The directory {} is not a group directory;" + " ignoring it. ",
-              path.getFileName().toString());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get all consensus group ids from disk", e);
-    }
-    return consensusGroupIds;
   }
 
   @Override
