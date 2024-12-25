@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 
 public class SchemaRegionTestUtil {
@@ -454,8 +455,7 @@ public class SchemaRegionTestUtil {
       final List<SchemaFilter> idDeterminedFilterList) {
     final List<PartialPath> patternList =
         DeviceFilterUtil.convertToDevicePattern(
-            schemaRegion.getDatabaseFullPath(),
-            table,
+            new String[] {PATH_ROOT, schemaRegion.getDatabaseFullPath(), table},
             idColumnNum,
             Collections.singletonList(idDeterminedFilterList));
     final List<IDeviceSchemaInfo> result = new ArrayList<>();

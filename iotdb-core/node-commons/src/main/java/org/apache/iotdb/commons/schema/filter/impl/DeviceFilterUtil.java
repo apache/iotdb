@@ -29,10 +29,8 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class DeviceFilterUtil {
 
@@ -44,28 +42,19 @@ public class DeviceFilterUtil {
   // root.db.table.*.*..
   // e.g. input (db, table[c1, c2], [[]]), return [root.db.table.*.*]
   public static List<PartialPath> convertToDevicePattern(
-      final String database,
-      final String tableName,
+      final String[] prefix,
       final int idColumnNum,
       final List<List<SchemaFilter>> idDeterminedFilterList) {
     final List<PartialPath> pathList = new ArrayList<>();
-    final int length = idColumnNum + 3;
+    final int length = idColumnNum + prefix.length;
     for (final List<SchemaFilter> idFilterList : idDeterminedFilterList) {
       final String[] nodes = new String[length];
       Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
-      nodes[0] = PATH_ROOT;
-      nodes[1] = database;
-      final int beginIndex;
-      if (Objects.nonNull(tableName)) {
-        nodes[2] = tableName;
-        beginIndex = 3;
-      } else {
-        beginIndex = 2;
-      }
+      System.arraycopy(prefix, 0, nodes, 0, prefix.length);
       final ExtendedPartialPath partialPath = new ExtendedPartialPath(nodes);
       for (final SchemaFilter schemaFilter : idFilterList) {
         if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.ID)) {
-          final int index = ((IdFilter) schemaFilter).getIndex() + beginIndex;
+          final int index = ((IdFilter) schemaFilter).getIndex() + prefix.length;
           final SchemaFilter childFilter = ((IdFilter) schemaFilter).getChild();
           if (childFilter.getSchemaFilterType().equals(SchemaFilterType.PRECISE)) {
             // If there is a precise filter, other filters on the same id are processed and thus

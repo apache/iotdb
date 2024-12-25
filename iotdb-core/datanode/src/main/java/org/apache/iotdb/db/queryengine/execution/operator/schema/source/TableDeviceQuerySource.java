@@ -33,6 +33,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -42,6 +43,8 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -64,7 +67,10 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     this.database = database;
-    this.beginIndex = PathUtils.isTableModelDatabase(database) ? 3 : 2;
+    this.beginIndex =
+        PathUtils.isTableModelDatabase(database)
+            ? 3
+            : TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database).length;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
@@ -201,8 +207,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           String.format("Table '%s.%s' does not exist.", database, tableName));
     }
     return DeviceFilterUtil.convertToDevicePattern(
-        PathUtils.unQualifyDatabaseName(database),
-        PathUtils.isTableModelDatabase(database) ? tableName : null,
+        PathUtils.isTableModelDatabase(database)
+            ? new String[] {PATH_ROOT, database, tableName}
+            : TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database),
         DataNodeTableCache.getInstance().getTable(database4TableCache, tableName).getIdNums(),
         idDeterminedPredicateList);
   }
