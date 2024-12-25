@@ -71,9 +71,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
@@ -86,6 +92,8 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
@@ -913,6 +921,71 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format("Filter: %s", node.getFilter().map(v -> v.toString()).orElse(null)));
     }
     return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TableFunctionProcessor-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Function: %s", node.getName()));
+    boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
+    if (node.isPruneWhenEmpty()) {
+      boxValue.add("Prune when empty");
+    } else {
+      boxValue.add("Keep when empty");
+    }
+    node.getDataOrganizationSpecification()
+        .ifPresent(
+            specification -> {
+              if (!specification.getPartitionBy().isEmpty()) {
+                boxValue.add(
+                    "Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+              }
+              specification
+                  .getOrderingScheme()
+                  .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+            });
+    if (!node.getArguments().isEmpty()) {
+      node.getArguments().forEach((key, value) -> boxValue.add(formatArgument(key, value)));
+    }
+    return render(node, boxValue, context);
+  }
+
+  private String formatArgument(String argumentName, Argument argument) {
+    if (argument instanceof ScalarArgument) {
+      return formatScalarArgument(argumentName, (ScalarArgument) argument);
+    }
+    if (argument instanceof DescriptorArgument) {
+      return formatDescriptorArgument(argumentName, (DescriptorArgument) argument);
+    } else {
+      return formatTableArgument(argumentName, (TableArgument) argument);
+    }
+  }
+
+  private String formatScalarArgument(String argumentName, ScalarArgument argument) {
+    return format(
+        "%s => ScalarArgument{type=%s, value=%s}",
+        argumentName, argument.getType(), argument.getValue());
+  }
+
+  private String formatDescriptorArgument(String argumentName, DescriptorArgument argument) {
+    String descriptor;
+    if (argument.getDescriptor().isPresent()) {
+      descriptor =
+          argument.getDescriptor().get().getFields().stream()
+              .map(field -> field.getName() + field.getType().map(type -> " " + type).orElse(""))
+              .collect(joining(", ", "(", ")"));
+    } else {
+      descriptor = "NULL";
+    }
+    return format("%s => DescriptorArgument{%s}", argumentName, descriptor);
+  }
+
+  private String formatTableArgument(String argumentName, TableArgument argument) {
+    return format("%s => TableArgument", argumentName);
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

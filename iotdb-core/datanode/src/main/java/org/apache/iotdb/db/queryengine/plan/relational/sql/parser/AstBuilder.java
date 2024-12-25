@@ -66,6 +66,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Descriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescriptorField;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -75,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyTableTreatment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -164,6 +167,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
@@ -235,6 +241,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.descriptorArgument;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.nullDescriptorArgument;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -1789,6 +1797,138 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitParenthesizedRelation(RelationalSqlParser.ParenthesizedRelationContext ctx) {
     return visit(ctx.relation());
+  }
+
+  @Override
+  public Node visitTableFunctionInvocation(
+      RelationalSqlParser.TableFunctionInvocationContext context) {
+    return visit(context.tableFunctionCall());
+  }
+
+  @Override
+  public Node visitTableFunctionCall(RelationalSqlParser.TableFunctionCallContext context) {
+    QualifiedName name = getQualifiedName(context.qualifiedName());
+    List<TableFunctionArgument> arguments =
+        visit(context.tableFunctionArgument(), TableFunctionArgument.class);
+    List<List<QualifiedName>> copartitioning = ImmutableList.of();
+    if (context.COPARTITION() != null) {
+      copartitioning =
+          context.copartitionTables().stream()
+              .map(
+                  tablesList ->
+                      tablesList.qualifiedName().stream()
+                          .map(this::getQualifiedName)
+                          .collect(toImmutableList()))
+              .collect(toImmutableList());
+    }
+
+    return new TableFunctionInvocation(getLocation(context), name, arguments, copartitioning);
+  }
+
+  @Override
+  public Node visitTableFunctionArgument(RelationalSqlParser.TableFunctionArgumentContext context) {
+    Optional<Identifier> name = visitIfPresent(context.identifier(), Identifier.class);
+    Node value;
+    if (context.tableArgument() != null) {
+      value = visit(context.tableArgument());
+    } else if (context.descriptorArgument() != null) {
+      value = visit(context.descriptorArgument());
+    } else {
+      value = visit(context.expression());
+    }
+
+    return new TableFunctionArgument(getLocation(context), name, value);
+  }
+
+  @Override
+  public Node visitTableArgument(RelationalSqlParser.TableArgumentContext context) {
+    Relation table = (Relation) visit(context.tableArgumentRelation());
+
+    Optional<List<Expression>> partitionBy = Optional.empty();
+    if (context.PARTITION() != null) {
+      partitionBy = Optional.of(visit(context.expression(), Expression.class));
+    }
+
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (context.ORDER() != null) {
+      orderBy =
+          Optional.of(
+              new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
+    }
+
+    Optional<EmptyTableTreatment> emptyTableTreatment = Optional.empty();
+    if (context.PRUNE() != null) {
+      emptyTableTreatment =
+          Optional.of(
+              new EmptyTableTreatment(
+                  getLocation(context.PRUNE()), EmptyTableTreatment.Treatment.PRUNE));
+    } else if (context.KEEP() != null) {
+      emptyTableTreatment =
+          Optional.of(
+              new EmptyTableTreatment(
+                  getLocation(context.KEEP()), EmptyTableTreatment.Treatment.KEEP));
+    }
+
+    return new TableFunctionTableArgument(
+        getLocation(context), table, partitionBy, orderBy, emptyTableTreatment);
+  }
+
+  @Override
+  public Node visitTableArgumentTable(RelationalSqlParser.TableArgumentTableContext context) {
+    Relation relation =
+        new Table(getLocation(context.TABLE()), getQualifiedName(context.qualifiedName()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitTableArgumentQuery(RelationalSqlParser.TableArgumentQueryContext context) {
+    Relation relation =
+        new TableSubquery(getLocation(context.TABLE()), (Query) visit(context.query()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitDescriptorArgument(RelationalSqlParser.DescriptorArgumentContext context) {
+    if (context.NULL() != null) {
+      return nullDescriptorArgument(getLocation(context));
+    }
+    List<DescriptorField> fields = visit(context.descriptorField(), DescriptorField.class);
+    return descriptorArgument(
+        getLocation(context), new Descriptor(getLocation(context.DESCRIPTOR()), fields));
+  }
+
+  @Override
+  public Node visitDescriptorField(RelationalSqlParser.DescriptorFieldContext context) {
+    return new DescriptorField(
+        getLocation(context),
+        (Identifier) visit(context.identifier()),
+        visitIfPresent(context.type(), DataType.class));
   }
 
   // ********************* predicates *******************

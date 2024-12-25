@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NodeAndMappings;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -46,6 +47,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -692,6 +695,115 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newFilter,
               node.isSpillable()),
           outputMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitTableFunction(TableFunctionNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newProperOutputs = mapper.map(node.getProperOutputs());
+
+      ImmutableList.Builder<PlanNode> newSources = ImmutableList.builder();
+      ImmutableList.Builder<TableFunctionNode.TableArgumentProperties> newTableArgumentProperties =
+          ImmutableList.builder();
+
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        PlanAndMappings newSource = node.getChildren().get(i).accept(this, context);
+        newSources.add(newSource.getRoot());
+
+        SymbolMapper inputMapper = symbolMapper(new HashMap<>(newSource.getMappings()));
+        TableFunctionNode.TableArgumentProperties properties =
+            node.getTableArgumentProperties().get(i);
+        Optional<DataOrganizationSpecification> newSpecification =
+            properties.getDataOrganizationSpecification().map(inputMapper::mapAndDistinct);
+        TableFunctionNode.PassThroughSpecification newPassThroughSpecification =
+            new TableFunctionNode.PassThroughSpecification(
+                properties.getPassThroughSpecification().isDeclaredAsPassThrough(),
+                properties.getPassThroughSpecification().getColumns().stream()
+                    .map(
+                        column ->
+                            new TableFunctionNode.PassThroughColumn(
+                                inputMapper.map(column.getSymbol()), column.isPartitioningColumn()))
+                    .collect(toImmutableList()));
+        newTableArgumentProperties.add(
+            new TableFunctionNode.TableArgumentProperties(
+                properties.getArgumentName(),
+                properties.isRowSemantics(),
+                properties.isPruneWhenEmpty(),
+                newPassThroughSpecification,
+                inputMapper.map(properties.getRequiredColumns()),
+                newSpecification));
+      }
+
+      return new PlanAndMappings(
+          new TableFunctionNode(
+              node.getPlanNodeId(),
+              node.getName(),
+              node.getArguments(),
+              newProperOutputs,
+              newSources.build(),
+              newTableArgumentProperties.build()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitTableFunctionProcessor(
+        TableFunctionProcessorNode node, UnaliasContext context) {
+      if (node.getChildren().isEmpty()) {
+        Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+        SymbolMapper mapper = symbolMapper(mapping);
+        return new PlanAndMappings(
+            new TableFunctionProcessorNode(
+                node.getPlanNodeId(),
+                node.getName(),
+                mapper.map(node.getProperOutputs()),
+                Optional.empty(),
+                node.isPruneWhenEmpty(),
+                ImmutableList.of(),
+                ImmutableList.of(),
+                Optional.empty(),
+                node.getArguments()),
+            mapping);
+      }
+
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<TableFunctionNode.PassThroughSpecification> newPassThroughSpecification =
+          node.getPassThroughSpecifications().stream()
+              .map(
+                  passThroughSpecification ->
+                      new TableFunctionNode.PassThroughSpecification(
+                          passThroughSpecification.isDeclaredAsPassThrough(),
+                          passThroughSpecification.getColumns().stream()
+                              .map(
+                                  column ->
+                                      new TableFunctionNode.PassThroughColumn(
+                                          mapper.map(column.getSymbol()),
+                                          column.isPartitioningColumn()))
+                              .collect(toImmutableList())))
+              .collect(Collectors.toList());
+      List<List<Symbol>> newRequiredSymbols =
+          node.getRequiredSymbols().stream().map(mapper::map).collect(toImmutableList());
+
+      Optional<DataOrganizationSpecification> newSpecification =
+          node.getDataOrganizationSpecification().map(mapper::mapAndDistinct);
+
+      TableFunctionProcessorNode rewrittenTableFunctionProcessor =
+          new TableFunctionProcessorNode(
+              node.getPlanNodeId(),
+              node.getName(),
+              mapper.map(node.getProperOutputs()),
+              Optional.of(rewrittenSource.getRoot()),
+              node.isPruneWhenEmpty(),
+              newPassThroughSpecification,
+              newRequiredSymbols,
+              newSpecification,
+              node.getArguments());
+
+      return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);
     }
   }
 

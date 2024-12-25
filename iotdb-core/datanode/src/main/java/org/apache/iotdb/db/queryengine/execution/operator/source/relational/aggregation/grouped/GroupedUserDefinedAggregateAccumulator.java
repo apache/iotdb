@@ -82,6 +82,10 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     while (iterator.hasNext()) {
       int groupId = groupIds[index++];
       State state = getOrCreateState(groupId);
+      if (state == null) {
+        state = aggregateFunction.createState();
+        stateArray.set(groupId, state);
+      }
       aggregateFunction.addInput(state, iterator.next());
     }
   }
