@@ -180,6 +180,9 @@ public class IoTDBSetConfigurationIT {
       assertFalse(
           checkConfigFileContains(
               EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=-1"));
+      assertFalse(
+          checkConfigFileContains(
+              EnvFactory.getEnv().getConfigNodeWrapper(0), "default_storage_group_level=-1"));
       assertTrue(
           checkConfigFileContains(
               EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=3"));
