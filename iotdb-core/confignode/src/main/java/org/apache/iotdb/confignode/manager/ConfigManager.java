@@ -1587,19 +1587,19 @@ public class ConfigManager implements IManager {
       // re-config CN in memory -> re-config DN in memory -> re-config DN in file -> re-config CN in
       // file
       TSStatus finalTsStatus = tsStatus;
-      return setConfigLocally(
-          req,
-          () -> {
-            List<TSStatus> statusListOfOtherNodes = nodeManager.setConfiguration(req);
-            List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
-            statusList.add(finalTsStatus);
-            statusList.addAll(statusListOfOtherNodes);
-            return RpcUtils.squashResponseStatusList(statusList);
-          });
+      return setConfigLocally(req, () -> broadcastSetConfig(finalTsStatus, req));
     } else {
       // not for this node, ignore it
-      return tsStatus;
+      return broadcastSetConfig(tsStatus, req);
     }
+  }
+
+  private TSStatus broadcastSetConfig(TSStatus thisNodeResult, TSetConfigurationReq req) {
+    List<TSStatus> statusListOfOtherNodes = nodeManager.setConfiguration(req);
+    List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
+    statusList.add(thisNodeResult);
+    statusList.addAll(statusListOfOtherNodes);
+    return RpcUtils.squashResponseStatusList(statusList);
   }
 
   private TSStatus setConfigLocally(
