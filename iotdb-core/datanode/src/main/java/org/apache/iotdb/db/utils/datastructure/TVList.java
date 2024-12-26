@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -91,8 +90,8 @@ public abstract class TVList implements WALEntryValue {
   private long version;
 
   protected TVList() {
-    timestamps = new CopyOnWriteArrayList<>();
-    indices = new CopyOnWriteArrayList<>();
+    timestamps = new ArrayList<>();
+    indices = new ArrayList<>();
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -224,7 +223,7 @@ public abstract class TVList implements WALEntryValue {
   protected void markNullValue(int arrayIndex, int elementIndex) {
     // init bitMap if doesn't have
     if (bitMap == null) {
-      bitMap = new CopyOnWriteArrayList<>();
+      bitMap = new ArrayList<>();
       for (int i = 0; i < timestamps.size(); i++) {
         bitMap.add(new BitMap(ARRAY_SIZE));
       }
@@ -263,7 +262,7 @@ public abstract class TVList implements WALEntryValue {
       }
     }
     if (bitMap != null) {
-      cloneList.bitMap = new CopyOnWriteArrayList<>();
+      cloneList.bitMap = new ArrayList<>();
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }

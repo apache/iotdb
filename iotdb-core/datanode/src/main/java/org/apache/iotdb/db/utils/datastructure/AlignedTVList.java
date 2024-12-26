@@ -50,7 +50,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
@@ -93,7 +92,7 @@ public abstract class AlignedTVList extends TVList {
 
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
-      values.add(new CopyOnWriteArrayList<>());
+      values.add(new ArrayList<>());
     }
   }
 
@@ -167,7 +166,7 @@ public abstract class AlignedTVList extends TVList {
           }
         }
         if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new CopyOnWriteArrayList<>();
+          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
           for (BitMap bitMap : columnBitMaps) {
             cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
           }
@@ -351,8 +350,8 @@ public abstract class AlignedTVList extends TVList {
         bitMaps.add(null);
       }
     }
-    List<Object> columnValue = new CopyOnWriteArrayList<>();
-    List<BitMap> columnBitMaps = new CopyOnWriteArrayList<>();
+    List<Object> columnValue = new ArrayList<>();
+    List<BitMap> columnBitMaps = new ArrayList<>();
     for (int i = 0; i < timestamps.size(); i++) {
       switch (dataType) {
         case TEXT:
@@ -880,7 +879,7 @@ public abstract class AlignedTVList extends TVList {
 
     // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new CopyOnWriteArrayList<>();
+      List<BitMap> columnBitMaps = new ArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
         columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
