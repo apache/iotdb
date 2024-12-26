@@ -211,11 +211,7 @@ public class ChunkCache {
     // because filePath is get from TsFileResource, different ChunkCacheKey of the same file
     // share this String.
     private final String filePath;
-    private final int regionId;
-    private final long timePartitionId;
-    private final long tsFileVersion;
-    // high 32 bit is compaction level, low 32 bit is merge count
-    private final long compactionVersion;
+    private final TsFileID tsFileID;
 
     private final long offsetOfChunkHeader;
 
@@ -226,10 +222,7 @@ public class ChunkCache {
     public ChunkCacheKey(
         String filePath, TsFileID tsfileId, long offsetOfChunkHeader, boolean closed) {
       this.filePath = filePath;
-      this.regionId = tsfileId.regionId;
-      this.timePartitionId = tsfileId.timePartitionId;
-      this.tsFileVersion = tsfileId.fileVersion;
-      this.compactionVersion = tsfileId.compactionVersion;
+      this.tsFileID = tsfileId;
       this.offsetOfChunkHeader = offsetOfChunkHeader;
       this.closed = closed;
     }
@@ -251,17 +244,13 @@ public class ChunkCache {
         return false;
       }
       ChunkCacheKey that = (ChunkCacheKey) o;
-      return regionId == that.regionId
-          && timePartitionId == that.timePartitionId
-          && tsFileVersion == that.tsFileVersion
-          && compactionVersion == that.compactionVersion
+      return Objects.equals(tsFileID, that.tsFileID)
           && offsetOfChunkHeader == that.offsetOfChunkHeader;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(
-          regionId, timePartitionId, tsFileVersion, compactionVersion, offsetOfChunkHeader);
+      return Objects.hash(tsFileID, offsetOfChunkHeader);
     }
 
     @Override
@@ -271,13 +260,13 @@ public class ChunkCache {
           + filePath
           + '\''
           + ", regionId="
-          + regionId
+          + tsFileID.regionId
           + ", timePartitionId="
-          + timePartitionId
+          + tsFileID.timePartitionId
           + ", tsFileVersion="
-          + tsFileVersion
+          + tsFileID.fileVersion
           + ", compactionVersion="
-          + compactionVersion
+          + tsFileID.compactionVersion
           + ", offsetOfChunkHeader="
           + offsetOfChunkHeader
           + '}';

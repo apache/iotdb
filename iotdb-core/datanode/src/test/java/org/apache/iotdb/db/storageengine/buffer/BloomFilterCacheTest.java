@@ -95,13 +95,7 @@ public class BloomFilterCacheTest {
       for (String filePath : pathList) {
         TsFileID tsFileID = new TsFileID(filePath);
         BloomFilter bloomFilter =
-            bloomFilterCache.get(
-                new BloomFilterCache.BloomFilterCacheKey(
-                    filePath,
-                    tsFileID.regionId,
-                    tsFileID.timePartitionId,
-                    tsFileID.fileVersion,
-                    tsFileID.compactionVersion));
+            bloomFilterCache.get(new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID));
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
@@ -119,12 +113,7 @@ public class BloomFilterCacheTest {
       String path = pathList.get(0);
       TsFileID tsFileID = new TsFileID(path);
       BloomFilterCache.BloomFilterCacheKey key =
-          new BloomFilterCache.BloomFilterCacheKey(
-              path,
-              tsFileID.regionId,
-              tsFileID.timePartitionId,
-              tsFileID.fileVersion,
-              tsFileID.compactionVersion);
+          new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
       BloomFilter bloomFilter = bloomFilterCache.get(key);
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
       BloomFilter bloomFilter1 = reader.readBloomFilter();
@@ -145,12 +134,7 @@ public class BloomFilterCacheTest {
       for (String path : pathList) {
         TsFileID tsFileID = new TsFileID(path);
         BloomFilterCache.BloomFilterCacheKey key =
-            new BloomFilterCache.BloomFilterCacheKey(
-                path,
-                tsFileID.regionId,
-                tsFileID.timePartitionId,
-                tsFileID.fileVersion,
-                tsFileID.compactionVersion);
+            new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
         BloomFilter bloomFilter = bloomFilterCache.get(key);
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
@@ -161,12 +145,7 @@ public class BloomFilterCacheTest {
       for (String path : pathList) {
         TsFileID tsFileID = new TsFileID(path);
         BloomFilterCache.BloomFilterCacheKey key =
-            new BloomFilterCache.BloomFilterCacheKey(
-                path,
-                tsFileID.regionId,
-                tsFileID.timePartitionId,
-                tsFileID.fileVersion,
-                tsFileID.compactionVersion);
+            new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
         BloomFilter bloomFilter = bloomFilterCache.getIfPresent(key);
         Assert.assertNull(bloomFilter);
       }
