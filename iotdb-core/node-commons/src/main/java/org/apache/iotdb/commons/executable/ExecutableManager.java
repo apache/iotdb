@@ -287,4 +287,10 @@ public class ExecutableManager {
   public static boolean isUriTrusted(String uri) {
     return CommonDescriptor.getInstance().getConfig().getTrustedUriPattern().matcher(uri).matches();
   }
+
+  public static String getUnTrustedUriErrorMsg(String uri) {
+    return String.format(
+        "Untrusted uri %s, current trusted_uri_pattern is %s",
+        uri, CommonDescriptor.getInstance().getConfig().getTrustedUriPattern());
+  }
 }
