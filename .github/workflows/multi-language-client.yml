@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - "rc/*"
-      - 'rename_table_concepts'
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'

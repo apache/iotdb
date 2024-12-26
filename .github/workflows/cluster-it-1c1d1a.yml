@@ -6,7 +6,6 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
-      - 'rename_table_concepts'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
