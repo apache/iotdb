@@ -124,10 +124,6 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(deleteDatabasePlan, context);
   }
 
-  public R visitDeleteDatabaseV2(final DatabaseSchemaPlan deleteDatabaseV2Plan, final C context) {
-    return visitPlan(deleteDatabaseV2Plan, context);
-  }
-
   public R visitCreateSchemaTemplate(
       final CreateSchemaTemplatePlan createSchemaTemplatePlan, final C context) {
     return visitPlan(createSchemaTemplatePlan, context);

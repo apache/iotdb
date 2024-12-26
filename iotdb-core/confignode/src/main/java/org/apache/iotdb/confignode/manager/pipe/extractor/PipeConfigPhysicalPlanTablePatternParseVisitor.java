@@ -54,12 +54,6 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
     return visitDatabaseSchemaPlan(alterDatabasePlan, pattern);
   }
 
-  @Override
-  public Optional<ConfigPhysicalPlan> visitDeleteDatabaseV2(
-      final DatabaseSchemaPlan deleteDatabaseV2Plan, final TablePattern pattern) {
-    return visitDatabaseSchemaPlan(deleteDatabaseV2Plan, pattern);
-  }
-
   public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
       final DatabaseSchemaPlan databaseSchemaPlan, final TablePattern pattern) {
     return pattern.matchesDatabase(
