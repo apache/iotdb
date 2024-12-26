@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -71,11 +73,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
@@ -130,6 +134,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
@@ -153,6 +159,10 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
+import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
+import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
@@ -316,8 +326,94 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
-  public Operator visitDeviceTableScan(
-      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+  public Operator visitTreeNonAlignedDeviceViewScan(
+      TreeNonAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException(
+        "view for non aligned devices in tree is not supported");
+  }
+
+  private IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
+      String treeDBName) {
+    try {
+      PartialPath db = new PartialPath(treeDBName);
+      int dbLevel = db.getNodes().length;
+      if (dbLevel == 2) {
+        return new TwoLevelDBExtractor(treeDBName.length());
+      } else if (dbLevel == 3) {
+        return new ThreeLevelDBExtractor(treeDBName.length());
+      } else if (dbLevel >= 4) {
+        return new FourOrHigherLevelDBExtractor(dbLevel);
+      } else {
+        throw new IllegalArgumentException(
+            "tree db name should at least be two level: " + treeDBName);
+      }
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+
+  @Override
+  public Operator visitTreeAlignedDeviceViewScan(
+      TreeAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
+
+    IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
+        createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
+
+    AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+        constructAbstractTableScanOperatorParameter(
+            node,
+            context,
+            TreeAlignedDeviceViewScanOperator.class.getSimpleName(),
+            node.getMeasurementColumnNameMap());
+
+    TreeAlignedDeviceViewScanOperator treeAlignedDeviceViewScanOperator =
+        new TreeAlignedDeviceViewScanOperator(parameter, idColumnValueExtractor);
+
+    addSource(
+        treeAlignedDeviceViewScanOperator,
+        context,
+        node,
+        parameter.measurementColumnNames,
+        parameter.measurementSchemas,
+        parameter.allSensors);
+
+    return treeAlignedDeviceViewScanOperator;
+  }
+
+  private void addSource(
+      AbstractTableScanOperator tableScanOperator,
+      LocalExecutionPlanContext context,
+      DeviceTableScanNode node,
+      List<String> measurementColumnNames,
+      List<IMeasurementSchema> measurementSchemas,
+      Set<String> allSensors) {
+
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
+
+    for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
+      if (node.getDeviceEntries().get(i) == null) {
+        throw new IllegalStateException(
+            "Device entries of index " + i + " in DeviceTableScanNode is empty");
+      }
+      AlignedFullPath alignedPath =
+          constructAlignedPath(
+              node.getDeviceEntries().get(i),
+              measurementColumnNames,
+              measurementSchemas,
+              allSensors);
+      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+    }
+
+    context.getDriverContext().setInputDriver(true);
+  }
+
+  // fieldColumnsRenameMap will always
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructAbstractTableScanOperatorParameter(
+          DeviceTableScanNode node,
+          LocalExecutionPlanContext context,
+          String className,
+          Map<String, String> fieldColumnsRenameMap) {
 
     List<Symbol> outputColumnNames = node.getOutputSymbols();
     int outputColumnCount = outputColumnNames.size();
@@ -346,9 +442,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         case MEASUREMENT:
           columnsIndexArray[idx++] = measurementColumnCount;
           measurementColumnCount++;
-          measurementColumnNames.add(schema.getName());
+
+          String realMeasurementName =
+              fieldColumnsRenameMap.getOrDefault(schema.getName(), schema.getName());
+
+          measurementColumnNames.add(realMeasurementName);
           measurementSchemas.add(
-              new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+              new MeasurementSchema(realMeasurementName, getTSDataType(schema.getType())));
           columnSchemas.add(schema);
           measurementColumnsIndexMap.put(columnName.getName(), measurementColumnCount - 1);
           break;
@@ -368,10 +468,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       if (!outputSet.contains(entry.getKey())
           && entry.getValue().getColumnCategory() == MEASUREMENT) {
         measurementColumnCount++;
-        measurementColumnNames.add(entry.getValue().getName());
+        String realMeasurementName =
+            fieldColumnsRenameMap.getOrDefault(
+                entry.getValue().getName(), entry.getValue().getName());
+
+        measurementColumnNames.add(realMeasurementName);
         measurementSchemas.add(
-            new MeasurementSchema(
-                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
+            new MeasurementSchema(realMeasurementName, getTSDataType(entry.getValue().getType())));
         measurementColumnsIndexMap.put(entry.getKey().getName(), measurementColumnCount - 1);
       } else if (entry.getValue().getColumnCategory() == TIME) {
         timeColumnName = entry.getKey().getName();
@@ -394,10 +497,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     OperatorContext operatorContext =
         context
             .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableScanOperator.class.getSimpleName());
+            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
 
     int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     if (context.getTypeProvider().getTemplatedInfo() != null) {
@@ -410,37 +510,45 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     // for time column
     allSensors.add("");
-    TableScanOperator tableScanOperator =
-        new TableScanOperator(
-            operatorContext,
-            node.getPlanNodeId(),
-            columnSchemas,
-            columnsIndexArray,
-            node.getDeviceEntries(),
-            node.getScanOrder(),
-            seriesScanOptions,
-            measurementColumnNames,
-            allSensors,
-            measurementSchemas,
-            maxTsBlockLineNum);
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
+    return new AbstractTableScanOperator.AbstractTableScanOperatorParameter(
+        allSensors,
+        operatorContext,
+        node.getPlanNodeId(),
+        columnSchemas,
+        columnsIndexArray,
+        node.getDeviceEntries(),
+        node.getScanOrder(),
+        seriesScanOptions,
+        measurementColumnNames,
+        measurementSchemas,
+        maxTsBlockLineNum);
+  }
 
-    for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
-      if (node.getDeviceEntries().get(i) == null) {
-        throw new IllegalStateException(
-            "Device entries of index " + i + " in DeviceTableScanNode is empty");
-      }
-      AlignedFullPath alignedPath =
-          constructAlignedPath(
-              node.getDeviceEntries().get(i),
-              measurementColumnNames,
-              measurementSchemas,
-              allSensors);
-      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-    }
+  // used for TableScanOperator
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructAbstractTableScanOperatorParameter(
+          DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    return constructAbstractTableScanOperatorParameter(
+        node, context, TableScanOperator.class.getSimpleName(), Collections.emptyMap());
+  }
 
-    context.getDriverContext().setInputDriver(true);
+  @Override
+  public Operator visitDeviceTableScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+
+    AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+        constructAbstractTableScanOperatorParameter(node, context);
+
+    TableScanOperator tableScanOperator = new TableScanOperator(parameter);
+
+    addSource(
+        tableScanOperator,
+        context,
+        node,
+        parameter.measurementColumnNames,
+        parameter.measurementSchemas,
+        parameter.allSensors);
 
     return tableScanOperator;
   }

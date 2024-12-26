@@ -95,41 +95,33 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private int currentDeviceIndex;
 
-  public AbstractTableScanOperator(
-      OperatorContext context,
-      PlanNodeId sourceId,
-      List<ColumnSchema> columnSchemas,
-      int[] columnsIndexArray,
-      List<DeviceEntry> deviceEntries,
-      Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions,
-      List<String> measurementColumnNames,
-      Set<String> allSensors,
-      List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum) {
-    this.sourceId = sourceId;
-    this.operatorContext = context;
-    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(deviceEntries.size()));
-    this.columnSchemas = columnSchemas;
-    this.columnsIndexArray = columnsIndexArray;
-    this.deviceEntries = deviceEntries;
-    this.deviceCount = deviceEntries.size();
-    this.scanOrder = scanOrder;
-    this.seriesScanOptions = seriesScanOptions;
-    this.measurementColumnNames = measurementColumnNames;
-    this.allSensors = allSensors;
-    this.measurementSchemas = measurementSchemas;
+  public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
+    this.sourceId = parameter.sourceId;
+    this.operatorContext = parameter.context;
+    this.operatorContext.recordSpecifiedInfo(
+        DEVICE_NUMBER, Integer.toString(parameter.deviceEntries.size()));
+    this.columnSchemas = parameter.columnSchemas;
+    this.columnsIndexArray = parameter.columnsIndexArray;
+    this.deviceEntries = parameter.deviceEntries;
+    this.deviceCount = parameter.deviceEntries.size();
+    this.scanOrder = parameter.scanOrder;
+    this.seriesScanOptions = parameter.seriesScanOptions;
+    this.measurementColumnNames = parameter.measurementColumnNames;
+    this.allSensors = parameter.allSensors;
+    this.measurementSchemas = parameter.measurementSchemas;
     this.measurementColumnTSDataTypes =
-        measurementSchemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+        parameter.measurementSchemas.stream()
+            .map(IMeasurementSchema::getType)
+            .collect(Collectors.toList());
     this.currentDeviceIndex = 0;
     this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
-            (1L + columnsIndexArray.length)
+            (1L + parameter.columnsIndexArray.length)
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
-    this.maxTsBlockLineNum = maxTsBlockLineNum;
+    this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
 
     constructAlignedSeriesScanUtil();
   }
@@ -351,5 +343,44 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
+  }
+
+  public static class AbstractTableScanOperatorParameter {
+    public final OperatorContext context;
+    public final PlanNodeId sourceId;
+    public final List<ColumnSchema> columnSchemas;
+    public final int[] columnsIndexArray;
+    public final List<DeviceEntry> deviceEntries;
+    public final Ordering scanOrder;
+    public final SeriesScanOptions seriesScanOptions;
+    public final List<String> measurementColumnNames;
+    public final Set<String> allSensors;
+    public final List<IMeasurementSchema> measurementSchemas;
+    public final int maxTsBlockLineNum;
+
+    public AbstractTableScanOperatorParameter(
+        Set<String> allSensors,
+        OperatorContext context,
+        PlanNodeId sourceId,
+        List<ColumnSchema> columnSchemas,
+        int[] columnsIndexArray,
+        List<DeviceEntry> deviceEntries,
+        Ordering scanOrder,
+        SeriesScanOptions seriesScanOptions,
+        List<String> measurementColumnNames,
+        List<IMeasurementSchema> measurementSchemas,
+        int maxTsBlockLineNum) {
+      this.allSensors = allSensors;
+      this.context = context;
+      this.sourceId = sourceId;
+      this.columnSchemas = columnSchemas;
+      this.columnsIndexArray = columnsIndexArray;
+      this.deviceEntries = deviceEntries;
+      this.scanOrder = scanOrder;
+      this.seriesScanOptions = seriesScanOptions;
+      this.measurementColumnNames = measurementColumnNames;
+      this.measurementSchemas = measurementSchemas;
+      this.maxTsBlockLineNum = maxTsBlockLineNum;
+    }
   }
 }

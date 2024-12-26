@@ -19,43 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-
-import java.util.List;
-import java.util.Set;
 
 public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(
-      OperatorContext context,
-      PlanNodeId sourceId,
-      List<ColumnSchema> columnSchemas,
-      int[] columnsIndexArray,
-      List<DeviceEntry> deviceEntries,
-      Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions,
-      List<String> measurementColumnNames,
-      Set<String> allSensors,
-      List<IMeasurementSchema> measurementSchemas,
-      int maxTsBlockLineNum) {
-    super(
-        context,
-        sourceId,
-        columnSchemas,
-        columnsIndexArray,
-        deviceEntries,
-        scanOrder,
-        seriesScanOptions,
-        measurementColumnNames,
-        allSensors,
-        measurementSchemas,
-        maxTsBlockLineNum);
+  public TableScanOperator(AbstractTableScanOperatorParameter parameter) {
+    super(parameter);
   }
 
   @Override
