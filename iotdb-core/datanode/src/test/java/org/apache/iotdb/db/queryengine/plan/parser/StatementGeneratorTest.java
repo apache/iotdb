@@ -215,9 +215,9 @@ public class StatementGeneratorTest {
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
     List<Tablet.ColumnCategory> tsfileColumnCategories =
         Arrays.asList(
-            Tablet.ColumnCategory.ID,
+            Tablet.ColumnCategory.TAG,
             Tablet.ColumnCategory.ATTRIBUTE,
-            Tablet.ColumnCategory.MEASUREMENT);
+            Tablet.ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
             .map(TsTableColumnCategory::fromTsFileColumnType)

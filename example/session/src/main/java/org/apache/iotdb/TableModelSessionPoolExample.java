@@ -108,12 +108,12 @@ public class TableModelSessionPoolExample {
       List<ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  ColumnCategory.ID,
-                  ColumnCategory.ID,
-                  ColumnCategory.ID,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
                   ColumnCategory.ATTRIBUTE,
-                  ColumnCategory.MEASUREMENT,
-                  ColumnCategory.MEASUREMENT));
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
       Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();

@@ -79,11 +79,11 @@ public enum TsTableColumnCategory {
   public ColumnCategory toTsFileColumnType() {
     switch (this) {
       case TAG:
-        return ColumnCategory.ID;
+        return ColumnCategory.TAG;
       case ATTRIBUTE:
         return ColumnCategory.ATTRIBUTE;
       case FIELD:
-        return ColumnCategory.MEASUREMENT;
+        return ColumnCategory.FIELD;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
@@ -91,9 +91,9 @@ public enum TsTableColumnCategory {
 
   public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
     switch (columnType) {
-      case MEASUREMENT:
+      case FIELD:
         return FIELD;
-      case ID:
+      case TAG:
         return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;

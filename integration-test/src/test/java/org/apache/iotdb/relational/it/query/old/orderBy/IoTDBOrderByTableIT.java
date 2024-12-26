@@ -1477,13 +1477,13 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
       final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.TAG,
               Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT);
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
@@ -1532,13 +1532,13 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
       final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.TAG,
               Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT);
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =

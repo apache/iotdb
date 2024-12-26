@@ -187,10 +187,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD, ColumnCategory.FIELD);
       Tablet tablet =
           new Tablet(
               "sg6",
@@ -576,7 +573,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
 
@@ -624,7 +621,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
       List<String> fieldIds =
           schemaList.stream()
               .map(IMeasurementSchema::getMeasurementName)
@@ -673,7 +670,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -728,7 +725,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -805,18 +802,18 @@ public class IoTDBInsertTableIT {
       schemas.add(new MeasurementSchema("date", TSDataType.DATE));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
+              ColumnCategory.TAG,
               ColumnCategory.ATTRIBUTE,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -947,7 +944,7 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
 
       // all expired
       long timestamp = 0;
@@ -1022,10 +1019,10 @@ public class IoTDBInsertTableIT {
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
+              ColumnCategory.TAG,
               ColumnCategory.ATTRIBUTE,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =

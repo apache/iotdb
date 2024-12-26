@@ -382,15 +382,15 @@ public class TableModelUtils {
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT);
+            Tablet.ColumnCategory.TAG,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,

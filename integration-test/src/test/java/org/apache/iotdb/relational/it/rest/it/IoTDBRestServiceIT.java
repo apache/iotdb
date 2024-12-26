@@ -21,9 +21,9 @@ package org.apache.iotdb.relational.it.rest.it;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.google.gson.JsonArray;
@@ -50,7 +50,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class, RemoteIT.class})
 public class IoTDBRestServiceIT {
 
   private int port = 18080;
@@ -276,7 +276,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_types\":[\"ID\",\"ATTRIBUTE\",\"MEASUREMENT\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_types\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     rightInsertTablet(json);
   }
 
@@ -288,7 +288,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"\",\"column_types\":[\"ID\",\"ATTRIBUTE\",\"MEASUREMENT\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"\",\"column_types\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
   }
@@ -301,7 +301,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_types\":[\"ATTRIBUTE\",\"field\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_types\":[\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"id1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
     assertEquals(
@@ -317,7 +317,7 @@ public class IoTDBRestServiceIT {
       RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
     }
     String json =
-        "{\"database\":\"test\",\"column_types\":[\"ID\",\"ATTRIBUTE\",\"MEASUREMENT\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+        "{\"database\":\"test\",\"column_types\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
     assertEquals(

@@ -88,10 +88,7 @@ public class IoTDBInsertTableSessionPoolIT {
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD, ColumnCategory.FIELD);
       Tablet tablet =
           new Tablet(
               "sg6",
@@ -193,18 +190,18 @@ public class IoTDBInsertTableSessionPoolIT {
       schemas.add(new MeasurementSchema("date", TSDataType.DATE));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
+              ColumnCategory.TAG,
               ColumnCategory.ATTRIBUTE,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
