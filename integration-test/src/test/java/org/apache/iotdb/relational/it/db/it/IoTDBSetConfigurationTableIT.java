@@ -125,6 +125,14 @@ public class IoTDBSetConfigurationTableIT {
                     checkConfigFileContains(
                         nodeWrapper,
                         "enable_seq_space_compaction=false",
+                        "enable_cross_space_compaction=false")));
+    Assert.assertTrue(
+        EnvFactory.getEnv().getDataNodeWrapperList().subList(0, 1).stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_seq_space_compaction=false",
                         "enable_cross_space_compaction=false",
                         "inner_compaction_candidate_file_num=1",
                         "max_cross_compaction_candidate_file_num=1")));
