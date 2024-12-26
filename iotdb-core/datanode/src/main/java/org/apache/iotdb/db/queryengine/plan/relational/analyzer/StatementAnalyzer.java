@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStat
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -411,6 +412,7 @@ public class StatementAnalyzer {
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
+      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseRawExpression(
@@ -463,6 +465,7 @@ public class StatementAnalyzer {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
       node.parseTable(sessionContext);
+      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {

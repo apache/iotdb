@@ -37,7 +37,7 @@ public class AddTableColumnProcedureTest {
   public void serializeDeserializeTest() throws IOException {
     final AddTableColumnProcedure addTableColumnProcedure =
         new AddTableColumnProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),

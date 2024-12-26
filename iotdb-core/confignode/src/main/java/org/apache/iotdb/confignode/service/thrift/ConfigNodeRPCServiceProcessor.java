@@ -529,63 +529,70 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
+  public TSStatus deleteDatabase(final TDeleteDatabaseReq tDeleteReq) {
     return configManager.deleteDatabases(
         new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
             .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe()));
   }
 
   @Override
-  public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
+  public TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
     return configManager.deleteDatabases(tDeleteReq);
   }
 
   @Override
-  public TSStatus setTTL(TSetTTLReq req) throws TException {
+  public TSStatus setTTL(final TSetTTLReq req) throws TException {
     return configManager.setTTL(new SetTTLPlan(req.getPathPattern(), req.getTTL()));
   }
 
   @Override
-  public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
+  public TSStatus setSchemaReplicationFactor(final TSetSchemaReplicationFactorReq req)
+      throws TException {
     return configManager.setSchemaReplicationFactor(
         new SetSchemaReplicationFactorPlan(req.getDatabase(), req.getSchemaReplicationFactor()));
   }
 
   @Override
-  public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
+  public TSStatus setDataReplicationFactor(final TSetDataReplicationFactorReq req)
+      throws TException {
     return configManager.setDataReplicationFactor(
         new SetDataReplicationFactorPlan(req.getDatabase(), req.getDataReplicationFactor()));
   }
 
   @Override
-  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+  public TSStatus setTimePartitionInterval(final TSetTimePartitionIntervalReq req)
+      throws TException {
     return configManager.setTimePartitionInterval(
         new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
   }
 
   @Override
-  public TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req) {
-    PathPatternTree scope =
+  public TCountDatabaseResp countMatchedDatabases(final TGetDatabaseReq req) {
+    final PathPatternTree scope =
         req.getScopePatternTree() == null
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-    CountDatabasePlan plan = new CountDatabasePlan(req.getDatabasePathPattern(), scope);
-    CountDatabaseResp countDatabaseResp =
+    final CountDatabasePlan plan =
+        new CountDatabasePlan(
+            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+    final CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
-    TCountDatabaseResp resp = new TCountDatabaseResp();
+    final TCountDatabaseResp resp = new TCountDatabaseResp();
     countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
     return resp;
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) {
-    PathPatternTree scope =
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(final TGetDatabaseReq req) {
+    final PathPatternTree scope =
         req.getScopePatternTree() == null
             ? SchemaConstant.ALL_MATCH_SCOPE
             : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
-    GetDatabasePlan plan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
-    DatabaseSchemaResp databaseSchemaResp =
+    final GetDatabasePlan plan =
+        new GetDatabasePlan(
+            req.getDatabasePathPattern(), scope, req.isSetIsTableModel() && req.isIsTableModel());
+    final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
@@ -614,29 +621,25 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(final TSchemaPartitionReq req) {
-    final PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getSchemaPartition(
-        patternTree, req.isSetIsTableModel() && req.isIsTableModel());
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
   }
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     return configManager.getSchemaPartition(dbSlotMap);
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
-    PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(final TSchemaPartitionReq req) {
     return configManager.getOrCreateSchemaPartition(
-        patternTree, req.isSetIsTableModel() && req.isIsTableModel());
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())));
   }
 
   @Override
   public TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(
-      Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+      final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
     return configManager.getOrCreateSchemaPartition(dbSlotMap);
   }
 
@@ -909,18 +912,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus flush(TFlushReq req) throws TException {
+  public TSStatus flush(final TFlushReq req) throws TException {
     if (req.storageGroups != null) {
-      List<PartialPath> noExistSg =
-          configManager
-              .getPartitionManager()
-              .filterUnExistDatabases(PartialPath.fromStringList(req.storageGroups));
+      final List<String> noExistSg =
+          configManager.getPartitionManager().filterUnExistDatabases(req.storageGroups);
       if (!noExistSg.isEmpty()) {
-        StringBuilder sb = new StringBuilder();
-        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        final StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
-            "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
+            "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }
     return configManager.flush(req);
@@ -983,10 +984,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) {
-    GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
-    RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
-    TShowRegionResp showRegionResp = new TShowRegionResp();
+  public TShowRegionResp showRegion(final TShowRegionReq showRegionReq) {
+    final GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
+    final RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
+    final TShowRegionResp showRegionResp = new TShowRegionResp();
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;
@@ -1266,7 +1267,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+  public TSStatus setSpaceQuota(final TSetSpaceQuotaReq req) throws TException {
     return configManager.setSpaceQuota(req);
   }
 

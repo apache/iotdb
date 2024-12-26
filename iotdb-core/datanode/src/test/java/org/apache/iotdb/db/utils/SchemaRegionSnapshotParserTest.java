@@ -143,7 +143,7 @@ public class SchemaRegionSnapshotParserTest {
       throws Exception {
     final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
-      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+      SchemaEngine.getInstance().createSchemaRegion(database, regionId);
     }
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }
@@ -572,42 +572,42 @@ public class SchemaRegionSnapshotParserTest {
     // ----------------------------------------------------------------------
     //                            Schema Tree
     // ----------------------------------------------------------------------
-    // This test will construct a complicated mtree. This tree will have
-    // aligned timeseries, tags and attributes, normal timeseries device template.
+    // This test will construct a complicated mTree. This tree will have
+    // aligned timeSeries, tags and attributes, normal timeSeries device template.
     //
     //
     //
-    //                          status(BOOLEAN, RLE) alias(stat)
-    //                         /
-    //                      t2------temperature(INT64, TS_2DIFF,LZ4)
-    //                     /
-    //          sg1------s1------t1(activate template: t1)
-    //         /
-    // root ->|
-    //         \
-    //          sg2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
-    //            \
-    //             t2-------level{tags:"tag1"="t1", attributes: "attri1"="attr1"}
+    //                               status(BOOLEAN, RLE) alias(stat)
+    //                              /
+    //                           t2------temperature(INT64, TS_2DIFF,LZ4)
+    //                          /
+    //               sg1------s1------t1(activate template: t1)
+    //              /
+    // root -> db ->|
     //              \
-    //                t1(aligned)-------temperature(INT32, TS_2DIFF, LZ4){attributes:"attr1"="a1"}
-    //                     \
-    //                      level(INT32m RLE){tags:"tag1"="t1"} alias(lev)
+    //               sg2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
+    //                 \
+    //                  t2-------level{tags:"tag1"="t1", attributes: "attri1"="attr1"}
+    //                   \
+    //                 t1(aligned)-------temperature(INT32, TS_2DIFF, LZ4){attributes:"attr1"="a1"}
+    //                          \
+    //                          level(INT32m RLE){tags:"tag1"="t1"} alias(lev)
     //
     //
-    final ISchemaRegion schemaRegion = getSchemaRegion("root", 0);
-    final PartialPath databasePath = new PartialPath("root");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final PartialPath databasePath = new PartialPath("root.db");
     final Template template = new Template();
     template.setId(1);
     template.addMeasurement("date", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
     final HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
     planMap.put(
-        "root.sg1.s1.t1",
+        "root.db.sg1.s1.t1",
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg1.s1.t1"), 3, 1));
+            new PartialPath("root.db.sg1.s1.t1"), 3, 1));
     planMap.put(
-        "root.sg1.s1.t2.temperature",
+        "root.db.sg1.s1.t2.temperature",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg1.s1.t2.temperature"),
+            new MeasurementPath("root.db.sg1.s1.t2.temperature"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -616,9 +616,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg1.s1.t2.status",
+        "root.db.sg1.s1.t2.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg1.s1.t2.status"),
+            new MeasurementPath("root.db.sg1.s1.t2.status"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -627,9 +627,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             "statusA"));
     planMap.put(
-        "root.sg2.t1",
+        "root.db.sg2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg2.t1"),
+            new PartialPath("root.db.sg2.t1"),
             new ArrayList<String>() {
               {
                 add("status");
@@ -671,9 +671,9 @@ public class SchemaRegionSnapshotParserTest {
               }
             }));
     planMap.put(
-        "root.sg2.t2.level",
+        "root.db.sg2.t2.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg2.t2.level"),
+            new MeasurementPath("root.db.sg2.t2.level"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.UNCOMPRESSED,
@@ -690,9 +690,9 @@ public class SchemaRegionSnapshotParserTest {
             },
             null));
     planMap.put(
-        "root.sg2.t2.t1",
+        "root.db.sg2.t2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg2.t2.t1"),
+            new PartialPath("root.db.sg2.t2.t1"),
             new ArrayList<String>() {
               {
                 add("temperature");

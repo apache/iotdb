@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -166,7 +167,7 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitPlan(
         final PlanNode node, final WritePlanNodeExecutionContext context) {
 
-      if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (CommonDescriptor.getInstance().getConfig().isReadOnly() && !isForceExecutedPlan(node)) {
         return RegionExecutionResult.create(
             false,
             "Fail to do non-query operations because system is read-only.",
@@ -189,6 +190,10 @@ public class RegionWriteExecutor {
         }
         return RegionExecutionResult.create(false, e.toString(), status);
       }
+    }
+
+    private boolean isForceExecutedPlan(final PlanNode node) {
+      return node instanceof TableNodeLocationAddNode;
     }
 
     private TSStatus executePlanNodeInConsensusLayer(

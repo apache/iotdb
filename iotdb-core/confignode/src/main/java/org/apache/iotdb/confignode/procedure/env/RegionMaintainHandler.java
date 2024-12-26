@@ -97,6 +97,10 @@ public class RegionMaintainHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
+  public String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
+    return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
+  }
+
   /**
    * Find dest data node.
    *
@@ -399,15 +403,30 @@ public class RegionMaintainHandler {
    * @return DataNode locations
    */
   public List<TDataNodeLocation> findRegionLocations(TConsensusGroupId regionId) {
-    Optional<TRegionReplicaSet> regionReplicaSet =
-        configManager.getPartitionManager().getAllReplicaSets().stream()
-            .filter(rg -> rg.regionId.equals(regionId))
-            .findAny();
+    Optional<TRegionReplicaSet> regionReplicaSet = getRegionReplicaSet(regionId);
     if (regionReplicaSet.isPresent()) {
       return regionReplicaSet.get().getDataNodeLocations();
     }
-
     return Collections.emptyList();
+  }
+
+  public Optional<TRegionReplicaSet> getRegionReplicaSet(TConsensusGroupId regionId) {
+    return configManager.getPartitionManager().getAllReplicaSets().stream()
+        .filter(rg -> rg.regionId.equals(regionId))
+        .findAny();
+  }
+
+  public String getRegionReplicaSetString(TConsensusGroupId regionId) {
+    Optional<TRegionReplicaSet> regionReplicaSet = getRegionReplicaSet(regionId);
+    if (!regionReplicaSet.isPresent()) {
+      return "UNKNOWN!";
+    }
+    StringBuilder result = new StringBuilder(regionReplicaSet.get().getRegionId() + ": {");
+    for (TDataNodeLocation dataNodeLocation : regionReplicaSet.get().getDataNodeLocations()) {
+      result.append(simplifiedLocation(dataNodeLocation)).append(", ");
+    }
+    result.append("}");
+    return result.toString();
   }
 
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(

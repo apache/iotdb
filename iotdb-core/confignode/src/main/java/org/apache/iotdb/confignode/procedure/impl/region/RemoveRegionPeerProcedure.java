@@ -106,9 +106,11 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "[pid{}][RemoveRegion] {} task submitted failed, procedure will continue. You should manually clear peer list.",
+                "[pid{}][RemoveRegion] {} task submitted failed, ConfigNode believe current peer list of {} is {}. Procedure will continue. You should manually clear peer list.",
                 getProcId(),
-                state);
+                state,
+                consensusGroupId,
+                handler.getRegionReplicaSetString(consensusGroupId));
             setNextState(DELETE_OLD_REGION_PEER);
             return Flow.HAS_MORE_STATE;
           }
@@ -116,9 +118,11 @@ public class RemoveRegionPeerProcedure
               handler.waitTaskFinish(this.getProcId(), coordinator);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             LOGGER.warn(
-                "[pid{}][RemoveRegion] {} executed failed, procedure will continue. You should manually clear peer list.",
+                "[pid{}][RemoveRegion] {} executed failed, ConfigNode believe current peer list of {} is {}. Procedure will continue. You should manually clear peer list.",
                 getProcId(),
-                state);
+                state,
+                consensusGroupId,
+                handler.getRegionReplicaSetString(consensusGroupId));
             setNextState(DELETE_OLD_REGION_PEER);
             return Flow.HAS_MORE_STATE;
           }
@@ -132,8 +136,9 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.",
-                getProcId());
+                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file. {}",
+                getProcId(),
+                consensusGroupId);
             setNextState(REMOVE_REGION_LOCATION_CACHE);
             return Flow.HAS_MORE_STATE;
           }
@@ -141,8 +146,9 @@ public class RemoveRegionPeerProcedure
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
           if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             LOGGER.warn(
-                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.",
-                getProcId());
+                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file. {}",
+                getProcId(),
+                consensusGroupId);
             setNextState(REMOVE_REGION_LOCATION_CACHE);
             return Flow.HAS_MORE_STATE;
           }

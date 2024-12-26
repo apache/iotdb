@@ -41,6 +41,7 @@ import java.util.Optional;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache.getDeviceColumnHeaderList;
 
 // TODO table metadata: reuse query distinct logic
+// Show, Count, Update, Delete Devices
 public abstract class AbstractTraverseDevice extends Statement {
 
   protected String database;

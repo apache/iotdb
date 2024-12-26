@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -289,11 +290,11 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan);
 
     if (analysis.isQuery()) {
-      long distributionPlanCost = System.nanoTime() - startTime;
+      final long distributionPlanCost = System.nanoTime() - startTime;
       context.setDistributionPlanCost(distributionPlanCost);
       QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
           TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
@@ -690,8 +691,8 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public String getSQLDialect() {
-    return context.getSession().getSqlDialect().toString();
+  public IClientSession.SqlDialect getSQLDialect() {
+    return context.getSession().getSqlDialect();
   }
 
   public MPPQueryContext getContext() {

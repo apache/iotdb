@@ -34,7 +34,7 @@ public class DropTableProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final DropTableProcedure dropTableProcedure =
-        new DropTableProcedure("root.database1", "table1", "0", false);
+        new DropTableProcedure("database1", "table1", "0", false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
