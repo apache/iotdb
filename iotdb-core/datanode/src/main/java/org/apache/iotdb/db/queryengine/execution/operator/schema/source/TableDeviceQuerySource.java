@@ -231,7 +231,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           schemaInfo, builder, database, tableName, columnHeaderList, beginIndex);
     } else {
       transformToTreeDeviceTsBlockColumns(
-          schemaInfo, builder, database, tableName, columnHeaderList);
+          schemaInfo, builder, database, tableName, columnHeaderList, beginIndex);
     }
   }
 
@@ -277,7 +277,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final TsBlockBuilder builder,
       final String database,
       final String tableName,
-      final List<ColumnHeader> columnHeaderList) {
+      final List<ColumnHeader> columnHeaderList,
+      final int beginIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
@@ -286,13 +287,16 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        if (pathNodes.length <= resultIndex + 2 || pathNodes[resultIndex + 2] == null) {
+      if (Objects.nonNull(columnSchema)
+          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (pathNodes.length <= resultIndex + beginIndex
+            || pathNodes[resultIndex + beginIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(new Binary(pathNodes[resultIndex + 2], TSFileConfig.STRING_CHARSET));
+              .writeBinary(
+                  new Binary(pathNodes[resultIndex + beginIndex], TSFileConfig.STRING_CHARSET));
         }
         resultIndex++;
       }
