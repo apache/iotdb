@@ -294,6 +294,9 @@ public class LocalExecutionPlanner {
   }
 
   public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
+    if (memoryInBytes < 0) {
+      throw new IllegalStateException("release bytes should never be negative");
+    }
     freeMemoryForOperators += memoryInBytes;
 
     if (freeMemoryForOperators > ALLOCATE_MEMORY_FOR_OPERATORS) {
@@ -303,6 +306,7 @@ public class LocalExecutionPlanner {
           ALLOCATE_MEMORY_FOR_OPERATORS,
           memoryInBytes);
       freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
+      throw new IllegalStateException("The free memory is more than allocated memory.");
     }
   }
 
