@@ -33,12 +33,12 @@ public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
 
   private TDatabaseSchema schema;
 
-  public DatabaseSchemaPlan(final ConfigPhysicalPlanType planType) {
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
     super(planType);
     this.schema = new TDatabaseSchema();
   }
 
-  public DatabaseSchemaPlan(final ConfigPhysicalPlanType planType, final TDatabaseSchema schema) {
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TDatabaseSchema schema) {
     this(planType);
     this.schema = schema;
   }
@@ -48,25 +48,25 @@ public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(final DataOutputStream stream) throws IOException {
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, stream);
   }
 
   @Override
-  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     schema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
   }
 
   @Override
-  public boolean equals(final Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
+    DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
     return schema.equals(that.schema);
   }
 

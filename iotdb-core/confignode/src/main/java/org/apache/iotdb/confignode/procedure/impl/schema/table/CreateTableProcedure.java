@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;

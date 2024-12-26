@@ -46,7 +46,8 @@ public class CreateTableProcedureTest {
     table.addColumnSchema(
         new MeasurementColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
-    final CreateTableProcedure createTableProcedure = new CreateTableProcedure("database1", table, false);
+    final CreateTableProcedure createTableProcedure =
+        new CreateTableProcedure("database1", table, false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

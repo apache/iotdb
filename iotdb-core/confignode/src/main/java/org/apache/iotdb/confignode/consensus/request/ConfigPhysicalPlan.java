@@ -204,9 +204,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case AlterDatabase:
           plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase);
           break;
-        case DeleteDatabaseV2:
-          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.DeleteDatabaseV2);
-          break;
         case SetTTL:
           plan = new SetTTLPlan();
           break;

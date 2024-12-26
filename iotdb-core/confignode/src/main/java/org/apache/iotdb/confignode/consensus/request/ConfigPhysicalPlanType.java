@@ -55,7 +55,6 @@ public enum ConfigPhysicalPlanType {
   CountDatabase((short) 209),
   AlterDatabase((short) 210),
   ShowTTL((short) 211),
-  DeleteDatabaseV2((short) 212),
 
   /** Region. */
   CreateRegionGroups((short) 300),

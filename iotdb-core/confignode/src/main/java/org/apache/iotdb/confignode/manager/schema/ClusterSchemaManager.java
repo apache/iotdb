@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
@@ -267,8 +268,7 @@ public class ClusterSchemaManager {
   }
 
   /** Delete DatabaseSchema. */
-  public TSStatus deleteDatabase(
-      final DatabaseSchemaPlan deleteDatabasePlan, final boolean isGeneratedByPipe) {
+  public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan, boolean isGeneratedByPipe) {
     TSStatus result;
     try {
       result =
@@ -277,7 +277,7 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(deleteDatabasePlan)
                       : deleteDatabasePlan);
-    } catch (final ConsensusException e) {
+    } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
