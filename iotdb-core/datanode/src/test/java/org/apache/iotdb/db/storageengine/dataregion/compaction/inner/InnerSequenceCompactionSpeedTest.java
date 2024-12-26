@@ -162,9 +162,8 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
       t.interrupt();
       latch.await();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setCompactionReadOperationPerSec(compactionReadOperationPerSec);
+      CompactionTaskManager.getInstance()
+          .setCompactionReadOperationRate(compactionReadOperationPerSec);
     }
   }
 }
