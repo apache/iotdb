@@ -200,7 +200,7 @@ public class MTreeBelowSGMemoryImpl {
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
-        PartialPath.getDatabasePath(storageGroupFullPath),
+        PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
             snapshotDir,
             measurementProcess,

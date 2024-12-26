@@ -88,10 +88,10 @@ public class AddRegionPeerProcedure
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           LOGGER.info(
-              "[pid{}][AddRegion] started, region {} will be added to DataNode {}.",
+              "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
               getProcId(),
-              consensusGroupId.getId(),
-              destDataNode.getDataNodeId());
+              consensusGroupId,
+              handler.simplifiedLocation(destDataNode));
           handler.addRegionLocation(consensusGroupId, destDataNode);
           handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
@@ -138,10 +138,10 @@ public class AddRegionPeerProcedure
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
-              "[pid{}][AddRegion] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
-              consensusGroupId.getId(),
-              destDataNode.getDataNodeId(),
+              consensusGroupId,
+              handler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
