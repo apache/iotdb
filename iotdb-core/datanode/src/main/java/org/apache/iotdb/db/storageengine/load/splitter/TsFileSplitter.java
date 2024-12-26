@@ -61,7 +61,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Function;
 
 public class TsFileSplitter {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
@@ -421,13 +420,12 @@ public class TsFileSplitter {
     }
   }
 
-  private void handleModification(
-      TreeMap<Long, List<Deletion>> offset2Deletions, long chunkOffset) {
+  private void handleModification(TreeMap<Long, List<Deletion>> offset2Deletions, long chunkOffset)
+      throws LoadFileException {
     while (!offset2Deletions.isEmpty() && offset2Deletions.firstEntry().getKey() <= chunkOffset) {
-      offset2Deletions
-          .pollFirstEntry()
-          .getValue()
-          .forEach(o -> consumer.apply(new DeletionData(o)));
+      for (Deletion deletion : offset2Deletions.pollFirstEntry().getValue()) {
+        consumer.apply(new DeletionData(deletion));
+      }
     }
   }
 
