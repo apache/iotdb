@@ -278,9 +278,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return false;
     }
 
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .deregister(pipeName + "_" + creationTime);
-
     return true;
   }
 
@@ -291,12 +288,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     if (!super.dropPipe(pipeName)) {
       return false;
-    }
-
-    if (Objects.nonNull(pipeMeta)) {
-      final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .deregister(pipeName + "_" + creationTime);
     }
 
     return true;

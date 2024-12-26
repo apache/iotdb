@@ -684,6 +684,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
       PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .deregister(getPipeName() + "_" + getCreationTime());
     }
   }
 

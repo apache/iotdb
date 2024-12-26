@@ -171,6 +171,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     }
     if (Objects.nonNull(taskID)) {
       PipeSchemaRegionExtractorMetrics.getInstance().deregister(taskID);
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .deregister(getPipeName() + "_" + getCreationTime());
     }
   }
 }

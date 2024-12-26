@@ -48,6 +48,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
   private final AtomicInteger tsfileEventCount = new AtomicInteger(0);
   private final AtomicInteger heartbeatEventCount = new AtomicInteger(0);
 
+  private final AtomicInteger registeredCount = new AtomicInteger(0);
+
   private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
   private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
   private final IoTDBHistogram collectInvocationHistogram =
@@ -84,6 +86,14 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   void decreaseHeartbeatEventCount() {
     heartbeatEventCount.decrementAndGet();
+  }
+
+  int increaseRegisteredCount() {
+    return registeredCount.incrementAndGet();
+  }
+
+  int decreaseRegisteredCount() {
+    return registeredCount.decrementAndGet();
   }
 
   long getRemainingEvents() {
