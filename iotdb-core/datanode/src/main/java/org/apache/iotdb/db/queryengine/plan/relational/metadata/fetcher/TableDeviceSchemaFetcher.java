@@ -536,7 +536,7 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      final String[] nodes = new String[tableInstance.getIdNums()];
+      final String[] nodes = new String[tableInstance.getIdNums() + 1];
       constructNodsArrayAndAttributeMap(
           Collections.emptyMap(),
           nodes,
