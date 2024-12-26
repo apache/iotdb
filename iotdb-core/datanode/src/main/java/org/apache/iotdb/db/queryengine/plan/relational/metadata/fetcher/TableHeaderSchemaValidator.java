@@ -343,7 +343,7 @@ public class TableHeaderSchemaValidator {
       switch (inputColumn.getColumnCategory()) {
         case TAG:
           if (!inputColumn.getType().equals(StringType.STRING)) {
-            throw new SemanticException("Id column only support data type STRING.");
+            throw new SemanticException("Tag column only support data type STRING.");
           }
           columnSchemaList.add(new TagColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
