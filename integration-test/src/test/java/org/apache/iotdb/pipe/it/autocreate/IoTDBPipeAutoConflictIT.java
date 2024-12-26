@@ -379,4 +379,52 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,RLE,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
     }
   }
+
+  @Test
+  public void testHistoricalActivationRace() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.sg_aligned",
+              "create device template aligned_template aligned (s0 int32, s1 int64, s2 float, s3 double, s4 boolean, s5 text)",
+              "set device template aligned_template to root.sg_aligned.device_aligned",
+              "create timeseries using device template on root.sg_aligned.device_aligned.d10",
+              "create timeseries using device template on root.sg_aligned.device_aligned.d12",
+              "insert into root.sg_aligned.device_aligned.d10(time, s0, s1, s2,s3,s4,s5) values (-1,1,10,5.39,5.51234,false,'negative')"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count devices", "count(devices),", Collections.singleton("2,"));
+    }
+  }
 }
