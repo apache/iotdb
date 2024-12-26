@@ -3076,11 +3076,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+    final String database = useDB.getDatabaseId().getValue();
+    if (InformationSchemaUtils.mayUseDB(database, clientSession, future)) {
       return future;
     }
     // Construct request using statement
-    final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
+    final List<String> databasePathPattern = Arrays.asList(ROOT, database);
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -3088,13 +3089,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
-      if (!resp.getDatabaseInfoMap().isEmpty()) {
-        clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
+      if (resp.getDatabaseInfoMap().containsKey(database)) {
+        clientSession.setDatabaseName(database);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(
             new IoTDBException(
-                String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
+                String.format("Unknown database %s", database),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
     } catch (final IOException | ClientManagerException | TException e) {

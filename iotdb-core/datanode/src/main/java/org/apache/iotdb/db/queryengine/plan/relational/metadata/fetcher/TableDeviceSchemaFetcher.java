@@ -329,7 +329,7 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    return isTreeViewQuery
+    return !isTreeViewQuery
         ? tryGetTableDeviceInCache(
             deviceEntryList,
             database,
