@@ -220,10 +220,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       return true;
     }
     if ((this.getCompactionTaskType() != CompactionTaskType.REPAIR)
-            && (filesView.sequence
+        && ((filesView.sequence
                 && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
-        || (!filesView.sequence
-            && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction())) {
+            || (!filesView.sequence
+                && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction()))) {
       return true;
     }
     if (this.compactionConfigVersion
