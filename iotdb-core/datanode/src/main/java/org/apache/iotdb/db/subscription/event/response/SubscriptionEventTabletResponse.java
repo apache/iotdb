@@ -205,7 +205,6 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
               SubscriptionPollResponseType.TABLETS.getType(),
               new TabletsPayload(Collections.emptyList(), -totalTablets),
               commitContext);
-      LOGGER.warn("[DEBUG] batch {} has no more", batch);
       hasNoMore = true;
     } else {
       response =
