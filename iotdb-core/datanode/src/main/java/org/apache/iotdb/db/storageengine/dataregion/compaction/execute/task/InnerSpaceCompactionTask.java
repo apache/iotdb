@@ -239,8 +239,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    if ((filesView.sequence
-            && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
+    if ((this.getCompactionTaskType() != CompactionTaskType.REPAIR)
+            && (filesView.sequence
+                && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
         || (!filesView.sequence
             && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction())) {
       return true;
