@@ -32,6 +32,7 @@ import org.apache.tsfile.read.common.RowRecord;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -94,8 +95,12 @@ abstract class AbstractSubscriptionSession {
   private void createTopic(
       final String topicName, final Properties properties, final boolean isSetIfNotExistsCondition)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (properties.isEmpty()) {
-      createTopic(topicName);
+    if (Objects.isNull(properties) || properties.isEmpty()) {
+      if (isSetIfNotExistsCondition) {
+        createTopicIfNotExists(topicName);
+      } else {
+        createTopic(topicName);
+      }
       return;
     }
     final StringBuilder sb = new StringBuilder();

@@ -2592,10 +2592,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Create database
   @Override
-  public Statement visitCreateDatabase(IoTDBSqlParser.CreateDatabaseContext ctx) {
-    DatabaseSchemaStatement databaseSchemaStatement =
+  public Statement visitCreateDatabase(final IoTDBSqlParser.CreateDatabaseContext ctx) {
+    final DatabaseSchemaStatement databaseSchemaStatement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    final PartialPath path = parsePrefixPath(ctx.prefixPath());
     databaseSchemaStatement.setDatabasePath(path);
     if (ctx.databaseAttributesClause() != null) {
       parseDatabaseAttributesClause(databaseSchemaStatement, ctx.databaseAttributesClause());

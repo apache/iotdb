@@ -125,7 +125,7 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
     // omit subscription events here
-    result.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
+    result.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 100));
     return result;
   }
 
