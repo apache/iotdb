@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -283,7 +283,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     columnHeaderList.forEach(
         columnHeader ->
             testTable.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
     DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
     DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);

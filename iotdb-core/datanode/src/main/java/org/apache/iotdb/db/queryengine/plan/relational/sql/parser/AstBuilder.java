@@ -2512,18 +2512,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static TsTableColumnCategory getColumnCategory(Token category) {
+  private static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
       return FIELD;
     }
     switch (category.getType()) {
-      case RelationalSqlLexer.ID:
+      case RelationalSqlLexer.TAG:
         return TAG;
       case RelationalSqlLexer.ATTRIBUTE:
         return ATTRIBUTE;
       case RelationalSqlLexer.TIME:
         return TIME;
-      case RelationalSqlLexer.MEASUREMENT:
+      case RelationalSqlLexer.FIELD:
         return FIELD;
       default:
         throw new UnsupportedOperationException(

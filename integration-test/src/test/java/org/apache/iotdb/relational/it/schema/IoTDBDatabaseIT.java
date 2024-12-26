@@ -295,7 +295,7 @@ public class IoTDBDatabaseIT {
 
       statement.execute("use \"````x\"");
 
-      statement.execute("create table table0 (a id, b attribute, c int32)");
+      statement.execute("create table table0 (a tag, b attribute, c int32)");
 
       statement.execute("desc table0");
       statement.execute("desc \"````x\".table0");
@@ -442,7 +442,7 @@ public class IoTDBDatabaseIT {
       // Test adjustMaxRegionGroupNum
       statement.execute("use test");
       statement.execute(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 

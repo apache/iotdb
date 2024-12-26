@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
@@ -239,7 +239,7 @@ public class StatementTestUtils {
     for (int i = 0; i < columnCategories.length; i++) {
       switch (columnCategories[i]) {
         case TAG:
-          tsTable.addColumnSchema(new IdColumnSchema(measurements[i], dataTypes[i]));
+          tsTable.addColumnSchema(new TagColumnSchema(measurements[i], dataTypes[i]));
           break;
         case ATTRIBUTE:
           tsTable.addColumnSchema(new AttributeColumnSchema(measurements[i], dataTypes[i]));
@@ -247,7 +247,7 @@ public class StatementTestUtils {
         case FIELD:
         default:
           tsTable.addColumnSchema(
-              new MeasurementColumnSchema(
+              new FieldColumnSchema(
                   measurements[i], dataTypes[i], TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
           break;
       }

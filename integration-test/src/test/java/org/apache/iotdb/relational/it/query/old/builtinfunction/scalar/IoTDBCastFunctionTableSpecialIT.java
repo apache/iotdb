@@ -46,7 +46,7 @@ public class IoTDBCastFunctionTableSpecialIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table special(device_id STRING ID, s1 DATE MEASUREMENT)",
+        "create table special(device_id STRING TAG, s1 DATE FIELD)",
         "INSERT INTO special(time, device_id, s1) values(1, 'd1', '2262-04-13')",
         "INSERT INTO special(time, device_id, s1) values(2, 'd1', '1677-09-21')",
       };

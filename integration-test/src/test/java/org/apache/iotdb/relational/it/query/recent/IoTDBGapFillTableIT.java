@@ -43,7 +43,7 @@ public class IoTDBGapFillTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE table1(city STRING ID, device_id STRING ID, s1 DOUBLE MEASUREMENT, s2 INT64 MEASUREMENT)",
+        "CREATE TABLE table1(city STRING TAG, device_id STRING TAG, s1 DOUBLE FIELD, s2 INT64 FIELD)",
         "INSERT INTO table1(time,city,device_id,s2) values(2024-09-24T06:15:46.565+00:00, 'shanghai', 'd1', 2)",
         "INSERT INTO table1(time,city,device_id,s1) values(2024-09-24T07:16:15.297+00:00, 'shanghai', 'd1', 27.2)",
         "INSERT INTO table1(time,city,device_id,s1) values(2024-09-24T08:16:21.907+00:00, 'shanghai', 'd1', 27.3)",

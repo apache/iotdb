@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -283,9 +283,9 @@ public class TableHeaderSchemaValidator {
       case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
-              "DataType of ID Column should only be STRING, current is " + dataType);
+              "DataType of TAG Column should only be STRING, current is " + dataType);
         }
-        return new IdColumnSchema(columnName, dataType);
+        return new TagColumnSchema(columnName, dataType);
       case ATTRIBUTE:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
@@ -296,7 +296,7 @@ public class TableHeaderSchemaValidator {
         throw new SemanticException(
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
-        return new MeasurementColumnSchema(
+        return new FieldColumnSchema(
             columnName,
             dataType,
             getDefaultEncoding(dataType),
@@ -343,9 +343,9 @@ public class TableHeaderSchemaValidator {
       switch (inputColumn.getColumnCategory()) {
         case TAG:
           if (!inputColumn.getType().equals(StringType.STRING)) {
-            throw new SemanticException("Id column only support data type STRING.");
+            throw new SemanticException("Tag column only support data type STRING.");
           }
-          columnSchemaList.add(new IdColumnSchema(inputColumn.getName(), TSDataType.STRING));
+          columnSchemaList.add(new TagColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
         case ATTRIBUTE:
           if (!inputColumn.getType().equals(StringType.STRING)) {
@@ -356,7 +356,7 @@ public class TableHeaderSchemaValidator {
         case FIELD:
           final TSDataType dataType = InternalTypeManager.getTSDataType(inputColumn.getType());
           columnSchemaList.add(
-              new MeasurementColumnSchema(
+              new FieldColumnSchema(
                   inputColumn.getName(),
                   dataType,
                   getDefaultEncoding(dataType),
