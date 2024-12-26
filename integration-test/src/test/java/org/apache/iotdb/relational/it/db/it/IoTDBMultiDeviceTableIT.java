@@ -257,7 +257,7 @@ public class IoTDBMultiDeviceTableIT {
   }
 
   @Test
-  public void testMulttageviceQueryAndDelete() {
+  public void testMultiDeviceQueryAndDelete() {
     testSelectAll();
     // TODO: add support
     // testSelectAfterDelete();
