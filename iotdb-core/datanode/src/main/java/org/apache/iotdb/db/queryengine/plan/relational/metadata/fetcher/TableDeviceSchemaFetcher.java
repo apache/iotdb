@@ -183,11 +183,7 @@ public class TableDeviceSchemaFetcher {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
     final boolean isTreeViewQuery = TreeViewSchema.isTreeViewDatabase(database);
-    final ShowDevice statement =
-        new ShowDevice(
-            isTreeViewQuery ? TreeViewSchemaUtils.getOriginalDatabase(tableInstance) : database,
-            table,
-            isTreeViewQuery);
+    final ShowDevice statement = new ShowDevice(database, table, isTreeViewQuery);
 
     if (parseFilter4TraverseDevice(
         tableInstance,
@@ -343,7 +339,11 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             idValues)
-        : tryGetTreeDeviceInCache(deviceEntryList, database, fetchPaths, idValues);
+        : tryGetTreeDeviceInCache(
+            deviceEntryList,
+            TreeViewSchemaUtils.getOriginalDatabase(tableInstance),
+            fetchPaths,
+            idValues);
   }
 
   private boolean tryGetTableDeviceInCache(
@@ -478,12 +478,7 @@ public class TableDeviceSchemaFetcher {
               deviceEntryList);
         } else {
           constructTreeResults(
-              tsBlock.get(),
-              columnHeaderList,
-              tableInstance,
-              statement,
-              mppQueryContext,
-              deviceEntryList);
+              tsBlock.get(), columnHeaderList, tableInstance, mppQueryContext, deviceEntryList);
         }
       }
     } catch (final Throwable throwable) {
@@ -537,7 +532,6 @@ public class TableDeviceSchemaFetcher {
       final TsBlock tsBlock,
       final List<ColumnHeader> columnHeaderList,
       final TsTable tableInstance,
-      final ShowDevice statement,
       final MPPQueryContext mppQueryContext,
       final List<DeviceEntry> deviceEntryList) {
     final Column[] columns = tsBlock.getValueColumns();
@@ -552,7 +546,8 @@ public class TableDeviceSchemaFetcher {
           tableInstance,
           i);
       final IDeviceID deviceID =
-          TreeViewSchemaUtils.convertToIDeviceID(statement.getDatabase(), nodes);
+          TreeViewSchemaUtils.convertToIDeviceID(
+              TreeViewSchemaUtils.getOriginalDatabase(tableInstance), nodes);
       final DeviceEntry deviceEntry =
           columns[columns.length - 1].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
