@@ -82,6 +82,8 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   protected List<TableAggregator> tableAggregators;
   protected final List<ColumnSchema> groupingKeySchemas;
   protected final int[] groupingKeyIndex;
+  protected final int groupingKeySize;
+  protected final int dateBinSize;
 
   protected final List<DeviceEntry> deviceEntries;
   protected final int deviceCount;
@@ -139,6 +141,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     this.tableAggregators = tableAggregators;
     this.groupingKeySchemas = groupingKeySchemas;
     this.groupingKeyIndex = groupingKeyIndex;
+    this.groupingKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
     this.aggColumnSchemas = aggColumnSchemas;
     this.aggColumnsIndexArray = aggColumnsIndexArray;
     this.deviceEntries = deviceEntries;
@@ -160,6 +163,10 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
     this.aggregatorInputChannels = aggregatorInputChannels;
     this.timeIterator = tableTimeRangeIterator;
+    this.dateBinSize =
+        timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
+            ? 1
+            : 0;
 
     constructAlignedSeriesScanUtil();
   }
@@ -317,7 +324,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   }
 
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, tableAggregators);
+    appendAggregationResult();
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
   }
@@ -693,56 +700,53 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
-  public void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder, List<? extends TableAggregator> aggregators) {
-
+  protected void appendAggregationResult() {
     // no data in current time range, just output empty
     if (!timeIterator.hasCachedTimeRange()) {
       return;
     }
 
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    appendGroupKeysToResult(currentDeviceIndex);
 
-    int groupKeySize = groupingKeySchemas == null ? 0 : groupingKeySchemas.size();
-    int dateBinSize =
-        timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
-            ? 1
-            : 0;
+    if (dateBinSize > 0) {
+      resultTsBlockBuilder.getValueColumnBuilders()[groupingKeySize].writeLong(
+          timeIterator.getCurTimeRange().getMin());
+    }
 
-    if (groupingKeyIndex != null) {
-      for (int i = 0; i < groupKeySize; i++) {
-        if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
-          String id =
-              (String) deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
-          if (id == null) {
-            columnBuilders[i].appendNull();
-          } else {
-            columnBuilders[i].writeBinary(new Binary(id, TSFileConfig.STRING_CHARSET));
-          }
+    for (int i = 0; i < tableAggregators.size(); i++) {
+      tableAggregators
+          .get(i)
+          .evaluate(
+              resultTsBlockBuilder.getValueColumnBuilders()[groupingKeySize + dateBinSize + i]);
+    }
+
+    resultTsBlockBuilder.declarePosition();
+  }
+
+  protected void appendGroupKeysToResult(int currentDeviceIndex) {
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+    for (int i = 0; i < groupingKeySize; i++) {
+      if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
+        String id =
+            (String) deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
+        if (id == null) {
+          columnBuilders[i].appendNull();
         } else {
-          Binary attribute =
-              deviceEntries
-                  .get(currentDeviceIndex)
-                  .getAttributeColumnValues()
-                  .get(groupingKeyIndex[i]);
-          if (attribute == null) {
-            columnBuilders[i].appendNull();
-          } else {
-            columnBuilders[i].writeBinary(attribute);
-          }
+          columnBuilders[i].writeBinary(new Binary(id, TSFileConfig.STRING_CHARSET));
+        }
+      } else {
+        Binary attribute =
+            deviceEntries
+                .get(currentDeviceIndex)
+                .getAttributeColumnValues()
+                .get(groupingKeyIndex[i]);
+        if (attribute == null) {
+          columnBuilders[i].appendNull();
+        } else {
+          columnBuilders[i].writeBinary(attribute);
         }
       }
     }
-
-    if (dateBinSize > 0) {
-      columnBuilders[groupKeySize].writeLong(timeIterator.getCurTimeRange().getMin());
-    }
-
-    for (int i = 0; i < aggregators.size(); i++) {
-      aggregators.get(i).evaluate(columnBuilders[groupKeySize + dateBinSize + i]);
-    }
-
-    tsBlockBuilder.declarePosition();
   }
 
   public boolean isAllAggregatorsHasFinalResult(List<TableAggregator> aggregators) {
@@ -801,11 +805,6 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
 
   @Override
   public List<TSDataType> getResultDataTypes() {
-    int groupingKeySize = groupingKeySchemas != null ? groupingKeySchemas.size() : 0;
-    int dateBinSize =
-        timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
-            ? 1
-            : 0;
     List<TSDataType> resultDataTypes =
         new ArrayList<>(groupingKeySize + dateBinSize + tableAggregators.size());
 

@@ -1185,8 +1185,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
-    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader1, retArray, DATABASE_NAME, 2);
 
     sql =
         "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv),last_by(time,blob) from table0 where device='d2'";
@@ -1194,8 +1193,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1970-01-01T00:00:00.080Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
-    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader2, retArray, DATABASE_NAME, 2);
 
     String[] expectedHeader11 = buildHeaders(expectedHeader1.length * 2);
     sql =
@@ -1204,8 +1202,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader11, retArray, DATABASE_NAME);
-    tableResultSetEqualTest(sql, expectedHeader11, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader11, retArray, DATABASE_NAME, 2);
 
     sql =
         "select first_by(time,time),first_by(device,time),first_by(level,time),first_by(attr1,time),first_by(attr2,time),first_by(num,time),first_by(bignum,time),first_by(floatnum,time),first_by(str,time),first_by(bool,time),first_by(date,time),first_by(ts,time),first_by(stringv,time) from table0 where device='d2' and time>80";
@@ -2038,6 +2035,9 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
+  public void lastCacheTest() {}
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
@@ -2065,7 +2065,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
-  private void repeatTest(
+  public static void repeatTest(
       String sql, String[] expectedHeader, String[] retArray, String dbName, int repeatTimes) {
     for (int i = 0; i < repeatTimes; i++) {
       tableResultSetEqualTest(sql, expectedHeader, retArray, dbName);
