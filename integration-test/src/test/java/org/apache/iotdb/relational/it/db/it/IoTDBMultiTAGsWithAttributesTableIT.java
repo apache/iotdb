@@ -39,18 +39,18 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
-/** In this IT, table has more than one IDs and Attributes. */
+/** In this IT, table has more than one TAGs and Attributes. */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBMultiIDsWithAttributesTableIT {
+public class IoTDBMultiTAGsWithAttributesTableIT {
   private static final String DATABASE_NAME = "db";
 
   private static final String[] sql1 =
       new String[] {
         "CREATE DATABASE db",
         "USE db",
-        "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum FLOAT measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement, doubleNum DOUBLE measurement)",
+        "CREATE TABLE table0 (device string tag, level string tag, attr1 string attribute, attr2 string attribute, num int32 field, bigNum int64 field, "
+            + "floatNum FLOAT field, str TEXT field, bool BOOLEAN field, date DATE field, blob BLOB field, ts TIMESTAMP field, stringV STRING field, doubleNum DOUBLE field)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool,blob,ts,doubleNum) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE,X'108DCD62',2024-09-24T06:15:35.000+00:00,6666.8)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -91,8 +91,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   private static final String[] sql3 =
       new String[] {
-        "CREATE TABLE table1 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, doubleNum DOUBLE measurement)",
+        "CREATE TABLE table1 (device string tag, level string tag, attr1 string attribute, attr2 string attribute, num int32 field, bigNum int64 field, "
+            + "floatNum double field, str TEXT field, bool BOOLEAN field, date DATE field, blob BLOB field, doubleNum DOUBLE field)",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, date, blob) values('d1', 'l1', 'c', 'd', 0, 3, 2947483648,231.2121, 'coconut', FALSE, '2023-01-01', X'100DCD62')",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l2', 'y', 'z', 20, 2, 2147483648,434.12, 'pineapple', TRUE, X'101DCD62')",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l3', 't', 'a', 40, 1, 2247483648,12.123, 'apricot', TRUE, null)",
@@ -116,29 +116,29 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   private static final String[] sql4 =
       new String[] {
-        "create table students(region STRING ID, student_id INT32 MEASUREMENT, name STRING MEASUREMENT, genders text MEASUREMENT, date_of_birth DATE MEASUREMENT)",
-        "create table teachers(region STRING ID, teacher_id INT32 MEASUREMENT, course_id INT32 MEASUREMENT, age INT32 MEASUREMENT)",
-        "create table courses(course_id STRING ID, course_name STRING MEASUREMENT, teacher_id INT32 MEASUREMENT)",
-        "create table grades(grade_id STRING ID, course_id INT32 MEASUREMENT, student_id INT32 MEASUREMENT, score INT32 MEASUREMENT)",
-        "insert into students(time,region,student_id,name,genders,date_of_birth) values"
+        "create table students(region STRING TAG, student_tag INT32 FIELD, name STRING FIELD, genders text FIELD, date_of_birth DATE FIELD)",
+        "create table teachers(region STRING TAG, teacher_tag INT32 FIELD, course_tag INT32 FIELD, age INT32 FIELD)",
+        "create table courses(course_tag STRING TAG, course_name STRING FIELD, teacher_tag INT32 FIELD)",
+        "create table grades(grade_tag STRING TAG, course_tag INT32 FIELD, student_tag INT32 FIELD, score INT32 FIELD)",
+        "insert into students(time,region,student_tag,name,genders,date_of_birth) values"
             + "(1,'haidian',1,'Lucy','女','2015-10-10'),(2,'haidian',2,'Jack','男','2015-09-24'),(3,'chaoyang',3,'Sam','男','2014-07-20'),(4,'chaoyang',4,'Lily','女','2015-03-28'),"
             + "(5,'xicheng',5,'Helen','女','2016-01-22'),(6,'changping',6,'Nancy','女','2017-12-20'),(7,'changping',7,'Mike','男','2016-11-22'),(8,'shunyi',8,'Bob','男','2016-05-12')",
-        "insert into teachers(time,region,teacher_id,course_id,age) values"
+        "insert into teachers(time,region,teacher_tag,course_tag,age) values"
             + "(1,'haidian',1001,10000001,25),(2,'haidian',1002,10000002,26),(3,'chaoyang',1003,10000003,28),"
             + "(4,'chaoyang',1004,10000004,27),(5,'xicheng',1005,10000005,26)",
-        "insert into courses(time,course_id,course_name,teacher_id) values"
+        "insert into courses(time,course_tag,course_name,teacher_tag) values"
             + "(1,10000001,'数学',1001),(2,10000002,'语文',1002),(3,10000003,'英语',1003),"
             + "(4,10000004,'体育',1004),(5,10000005,'历史',1005)",
-        "insert into grades(time,grade_id,course_id,student_id,score) values"
+        "insert into grades(time,grade_tag,course_tag,student_tag,score) values"
             + "(1,1111,10000001,1,99),(2,1112,10000002,2,90),(3,1113,10000003,3,85),(4,1114,10000004,4,89),(5,1115,10000005,5,98),"
             + "(6,1113,10000003,6,55),(7,1114,10000004,7,60),(8,1115,10000005,8,100),(9,1114,10000001,2,99),(10,1115,10000002,1,95)"
       };
 
   private static final String[] sql5 =
       new String[] {
-        "create table tableA(device STRING ID, value INT32 MEASUREMENT)",
-        "create table tableB(device STRING ID, value INT32 MEASUREMENT)",
-        "create table tableC(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableA(device STRING TAG, value INT32 FIELD)",
+        "create table tableB(device STRING TAG, value INT32 FIELD)",
+        "create table tableC(device STRING TAG, value INT32 FIELD)",
         "insert into tableA(time,device,value) values('2020-01-01 00:00:01.000', 'd1', 1)",
         "insert into tableA(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 3)",
         "flush",
@@ -316,7 +316,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void sortAllIDTimesTest() {
+  public void sortAllTAGTimesTest() {
     String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num"};
     String[] retArray =
         new String[] {
@@ -364,7 +364,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void sortIDWithExpressionTest() {
+  public void sortTAGWithExpressionTest() {
     String[] expectedHeader = new String[] {"level", "sum", "attr1", "device", "time"};
     String[] retArray =
         new String[] {
@@ -553,7 +553,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
 
-    // ID has null value
+    // TAG has null value
     expectedHeader =
         new String[] {
           "count_num",
@@ -1747,7 +1747,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   public void fourTableJoinTest() {
     expectedHeader =
         new String[] {
-          "time", "s_id", "s_name", "s_birth", "t_id", "t_c_id", "c_name", "g_id", "score"
+          "time", "s_tag", "s_name", "s_birth", "t_tag", "t_c_tag", "c_name", "g_tag", "score"
         };
     retArray =
         new String[] {
@@ -1759,16 +1759,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         };
     sql =
         "select s.time,"
-            + "         s.student_id as s_id, s.name as s_name, s.date_of_birth as s_birth,"
-            + "         t.teacher_id as t_id, t.course_id as t_c_id,"
+            + "         s.student_tag as s_tag, s.name as s_name, s.date_of_birth as s_birth,"
+            + "         t.teacher_tag as t_tag, t.course_tag as t_c_tag,"
             + "         c.course_name as c_name,"
-            + "         g.grade_id as g_id, g.score as score "
+            + "         g.grade_tag as g_tag, g.score as score "
             + "from students s, teachers t, courses c, grades g "
             + "where s.time=t.time AND c.time=g.time AND s.time=c.time "
-            + "order by s.student_id, t.teacher_id, c.course_id,g.grade_id";
+            + "order by s.student_tag, t.teacher_tag, c.course_tag,g.grade_tag";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    expectedHeader = new String[] {"region", "name", "teacher_id", "course_name", "score"};
+    expectedHeader = new String[] {"region", "name", "teacher_tag", "course_name", "score"};
 
     retArray =
         new String[] {
@@ -1776,11 +1776,11 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         };
     sql =
         "select s.region, s.name,"
-            + "           t.teacher_id,"
+            + "           t.teacher_tag,"
             + "           c.course_name,"
             + "           g.score "
             + "from students s, teachers t, courses c, grades g "
-            + "where s.time=c.time and c.time=g.time and t.teacher_id = 1005 limit 1";
+            + "where s.time=c.time and c.time=g.time and t.teacher_tag = 1005 limit 1";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }

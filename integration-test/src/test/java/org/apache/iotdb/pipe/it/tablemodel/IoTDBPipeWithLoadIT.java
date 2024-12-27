@@ -131,7 +131,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
     }
   }
 
-  // Test that receiver will not load data when table exists but ID columns mismatch
+  // Test that receiver will not load data when table exists but TAG columns mismatch
   @Test
   public void testReceiverNotLoadWhenIdColumnMismatch() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -161,9 +161,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id1 STRING ID, id2 STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -174,9 +174,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id3 STRING ID, id4 STRING ID, s3 TEXT MEASUREMENT, s4 INT32 MEASUREMENT)");
-        statement.execute("INSERT INTO t1(time,id3,id4,s3,s4) values(1, 'd3', 'd4', 'red2', 10)");
-        statement.execute("INSERT INTO t1(time,id3,id4,s3,s4) values(2, 'd3', 'd4', 'blue2', 20)");
+            "create table if not exists t1(tag3 STRING TAG, tag4 STRING TAG, s3 TEXT FIELD, s4 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag3,tag4,s3,s4) values(1, 'd3', 'd4', 'red2', 10)");
+        statement.execute(
+            "INSERT INTO t1(time,tag3,tag4,s3,s4) values(2, 'd3', 'd4', 'blue2', 20)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -205,15 +206,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,id3,id4,s3,s4,",
+          "time,tag3,tag4,s3,s4,",
           expectedResSet,
           "db",
           handleFailure);
     }
   }
 
-  // Test that receiver can load data when table exists and existing ID columns are the prefix of
-  // incoming ID columns
+  // Test that receiver can load data when table exists and existing TAG columns are the prefix of
+  // incoming TAG columns
   @Test
   public void testReceiverAutoExtendIdColumn() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -243,11 +244,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id1 STRING ID, id2 STRING ID, id3 STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT)");
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute(
-            "INSERT INTO t1(time,id1,id2,id3,s1,s2) values(1, 'd1', 'd2', 'd3', 'red', 1)");
+            "INSERT INTO t1(time,tag1,tag2,tag3,s1,s2) values(1, 'd1', 'd2', 'd3', 'red', 1)");
         statement.execute(
-            "INSERT INTO t1(time,id1,id2,id3,s1,s2) values(2, 'd1', 'd2', 'd3', 'blue', 2)");
+            "INSERT INTO t1(time,tag1,tag2,tag3,s1,s2) values(2, 'd1', 'd2', 'd3', 'blue', 2)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -258,9 +259,10 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id1 STRING ID, id2 STRING ID, s3 TEXT MEASUREMENT, s4 INT32 MEASUREMENT)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s3,s4) values(1, 'd1', 'd2', 'red2', 10)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s3,s4) values(2, 'd1', 'd2', 'blue2', 20)");
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s3 TEXT FIELD, s4 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s3,s4) values(1, 'd1', 'd2', 'red2', 10)");
+        statement.execute(
+            "INSERT INTO t1(time,tag1,tag2,s3,s4) values(2, 'd1', 'd2', 'blue2', 20)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -280,19 +282,19 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,null,null,d3,blue,2,");
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,red2,10,null,null,null,");
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,blue2,20,null,null,null,");
-      // make sure data are transferred and column "id3" is auto extended
+      // make sure data are transferred and column "tag3" is auto extended
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,id1,id2,s3,s4,id3,s1,s2,",
+          "time,tag1,tag2,s3,s4,tag3,s1,s2,",
           expectedResSet,
           "db",
           handleFailure);
     }
   }
 
-  // Test that receiver can load data when table exists and incoming ID columns are the prefix of
-  // existing ID columns
+  // Test that receiver can load data when table exists and incoming TAG columns are the prefix of
+  // existing TAG columns
   @Test
   public void testLoadWhenIncomingIdColumnsArePrefixOfExisting() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -322,9 +324,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id1 STRING ID, id2 STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
-        statement.execute("INSERT INTO t1(time,id1,id2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -335,11 +337,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
         statement.execute("create database if not exists db");
         statement.execute("use db");
         statement.execute(
-            "create table if not exists t1(id1 STRING ID, id2 STRING ID, id3 STRING ID,s3 TEXT MEASUREMENT, s4 INT32 MEASUREMENT)");
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG,s3 TEXT FIELD, s4 INT32 FIELD)");
         statement.execute(
-            "INSERT INTO t1(time,id1,id2,id3,s3,s4) values(1, 'd1', 'd2', 'd3', 'red2', 10)");
+            "INSERT INTO t1(time,tag1,tag2,tag3,s3,s4) values(1, 'd1', 'd2', 'd3', 'red2', 10)");
         statement.execute(
-            "INSERT INTO t1(time,id1,id2,id3,s3,s4) values(2, 'd1', 'd2', 'd3', 'blue2', 20)");
+            "INSERT INTO t1(time,tag1,tag2,tag3,s3,s4) values(2, 'd1', 'd2', 'd3', 'blue2', 20)");
         statement.execute("flush");
       } catch (Exception e) {
         fail(e.getMessage());
@@ -359,11 +361,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,d3,blue2,20,null,null,");
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,null,null,null,red,1,");
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,null,null,null,blue,2,");
-      // make sure data are transferred and column "id3" is null in transferred data
+      // make sure data are transferred and column "tag3" is null in transferred data
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,id1,id2,id3,s3,s4,s1,s2,",
+          "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
           10,
           "db",

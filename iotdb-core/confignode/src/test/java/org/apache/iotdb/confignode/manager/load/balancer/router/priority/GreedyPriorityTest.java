@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class GreedyPriorityTest {
 
@@ -68,17 +67,11 @@ public class GreedyPriorityTest {
     }
     nodeCacheMap.values().forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(false));
 
-    /* Get the loadScoreMap */
-    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) ->
-            loadScoreMap.put(dataNodeId, heartbeatCache.getLoadScore()));
-
     /* Build TRegionReplicaSet */
     TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
     TRegionReplicaSet regionReplicaSet1 =
         new TRegionReplicaSet(
-            groupId1, Arrays.asList(dataNodeLocations.get(1), dataNodeLocations.get(0)));
+            groupId1, Arrays.asList(dataNodeLocations.get(0), dataNodeLocations.get(1)));
     TConsensusGroupId groupId2 = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
     TRegionReplicaSet regionReplicaSet2 =
         new TRegionReplicaSet(
@@ -88,7 +81,7 @@ public class GreedyPriorityTest {
     Map<TConsensusGroupId, TRegionReplicaSet> result =
         new GreedyPriorityBalancer()
             .generateOptimalRoutePriority(
-                Arrays.asList(regionReplicaSet1, regionReplicaSet2), new HashMap<>(), loadScoreMap);
+                Arrays.asList(regionReplicaSet1, regionReplicaSet2), new HashMap<>());
     Assert.assertEquals(2, result.size());
 
     TRegionReplicaSet result1 = result.get(groupId1);
@@ -97,7 +90,7 @@ public class GreedyPriorityTest {
     }
 
     TRegionReplicaSet result2 = result.get(groupId2);
-    for (int i = 3; i < 4; i++) {
+    for (int i = 2; i < 4; i++) {
       Assert.assertEquals(dataNodeLocations.get(i), result2.getDataNodeLocations().get(i - 2));
     }
   }

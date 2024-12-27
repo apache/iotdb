@@ -72,7 +72,7 @@ public class TableModelUtils {
       statement.execute(
           "CREATE TABLE "
               + table
-              + "(s0 string id, s1 int64 measurement, s2 float measurement, s3 string measurement, s4 timestamp  measurement, s5 int32  measurement, s6 double  measurement, s7 date  measurement, s8 text  measurement )");
+              + "(s0 string tag, s1 int64 field, s2 float field, s3 string field, s4 timestamp  field, s5 int32  field, s6 double  field, s7 date  field, s8 text  field )");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -382,15 +382,15 @@ public class TableModelUtils {
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT);
+            Tablet.ColumnCategory.TAG,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,

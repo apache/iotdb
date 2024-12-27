@@ -41,20 +41,22 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -685,6 +687,7 @@ public class StorageEngine implements IService {
             } catch (Exception e) {
               throw new IllegalArgumentException(e);
             }
+            return StatusUtils.OK;
           });
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
@@ -750,9 +753,6 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       region.markDeleted();
-      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
-      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
-      WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -789,6 +789,10 @@ public class StorageEngine implements IService {
           default:
             break;
         }
+        WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+        WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
+        WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
+        FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",
@@ -861,6 +865,9 @@ public class StorageEngine implements IService {
       oldRegion.abortCompaction();
       oldRegion.syncCloseAllWorkingTsFileProcessors();
     }
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(regionId);
+    WRITING_METRICS.createDataRegionMemoryCostMetrics(newRegion);
+    WRITING_METRICS.createActiveMemtableCounterMetrics(regionId);
     dataRegionMap.put(regionId, newRegion);
   }
 

@@ -2406,6 +2406,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadTsFileRetryCountOnRegionChange(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_retry_count_on_region_change",
+                String.valueOf(conf.getLoadTsFileRetryCountOnRegionChange()))));
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(

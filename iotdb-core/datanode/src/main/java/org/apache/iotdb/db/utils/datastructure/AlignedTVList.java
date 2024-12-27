@@ -925,8 +925,7 @@ public abstract class AlignedTVList extends TVList {
     for (int i = 0; i < types.length; i++) {
       TSDataType type = types[i];
       if (type != null
-          && (columnCategories == null
-              || columnCategories[i] == TsTableColumnCategory.MEASUREMENT)) {
+          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
         size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
         measurementColumnNum++;
       }
