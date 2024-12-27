@@ -68,7 +68,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   private final String dbName;
   private int outputDeviceIndex;
   private DeviceEntry currentDeviceEntry;
-  private List<DeviceEntry> cachedDeviceEntries;
+  private final List<DeviceEntry> cachedDeviceEntries;
   private final int allDeviceCount;
 
   private final boolean needUpdateCache;
@@ -185,12 +185,10 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
       currentDeviceEntry = cachedDeviceEntries.get(currentHitCacheIndex);
       buildResultUseLastCache();
       return;
-    } else {
-      currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
     }
 
     if (calculateAggregationResultForCurrentTimeRange()) {
-      updateLastCacheIfPossible();
+      timeIterator.resetCurTimeRange();
     }
   }
 
@@ -331,8 +329,6 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
 
   private void updateLastCacheIfPossible() {
     if (!needUpdateCache) {
-      outputDeviceIndex++;
-      resetTableAggregators();
       return;
     }
 
@@ -398,14 +394,11 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
       channel += tableAggregator.getChannelCount();
     }
 
-    outputDeviceIndex++;
-    resetTableAggregators();
-
     if (!updateMeasurementList.isEmpty()) {
       String[] updateMeasurementArray = updateMeasurementList.toArray(new String[0]);
       TimeValuePair[] updateTimeValuePairArray =
           updateTimeValuePairList.toArray(new TimeValuePair[0]);
-
+      currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
       TABLE_DEVICE_SCHEMA_CACHE.initOrInvalidateLastCache(
           dbName, currentDeviceEntry.getDeviceID(), updateMeasurementArray, false);
       TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheIfExists(
@@ -419,7 +412,15 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   @Override
   protected void updateResultTsBlock() {
     appendAggregationResult();
-    // do not reset table aggregators in this method
+
+    if (timeIterator.hasCachedTimeRange()) {
+      updateLastCacheIfPossible();
+    }
+
+    outputDeviceIndex++;
+
+    // after appendAggregationResult invoked, aggregators must be cleared
+    resetTableAggregators();
   }
 
   private TsPrimitiveType cloneTsPrimitiveType(TsPrimitiveType originalValue) {

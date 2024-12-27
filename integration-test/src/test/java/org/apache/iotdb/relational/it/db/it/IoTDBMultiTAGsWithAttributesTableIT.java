@@ -158,6 +158,14 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   String[] retArray;
   static String sql;
 
+  //  public static void main(String[] args) {
+  //    for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
+  //      for (String sql : sqlList) {
+  //        System.out.println(sql + ";");
+  //      }
+  //    }
+  //  }
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -2035,7 +2043,63 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   }
 
   @Test
-  public void lastCacheTest() {}
+  public void lastCacheTest() {
+    expectedHeader =
+        new String[] {
+          "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13", "_col14", "_col15"
+        };
+
+    // last query without filter
+    retArray =
+        new String[] {
+          "l1,c,d1,d,1971-01-01T00:01:40.000Z,d1,l1,c,d,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d1,11,",
+          "l2,yy,d1,zz,1971-04-26T17:46:40.000Z,d1,l2,yy,zz,1971-04-26T17:46:40.000Z,12,2146483648,45.231,1971-04-26T17:46:40.000Z,d1,12,",
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d1,14,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d1,13,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d1,15,",
+          "l1,d,d2,c,1971-01-01T00:01:40.000Z,d2,l1,d,c,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d2,11,",
+          "l2,vv,d2,null,1971-04-26T17:46:40.000Z,d2,l2,vv,null,1971-04-26T17:46:40.000Z,12,2146483648,45.231,1971-04-26T17:46:40.000Z,d2,12,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d2,14,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d2,13,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d2,15,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    // last query with lt time filter
+    retArray =
+        new String[] {
+          "l1,c,d1,d,1971-01-01T00:01:40.000Z,d1,l1,c,d,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d1,11,",
+          "l2,yy,d1,zz,1971-01-01T00:00:00.100Z,d1,l2,yy,zz,1971-01-01T00:00:00.100Z,10,3147483648,231.55,1971-01-01T00:00:00.100Z,d1,10,",
+          "l3,t,d1,a,1971-01-01T00:00:00.500Z,d1,l3,t,a,1971-01-01T00:00:00.500Z,4,2147493648,213.1,1971-01-01T00:00:00.500Z,d1,4,",
+          "l4,null,d1,null,1971-01-01T00:00:01.000Z,d1,l4,null,null,1971-01-01T00:00:01.000Z,5,2149783648,56.32,1971-01-01T00:00:01.000Z,d1,5,",
+          "l5,null,d1,null,1971-01-01T00:00:10.000Z,d1,l5,null,null,1971-01-01T00:00:10.000Z,7,2147983648,213.112,1971-01-01T00:00:10.000Z,d1,7,",
+          "l1,d,d2,c,1971-01-01T00:01:40.000Z,d2,l1,d,c,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d2,11,",
+          "l2,vv,d2,null,1971-01-01T00:00:00.100Z,d2,l2,vv,null,1971-01-01T00:00:00.100Z,10,3147483648,231.55,1971-01-01T00:00:00.100Z,d2,10,",
+          "l3,null,d2,null,1971-01-01T00:00:00.500Z,d2,l3,null,null,1971-01-01T00:00:00.500Z,4,2147493648,213.1,1971-01-01T00:00:00.500Z,d2,4,",
+          "l4,null,d2,null,1971-01-01T00:00:01.000Z,d2,l4,null,null,1971-01-01T00:00:01.000Z,5,2149783648,56.32,1971-01-01T00:00:01.000Z,d2,5,",
+          "l5,null,d2,null,1971-01-01T00:00:10.000Z,d2,l5,null,null,1971-01-01T00:00:10.000Z,7,2147983648,213.112,1971-01-01T00:00:10.000Z,d2,7,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time<1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    retArray =
+        new String[] {
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d1,14,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d1,13,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d1,15,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d2,14,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d2,13,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d2,15,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),"
+            + "last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+  }
 
   @Test
   public void exceptionTest() {

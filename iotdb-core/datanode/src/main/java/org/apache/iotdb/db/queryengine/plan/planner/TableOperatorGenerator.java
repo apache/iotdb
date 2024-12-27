@@ -216,9 +216,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -1945,23 +1943,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
           for (int j = 0; j < lastByResult.get().getRight().length; j++) {
             TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
-            if (tsPrimitiveType == null) {
+            if (tsPrimitiveType == null
+                || (updateTimeFilter != null
+                    && !LastQueryUtil.satisfyFilter(
+                        updateTimeFilter,
+                        new TimeValuePair(
+                            lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
+              // the process logic is different from tree model which examine if
+              // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
+              // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
+              // but it should skip in table model
               allHitCache = false;
               break;
-            } else if (updateTimeFilter != null
-                && !LastQueryUtil.satisfyFilter(
-                    updateTimeFilter,
-                    new TimeValuePair(lastByResult.get().getLeft().getAsLong(), tsPrimitiveType))) {
-              // cached last value is not satisfied time filter and ttl
-
-              if (!isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())) {
-                // time filter is not > or >=, we still need to read from disk
-                allHitCache = false;
-                break;
-              } else {
-                // otherwise, we just ignore it and return null
-                lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE;
-              }
             }
           }
         } else {
@@ -2155,7 +2148,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   private boolean canUseLastCacheOptimize(
       List<TableAggregator> aggregators, AggregationTableScanNode node, String timeColumnName) {
-
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
       return false;
     }
