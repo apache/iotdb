@@ -78,7 +78,7 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     schemaList.push_back(make_pair("tag1", TSDataType::TEXT));
     schemaList.push_back(make_pair("attr1", TSDataType::TEXT));
     schemaList.push_back(make_pair("m1", TSDataType::DOUBLE));
-    vector<ColumnCategory> columnTypes = {ColumnCategory::ID, ColumnCategory::ATTRIBUTE, ColumnCategory::MEASUREMENT};
+    vector<ColumnCategory> columnTypes = {ColumnCategory::TAG, ColumnCategory::ATTRIBUTE, ColumnCategory::FIELD};
 
     int64_t timestamp = 0;
     Tablet tablet("table1", schemaList, columnTypes, 15);
