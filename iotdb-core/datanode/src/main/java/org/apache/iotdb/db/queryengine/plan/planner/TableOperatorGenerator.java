@@ -115,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -1851,6 +1852,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         getTSDataType(typeProvider.getTableModelType(symbol)),
         argumentChannels,
         OptionalInt.empty());
+  }
+
+  @Override
+  public Operator visitAggregationTreeDeviceViewScan(
+      AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
+        createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
+    return super.visitAggregationTreeDeviceViewScan(node, context);
   }
 
   @Override
