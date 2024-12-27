@@ -167,12 +167,7 @@ public class TimeSeriesMetadataCache {
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
                     .get(
-                        new BloomFilterCache.BloomFilterCacheKey(
-                            filePath,
-                            key.regionId,
-                            key.timePartitionId,
-                            key.tsFileVersion,
-                            key.compactionVersion),
+                        new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
                         debug,
                         bloomFilterIoSizeRecorder,
                         queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
@@ -204,12 +199,7 @@ public class TimeSeriesMetadataCache {
             for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
               TimeSeriesMetadataCacheKey k =
                   new TimeSeriesMetadataCacheKey(
-                      key.regionId,
-                      key.timePartitionId,
-                      key.tsFileVersion,
-                      key.compactionVersion,
-                      key.device,
-                      metadata.getMeasurementId());
+                      key.tsFileID, key.device, metadata.getMeasurementId());
               if (metadata.getStatistics().getCount() != 0) {
                 lruCache.put(k, metadata);
               }
@@ -303,34 +293,12 @@ public class TimeSeriesMetadataCache {
         RamUsageEstimator.shallowSizeOfInstance(TimeSeriesMetadataCacheKey.class)
             + RamUsageEstimator.shallowSizeOfInstance(String.class);
 
-    private final int regionId;
-    private final long timePartitionId;
-    private final long tsFileVersion;
-    // high 32 bit is compaction level, low 32 bit is merge count
-    private final long compactionVersion;
+    private final TsFileID tsFileID;
     private final IDeviceID device;
     private final String measurement;
 
     public TimeSeriesMetadataCacheKey(TsFileID tsFileID, IDeviceID device, String measurement) {
-      this.regionId = tsFileID.regionId;
-      this.timePartitionId = tsFileID.timePartitionId;
-      this.tsFileVersion = tsFileID.fileVersion;
-      this.compactionVersion = tsFileID.compactionVersion;
-      this.device = device;
-      this.measurement = measurement;
-    }
-
-    public TimeSeriesMetadataCacheKey(
-        int regionId,
-        long timePartitionId,
-        long tsFileVersion,
-        long compactionVersion,
-        IDeviceID device,
-        String measurement) {
-      this.regionId = regionId;
-      this.timePartitionId = timePartitionId;
-      this.tsFileVersion = tsFileVersion;
-      this.compactionVersion = compactionVersion;
+      this.tsFileID = tsFileID;
       this.device = device;
       this.measurement = measurement;
     }
@@ -348,31 +316,27 @@ public class TimeSeriesMetadataCache {
         return false;
       }
       TimeSeriesMetadataCacheKey that = (TimeSeriesMetadataCacheKey) o;
-      return regionId == that.regionId
-          && timePartitionId == that.timePartitionId
-          && tsFileVersion == that.tsFileVersion
-          && compactionVersion == that.compactionVersion
+      return Objects.equals(tsFileID, that.tsFileID)
           && Objects.equals(device, that.device)
           && Objects.equals(measurement, that.measurement);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(
-          regionId, timePartitionId, tsFileVersion, compactionVersion, device, measurement);
+      return Objects.hash(tsFileID, device, measurement);
     }
 
     @Override
     public String toString() {
       return "TimeSeriesMetadataCacheKey{"
           + "regionId="
-          + regionId
+          + tsFileID.regionId
           + ", timePartitionId="
-          + timePartitionId
+          + tsFileID.timePartitionId
           + ", tsFileVersion="
-          + tsFileVersion
+          + tsFileID.fileVersion
           + ", compactionVersion="
-          + compactionVersion
+          + tsFileID.compactionVersion
           + ", device='"
           + device
           + '\''

@@ -227,7 +227,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelTestIT {
       String sourceTypeName, String targetTypeName, String dataType, BaseEnv env) {
     String timeSeriesCreationQuery =
         String.format(
-            "create table %s2%s (s1 string id,status %s measurement)",
+            "create table %s2%s (s1 string tag, status %s field)",
             sourceTypeName, targetTypeName, dataType);
     TestUtils.tryExecuteNonQueriesWithRetry(
         null,

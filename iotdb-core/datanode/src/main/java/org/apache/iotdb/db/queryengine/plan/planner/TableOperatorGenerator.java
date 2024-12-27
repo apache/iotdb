@@ -190,7 +190,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
@@ -336,14 +336,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
 
       switch (schema.getColumnCategory()) {
-        case ID:
+        case TAG:
         case ATTRIBUTE:
           columnsIndexArray[idx++] =
               requireNonNull(
                   idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
           columnSchemas.add(schema);
           break;
-        case MEASUREMENT:
+        case FIELD:
           columnsIndexArray[idx++] = measurementColumnCount;
           measurementColumnCount++;
           measurementColumnNames.add(schema.getName());
@@ -365,8 +365,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (!outputSet.contains(entry.getKey())
-          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+      if (!outputSet.contains(entry.getKey()) && entry.getValue().getColumnCategory() == FIELD) {
         measurementColumnCount++;
         measurementColumnNames.add(entry.getValue().getName());
         measurementSchemas.add(
@@ -1777,12 +1776,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             requireNonNull(node.getAssignments().get(symbol), symbol + " is null");
         if (!aggColumnLayout.containsKey(symbol)) {
           switch (schema.getColumnCategory()) {
-            case ID:
+            case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
                   requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
-            case MEASUREMENT:
+            case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
               measurementColumnCount++;
               measurementColumnNames.add(schema.getName());
@@ -1810,7 +1809,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
       if (!aggColumnLayout.containsKey(entry.getKey())
-          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+          && entry.getValue().getColumnCategory() == FIELD) {
         measurementColumnCount++;
         measurementColumnNames.add(entry.getValue().getName());
         measurementSchemas.add(

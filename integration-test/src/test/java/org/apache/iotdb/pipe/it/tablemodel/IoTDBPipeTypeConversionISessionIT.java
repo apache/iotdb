@@ -38,6 +38,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
@@ -454,12 +455,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
 
   private List<Tablet.ColumnCategory> generateTabletColumnCategory(int size) {
     List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(size);
-    columnTypes.add(Tablet.ColumnCategory.ID);
-    columnTypes.add(Tablet.ColumnCategory.ID);
-    columnTypes.add(Tablet.ColumnCategory.ID);
-    columnTypes.add(Tablet.ColumnCategory.ID);
+    columnTypes.add(Tablet.ColumnCategory.TAG);
+    columnTypes.add(Tablet.ColumnCategory.TAG);
+    columnTypes.add(Tablet.ColumnCategory.TAG);
+    columnTypes.add(Tablet.ColumnCategory.TAG);
     for (int i = 0; i < size - 4; i++) {
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
+      columnTypes.add(ColumnCategory.FIELD);
     }
     return columnTypes;
   }
