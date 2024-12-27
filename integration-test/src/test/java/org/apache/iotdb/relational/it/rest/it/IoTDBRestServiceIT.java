@@ -321,7 +321,7 @@ public class IoTDBRestServiceIT {
     JsonObject result = RestUtils.insertTablet(httpClient, port, json);
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
     assertEquals(
-        "values and data_types should have the same size", result.get("message").getAsString());
+        "values and timestamp should have the same size", result.get("message").getAsString());
   }
 
   public void rightInsertTablet(String json) {
