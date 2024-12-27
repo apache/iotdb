@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHand
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewUpdateHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -437,11 +436,6 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.deleteTableDeviceInBlackList(
                 (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnAsyncRequestType.GET_TREE_DEVICE_VIEW_INFO,
-        (req, client, handler) ->
-            client.getTreeDeviceViewInfo(
-                (List<TConsensusGroupId>) req, (TreeDeviceViewUpdateHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
         (req, client, handler) ->

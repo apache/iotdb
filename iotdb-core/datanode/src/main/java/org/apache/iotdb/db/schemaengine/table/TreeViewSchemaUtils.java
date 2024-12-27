@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 
 public class TreeViewSchemaUtils {
 
-  public static String getOriginalDatabase(final TsTable table) {
+  public static String getOriginalPattern(final TsTable table) {
     return table
         .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
         .orElseThrow(
@@ -48,21 +48,21 @@ public class TreeViewSchemaUtils {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(
             Stream.concat(
-                    Arrays.stream(forceSeparateStringToPartialPathNodes(database)),
+                    Arrays.stream(forceSeparateStringToPartialPath(database).getNodes()),
                     Arrays.stream(idValues))
                 .toArray(String[]::new)));
   }
 
-  public static String[] forceSeparateStringToPartialPathNodes(final String string) {
-    final String[] databaseNodes;
+  public static PartialPath forceSeparateStringToPartialPath(final String string) {
+    final PartialPath partialPath;
     try {
-      databaseNodes = new PartialPath(string).getNodes();
+      partialPath = new PartialPath(string);
     } catch (final IllegalPathException e) {
       throw new SemanticException(
           String.format(
               "Failed to parse the tree view string %s when convert to IDeviceID", string));
     }
-    return databaseNodes;
+    return partialPath;
   }
 
   private TreeViewSchemaUtils() {

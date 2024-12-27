@@ -78,7 +78,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewUpdater;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
@@ -94,7 +93,6 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -127,7 +125,6 @@ public class ClusterSchemaManager {
   private final ConfigManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
-  private final TreeDeviceViewUpdater treeDeviceViewUpdater;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
@@ -143,7 +140,6 @@ public class ClusterSchemaManager {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
-    this.treeDeviceViewUpdater = new TreeDeviceViewUpdater(configManager);
   }
 
   // ======================================================
@@ -1129,14 +1125,6 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
   }
 
-  public void updateTreeViewTables(final TDeviceViewResp resp) {
-    // TODO
-  }
-
-  public TSStatus invokeTreeViewUpdate() {
-    return treeDeviceViewUpdater.notifyAndWait();
-  }
-
   // endregion
 
   /**
@@ -1331,14 +1319,6 @@ public class ClusterSchemaManager {
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
-  }
-
-  public void startTreeDeviceViewUpdate() {
-    treeDeviceViewUpdater.startService();
-  }
-
-  public void stopTreeDeviceViewUpdate() {
-    treeDeviceViewUpdater.stopService();
   }
 
   public void clearSchemaQuotaCache() {

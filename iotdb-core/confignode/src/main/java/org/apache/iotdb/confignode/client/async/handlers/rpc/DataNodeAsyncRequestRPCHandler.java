@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicP
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
-import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
@@ -181,14 +180,6 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TTestConnectionResp>) responseMap,
-            countDownLatch);
-      case GET_TREE_DEVICE_VIEW_INFO:
-        return new TreeDeviceViewUpdateHandler(
-            requestType,
-            requestId,
-            targetDataNode,
-            dataNodeLocationMap,
-            (Map<Integer, TDeviceViewResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:

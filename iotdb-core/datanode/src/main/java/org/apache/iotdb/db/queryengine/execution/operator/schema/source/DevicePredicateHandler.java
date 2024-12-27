@@ -72,7 +72,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     this.beginIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database).length;
+            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodeLength();
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
     this.inputDataTypes =

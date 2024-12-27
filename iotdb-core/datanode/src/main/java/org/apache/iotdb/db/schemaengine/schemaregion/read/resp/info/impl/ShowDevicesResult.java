@@ -92,9 +92,10 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
             -1,
             databaseSegmentNum > 0
                 ? Arrays.copyOfRange(
-                    TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(deviceIdStr),
+                    TreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr).getNodes(),
                     databaseSegmentNum,
-                    TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(deviceIdStr).length)
+                    TreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
+                        .getNodeLength())
                 : (String[]) entry.getDeviceID().getSegments());
     final Map<String, Binary> attributeProviderMap = new HashMap<>();
     if (entry instanceof AlignedDeviceEntry) {

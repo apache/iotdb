@@ -341,7 +341,7 @@ public class TableDeviceSchemaFetcher {
             idValues)
         : tryGetTreeDeviceInCache(
             deviceEntryList,
-            TreeViewSchemaUtils.getOriginalDatabase(tableInstance),
+            TreeViewSchemaUtils.getOriginalPattern(tableInstance),
             fetchPaths,
             idValues);
   }
@@ -547,7 +547,7 @@ public class TableDeviceSchemaFetcher {
           i);
       final IDeviceID deviceID =
           TreeViewSchemaUtils.convertToIDeviceID(
-              TreeViewSchemaUtils.getOriginalDatabase(tableInstance), nodes);
+              TreeViewSchemaUtils.getOriginalPattern(tableInstance), nodes);
       final DeviceEntry deviceEntry =
           columns[columns.length - 1].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, Collections.emptyList())

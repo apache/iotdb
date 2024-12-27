@@ -55,7 +55,6 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
-    | updateViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -198,10 +197,6 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
-    ;
-
-updateViewStatement
-    : UPDATE TREE VIEW
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------

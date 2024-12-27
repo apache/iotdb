@@ -57,7 +57,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       final List<String> attributeColumns,
       final MPPQueryContext context) {
     if (isTreeViewQuery) {
-      database = TreeViewSchemaUtils.getOriginalDatabase(tableInstance);
+      database = TreeViewSchemaUtils.getOriginalPattern(tableInstance);
     }
     if (Objects.isNull(where)) {
       return true;
@@ -75,8 +75,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                           deviceEntry,
                           attributeColumns,
                           isTreeViewQuery
-                              ? TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database)
-                                  .length
+                              ? TreeViewSchemaUtils.forceSeparateStringToPartialPath(database)
+                                  .getNodeLength()
                               : 0))
               .collect(Collectors.toList());
     }

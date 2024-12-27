@@ -70,7 +70,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     this.beginIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database).length;
+            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodeLength();
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
@@ -209,7 +209,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     return DeviceFilterUtil.convertToDevicePattern(
         PathUtils.isTableModelDatabase(database)
             ? new String[] {PATH_ROOT, database, tableName}
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPathNodes(database),
+            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodes(),
         DataNodeTableCache.getInstance().getTable(database4TableCache, tableName).getIdNums(),
         idDeterminedPredicateList);
   }
