@@ -132,8 +132,11 @@ public class TElasticFramedTransport extends TTransport {
       close();
       if (size == 1195725856L || size == 1347375956L) {
         // if someone sends HTTP GET/POST to this port, the size will be read as the following
-        throw new TTransportException(TTransportException.CORRUPTED_DATA,
-            "Singular frame size (" + size + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
+        throw new TTransportException(
+            TTransportException.CORRUPTED_DATA,
+            "Singular frame size ("
+                + size
+                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
       } else {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
