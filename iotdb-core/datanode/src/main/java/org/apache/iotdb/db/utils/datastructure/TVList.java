@@ -611,8 +611,10 @@ public abstract class TVList implements WALEntryValue {
     protected int rows;
     protected long currentTime;
     protected boolean probeNext;
-    private final Integer floatPrecision;
-    private final TSEncoding encoding;
+    private Integer floatPrecision;
+    private TSEncoding encoding;
+
+    public TVListIterator() {}
 
     public TVListIterator(Integer floatPrecision, TSEncoding encoding) {
       this.index = 0;
@@ -694,13 +696,20 @@ public abstract class TVList implements WALEntryValue {
       currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
     }
 
-    public int getRows() {
-      return rows;
+    public void reset() {
+      index = 0;
+      currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
+      probeNext = false;
     }
 
-    public void setRows(int rows) {
-      this.rows = rows;
-      this.currentTime = index < rows ? getTime(index) : Long.MIN_VALUE;
+    @Override
+    public TVListIterator clone() {
+      TVListIterator iterator = new TVListIterator();
+      iterator.rows = rows;
+      iterator.floatPrecision = floatPrecision;
+      iterator.encoding = encoding;
+      iterator.reset();
+      return iterator;
     }
   }
 }

@@ -83,7 +83,7 @@ public class ReadOnlyMemChunk {
   // tvlist rowCount during query
   private Map<TVList, Integer> tvListQueryMap;
 
-  private int workingTVListRows;
+  private MergeSortTvListIterator timeValuePairIterator;
 
   protected ReadOnlyMemChunk(QueryContext context) {
     this.context = context;
@@ -143,9 +143,7 @@ public class ReadOnlyMemChunk {
     int cnt = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
-    this.workingTVListRows = timeValuePairIterator.getRowsForWorkingTVListIterator();
+    timeValuePairIterator = new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
@@ -330,7 +328,7 @@ public class ReadOnlyMemChunk {
     return null;
   }
 
-  public int workingTVListRows() {
-    return workingTVListRows;
+  public MergeSortTvListIterator getMergeSortTVListIterator() {
+    return timeValuePairIterator;
   }
 }

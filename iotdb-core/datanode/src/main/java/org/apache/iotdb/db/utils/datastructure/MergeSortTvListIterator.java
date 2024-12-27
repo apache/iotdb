@@ -51,6 +51,14 @@ public class MergeSortTvListIterator implements IPointReader {
     this.tvListOffsets = new int[tvLists.size()];
   }
 
+  public MergeSortTvListIterator(TVList.TVListIterator[] tvListIterators) {
+    this.tvListIterators = new TVList.TVListIterator[tvListIterators.length];
+    for (int i = 0; i < tvListIterators.length; i++) {
+      this.tvListIterators[i] = tvListIterators[i].clone();
+    }
+    this.tvListOffsets = new int[tvListIterators.length];
+  }
+
   private void prepareNextRow() {
     long time = Long.MAX_VALUE;
     selectedTVListIndex = -1;
@@ -126,11 +134,8 @@ public class MergeSortTvListIterator implements IPointReader {
     selectedTVListIndex = -1;
   }
 
-  public int getRowsForWorkingTVListIterator() {
-    return tvListIterators[tvListIterators.length - 1].getRows();
-  }
-
-  public void setRowsForWorkingTVListIterator(int rows) {
-    tvListIterators[tvListIterators.length - 1].setRows(rows);
+  @Override
+  public MergeSortTvListIterator clone() {
+    return new MergeSortTvListIterator(tvListIterators);
   }
 }

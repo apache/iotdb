@@ -1487,14 +1487,18 @@ public abstract class AlignedTVList extends TVList {
 
   /* AlignedTVList Iterator */
   public class AlignedTVListIterator extends TVListIterator {
-    private final BitMap allValueColDeletedMap;
+    private BitMap allValueColDeletedMap;
 
-    private final TSDataType[] dataTypeArray;
-    private final int[] columnIndexArray;
-    private final Integer floatPrecision;
-    private final TSEncoding[] encodingArray;
+    private TSDataType[] dataTypeArray;
+    private int[] columnIndexArray;
+    private Integer floatPrecision;
+    private TSEncoding[] encodingArray;
 
-    private final int[] validRowIndex;
+    private int[] validRowIndex;
+
+    public AlignedTVListIterator() {
+      super();
+    }
 
     public AlignedTVListIterator(
         List<TSDataType> dataTypeList,
@@ -1659,6 +1663,20 @@ public abstract class AlignedTVList extends TVList {
 
     public int getValidRowIndex(int columnIndex) {
       return validRowIndex[columnIndex];
+    }
+
+    @Override
+    public AlignedTVListIterator clone() {
+      AlignedTVListIterator iterator = new AlignedTVListIterator();
+      iterator.rows = rows;
+      iterator.dataTypeArray = dataTypeArray;
+      iterator.columnIndexArray = columnIndexArray;
+      iterator.allValueColDeletedMap = allValueColDeletedMap;
+      iterator.floatPrecision = floatPrecision;
+      iterator.encodingArray = this.encodingArray;
+      iterator.validRowIndex = new int[dataTypeArray.length];
+      iterator.reset();
+      return iterator;
     }
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -57,11 +56,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
     this.readableChunk = readableChunk;
-    List<TVList> tvLists = new ArrayList<>(readableChunk.getTvListQueryMap().keySet());
-    timeValuePairIterator =
-        new MergeSortTvListIterator(
-            tvLists, readableChunk.getFloatPrecision(), readableChunk.getEncoding());
-    timeValuePairIterator.setRowsForWorkingTVListIterator(readableChunk.workingTVListRows());
+    timeValuePairIterator = readableChunk.getMergeSortTVListIterator().clone();
     this.globalTimeFilter = globalTimeFilter;
     this.pageReaderList = new ArrayList<>();
     initAllPageReaders(

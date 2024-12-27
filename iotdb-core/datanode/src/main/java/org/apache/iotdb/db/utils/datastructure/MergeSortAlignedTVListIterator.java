@@ -66,6 +66,22 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
     this.bitMap = new BitMap(columnNum);
   }
 
+  public MergeSortAlignedTVListIterator(
+      AlignedTVList.AlignedTVListIterator[] alignedTvListIterators, int columnNum) {
+    this.alignedTvListIterators =
+        new AlignedTVList.AlignedTVListIterator[alignedTvListIterators.length];
+    for (int i = 0; i < alignedTvListIterators.length; i++) {
+      this.alignedTvListIterators[i] = alignedTvListIterators[i].clone();
+    }
+    this.alignedTvListOffsets = new int[alignedTvListIterators.length];
+    this.columnNum = columnNum;
+    this.columnAccessInfo = new int[columnNum][];
+    for (int i = 0; i < columnAccessInfo.length; i++) {
+      columnAccessInfo[i] = new int[2];
+    }
+    this.bitMap = new BitMap(columnNum);
+  }
+
   private void prepareNextRow() {
     time = Long.MAX_VALUE;
     for (int i = 0; i < alignedTvListIterators.length; i++) {
@@ -190,11 +206,8 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
     return bitMap;
   }
 
-  public int getRowsForWorkingTVListIterator() {
-    return alignedTvListIterators[alignedTvListIterators.length - 1].getRows();
-  }
-
-  public void setRowsForWorkingTVListIterator(int rows) {
-    alignedTvListIterators[alignedTvListIterators.length - 1].setRows(rows);
+  @Override
+  public MergeSortAlignedTVListIterator clone() {
+    return new MergeSortAlignedTVListIterator(alignedTvListIterators, columnNum);
   }
 }

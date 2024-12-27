@@ -77,7 +77,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private final List<Integer> columnIndexList;
 
-  private int workingTVListRows;
+  private MergeSortAlignedTVListIterator timeValuePairIterator;
 
   /**
    * The constructor for Aligned type.
@@ -264,7 +264,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
     // create MergeSortAlignedTVListIterator
     List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListQueryMap.keySet());
-    MergeSortAlignedTVListIterator timeValuePairIterator =
+    timeValuePairIterator =
         new MergeSortAlignedTVListIterator(
             alignedTvLists,
             dataTypes,
@@ -272,7 +272,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             floatPrecision,
             encodingList,
             context.isIgnoreAllNullRows());
-    this.workingTVListRows = timeValuePairIterator.getRowsForWorkingTVListIterator();
     int[] alignedTvListOffsets = timeValuePairIterator.getAlignedTVListOffsets();
 
     // iterate to build column access info and split pages
@@ -565,7 +564,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return valueStatisticsList;
   }
 
-  public int workingTVListRows() {
-    return workingTVListRows;
+  public MergeSortAlignedTVListIterator getMergeSortAlignedTVListIterator() {
+    return timeValuePairIterator;
   }
 }
