@@ -450,8 +450,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);
-      if (deviceEntries.stream()
-          .anyMatch(deviceEntry -> deviceEntry instanceof NonAlignedDeviceEntry)) {
+      if (deviceEntries.stream().anyMatch(NonAlignedDeviceEntry.class::isInstance)) {
         tableScanNode.setContainsNonAlignedDevice();
       }
 

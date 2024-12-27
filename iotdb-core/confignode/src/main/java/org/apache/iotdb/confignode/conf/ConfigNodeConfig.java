@@ -193,9 +193,6 @@ public class ConfigNodeConfig {
   /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
-  /** The update interval for tree device view */
-  private long treeDeviceViewUpdateIntervalInMs = 60 * 10 * 1000L;
-
   private String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader. */
@@ -688,14 +685,6 @@ public class ConfigNodeConfig {
 
   public void setRoutePriorityPolicy(String routePriorityPolicy) {
     this.routePriorityPolicy = routePriorityPolicy;
-  }
-
-  public long getTreeDeviceViewUpdateIntervalInMs() {
-    return treeDeviceViewUpdateIntervalInMs;
-  }
-
-  public void setTreeDeviceViewUpdateIntervalInMs(long treeDeviceViewUpdateIntervalInMs) {
-    this.treeDeviceViewUpdateIntervalInMs = treeDeviceViewUpdateIntervalInMs;
   }
 
   public String getReadConsistencyLevel() {
