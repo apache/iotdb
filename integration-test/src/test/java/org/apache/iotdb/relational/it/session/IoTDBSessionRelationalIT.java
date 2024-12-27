@@ -97,9 +97,9 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("CREATE DATABASE \"db2\"");
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table10 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table10 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
     }
     // insert without db
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -111,15 +111,15 @@ public class IoTDBSessionRelationalIT {
           () ->
               session.executeNonQueryStatement(
                   String.format(
-                      "INSERT INTO table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                      0, "id:" + 0, "attr:" + 0, 0 * 1.0)));
+                      "INSERT INTO table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                      0, "tag:" + 0, "attr:" + 0, 0 * 1.0)));
 
       // specify db in sql
       for (long row = 0; row < 15; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
@@ -127,8 +127,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       SessionDataSet dataSet =
@@ -137,7 +137,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -151,16 +151,16 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table1 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -174,7 +174,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -193,7 +193,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -211,7 +211,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
       }
@@ -225,17 +225,17 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table1 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
       long timestamp;
 
       for (long row = 0; row < 15; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table1 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO table1 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
@@ -243,8 +243,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table1 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO table1 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       // without specifying column name
@@ -252,7 +252,7 @@ public class IoTDBSessionRelationalIT {
         session.executeNonQueryStatement(
             String.format(
                 "INSERT INTO table1 VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       // auto data type conversion
@@ -260,7 +260,7 @@ public class IoTDBSessionRelationalIT {
         session.executeNonQueryStatement(
             String.format(
                 "INSERT INTO table1 VALUES (%d, '%s', '%s', %d)",
-                row, "id:" + row, "attr:" + row, row));
+                row, "tag:" + row, "attr:" + row, row));
       }
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
@@ -268,7 +268,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -281,8 +281,8 @@ public class IoTDBSessionRelationalIT {
           () ->
               session.executeNonQueryStatement(
                   String.format(
-                      "INSERT INTO table1 (id1, id2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
-                      "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+                      "INSERT INTO table1 (tag1, tag2, attr1, m1) VALUES ('%s', '%s', '%s', %f)",
+                      "tag:" + 100, "tag:" + 100, "attr:" + 100, 100 * 1.0)));
 
       // fewer columns than defined
       assertThrows(
@@ -299,9 +299,9 @@ public class IoTDBSessionRelationalIT {
               session.executeNonQueryStatement(
                   String.format(
                       "INSERT INTO table1 VALUES ('%s', '%s', '%s', '%s', %f)",
-                      "id:" + 100, "id:" + 100, "id:" + 100, "attr:" + 100, 100 * 1.0)));
+                      "tag:" + 100, "tag:" + 100, "tag:" + 100, "attr:" + 100, 100 * 1.0)));
 
-      // invalid conversion - id column
+      // Invalid conversion - tag column
       assertThrows(
           StatementExecutionException.class,
           () ->
@@ -310,23 +310,23 @@ public class IoTDBSessionRelationalIT {
                       "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
                       100, 100, "attr:" + 100, 100 * 1.0)));
 
-      // invalid conversion - attr column
+      // Invalid conversion - attr column
       assertThrows(
           StatementExecutionException.class,
           () ->
               session.executeNonQueryStatement(
                   String.format(
                       "INSERT INTO table1 VALUES ('%d', '%s', '%s', %f)",
-                      100, "id:" + 100, 100, 100 * 1.0)));
+                      100, "tag:" + 100, 100, 100 * 1.0)));
 
-      // invalid conversion - measurement column
+      // Invalid conversion - field column
       assertThrows(
           StatementExecutionException.class,
           () ->
               session.executeNonQueryStatement(
                   String.format(
                       "INSERT INTO table1 VALUES ('%d', '%s', '%s', %s)",
-                      100, "id:" + 100, "attr:" + 100, "measurement" + (100 * 1.0))));
+                      100, "tag:" + 100, "attr:" + 100, "field" + (100 * 1.0))));
     }
   }
 
@@ -341,12 +341,12 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("USE \"db1\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(
-          "CREATE TABLE table2_2 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table2_2 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
       try {
         session.executeNonQueryStatement(
-            "INSERT INTO table2_2 (time, id1, attr1, m1, m2) values (1, '1', '1', 1.0, 2.0)");
+            "INSERT INTO table2_2 (time, tag1, attr1, m1, m2) values (1, '1', '1', 1.0, 2.0)");
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals(
@@ -373,22 +373,22 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("USE \"db1\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(
-          "CREATE TABLE table4 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table4 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
       // the insertion contains "m2"
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
+              ColumnCategory.TAG,
               ColumnCategory.ATTRIBUTE,
-              ColumnCategory.MEASUREMENT,
-              ColumnCategory.MEASUREMENT);
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -402,7 +402,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
@@ -437,7 +437,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         tablet.addValue("m2", rowIndex, row * 1.0);
@@ -473,7 +473,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         // "m2" should not be present
@@ -486,7 +486,7 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
       int rowIndex = 0;
       tablet.addTimestamp(rowIndex, timestamp + rowIndex);
-      tablet.addValue("id1", rowIndex, "id:" + rowIndex);
+      tablet.addValue("tag1", rowIndex, "tag:" + rowIndex);
       tablet.addValue("attr1", rowIndex, "attr:" + rowIndex);
       tablet.addValue("m1", rowIndex, rowIndex * 1.0);
       tablet.addValue("m2", rowIndex, rowIndex * 1.0);
@@ -513,16 +513,16 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table5 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -536,7 +536,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -555,7 +555,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -574,7 +574,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -590,16 +590,16 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table5 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -613,7 +613,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -633,7 +633,7 @@ public class IoTDBSessionRelationalIT {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
         // cache leader should work for devices that have inserted before
-        tablet.addValue("id1", rowIndex, "id:" + (row - 15));
+        tablet.addValue("tag1", rowIndex, "tag:" + (row - 15));
         tablet.addValue("attr1", rowIndex, "attr:" + (row - 15));
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -653,7 +653,7 @@ public class IoTDBSessionRelationalIT {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
         assertEquals(
-            "id:" + (timestamp < 15 ? timestamp : timestamp - 15),
+            "tag:" + (timestamp < 15 ? timestamp : timestamp - 15),
             rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals(
             "attr:" + (timestamp < 15 ? timestamp : timestamp - 15),
@@ -667,19 +667,19 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void autoCreateNonIdColumnTest()
+  public void autoCreateNontagColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
-      session.executeNonQueryStatement("CREATE TABLE table7 (id1 string id)");
+      session.executeNonQueryStatement("CREATE TABLE table7 (tag1 string tag)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -693,7 +693,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -712,7 +712,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -731,7 +731,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -748,11 +748,11 @@ public class IoTDBSessionRelationalIT {
       // no table created here
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -766,7 +766,7 @@ public class IoTDBSessionRelationalIT {
       for (int row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
@@ -778,7 +778,7 @@ public class IoTDBSessionRelationalIT {
       for (int row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
@@ -790,7 +790,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -801,19 +801,19 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void autoCreateIdColumnTest()
+  public void autoCreatetagColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
-      session.executeNonQueryStatement("CREATE TABLE table8 (id1 string id)");
+      session.executeNonQueryStatement("CREATE TABLE table8 (tag1 string tag)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag2", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
 
       long timestamp = 0;
       Tablet tablet =
@@ -827,7 +827,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id2", rowIndex, "id:" + row);
+        tablet.addValue("tag2", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -846,7 +846,7 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id2", rowIndex, "id:" + row);
+        tablet.addValue("tag2", rowIndex, "tag:" + row);
         tablet.addValue("attr1", rowIndex, "attr:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
         if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -865,9 +865,9 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        // id 1 should be null
+        // tag 1 should be null
         assertNull(rowRecord.getFields().get(1).getDataType());
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
         cnt++;
@@ -878,38 +878,38 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void autoAdjustIdTest() throws IoTDBConnectionException, StatementExecutionException {
+  public void autoAdjusttagTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
-      // the id order in the table is (id1, id2)
+      // the tag order in the table is (tag1, tag2)
       session.executeNonQueryStatement(
-          "CREATE TABLE table9 (id1 string id, id2 string id, attr1 string attribute, "
+          "CREATE TABLE table9 (tag1 string tag, tag2 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
 
-      // the id order in the row is (id2, id1)
+      // the tag order in the row is (tag2, tag1)
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id2", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag2", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
       final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              ColumnCategory.ID,
-              ColumnCategory.ID,
+              ColumnCategory.TAG,
+              ColumnCategory.TAG,
               ColumnCategory.ATTRIBUTE,
-              ColumnCategory.MEASUREMENT);
-      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+              ColumnCategory.FIELD);
+      List<String> fieldtags = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       long timestamp = 0;
-      Tablet tablet = new Tablet("table9", measurementIds, dataTypes, columnTypes, 15);
+      Tablet tablet = new Tablet("table9", fieldtags, dataTypes, columnTypes, 15);
 
       for (long row = 0; row < 15; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id2", rowIndex, "id2:" + row);
-        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("tag2", rowIndex, "tag2:" + row);
+        tablet.addValue("tag1", rowIndex, "tag1:" + row);
         tablet.addValue("attr1", rowIndex, "attr1:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
@@ -921,8 +921,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("id2", rowIndex, "id2:" + row);
-        tablet.addValue("id1", rowIndex, "id1:" + row);
+        tablet.addValue("tag2", rowIndex, "tag2:" + row);
+        tablet.addValue("tag1", rowIndex, "tag1:" + row);
         tablet.addValue("attr1", rowIndex, "attr1:" + row);
         tablet.addValue("m1", rowIndex, row * 1.0);
       }
@@ -934,8 +934,8 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id1:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals("id2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("tag1:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag2:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals("attr1:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
         cnt++;
@@ -951,9 +951,9 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table10 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table10 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
     }
     // insert without db
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -963,8 +963,8 @@ public class IoTDBSessionRelationalIT {
       try {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+                "INSERT INTO table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals("701: database is not specified", e.getMessage());
@@ -974,8 +974,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
@@ -983,8 +983,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 15; row < 30; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table10 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       SessionDataSet dataSet =
@@ -993,7 +993,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -1009,9 +1009,9 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "CREATE TABLE table11 (id1 string id, attr1 string attribute, "
+          "CREATE TABLE table11 (tag1 string tag, attr1 string attribute, "
               + "m1 double "
-              + "measurement)");
+              + "field)");
     }
     // use db2 but insert db1
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1022,8 +1022,8 @@ public class IoTDBSessionRelationalIT {
       for (long row = 0; row < 15; row++) {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table11 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO db1.table11 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       session.executeNonQueryStatement("FLush");
@@ -1032,8 +1032,8 @@ public class IoTDBSessionRelationalIT {
         // check case sensitivity
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO DB1.TaBle11 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "id:" + row, "attr:" + row, row * 1.0));
+                "INSERT INTO DB1.TaBle11 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                row, "tag:" + row, "attr:" + row, row * 1.0));
       }
 
       SessionDataSet dataSet =
@@ -1042,7 +1042,7 @@ public class IoTDBSessionRelationalIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
         assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
@@ -1061,8 +1061,8 @@ public class IoTDBSessionRelationalIT {
       try {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO table13 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+                "INSERT INTO table13 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals("507: Table table13 does not exist", e.getMessage());
@@ -1071,8 +1071,8 @@ public class IoTDBSessionRelationalIT {
       try {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db2.table13 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+                "INSERT INTO db2.table13 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals("507: Table table13 does not exist", e.getMessage());
@@ -1089,8 +1089,8 @@ public class IoTDBSessionRelationalIT {
       try {
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db3.table13 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                0, "id:" + 0, "attr:" + 0, 0 * 1.0));
+                "INSERT INTO db3.table13 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertEquals("507: Table table13 does not exist", e.getMessage());
@@ -1104,7 +1104,7 @@ public class IoTDBSessionRelationalIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
-      session.executeNonQueryStatement("create table tb (a string id, b string measurement)");
+      session.executeNonQueryStatement("create table tb (a string tag, b string field)");
       session.executeNonQueryStatement("insert into tb(a) values ('w')");
       SessionDataSet dataSet = session.executeQueryStatement("select * from tb");
       int cnt = 0;
@@ -1139,10 +1139,10 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement(
           "CREATE TABLE table"
               + testNum
-              + " (id1 string id,"
+              + " (tag1 string tag,"
               + "m1 "
               + to.toString()
-              + " measurement)");
+              + " field)");
       if (partialInsert) {
         session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
       } else {
@@ -1151,10 +1151,10 @@ public class IoTDBSessionRelationalIT {
 
       // insert a tablet with type of "from"
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("m1", from));
       final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.MEASUREMENT);
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
       Tablet tablet =
           new Tablet(
               "table" + testNum,
@@ -1167,12 +1167,12 @@ public class IoTDBSessionRelationalIT {
       tablet.addTimestamp(1, 1);
       tablet.addValue(0, 0, "d1");
       tablet.addValue(1, 0, "d1");
-      // the measurement in the first row is null
+      // the field in the first row is null
       tablet.addValue("m1", 1, genValue(from, 1));
       if (to.isCompatible(from)) {
         // can cast, insert and check the result
         session.insert(tablet);
-        // time, id1, m1
+        // time, tag1, m1
         SessionDataSet dataSet =
             session.executeQueryStatement("select * from table" + testNum + " order by time");
         RowRecord rec = dataSet.next();
@@ -1205,7 +1205,7 @@ public class IoTDBSessionRelationalIT {
                     + "]",
                 e.getMessage());
           }
-          // time, id1, m1
+          // time, tag1, m1
           SessionDataSet dataSet =
               session.executeQueryStatement("select * from table" + testNum + " order by time");
           RowRecord rec = dataSet.next();
@@ -1242,10 +1242,10 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement(
           "CREATE TABLE table"
               + testNum
-              + " (id1 string id,"
+              + " (tag1 string tag,"
               + "m1 "
               + to.toString()
-              + " measurement)");
+              + " field)");
       if (partialInsert) {
         session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
       } else {
@@ -1257,12 +1257,12 @@ public class IoTDBSessionRelationalIT {
           String.format(
               "INSERT INTO table"
                   + testNum
-                  + " (time, id1, m1) VALUES (0, 'd1', null),(1,'d1', %s)",
+                  + " (time, tag1, m1) VALUES (0, 'd1', null),(1,'d1', %s)",
               genValue(from, 1));
       if (to.isCompatible(from)) {
         // can cast, insert and check the result
         session.executeNonQueryStatement(sql);
-        // time, id1, m1
+        // time, tag1, m1
         SessionDataSet dataSet =
             session.executeQueryStatement("select * from table" + testNum + " order by time");
         RowRecord rec = dataSet.next();
@@ -1295,7 +1295,7 @@ public class IoTDBSessionRelationalIT {
                     + "]",
                 e.getMessage());
           }
-          // time, id1, m1
+          // time, tag1, m1
           SessionDataSet dataSet =
               session.executeQueryStatement("select * from table" + testNum + " order by time");
           RowRecord rec = dataSet.next();
@@ -1383,16 +1383,16 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("USE db1");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE table" + testNum + " (id1 string id, m1 int32 measurement)");
+          "CREATE TABLE table" + testNum + " (tag1 string tag, m1 int32 field)");
       session.executeNonQueryStatement(
-          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+          "INSERT INTO table" + testNum + " (time, tag1, m1) VALUES (1, 'd1', 1)");
 
       session.executeNonQueryStatement("DROP TABLE table" + testNum);
 
       session.executeNonQueryStatement(
-          "CREATE TABLE table" + testNum + " (id1 string id, m1 double measurement)");
+          "CREATE TABLE table" + testNum + " (tag1 string tag, m1 double field)");
       session.executeNonQueryStatement(
-          "INSERT INTO table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+          "INSERT INTO table" + testNum + " (time, tag1, m1) VALUES (2, 'd2', 2)");
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from table" + testNum + " order by time");
@@ -1413,14 +1413,14 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("USE db1");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+          "CREATE TABLE db1.table" + testNum + " (tag1 string tag, m1 int32 field)");
       session.executeNonQueryStatement(
-          "INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
+          "INSERT INTO db1.table" + testNum + " (time, tag1, m1) VALUES (1, 'd1', 1)");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE db2.table" + testNum + " (id1 string id, m1 double measurement)");
+          "CREATE TABLE db2.table" + testNum + " (tag1 string tag, m1 double field)");
       session.executeNonQueryStatement(
-          "INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
+          "INSERT INTO db2.table" + testNum + " (time, tag1, m1) VALUES (2, 'd2', 2)");
 
       session.executeNonQueryStatement("DROP TABLE db2.table" + testNum);
 

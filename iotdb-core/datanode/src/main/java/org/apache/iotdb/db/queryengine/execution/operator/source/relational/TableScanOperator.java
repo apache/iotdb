@@ -213,7 +213,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
     Column[] valueColumns = new Column[columnsIndexArray.length];
     for (int i = 0; i < columnsIndexArray.length; i++) {
       switch (columnSchemas.get(i).getColumnCategory()) {
-        case ID:
+        case TAG:
           // +1 for skip the table name segment
           String idColumnValue =
               ((String) currentDeviceEntry.getNthSegment(columnsIndexArray[i] + 1));
@@ -229,7 +229,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
               currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
-        case MEASUREMENT:
+        case FIELD:
           valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
           break;
         case TIME:
