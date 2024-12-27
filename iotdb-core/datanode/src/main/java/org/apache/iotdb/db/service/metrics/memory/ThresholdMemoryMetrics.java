@@ -40,11 +40,22 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
-            "StorageEngine",
+            "Total",
             Tag.TYPE.toString(),
             "OnHeap",
             Tag.LEVEL.toString(),
             "0")
+        .set(Runtime.getRuntime().maxMemory());
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            "StorageEngine",
+            Tag.TYPE.toString(),
+            "OnHeap",
+            Tag.LEVEL.toString(),
+            "1")
         .set(config.getAllocateMemoryForStorageEngine());
     metricService
         .getOrCreateGauge(
@@ -55,7 +66,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "OnHeap",
             Tag.LEVEL.toString(),
-            "0")
+            "1")
         .set(config.getAllocateMemoryForRead());
     metricService
         .getOrCreateGauge(
@@ -66,7 +77,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "OnHeap",
             Tag.LEVEL.toString(),
-            "0")
+            "1")
         .set(config.getAllocateMemoryForSchema());
     metricService
         .getOrCreateGauge(
@@ -77,7 +88,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "OnHeap",
             Tag.LEVEL.toString(),
-            "0")
+            "1")
         .set(config.getAllocateMemoryForConsensus());
     metricService
         .getOrCreateGauge(
@@ -88,7 +99,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "OnHeap",
             Tag.LEVEL.toString(),
-            "0")
+            "1")
         .set(config.getAllocateMemoryForPipe());
     metricService
         .getOrCreateGauge(
@@ -99,7 +110,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "OffHeap",
             Tag.LEVEL.toString(),
-            "0")
+            "1")
         .set(systemInfo.getTotalDirectBufferMemorySizeLimit());
   }
 
@@ -109,11 +120,20 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
         Tag.NAME.toString(),
-        "StorageEngine",
+        "Total",
         Tag.TYPE.toString(),
         "OnHeap",
         Tag.LEVEL.toString(),
         "0");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.THRESHOLD_MEMORY_SIZE.toString(),
+        Tag.NAME.toString(),
+        "StorageEngine",
+        Tag.TYPE.toString(),
+        "OnHeap",
+        Tag.LEVEL.toString(),
+        "1");
     metricService.remove(
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -122,7 +142,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "OnHeap",
         Tag.LEVEL.toString(),
-        "0");
+        "1");
     metricService.remove(
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -131,7 +151,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "OnHeap",
         Tag.LEVEL.toString(),
-        "0");
+        "1");
     metricService.remove(
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -140,7 +160,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "OnHeap",
         Tag.LEVEL.toString(),
-        "0");
+        "1");
     metricService.remove(
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -149,7 +169,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "OnHeap",
         Tag.LEVEL.toString(),
-        "0");
+        "1");
     metricService.remove(
         MetricType.GAUGE,
         Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -158,7 +178,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "OffHeap",
         Tag.LEVEL.toString(),
-        "0");
+        "1");
   }
 
   public static ThresholdMemoryMetrics getInstance() {
