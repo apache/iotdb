@@ -310,9 +310,9 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Thread-safely delete database.
    *
-   * @param plan DeleteDatabasePlan
+   * @param plan DeleteStorageGroupPlan
    */
-  public void deleteDatabase(final DeleteDatabasePlan plan) {
+  public void deleteDatabase(DeleteDatabasePlan plan) {
     // Clean the databaseTable cache
     databasePartitionTables.remove(plan.getName());
   }

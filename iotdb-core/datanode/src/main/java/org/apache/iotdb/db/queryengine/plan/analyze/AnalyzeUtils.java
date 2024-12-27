@@ -71,6 +71,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -314,7 +315,7 @@ public class AnalyzeUtils {
     validateSchema(node, queryContext);
 
     try (final ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // TODO: may use time and db/table to filter
       final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
       final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
@@ -346,7 +347,11 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    node.setTableDeletionEntries(parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    // Maybe set by pipe transfer
+    if (Objects.isNull(node.getTableDeletionEntries())) {
+      node.setTableDeletionEntries(
+          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    }
   }
 
   public static List<TableDeletionEntry> parseExpressions2ModEntries(

@@ -268,8 +268,7 @@ public class ClusterSchemaManager {
   }
 
   /** Delete DatabaseSchema. */
-  public TSStatus deleteDatabase(
-      final DeleteDatabasePlan deleteDatabasePlan, final boolean isGeneratedByPipe) {
+  public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan, boolean isGeneratedByPipe) {
     TSStatus result;
     try {
       result =
@@ -278,7 +277,7 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(deleteDatabasePlan)
                       : deleteDatabasePlan);
-    } catch (final ConsensusException e) {
+    } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
@@ -1243,11 +1242,13 @@ public class ClusterSchemaManager {
   public synchronized TSStatus addTableColumn(
       final String database,
       final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
+      final List<TsTableColumnSchema> columnSchemaList,
+      final boolean isGeneratedByPipe) {
     final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, false);
     try {
-      return getConsensusManager().write(addTableColumnPlan);
+      return getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(addTableColumnPlan) : addTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1269,11 +1270,19 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus renameTableColumn(
-      final String database, final String tableName, final String oldName, final String newName) {
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final boolean isGeneratedByPipe) {
     final RenameTableColumnPlan renameTableColumnPlan =
         new RenameTableColumnPlan(database, tableName, oldName, newName);
     try {
-      return getConsensusManager().write(renameTableColumnPlan);
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(renameTableColumnPlan)
+                  : renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1281,11 +1290,18 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus setTableProperties(
-      final String database, final String tableName, final Map<String, String> properties) {
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
     final SetTablePropertiesPlan setTablePropertiesPlan =
         new SetTablePropertiesPlan(database, tableName, properties);
     try {
-      return getConsensusManager().write(setTablePropertiesPlan);
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(setTablePropertiesPlan)
+                  : setTablePropertiesPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

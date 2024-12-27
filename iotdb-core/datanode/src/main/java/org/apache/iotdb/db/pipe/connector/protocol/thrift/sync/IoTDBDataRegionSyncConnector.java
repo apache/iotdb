@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEven
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeWithDatabaseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -202,8 +204,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     try {
       final TPipeTransferReq req =
           compressIfNeeded(
-              PipeTransferPlanNodeReq.toTPipeTransferReq(
-                  pipeDeleteDataNodeEvent.getDeleteDataNode()));
+              pipeDeleteDataNodeEvent.getDeleteDataNode() instanceof RelationalDeleteDataNode
+                  ? PipeTransferPlanNodeWithDatabaseReq.toTPipeTransferReq(
+                      pipeDeleteDataNodeEvent.getDeleteDataNode(),
+                      pipeDeleteDataNodeEvent.getDatabase())
+                  : PipeTransferPlanNodeReq.toTPipeTransferReq(
+                      pipeDeleteDataNodeEvent.getDeleteDataNode()));
       rateLimitIfNeeded(
           pipeDeleteDataNodeEvent.getPipeName(),
           pipeDeleteDataNodeEvent.getCreationTime(),

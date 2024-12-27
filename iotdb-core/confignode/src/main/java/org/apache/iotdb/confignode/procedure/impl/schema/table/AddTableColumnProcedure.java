@@ -49,16 +49,17 @@ public class AddTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   private List<TsTableColumnSchema> addedColumnList;
 
-  public AddTableColumnProcedure() {
-    super();
+  public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public AddTableColumnProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final List<TsTableColumnSchema> addedColumnList) {
-    super(database, tableName, queryId);
+      final List<TsTableColumnSchema> addedColumnList,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.addedColumnList = addedColumnList;
   }
 
@@ -128,7 +129,7 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList);
+            .addTableColumn(database, tableName, addedColumnList, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -196,7 +197,10 @@ public class AddTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     TsTableColumnSchemaUtil.serialize(addedColumnList, stream);

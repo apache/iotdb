@@ -21,8 +21,10 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeWithDatabaseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
@@ -39,14 +41,20 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -61,6 +69,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -173,7 +182,7 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
-  public void testPipeTransferSchemaPlanReq() {
+  public void testPipeTransferPlanNodeReq() {
     final PipeTransferPlanNodeReq req =
         PipeTransferPlanNodeReq.toTPipeTransferReq(
             new CreateAlignedTimeSeriesNode(
@@ -195,6 +204,38 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
+  }
+
+  @Test
+  public void testPipeTransferPlanNodeWithDatabaseReq() {
+    final PipeTransferPlanNodeWithDatabaseReq req =
+        PipeTransferPlanNodeWithDatabaseReq.toTPipeTransferReq(
+            new RelationalDeleteDataNode(
+                new PlanNodeId(""),
+                Arrays.asList(
+                    new TableDeletionEntry(
+                        new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                    new TableDeletionEntry(
+                        new DeletionPredicate(
+                            "ac",
+                            new IDPredicate.And(
+                                new IDPredicate.FullExactMatch(
+                                    DeviceIDFactory.getInstance()
+                                        .getDeviceID(
+                                            new PartialPath(new String[] {"ac", "device1"}))),
+                                new IDPredicate.SegmentExactMatch("device2", 1))),
+                        new TimeRange(0, 1)))),
+            "db");
+
+    final PipeTransferPlanNodeWithDatabaseReq deserializeReq =
+        PipeTransferPlanNodeWithDatabaseReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
+    Assert.assertEquals(req.getDatabaseName(), deserializeReq.getDatabaseName());
   }
 
   @Test
@@ -548,15 +589,28 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotSealReq() throws IOException {
-    final String mTreeSnapshotName = "mtree.snapshot";
-    final String tLogName = "tlog.txt";
+    final String mTreeSnapshotName = SchemaConstant.MTREE_SNAPSHOT;
+    final String tLogName = SchemaConstant.TAG_LOG;
+    final String attributeSnapshotName = SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT;
     final String databaseName = "root.db";
     // CREATE_TIME_SERIES
     final String typeString = "19";
 
     final PipeTransferSchemaSnapshotSealReq req =
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            "root.**", mTreeSnapshotName, 100, tLogName, 10, databaseName, typeString);
+            "root.**",
+            "db",
+            "table",
+            true,
+            true,
+            mTreeSnapshotName,
+            100,
+            tLogName,
+            10,
+            attributeSnapshotName,
+            10,
+            databaseName,
+            typeString);
     final PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 

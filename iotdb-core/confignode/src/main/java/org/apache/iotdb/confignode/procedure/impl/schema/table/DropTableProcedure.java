@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -53,12 +54,16 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
 
-  public DropTableProcedure() {
-    super();
+  public DropTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DropTableProcedure(final String database, final String tableName, final String queryId) {
-    super(database, tableName, queryId);
+  public DropTableProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
   }
 
   // Not used
@@ -184,7 +189,11 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   private void dropTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new CommitDeleteTablePlan(database, tableName), env, LOGGER);
+            isGeneratedByPipe
+                ? new PipeEnrichedPlan(new CommitDeleteTablePlan(database, tableName))
+                : new CommitDeleteTablePlan(database, tableName),
+            env,
+            LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -219,7 +228,10 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_PROCEDURE.getTypeCode()
+            : ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
   }
 }

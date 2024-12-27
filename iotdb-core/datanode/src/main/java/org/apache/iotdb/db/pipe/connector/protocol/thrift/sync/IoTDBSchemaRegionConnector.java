@@ -152,6 +152,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     final long creationTime = snapshotEvent.getCreationTime();
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
+    final File attributeSnapshotFile = snapshotEvent.getAttributeSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
@@ -168,17 +169,30 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           clientAndStatus,
           true);
     }
+    if (Objects.nonNull(attributeSnapshotFile)) {
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          attributeSnapshotFile,
+          clientAndStatus,
+          true);
+    }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
       final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
                   // The pattern is surely Non-null
-                  snapshotEvent.getTreePatternString(),
+                  snapshotEvent.getTreePattern().getPattern(),
+                  snapshotEvent.getTablePattern().getDatabasePattern(),
+                  snapshotEvent.getTablePattern().getTablePattern(),
+                  snapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+                  snapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
                   mTreeSnapshotFile.getName(),
                   mTreeSnapshotFile.length(),
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
                   snapshotEvent.getDatabaseName(),
                   snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(
@@ -207,7 +221,11 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           snapshotEvent.toString());
     }
 
-    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
+    LOGGER.info(
+        "Successfully transferred file {}, {} and {}.",
+        mTreeSnapshotFile,
+        tagLogSnapshotFile,
+        attributeSnapshotFile);
   }
 
   @Override

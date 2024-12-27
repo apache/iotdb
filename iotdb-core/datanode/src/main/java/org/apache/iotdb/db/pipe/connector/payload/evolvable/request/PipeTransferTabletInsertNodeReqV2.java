@@ -118,7 +118,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
       insertNode.serialize(outputStream);
       ReadWriteIOUtils.write(req.dataBaseName, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
 

@@ -38,21 +38,21 @@ public class PipeTransferDataNodeHandshakeV1Req extends PipeTransferHandshakeV1R
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferDataNodeHandshakeV1Req toTPipeTransferReq(String timestampPrecision)
-      throws IOException {
+  public static PipeTransferDataNodeHandshakeV1Req toTPipeTransferReq(
+      final String timestampPrecision) throws IOException {
     return (PipeTransferDataNodeHandshakeV1Req)
         new PipeTransferDataNodeHandshakeV1Req().convertToTPipeTransferReq(timestampPrecision);
   }
 
   public static PipeTransferDataNodeHandshakeV1Req fromTPipeTransferReq(
-      TPipeTransferReq transferReq) {
+      final TPipeTransferReq transferReq) {
     return (PipeTransferDataNodeHandshakeV1Req)
         new PipeTransferDataNodeHandshakeV1Req().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
+  public static byte[] toTPipeTransferBytes(final String timestampPrecision) throws IOException {
     return new PipeTransferDataNodeHandshakeV1Req()
         .convertToTransferHandshakeBytes(timestampPrecision);
   }
@@ -60,7 +60,7 @@ public class PipeTransferDataNodeHandshakeV1Req extends PipeTransferHandshakeV1R
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof PipeTransferDataNodeHandshakeV1Req && super.equals(obj);
   }
 
