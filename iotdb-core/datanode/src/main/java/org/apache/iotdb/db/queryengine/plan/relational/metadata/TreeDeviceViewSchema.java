@@ -33,8 +33,8 @@ public class TreeDeviceViewSchema extends TableSchema {
     setProps(props);
   }
 
-  public String getTreeDBName() {
-    return props.get(TreeViewSchema.TREE_DATABASE);
+  public String getTreePathPatternName() {
+    return props.get(TreeViewSchema.TREE_PATH_PATTERN);
   }
 
   // Notice: This will only return the renamed columns.

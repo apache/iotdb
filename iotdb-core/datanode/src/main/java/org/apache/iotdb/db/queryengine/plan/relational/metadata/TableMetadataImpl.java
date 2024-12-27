@@ -117,7 +117,7 @@ public class TableMetadataImpl implements Metadata {
                 })
             .collect(Collectors.toList());
     return Optional.of(
-        databaseName.equals(TreeViewSchema.TREE_DATABASE)
+        databaseName.equals(TreeViewSchema.TREE_PATH_PATTERN)
             ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
             : new TableSchema(table.getTableName(), columnSchemaList));
   }

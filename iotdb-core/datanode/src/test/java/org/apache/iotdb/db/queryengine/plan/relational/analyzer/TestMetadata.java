@@ -150,7 +150,7 @@ public class TestMetadata implements Metadata {
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
                       .build()));
-      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
+      Mockito.when(treeDeviceViewSchema.getTreePathPatternName()).thenReturn(TREE_DB1);
       Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);

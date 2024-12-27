@@ -21,10 +21,8 @@ package org.apache.iotdb.commons.schema.table;
 
 public class TreeViewSchema {
   public static final String TREE_VIEW_DATABASE = "tree_view_db";
-  public static final String DEVICE_VIEW_SUFFIX = ".device_view";
   public static final String ORIGINAL_NAME = "__original_name";
-  public static final String TREE_DATABASE = "__tree_database";
-  public static final String DEFAULT_ID_PREFIX = "tag_";
+  public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
 
   public static boolean isTreeViewDatabase(final String database) {
     return TREE_VIEW_DATABASE.equals(database);

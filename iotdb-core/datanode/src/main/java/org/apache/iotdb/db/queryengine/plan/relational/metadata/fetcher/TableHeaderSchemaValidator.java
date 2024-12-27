@@ -41,7 +41,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -89,7 +88,6 @@ public class TableHeaderSchemaValidator {
       final boolean allowCreateTable,
       final boolean isStrictIdColumn) {
     InformationSchemaUtils.checkDBNameInWrite(database);
-    TreeViewSchemaUtils.checkDBNameInWrite(database);
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
