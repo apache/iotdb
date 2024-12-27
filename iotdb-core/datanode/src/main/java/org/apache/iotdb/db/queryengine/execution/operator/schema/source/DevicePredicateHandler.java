@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -72,7 +72,8 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     this.beginIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodeLength();
+            : DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(database)
+                .getNodeLength();
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
     this.inputDataTypes =

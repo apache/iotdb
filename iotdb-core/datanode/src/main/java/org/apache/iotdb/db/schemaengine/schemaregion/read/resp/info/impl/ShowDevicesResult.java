@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.utils.Binary;
 
@@ -92,9 +92,10 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
             -1,
             databaseSegmentNum > 0
                 ? Arrays.copyOfRange(
-                    TreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr).getNodes(),
+                    DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
+                        .getNodes(),
                     databaseSegmentNum,
-                    TreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
+                    DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
                         .getNodeLength())
                 : (String[]) entry.getDeviceID().getSegments());
     final Map<String, Binary> attributeProviderMap = new HashMap<>();

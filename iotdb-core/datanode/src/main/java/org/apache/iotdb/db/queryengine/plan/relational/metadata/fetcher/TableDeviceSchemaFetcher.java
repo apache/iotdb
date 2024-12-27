@@ -49,7 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
@@ -389,8 +389,8 @@ public class TableDeviceSchemaFetcher {
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
     final IDeviceID deviceID =
-        TreeViewSchemaUtils.convertToIDeviceID(
-            TreeViewSchemaUtils.getOriginalPattern(tableInstance), idValues);
+        DataNodeTreeViewSchemaUtils.convertToIDeviceID(
+            DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance), idValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       if (Objects.nonNull(fetchPaths)) {
@@ -544,8 +544,8 @@ public class TableDeviceSchemaFetcher {
           tableInstance,
           i);
       final IDeviceID deviceID =
-          TreeViewSchemaUtils.convertToIDeviceID(
-              TreeViewSchemaUtils.getOriginalPattern(tableInstance), nodes);
+          DataNodeTreeViewSchemaUtils.convertToIDeviceID(
+              DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance), nodes);
       final DeviceEntry deviceEntry =
           columns[columns.length - 1].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, Collections.emptyList())

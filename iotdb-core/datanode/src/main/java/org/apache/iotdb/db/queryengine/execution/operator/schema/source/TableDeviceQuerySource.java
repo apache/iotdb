@@ -33,7 +33,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -70,7 +70,8 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     this.beginIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodeLength();
+            : DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(database)
+                .getNodeLength();
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
@@ -209,7 +210,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     return DeviceFilterUtil.convertToDevicePattern(
         PathUtils.isTableModelDatabase(database)
             ? new String[] {PATH_ROOT, database, tableName}
-            : TreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodes(),
+            : DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(database).getNodes(),
         DataNodeTableCache.getInstance().getTable(database4TableCache, tableName).getIdNums(),
         idDeterminedPredicateList);
   }

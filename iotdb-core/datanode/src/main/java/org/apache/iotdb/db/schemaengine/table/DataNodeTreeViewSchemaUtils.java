@@ -31,12 +31,12 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-public class TreeViewSchemaUtils {
+public class DataNodeTreeViewSchemaUtils {
 
   public static PartialPath getOriginalPattern(final TsTable table) {
     return table
         .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
-        .map(TreeViewSchemaUtils::forceSeparateStringToPartialPath)
+        .map(DataNodeTreeViewSchemaUtils::forceSeparateStringToPartialPath)
         .orElseThrow(
             () ->
                 new SemanticException(
@@ -66,7 +66,7 @@ public class TreeViewSchemaUtils {
     return partialPath;
   }
 
-  private TreeViewSchemaUtils() {
+  private DataNodeTreeViewSchemaUtils() {
     // Private constructor
   }
 }

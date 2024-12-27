@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.table.TreeViewSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -72,7 +72,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                           deviceEntry,
                           attributeColumns,
                           isTreeViewQuery
-                              ? TreeViewSchemaUtils.getOriginalPattern(tableInstance)
+                              ? DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance)
                                   .getNodeLength()
                               : 0))
               .collect(Collectors.toList());
