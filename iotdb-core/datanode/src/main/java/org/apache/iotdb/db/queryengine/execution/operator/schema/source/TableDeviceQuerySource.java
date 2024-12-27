@@ -281,7 +281,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
       final int beginIndex) {
-    final int beginIndex = builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
