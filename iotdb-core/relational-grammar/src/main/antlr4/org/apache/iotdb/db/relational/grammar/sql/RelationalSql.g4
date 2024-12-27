@@ -199,6 +199,8 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
+
+
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
     : CREATE INDEX indexName=identifier ON tableName=qualifiedName identifierList
