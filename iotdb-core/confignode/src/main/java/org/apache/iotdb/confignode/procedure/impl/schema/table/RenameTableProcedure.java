@@ -63,7 +63,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
       switch (state) {
         case COLUMN_CHECK:
           LOGGER.info("Column check for table {}.{} when renaming table", database, tableName);
-          columnCheck(env);
+          tableCheck(env);
           break;
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
@@ -93,12 +93,12 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  private void tableCheck(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForRenaming(database, tableName, newName);
+              .tableCheckForRenaming(database, tableName, newName);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(

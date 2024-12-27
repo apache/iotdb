@@ -1334,7 +1334,7 @@ public class ClusterSchemaManager {
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 
-  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForRenaming(
+  public synchronized Pair<TSStatus, TsTable> tableCheckForRenaming(
       final String database, final String tableName, final String newName)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
