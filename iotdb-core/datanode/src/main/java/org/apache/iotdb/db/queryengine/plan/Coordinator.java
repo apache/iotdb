@@ -92,7 +92,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateTreeView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -399,7 +398,6 @@ public class Coordinator {
         || statement instanceof DeleteDevice
         || statement instanceof RenameColumn
         || statement instanceof RenameTable
-        || statement instanceof UpdateTreeView
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes

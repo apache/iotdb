@@ -37,7 +37,6 @@ public class TreeDeviceViewSchema extends TableSchema {
     return props.get(TreeViewSchema.TREE_PATH_PATTERN);
   }
 
-  // Notice: This will only return the renamed columns.
   public Map<String, String> getColumn2OriginalNameMap() {
     return columns.stream()
         .filter(

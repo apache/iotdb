@@ -24,8 +24,8 @@ public class TreeViewSchema {
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
 
-  public static boolean isTreeViewDatabase(final String database) {
-    return TREE_VIEW_DATABASE.equals(database);
+  public static boolean isTreeViewTable(final TsTable table) {
+    return table.getPropValue(TREE_VIEW_DATABASE).isPresent();
   }
 
   private TreeViewSchema() {

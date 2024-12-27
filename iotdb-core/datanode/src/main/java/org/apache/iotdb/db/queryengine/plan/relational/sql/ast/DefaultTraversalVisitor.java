@@ -437,11 +437,6 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitUpdateTreeView(final UpdateTreeView node, final C context) {
-    return null;
-  }
-
-  @Override
   protected Void visitInsert(Insert node, C context) {
     process(node.getQuery(), context);
 

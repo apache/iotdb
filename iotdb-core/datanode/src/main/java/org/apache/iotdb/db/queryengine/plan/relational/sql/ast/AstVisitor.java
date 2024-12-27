@@ -393,10 +393,6 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitUpdateTreeView(UpdateTreeView node, C context) {
-    return visitStatement(node, context);
-  }
-
   protected R visitCreateIndex(CreateIndex node, C context) {
     return visitStatement(node, context);
   }

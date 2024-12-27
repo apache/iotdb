@@ -97,7 +97,7 @@ public abstract class AbstractTraverseDevice extends Statement {
         MetadataUtil.createQualifiedObjectName(sessionInfo, table.getName());
     database = objectName.getDatabaseName();
     tableName = objectName.getObjectName();
-    isTreeViewQuery = TreeViewSchema.isTreeViewDatabase(database);
+    isTreeViewQuery = TreeViewSchema.isTreeViewTable(table);
   }
 
   public String getDatabase() {

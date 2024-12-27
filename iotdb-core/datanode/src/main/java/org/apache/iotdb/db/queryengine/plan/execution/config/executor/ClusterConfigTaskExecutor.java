@@ -52,7 +52,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -3289,11 +3288,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       if (isDetails) {
-        ShowTablesDetailsTask.buildTsBlock(
-            resp.getTableInfoList(), future, TreeViewSchema.isTreeViewDatabase(database));
+        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
       } else {
-        ShowTablesTask.buildTsBlock(
-            resp.getTableInfoList(), future, TreeViewSchema.isTreeViewDatabase(database));
+        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
       }
     } catch (final Exception e) {
       future.setException(e);
@@ -3658,25 +3655,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
         ? String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database))
         : status.getMessage();
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> updateTreeView() {
-    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSStatus tsStatus = new TSStatus();
-    try (final ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
-      tsStatus = client.updateTreeView();
-    } catch (final ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } else {
-      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-    }
-    return future;
   }
 
   public void handlePipeConfigClientExit(final String clientId) {

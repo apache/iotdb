@@ -170,7 +170,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateTreeView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
@@ -442,11 +441,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getQualifiedName(ctx.qualifiedName()),
         properties,
         Objects.nonNull(ctx.EXISTS()));
-  }
-
-  @Override
-  public Node visitUpdateViewStatement(final RelationalSqlParser.UpdateViewStatementContext ctx) {
-    return new UpdateTreeView(getLocation(ctx));
   }
 
   @Override

@@ -182,7 +182,7 @@ public class TableDeviceSchemaFetcher {
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
-    final boolean isTreeViewQuery = TreeViewSchema.isTreeViewDatabase(database);
+    final boolean isTreeViewQuery = TreeViewSchema.isTreeViewTable(tableInstance);
     final ShowDevice statement = new ShowDevice(database, table, isTreeViewQuery);
 
     if (parseFilter4TraverseDevice(
