@@ -847,6 +847,4 @@ public interface IManager {
       final String database, final String tableName, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
-
-  TSStatus updateTreeView();
 }
