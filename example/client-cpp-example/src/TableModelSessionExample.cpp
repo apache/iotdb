@@ -36,9 +36,9 @@ void insertRelationalTablet() {
     };
 
     vector<ColumnCategory> columnTypes = {
-        ColumnCategory::ID,
-        ColumnCategory::ID,
-        ColumnCategory::ID,
+        ColumnCategory::TAG,
+        ColumnCategory::TAG,
+        ColumnCategory::TAG,
         ColumnCategory::ATTRIBUTE,
         ColumnCategory::MEASUREMENT,
         ColumnCategory::MEASUREMENT
@@ -101,8 +101,8 @@ int main() {
 
         cout << "Create Table table1,table2" << endl;
         try {
-            session->executeNonQueryStatement("create table db1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-            session->executeNonQueryStatement("create table db2.table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+            session->executeNonQueryStatement(" db1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
+            session->executeNonQueryStatement("create table db2.table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }

@@ -246,7 +246,7 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
-   * with all {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be
+   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
    * {@code null}. For correctness, this will put the cache lazily and only update the existing last
    * caches of measurements.
    *
