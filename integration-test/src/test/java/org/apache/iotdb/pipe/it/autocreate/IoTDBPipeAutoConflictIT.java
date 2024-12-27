@@ -427,7 +427,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count devices", "count(devices),", Collections.singleton("2,"));
+          receiverEnv, "count devices", "count(devices),", Collections.singleton("3,"));
     }
   }
 }
