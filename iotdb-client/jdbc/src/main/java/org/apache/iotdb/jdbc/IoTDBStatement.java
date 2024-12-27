@@ -33,6 +33,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.slf4j.Logger;
 
 import java.nio.charset.Charset;
 import java.sql.BatchUpdateException;
@@ -47,6 +48,8 @@ import java.util.BitSet;
 import java.util.List;
 
 public class IoTDBStatement implements Statement {
+
+  public static final Logger logger = org.slf4j.LoggerFactory.getLogger(IoTDBStatement.class);
 
   private final IoTDBConnection connection;
 
@@ -266,6 +269,8 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String sql) throws SQLException {
+    logger.info("execute:: sql:{}", sql);
+
     checkConnection("execute");
     isClosed = false;
     try {
@@ -428,10 +433,12 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
+    logger.info("executeQuery:: sql:{}", sql);
     return this.executeQuery(sql, (long) queryTimeout * 1000);
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
+    logger.info("executeQuery:: sql:{}, timeoutInMS:{}", sql, timeoutInMS);
     checkConnection("execute query");
     isClosed = false;
     try {
@@ -455,6 +462,7 @@ public class IoTDBStatement implements Statement {
   }
 
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
+    logger.info("executeQuerySQL:: sql:{}, timeoutInMS:{}", sql, timeoutInMS);
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     int rows = fetchSize;

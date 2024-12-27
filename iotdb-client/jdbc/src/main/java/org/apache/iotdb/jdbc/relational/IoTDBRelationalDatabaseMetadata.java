@@ -81,7 +81,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   private static String sqlKeywordsThatArentSQL92;
   private static TsBlockSerde serde = new TsBlockSerde();
 
-  private static final String SHOW_DATABASES_SQL = "SHOW DATABASES ";
+  private static final String SHOW_DATABASES_SQL = "SHOW DATABASES";
+  public static final String SHOW_TABLES_SQL = "SHOW TABLES";
 
   private static final String PRECISION = "PRECISION";
 
@@ -2542,102 +2543,76 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
+
+    logger.info(
+        "getTables:: catalog:{}, schemaPattern:{}, tableNamePattern:{}, types:{}",
+        catalog,
+        schemaPattern,
+        tableNamePattern,
+        types);
+
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW DEVICES";
-    String database = "";
-    if (catalog != null && catalog.length() > 0) {
-      if (catalog.contains("%")) {
-        catalog = catalog.replace("%", "*");
-      }
-      database = catalog;
-      sql = sql + " " + catalog;
-    } else if (schemaPattern != null && schemaPattern.length() > 0) {
-      if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replace("%", "*");
-      }
-      database = schemaPattern;
-      sql = sql + " " + schemaPattern;
+    // Use Database Before Further Processing
+    String sql = "use " + schemaPattern;
+    try {
+      boolean res = stmt.execute(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
     }
-    if (((catalog != null && catalog.length() > 0)
-            || schemaPattern != null && schemaPattern.length() > 0)
-        && tableNamePattern != null
-        && tableNamePattern.length() > 0) {
-      if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replace("%", "**");
-      }
-      sql = sql + "." + tableNamePattern;
-    }
+
+    // Get Tables
     ResultSet rs;
+    sql = SHOW_TABLES_SQL;
     try {
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       stmt.close();
       throw e;
     }
-    Field[] fields = new Field[10];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", TABLE_TYPE, "TEXT");
-    fields[4] = new Field("", REMARKS, "TEXT");
-    fields[5] = new Field("", TYPE_CAT, "TEXT");
-    fields[6] = new Field("", "TYPE_SCHEM", "TEXT");
-    fields[7] = new Field("", TYPE_NAME, "TEXT");
-    fields[8] = new Field("", "SELF_REFERENCING_COL_NAME", "TEXT");
-    fields[9] = new Field("", "REF_GENERATION", "TEXT");
 
+    // Setup Fields
+    Field[] fields = new Field[3];
+    fields[0] = new Field("", TABLE_NAME, "TEXT");
+    fields[1] = new Field("", TABLE_TYPE, "TEXT");
+    fields[2] = new Field("", "TTL(ms)", "TEXT");
     List<TSDataType> tsDataTypeList =
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT);
-
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
     List<List<Object>> valuesList = new ArrayList<>();
-
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
+
+    // Extract Values
     while (rs.next()) {
       List<Object> valueInRow = new ArrayList<>();
-      String res = rs.getString(1);
-
       for (int i = 0; i < fields.length; i++) {
-        if (i < 2) {
-          valueInRow.add("");
-        } else if (i == 2) {
-          int beginIndex = database.length() + 1;
-          if (StringUtils.isEmpty(database)) {
-            beginIndex = 0;
-          }
-          valueInRow.add(res.substring(beginIndex));
-        } else if (i == 3) {
+        if (i == 0) {
+          valueInRow.add(rs.getString(1));
+        } else if (i == 1) {
           valueInRow.add("TABLE");
         } else {
-          valueInRow.add("");
+          valueInRow.add(rs.getString(2));
         }
       }
+      logger.info("show tables:: valueInRow:{}", valueInRow);
       valuesList.add(valueInRow);
     }
 
+    // Convert Values to ByteBuffer
     ByteBuffer tsBlock = null;
     try {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
     }
+
     return new IoTDBJDBCResultSet(
         stmt,
         columnNameList,
