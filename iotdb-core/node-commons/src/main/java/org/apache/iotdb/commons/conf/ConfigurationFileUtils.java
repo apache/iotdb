@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,7 +252,7 @@ public class ConfigurationFileUtils {
     return ignoredConfigItems;
   }
 
-  public static void updateConfiguration(
+  public static TSStatus updateConfiguration(
       File file, Properties newConfigItems, LoadHotModifiedPropsFunc loadHotModifiedPropertiesFunc)
       throws IOException, InterruptedException {
     File lockFile = new File(file.getPath() + lockFileSuffix);
@@ -271,7 +275,10 @@ public class ConfigurationFileUtils {
 
       // load hot modified properties
       if (loadHotModifiedPropertiesFunc != null) {
-        loadHotModifiedPropertiesFunc.loadHotModifiedProperties(mergedProps);
+        TSStatus status = loadHotModifiedPropertiesFunc.loadHotModifiedProperties(mergedProps);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       // generate new configuration file content in memory
@@ -300,7 +307,7 @@ public class ConfigurationFileUtils {
       }
       if (newConfigItems.isEmpty()) {
         // No configuration needs to be modified
-        return;
+        return StatusUtils.OK;
       }
       logger.info("Updating configuration file {}", file.getAbsolutePath());
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
@@ -316,6 +323,7 @@ public class ConfigurationFileUtils {
     } finally {
       releaseFileLock(lockFile);
     }
+    return StatusUtils.OK;
   }
 
   private static String readConfigLinesWithoutLicense(File file) throws IOException {
@@ -358,7 +366,7 @@ public class ConfigurationFileUtils {
 
   @FunctionalInterface
   public interface LoadHotModifiedPropsFunc {
-    void loadHotModifiedProperties(TrimProperties properties)
+    TSStatus loadHotModifiedProperties(TrimProperties properties)
         throws IOException, InterruptedException;
   }
 }
