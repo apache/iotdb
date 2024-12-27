@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -464,100 +463,6 @@ public class IoTDBDatabaseIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
-    }
-  }
-
-  @Ignore
-  @Test
-  public void testTreeViewDatabase() throws SQLException {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
-        // Information_schema
-        assertTrue(resultSet.next());
-        assertFalse(resultSet.next());
-      }
-    }
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute("create database root.`test.a`.b");
-    }
-
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
-        assertTrue(resultSet.next());
-        if (resultSet.getString(1).equals("information_schema")) {
-          assertTrue(resultSet.next());
-        }
-        assertEquals("tree_view_db", resultSet.getString(1));
-        assertFalse(resultSet.next());
-      }
-
-      statement.execute("use tree_view_db");
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("show tables"),
-          "TableName,TTL(ms),",
-          Collections.singleton("root.`test.a`.b.device_view,null,"));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc \"root.`test.a`.b.device_view\""),
-          "ColumnName,DataType,Category,",
-          Collections.singleton("time,TIMESTAMP,TIME,"));
-    }
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.`test.a`.b.c.d (e, f) values('test‘, 1)");
-    }
-
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      statement.execute("update tree view");
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc \"root.`test.a`.b.device_view\""),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "time,TIMESTAMP,TIME,",
-                  "tag_1,STRING,TAG,",
-                  "tag_2,STRING,TAG,",
-                  "e,TEXT,FIELD,",
-                  "f,DOUBLE,FIELD,")));
-      statement.execute("alter table \"root.`test.a`.b.device_view\" rename to test_view");
-      statement.execute(
-          "alter table \"root.`test.a`.b.device_view\" rename column tag_1 to first_stage");
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc test_view"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "time,TIMESTAMP,TIME,",
-                  "first_stage,STRING,TAG,",
-                  "tag_2,STRING,TAG,",
-                  "e,TEXT,FIELD,",
-                  "f,DOUBLE,FIELD,")));
-
-      try {
-        statement.execute("alter table test_view rename column time to good_time");
-        fail("Time column does not support renaming");
-      } catch (final SQLException e) {
-        assertEquals("615: The renaming for time column is not supported.", e.getMessage());
-      }
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
-              "show devices from test_view where first_stage in ('c', 'd') and tag_2 = 'd'"),
-          "first_stage,tag_2,",
-          Collections.singleton("c,d,"));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("count devices from test_view"),
-          "count(devices),",
-          Collections.singleton("1,"));
     }
   }
 }

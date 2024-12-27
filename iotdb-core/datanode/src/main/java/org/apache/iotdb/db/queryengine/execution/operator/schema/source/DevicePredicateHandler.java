@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
@@ -48,7 +49,6 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   private final String database;
   protected final String tableName;
   private final List<ColumnHeader> columnHeaderList;
-  private final int beginIndex;
 
   // Batch logic
   protected static final int DEFAULT_MAX_TS_BLOCK_LINE_NUMBER =
@@ -69,11 +69,6 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
     this.database = database;
-    this.beginIndex =
-        PathUtils.isTableModelDatabase(database)
-            ? 3
-            : DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(database)
-                .getNodeLength();
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
     this.inputDataTypes =
@@ -102,7 +97,16 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
             transformToTableDeviceTsBlockColumns(
-                deviceSchemaInfo, builder, database, tableName, columnHeaderList, beginIndex));
+                deviceSchemaInfo,
+                builder,
+                database,
+                tableName,
+                columnHeaderList,
+                PathUtils.isTableModelDatabase(database)
+                    ? 3
+                    : DataNodeTreeViewSchemaUtils.getPatternNodes(
+                            DataNodeTableCache.getInstance().getTable(database, tableName))
+                        .length));
 
     curBlock = builder.build();
     if (withoutFilter()) {
