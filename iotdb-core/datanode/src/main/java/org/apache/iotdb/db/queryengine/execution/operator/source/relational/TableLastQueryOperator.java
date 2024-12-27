@@ -200,7 +200,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
       ColumnSchema schema = aggColumnSchemas.get(columnIdx);
       TsTableColumnCategory category = schema.getColumnCategory();
       switch (category) {
-        case ID:
+        case TAG:
           String id =
               (String)
                   deviceEntries
@@ -285,7 +285,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
             }
           }
           break;
-        case MEASUREMENT:
+        case FIELD:
           int measurementIdx = aggColumnsIndexArray[aggregatorInputChannels.get(channel)];
           TsPrimitiveType tsPrimitiveType =
               hitCachedResults.get(currentHitCacheIndex).getRight()[measurementIdx];
@@ -364,7 +364,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
             }
           }
           break;
-        case MEASUREMENT:
+        case FIELD:
           LastByDescAccumulator lastByAccumulator =
               (LastByDescAccumulator) tableAggregator.getAccumulator();
           // only can update LastCache when last_by return non-null value

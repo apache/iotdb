@@ -425,7 +425,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     switch (columnSchemaCategory) {
       case TIME:
         return inputRegion.getTimeColumn();
-      case ID:
+      case TAG:
         // TODO avoid create deviceStatics multi times; count, sum can use time statistics
         String id =
             (String)
@@ -442,7 +442,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
                 .getAttributeColumnValues()
                 .get(aggColumnsIndexArray[columnIdx]);
         return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), attr);
-      case MEASUREMENT:
+      case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
       default:
         throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
@@ -496,7 +496,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     switch (columnSchemaCategory) {
       case TIME:
         return timeStatistics;
-      case ID:
+      case TAG:
         // TODO avoid create deviceStatics multi times; count, sum can use time statistics
         String id =
             (String)
@@ -512,7 +512,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
                 .getAttributeColumnValues()
                 .get(aggColumnsIndexArray[columnIdx]);
         return getStatistics(timeStatistics, attr);
-      case MEASUREMENT:
+      case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
       default:
         throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
@@ -726,7 +726,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
   protected void appendGroupKeysToResult(int currentDeviceIndex) {
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     for (int i = 0; i < groupingKeySize; i++) {
-      if (TsTableColumnCategory.ID == groupingKeySchemas.get(i).getColumnCategory()) {
+      if (TsTableColumnCategory.TAG == groupingKeySchemas.get(i).getColumnCategory()) {
         String id =
             (String) deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
         if (id == null) {
