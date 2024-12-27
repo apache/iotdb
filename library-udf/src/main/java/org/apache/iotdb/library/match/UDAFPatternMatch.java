@@ -29,6 +29,7 @@ import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -40,8 +41,13 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 public class UDAFPatternMatch implements UDAF {
+
+  static final String THRESHOLD_PARAM = "threshold";
+  static final String TIME_PATTERN_PARAM = "timePattern";
+  static final String VALUE_PATTERN_PARAM = "valuePattern";
 
   private Long[] timePattern;
   private Double[] valuePattern;
@@ -52,19 +58,7 @@ public class UDAFPatternMatch implements UDAF {
   public void beforeStart(UDFParameters udfParameters, UDAFConfigurations udafConfigurations) {
     udafConfigurations.setOutputDataType(Type.TEXT);
     Map<String, String> attributes = udfParameters.getAttributes();
-    if (!attributes.containsKey("threshold")) {
-      threshold = 100;
-    } else {
-      threshold = Float.parseFloat(attributes.get("threshold"));
-    }
-    timePattern =
-        Arrays.stream(attributes.get("timePattern").split(","))
-            .map(Long::valueOf)
-            .toArray(Long[]::new);
-    valuePattern =
-        Arrays.stream(attributes.get("valuePattern").split(","))
-            .map(Double::valueOf)
-            .toArray(Double[]::new);
+    threshold = Float.parseFloat(attributes.get(THRESHOLD_PARAM));
   }
 
   @Override
@@ -136,13 +130,49 @@ public class UDAFPatternMatch implements UDAF {
 
   @Override
   public void validate(UDFParameterValidator validator) {
+
+    try {
+      String timePatternStr = validator.getParameters().getStringOrDefault(TIME_PATTERN_PARAM, "");
+      timePattern =
+          Arrays.stream(timePatternStr.split(",")).map(Long::valueOf).toArray(Long[]::new);
+
+    } catch (Exception e) {
+      throw new UDFParameterNotValidException(
+          "Illegal parameter, timePattern must be long,long...");
+    }
+    try {
+      String valuePatternStr =
+          validator.getParameters().getStringOrDefault(VALUE_PATTERN_PARAM, "");
+      valuePattern =
+          Arrays.stream(valuePatternStr.split(",")).map(Double::valueOf).toArray(Double[]::new);
+    } catch (Exception e) {
+      throw new UDFParameterNotValidException(
+          "Illegal parameter, valuePattern must be double,double...");
+    }
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
             0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.BOOLEAN)
-        .validateRequiredAttribute("timePattern")
-        .validateRequiredAttribute("valuePattern")
-        .validateRequiredAttribute("threshold");
+        .validateRequiredAttribute(THRESHOLD_PARAM)
+        .validateRequiredAttribute(TIME_PATTERN_PARAM)
+        .validateRequiredAttribute(VALUE_PATTERN_PARAM)
+        .validate(
+            (UDFParameterValidator.SingleObjectValidationRule)
+                payload -> ((Long[]) payload).length > 1,
+            "Illegal parameter, timePattern size must larger 1.",
+            timePattern)
+        .validate(
+            (UDFParameterValidator.SingleObjectValidationRule)
+                payload ->
+                    IntStream.range(1, ((Long[]) payload).length)
+                        .allMatch(i -> ((Long[]) payload)[i] > ((Long[]) payload)[i - 1]),
+            "Illegal parameter, timePattern value must be in ascending order.",
+            timePattern)
+        .validate(
+            payload -> ((Long[]) payload[0]).length == ((Double[]) payload[1]).length,
+            "Illegal parameter, timePattern size must equals valuePattern size.",
+            timePattern,
+            valuePattern);
   }
 
   private double getValue(Column column, int i) {
