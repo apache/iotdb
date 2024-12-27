@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;
@@ -82,6 +82,12 @@ public class LoadTsFileMemoryManager {
   }
 
   public synchronized void releaseToQuery(long sizeInBytes) {
+    if (usedMemorySizeInBytes.get() < sizeInBytes) {
+      LOGGER.error(
+          "Load: Attempting to release more memory ({}) than allocated ({})",
+          sizeInBytes,
+          usedMemorySizeInBytes.get());
+    }
     usedMemorySizeInBytes.addAndGet(-sizeInBytes);
     QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeInBytes);
     this.notifyAll();
@@ -108,6 +114,15 @@ public class LoadTsFileMemoryManager {
   synchronized void forceResize(LoadTsFileAnalyzeSchemaMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
     if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+
+      if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
+        LOGGER.error(
+            "Load: Failed to resize memory block {} to {} bytes, current memory usage {} bytes",
+            memoryBlock,
+            newSizeInBytes,
+            memoryBlock.getMemoryUsageInBytes());
+      }
+
       releaseToQuery(memoryBlock.getTotalMemorySizeInBytes() - newSizeInBytes);
       memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
       return;

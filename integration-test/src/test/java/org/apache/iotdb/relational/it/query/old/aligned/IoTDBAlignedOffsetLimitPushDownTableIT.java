@@ -54,7 +54,7 @@ public class IoTDBAlignedOffsetLimitPushDownTableIT {
       statement.execute("CREATE DATABASE IF NOT EXISTS db");
       statement.execute(USE_DB);
       statement.execute(
-          "CREATE TABLE table0 (device string id, s1 double measurement, s2 double measurement)");
+          "CREATE TABLE table0 (device string tag, s1 double field, s2 double field)");
 
       statement.execute("insert into table0(device,time,s1,s2) values('d1',1,1,1)");
       statement.execute("insert into table0(device,time,s1,s2) values('d1',2,2,2)");

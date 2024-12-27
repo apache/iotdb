@@ -57,9 +57,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("java:S106") // for console outputs
@@ -188,90 +186,6 @@ public class CommonUtils {
               + " because "
               + e.getMessage());
     }
-  }
-
-  public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
-    if (Objects.isNull(src)) {
-      return true;
-    }
-    switch (src) {
-      case INT32:
-        if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
-          return true;
-        }
-      case INT64:
-        if (dest == TSDataType.DOUBLE) {
-          return true;
-        }
-      case FLOAT:
-        if (dest == TSDataType.DOUBLE) {
-          return true;
-        }
-    }
-    return false;
-  }
-
-  public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
-    if (Objects.isNull(value)) {
-      return null;
-    }
-    switch (srcDataType) {
-      case INT32:
-        if (destDataType == TSDataType.INT64) {
-          value = (long) ((int) value);
-        } else if (destDataType == TSDataType.FLOAT) {
-          value = (float) ((int) value);
-        } else if (destDataType == TSDataType.DOUBLE) {
-          value = (double) ((int) value);
-        }
-        break;
-      case INT64:
-        if (destDataType == TSDataType.DOUBLE) {
-          value = (double) ((long) value);
-        }
-        break;
-      case FLOAT:
-        if (destDataType == TSDataType.DOUBLE) {
-          value = (double) ((float) value);
-        }
-        break;
-    }
-    return value;
-  }
-
-  public static Object castArray(TSDataType srcDataType, TSDataType destDataType, Object value) {
-    switch (srcDataType) {
-      case INT32:
-        if (destDataType == TSDataType.INT64) {
-          value = Arrays.stream((int[]) value).mapToLong(Long::valueOf).toArray();
-        } else if (destDataType == TSDataType.FLOAT) {
-          int[] tmp = (int[]) value;
-          float[] result = new float[tmp.length];
-          for (int i = 0; i < tmp.length; i++) {
-            result[i] = (float) tmp[i];
-          }
-          value = result;
-        } else if (destDataType == TSDataType.DOUBLE) {
-          value = Arrays.stream((int[]) value).mapToDouble(Double::valueOf).toArray();
-        }
-        break;
-      case INT64:
-        if (destDataType == TSDataType.DOUBLE) {
-          value = Arrays.stream((long[]) value).mapToDouble(Double::valueOf).toArray();
-        }
-        break;
-      case FLOAT:
-        if (destDataType == TSDataType.DOUBLE) {
-          float[] tmp = (float[]) value;
-          double[] result = new double[tmp.length];
-          for (int i = 0; i < tmp.length; i++) {
-            result[i] = tmp[i];
-          }
-          value = result;
-        }
-        break;
-    }
-    return value;
   }
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
@@ -465,7 +379,7 @@ public class CommonUtils {
         break;
       case TEXT:
       case STRING:
-        if (columnCategory.equals(TsTableColumnCategory.MEASUREMENT)) {
+        if (columnCategory.equals(TsTableColumnCategory.FIELD)) {
           valueColumn = new Binary[rowNum];
         } else {
           valueColumn = new String[rowNum];

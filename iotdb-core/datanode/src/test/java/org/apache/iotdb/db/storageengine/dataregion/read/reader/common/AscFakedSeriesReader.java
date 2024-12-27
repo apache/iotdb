@@ -25,23 +25,23 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 
-public class FakedSeriesReader implements IPointReader {
+public class AscFakedSeriesReader implements IPointReader {
 
-  private int index;
-  private int size;
-  private boolean initWithTimeList;
-  private static final TSDataType DATA_TYPE = TSDataType.INT64;
+  protected int index;
+  protected int size;
+  protected boolean initWithTimeList;
+  protected static final TSDataType DATA_TYPE = TSDataType.INT64;
 
   // init with time list and value
-  private long[] timestamps;
-  private long value;
+  protected long[] timestamps;
+  protected long value;
 
   // init with startTime, size, interval and modValue
-  private long startTime;
-  private int interval;
-  private int modValue;
+  protected long startTime;
+  protected int interval;
+  protected int modValue;
 
-  public FakedSeriesReader(long[] timestamps, long value) {
+  public AscFakedSeriesReader(long[] timestamps, long value) {
     this.initWithTimeList = true;
     this.index = 0;
     this.size = timestamps.length;
@@ -49,7 +49,7 @@ public class FakedSeriesReader implements IPointReader {
     this.value = value;
   }
 
-  public FakedSeriesReader(long startTime, int size, int interval, int modValue) {
+  public AscFakedSeriesReader(long startTime, int size, int interval, int modValue) {
     this.initWithTimeList = false;
     this.index = 0;
     this.size = size;
@@ -82,8 +82,8 @@ public class FakedSeriesReader implements IPointReader {
 
   @Override
   public long getUsedMemorySize() {
-    // not used
-    return 0;
+    // use size of timestamps to mock the used memory
+    return size;
   }
 
   @Override

@@ -61,6 +61,10 @@
                                     <destinationFile>${project.build.directory}/AlignedTimeseriesSessionExample.cpp</destinationFile>
                                 </fileSet>
                                 <fileSet>
+                                    <sourceFile>${project.basedir}/src/TableModelSessionExample.cpp</sourceFile>
+                                    <destinationFile>${project.build.directory}/TableModelSessionExample.cpp</destinationFile>
+                                </fileSet>
+                                <fileSet>
                                     <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
                                     <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
                                 </fileSet>

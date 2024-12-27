@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.simpleQuery;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
@@ -86,7 +86,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
 
       return simpleQuery(
           selectList(new AllColumns()),
-          from(INFORMATION_SCHEMA, showStatement.getTableName()),
+          from(INFORMATION_DATABASE, showStatement.getTableName()),
           showStatement.getWhere(),
           Optional.empty(),
           Optional.empty(),

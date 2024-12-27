@@ -89,7 +89,7 @@ public class MemUtils {
     for (int i = 0; i < dataTypes.size(); i++) {
       if (value[i] == null
           || dataTypes.get(i).isBinary()
-          || columnCategories != null && columnCategories[i] != TsTableColumnCategory.MEASUREMENT) {
+          || columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD) {
         continue;
       }
       memSize += dataTypes.get(i).getDataTypeSize();

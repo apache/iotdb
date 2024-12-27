@@ -94,7 +94,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
@@ -191,7 +191,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           symbol,
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
-      if (category == TsTableColumnCategory.ID) {
+      if (category == TsTableColumnCategory.TAG) {
         idAndAttributeIndexMap.put(symbol, idIndex++);
       }
     }
@@ -201,7 +201,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
     TableScanNode tableScanNode =
-        qualifiedObjectName.getDatabaseName().equals(INFORMATION_SCHEMA)
+        qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)
             ? new InformationSchemaTableScanNode(
                 idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema)
             : new DeviceTableScanNode(
@@ -681,8 +681,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
-  protected RelationalInsertRowNode fromInsertRowStatement(InsertRowStatement insertRowStatement) {
-    RelationalInsertRowNode insertNode =
+  protected RelationalInsertRowNode fromInsertRowStatement(
+      final InsertRowStatement insertRowStatement) {
+    final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),

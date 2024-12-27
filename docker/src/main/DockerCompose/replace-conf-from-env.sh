@@ -21,33 +21,36 @@
 conf_path=${IOTDB_HOME}/conf
 target_files="iotdb-system.properties"
 
-function process_single(){
-	local key_value="$1"
-	local filename=$2
-	local key=$(echo $key_value|cut -d = -f1)
-	local line=$(grep -ni "${key}=" ${filename})
-	#echo "line=$line"
-	if [[ -n "${line}" ]]; then
+function process_single() {
+  local key_value="$1"
+  local filename=$2
+  local key=$(echo $key_value | cut -d = -f1)
+  local line=$(grep -ni "${key}=" ${filename})
+  #echo "line=$line"
+  if [[ -n "${line}" ]]; then
     echo "update $key $filename"
-    local line_no=$(echo $line|cut -d : -f1)
-		local content=$(echo $line|cut -d : -f2)
-		if [[ "${content:0:1}" != "#" ]]; then
+    local line_no=$(echo $line | cut -d : -f1)
+    local content=$(echo $line | cut -d : -f2)
+    if [[ "${content:0:1}" != "#" ]]; then
       sed -i "${line_no}d" ${filename}
     fi
     sed -i "${line_no} i${key_value}" ${filename}
-	fi
+  else
+    echo "append $key to $filename"
+
+    echo "${key_value}" >>"${filename}"
+  fi
 }
 
-function replace_configs(){
+function replace_configs() {
   for v in $(env); do
     if [[ "${v}" =~ "=" && "${v}" =~ "_" && ! "${v}" =~ "JAVA_" ]]; then
-#      echo "###### $v ####"
+      #      echo "###### $v ####"
       for f in ${target_files}; do
-          process_single $v ${conf_path}/$f
+        process_single $v ${conf_path}/$f
       done
     fi
   done
 }
 
 replace_configs
-
