@@ -182,8 +182,7 @@ public class TableDeviceSchemaFetcher {
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
     }
-    final boolean isTreeViewQuery = TreeViewSchema.isTreeViewTable(tableInstance);
-    final ShowDevice statement = new ShowDevice(database, table, isTreeViewQuery);
+    final ShowDevice statement = new ShowDevice(database, table);
 
     if (parseFilter4TraverseDevice(
         tableInstance,
@@ -268,8 +267,7 @@ public class TableDeviceSchemaFetcher {
             check,
             attributeColumns,
             fetchPaths,
-            isDirectDeviceQuery,
-            statement.isTreeViewQuery())) {
+            isDirectDeviceQuery)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -320,8 +318,7 @@ public class TableDeviceSchemaFetcher {
       final Predicate<AlignedDeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
-      final boolean isDirectDeviceQuery,
-      final boolean isTreeViewQuery) {
+      final boolean isDirectDeviceQuery) {
     final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
@@ -329,7 +326,7 @@ public class TableDeviceSchemaFetcher {
       idValues[idFilter.getIndex()] = ((PreciseFilter) childFilter).getValue();
     }
 
-    return !isTreeViewQuery
+    return !TreeViewSchema.isTreeViewTable(tableInstance)
         ? tryGetTableDeviceInCache(
             deviceEntryList,
             database,
@@ -425,7 +422,8 @@ public class TableDeviceSchemaFetcher {
     final long queryId = SessionManager.getInstance().requestQueryId();
     // For the correctness of attribute remote update
     Set<Long> queryIdSet = null;
-    if (!statement.isTreeViewQuery() && Objects.nonNull(statement.getPartitionKeyList())) {
+    if (!TreeViewSchema.isTreeViewTable(tableInstance)
+        && Objects.nonNull(statement.getPartitionKeyList())) {
       queryIdSet = attributeGuard.addFetchQueryId(queryId);
     }
 
@@ -465,7 +463,7 @@ public class TableDeviceSchemaFetcher {
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           break;
         }
-        if (!statement.isTreeViewQuery()) {
+        if (!TreeViewSchema.isTreeViewTable(tableInstance)) {
           constructTableResults(
               tsBlock.get(),
               columnHeaderList,

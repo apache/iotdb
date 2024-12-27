@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -47,8 +49,8 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     this.limit = limit;
   }
 
-  public ShowDevice(final String database, final String tableName, final boolean isTreeViewQuery) {
-    super(database, tableName, isTreeViewQuery);
+  public ShowDevice(final String database, final String tableName) {
+    super(database, tableName);
   }
 
   public Offset getOffset() {
@@ -61,7 +63,9 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   // This is only true for query related ShowDevice with tree device view
   public boolean needAligned() {
-    return isTreeViewQuery && Objects.isNull(table);
+    return TreeViewSchema.isTreeViewTable(
+            DataNodeTableCache.getInstance().getTable(database, tableName))
+        && Objects.isNull(table);
   }
 
   @Override

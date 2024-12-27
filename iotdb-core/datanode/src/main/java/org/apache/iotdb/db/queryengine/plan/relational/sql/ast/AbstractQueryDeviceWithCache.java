@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -47,9 +48,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(location, table, rawExpression);
   }
 
-  protected AbstractQueryDeviceWithCache(
-      final String database, final String tableName, final boolean isTreeViewQuery) {
-    super(database, tableName, isTreeViewQuery);
+  protected AbstractQueryDeviceWithCache(final String database, final String tableName) {
+    super(database, tableName);
   }
 
   public boolean parseRawExpression(
@@ -71,7 +71,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
                           deviceEntry,
                           attributeColumns,
-                          isTreeViewQuery
+                          TreeViewSchema.isTreeViewTable(tableInstance)
                               ? DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance)
                                   .getNodeLength()
                               : 0))

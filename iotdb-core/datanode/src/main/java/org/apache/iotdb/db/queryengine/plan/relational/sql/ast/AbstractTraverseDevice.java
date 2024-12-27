@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -48,7 +47,6 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String database;
 
   protected String tableName;
-  protected boolean isTreeViewQuery;
   // Temporary
   protected Table table;
 
@@ -81,12 +79,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.where = where;
   }
 
-  protected AbstractTraverseDevice(
-      final String database, final String tableName, final boolean isTreeViewQuery) {
+  protected AbstractTraverseDevice(final String database, final String tableName) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.isTreeViewQuery = isTreeViewQuery;
   }
 
   public void parseTable(final SessionInfo sessionInfo) {
@@ -97,7 +93,6 @@ public abstract class AbstractTraverseDevice extends Statement {
         MetadataUtil.createQualifiedObjectName(sessionInfo, table.getName());
     database = objectName.getDatabaseName();
     tableName = objectName.getObjectName();
-    isTreeViewQuery = TreeViewSchema.isTreeViewTable(table);
   }
 
   public String getDatabase() {
@@ -114,10 +109,6 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   public Optional<Expression> getWhere() {
     return Optional.ofNullable(where);
-  }
-
-  public boolean isTreeViewQuery() {
-    return isTreeViewQuery;
   }
 
   public void setWhere(final Expression where) {
