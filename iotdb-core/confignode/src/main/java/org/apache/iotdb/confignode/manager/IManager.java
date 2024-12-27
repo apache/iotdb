@@ -836,11 +836,12 @@ public interface IManager {
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 
-  TSStatus createTable(
+  TSStatus createTreeViewTable(
       final String databaseName,
       final String tableName,
+      final PartialPath nameSpace,
       final List<TsTableColumnSchema> columns,
-      final long ttl);
+      final String ttl);
 
   TSStatus createTable(final ByteBuffer tableInfo);
 
