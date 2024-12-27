@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -830,6 +831,13 @@ public class ConfigMTree {
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
+    if (TreeViewSchema.isTreeViewTable(node.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support alter", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
+
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(

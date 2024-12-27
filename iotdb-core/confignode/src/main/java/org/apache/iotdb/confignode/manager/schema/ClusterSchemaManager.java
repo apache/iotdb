@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -1267,6 +1268,16 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (TreeViewSchema.isTreeViewTable(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Table '%s.%s' is a tree view table, does not support alter",
+                  database, tableName)),
+          null);
+    }
+
     final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
 
     final String errorMsg =
@@ -1300,6 +1311,16 @@ public class ClusterSchemaManager {
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
               String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    if (TreeViewSchema.isTreeViewTable(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Table '%s.%s' is a tree view table, does not support alter",
+                  database, tableName)),
           null);
     }
 
@@ -1344,6 +1365,16 @@ public class ClusterSchemaManager {
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
               String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    if (TreeViewSchema.isTreeViewTable(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Table '%s.%s' is a tree view table, does not support alter",
+                  database, tableName)),
           null);
     }
 
