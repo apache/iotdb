@@ -111,7 +111,7 @@ public class AlignedSeriesCompactionExecutor {
       }
     }
     List<IMeasurementSchema> collectedSchemaList = new ArrayList<>(schemaSet);
-    collectedSchemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
+    collectedSchemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementName));
     return collectedSchemaList;
   }
 

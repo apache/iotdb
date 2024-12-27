@@ -208,6 +208,7 @@ struct TCreateFunctionInstanceReq {
 struct TDropFunctionInstanceReq {
   1: required string functionName
   2: required bool needToDeleteJar
+  3: optional common.Model model
 }
 
 struct TCreateTriggerInstanceReq {
@@ -355,16 +356,16 @@ struct TDeleteDataOrDevicesForDropTableReq {
 }
 
 struct TTableDeviceDeletionWithPatternAndFilterReq {
-  1: required list<common.TConsensusGroupId> regionIdList
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required string tableName
   3: required binary patternInfo
   4: required binary filterInfo
 }
 
-struct TTableDeviceDeletionWithPatternReq {
-  1: required list<common.TConsensusGroupId> schemaRegionIdList
+struct TTableDeviceDeletionWithPatternOrModReq {
+  1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
-  3: required binary patternInfo
+  3: required binary patternOrModInfo
 }
 
 struct TTableDeviceInvalidateCacheReq {
@@ -678,6 +679,19 @@ struct TQueryStatistics {
   35: i64 alignedTimeSeriesMetadataModificationTime
   36: i64 nonAlignedTimeSeriesMetadataModificationCount
   37: i64 nonAlignedTimeSeriesMetadataModificationTime
+
+  38: i64 loadBloomFilterFromCacheCount
+  39: i64 loadBloomFilterFromDiskCount
+  40: i64 loadBloomFilterActualIOSize
+  41: i64 loadBloomFilterTime
+
+  42: i64 loadTimeSeriesMetadataFromCacheCount
+  43: i64 loadTimeSeriesMetadataFromDiskCount
+  44: i64 loadTimeSeriesMetadataActualIOSize
+
+  45: i64 loadChunkFromCacheCount
+  46: i64 loadChunkFromDiskCount
+  47: i64 loadChunkActualIOSize
 }
 
 
@@ -1134,7 +1148,7 @@ service IDataNodeRPCService {
   /**
    * Rollback table device black list
    */
-  common.TSStatus rollbackTableDeviceBlackList(TTableDeviceDeletionWithPatternReq req)
+  common.TSStatus rollbackTableDeviceBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
   /**
    * Delete data for table devices
@@ -1144,12 +1158,12 @@ service IDataNodeRPCService {
   /**
    * Delete data for table devices
    */
-  common.TSStatus deleteDataForTableDevice(TTableDeviceDeletionWithPatternAndFilterReq req)
+  common.TSStatus deleteDataForTableDevice(TTableDeviceDeletionWithPatternOrModReq req)
 
   /**
    * Delete table devices in black list
    */
-  common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternReq req)
+  common.TSStatus deleteTableDeviceInBlackList(TTableDeviceDeletionWithPatternOrModReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

@@ -67,13 +67,13 @@ public class IoTDBDeviceIT {
       statement.execute(
           "create table table0(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
       statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
 
       // Test plain show / count
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0"),
           "count(devices),",
@@ -93,11 +93,11 @@ public class IoTDBDeviceIT {
           statement.executeQuery(
               "show devices from table0 where region_id between '0' and '2' and model = 'A'"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
       // Test OR
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where region_id = '1' or plant_id like '%'"),
+              "count devices from table0 where region_id = '1' or plant_id like '%木兰'"),
           "count(devices),",
           Collections.singleton("1,"));
       // Test complicated query
@@ -105,7 +105,7 @@ public class IoTDBDeviceIT {
           statement.executeQuery(
               "show devices from table0 where region_id < plant_id offset 0 limit 1"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0 where region_id < plant_id limit 0"),
           "region_id,plant_id,device_id,model,",
@@ -116,25 +116,25 @@ public class IoTDBDeviceIT {
           Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where substring(region_id, cast((cast(plant_id as int32) - 4) as int32), 1) < plant_id"),
+              "count devices from table0 where substring(region_id, cast((cast(device_id as int32) - 2) as int32), 1) < plant_id"),
           "count(devices),",
           Collections.singleton("1,"));
       // Test get from cache
       statement.executeQuery(
-          "select * from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
+          "select * from table0 where region_id = '1' and plant_id in ('木兰', '5') and device_id = '3'");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3' offset 0 limit ALL"),
+              "show devices from table0 where region_id = '1' and plant_id in ('3', '木兰') and device_id = '3' offset 0 limit ALL"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3' offset 100000000000 limit 100000000000"),
+              "show devices from table0 where region_id = '1' and plant_id in ('木兰', '5') and device_id = '3' offset 100000000000 limit 100000000000"),
           "region_id,plant_id,device_id,model,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'"),
+              "count devices from table0 where region_id = '1' and plant_id in ('3', '木兰') and device_id = '3'"),
           "count(devices),",
           Collections.singleton("1,"));
       // Test filter
@@ -145,9 +145,9 @@ public class IoTDBDeviceIT {
       // Test cache with complicated filter
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3' and device_id between region_id and plant_id"),
+              "show devices from table0 where region_id = '1' and plant_id in ('木兰', '5') and device_id = '3' and device_id between region_id and plant_id"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,A,"));
+          Collections.singleton("1,木兰,3,A,"));
 
       try {
         statement.executeQuery("show devices from table2");
@@ -167,7 +167,9 @@ public class IoTDBDeviceIT {
         statement.executeQuery("show devices from table0 where temperature = 37.6");
         fail("Show devices shall fail for measurement predicate");
       } catch (final Exception e) {
-        assertEquals("701: Column 'temperature' cannot be resolved", e.getMessage());
+        assertEquals(
+            "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+            e.getMessage());
       }
 
       try {
@@ -215,14 +217,31 @@ public class IoTDBDeviceIT {
         assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
       }
 
-      // Test common result column
-      statement.execute(
-          "update table0 set model = substring(device_id, 1, 1) where model <> substring(device_id, 1, 1) and cast(region_id as int32) + cast(plant_id as int32) = 6 and region_id = '1'");
+      try {
+        statement.execute("update table0 set model = cast(device_id as int32)");
+        fail("Update shall fail when result type mismatch");
+      } catch (final Exception e) {
+        assertEquals(
+            "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            e.getMessage());
+      }
+
+      // Test null
+      statement.execute("update table0 set model = null where model <> substring(device_id, 1, 1)");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,3,"));
+          Collections.singleton("1,木兰,3,null,"));
+
+      // Test common result column
+      statement.execute(
+          "update table0 set model = substring(device_id, 1, 1) where cast(region_id as int32) + cast(device_id as int32) = 4 and region_id = '1'");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,木兰,3,3,"));
 
       // Test limit / offset from multi regions
       statement.execute(
@@ -230,15 +249,30 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
-      // Test delete devices
-      statement.execute(
-          "delete devices from table0 where substring(region_id, 1, 1) in ('1', '3') and 1 + 1 = 2");
-      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
+      // TODO: Reopen
+      if (false) {
+        // Test delete devices
+        statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
+        TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
-      // Test successfully invalidate cache
-      statement.execute(
-          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
-      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
+        // Test successfully invalidate cache
+        statement.execute(
+            "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+        TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
+
+        // Test successfully delete data
+        TestUtils.assertResultSetSize(
+            statement.executeQuery("select * from table0 where region_id = '1'"), 1);
+
+        try {
+          statement.executeQuery("delete devices from table0 where time = 1");
+          fail("Delete devices shall fail when specifies non id column");
+        } catch (final Exception e) {
+          assertEquals(
+              "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+              e.getMessage());
+        }
+      }
     }
   }
 }

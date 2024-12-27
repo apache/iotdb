@@ -124,7 +124,8 @@ public class ConfigNodeInfo {
       }
       if (onlineConfigNodes.isEmpty()) {
         throw new StartupException(
-            "No ConfigNode found in system.properties, please check if system.properties is configured correctly in DataNode system folder.");
+            "Removing is only allowed in an environment where the datanode has been successfully started. "
+                + "Please check whether it is removed on the confignode, or if you have deleted the system.properties file by mistake.");
       }
       long endTime = System.currentTimeMillis();
       logger.info(

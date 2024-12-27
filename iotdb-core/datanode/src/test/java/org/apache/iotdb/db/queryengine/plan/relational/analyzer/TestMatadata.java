@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
@@ -19,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -42,12 +48,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,7 +63,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2;
@@ -106,14 +116,34 @@ public class TestMatadata implements Metadata {
   public static final String TABLE2 = "table2";
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
         && name.getObjectName().equalsIgnoreCase(TABLE1);
   }
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    List<ColumnSchema> columnSchemas =
+    if (name.getDatabaseName().equals(INFORMATION_DATABASE)) {
+      TsTable table =
+          InformationSchemaUtils.mayGetTable(
+              INFORMATION_DATABASE, name.getObjectName().toLowerCase(Locale.ENGLISH));
+      if (table == null) {
+        return Optional.empty();
+      }
+      final List<ColumnSchema> columnSchemaList =
+          table.getColumnList().stream()
+              .map(
+                  o ->
+                      new ColumnSchema(
+                          o.getColumnName(),
+                          TypeFactory.getType(o.getDataType()),
+                          false,
+                          o.getColumnCategory()))
+              .collect(Collectors.toList());
+      return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+    }
+
+    final List<ColumnSchema> columnSchemas =
         Arrays.asList(
             ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
             ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
@@ -139,7 +169,8 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
+  public Type getOperatorReturnType(
+      final OperatorType operatorType, final List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
 
     switch (operatorType) {
@@ -180,24 +211,25 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
+  public Type getFunctionReturnType(
+      final String functionName, final List<? extends Type> argumentTypes) {
     return getFunctionType(functionName, argumentTypes);
   }
 
   @Override
   public boolean isAggregationFunction(
-      SessionInfo session, String functionName, AccessControl accessControl) {
+      final SessionInfo session, final String functionName, final AccessControl accessControl) {
     return BuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
   @Override
-  public Type getType(TypeSignature signature) throws TypeNotFoundException {
+  public Type getType(final TypeSignature signature) throws TypeNotFoundException {
     return typeManager.getType(signature);
   }
 
   @Override
-  public boolean canCoerce(Type from, Type to) {
+  public boolean canCoerce(final Type from, final Type to) {
     return true;
   }
 
@@ -208,10 +240,10 @@ public class TestMatadata implements Metadata {
 
   @Override
   public List<DeviceEntry> indexScan(
-      QualifiedObjectName tableName,
-      List<Expression> expressionList,
-      List<String> attributeColumns,
-      MPPQueryContext context) {
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
 
     if (expressionList.size() == 2) {
       if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")
@@ -240,6 +272,17 @@ public class TestMatadata implements Metadata {
             new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
             new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
       }
+      if (compareNotEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
+        return Arrays.asList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag2", "B2")) {
+        return Collections.singletonList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
+      }
     }
 
     return Arrays.asList(
@@ -251,12 +294,33 @@ public class TestMatadata implements Metadata {
         new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
   }
 
-  private boolean compareEqualsMatch(Expression expression, String idOrAttr, String value) {
+  private boolean compareEqualsMatch(
+      final Expression expression, final String idOrAttr, final String value) {
     if (expression instanceof ComparisonExpression
         && ((ComparisonExpression) expression).getOperator()
             == ComparisonExpression.Operator.EQUAL) {
-      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
-      Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      final Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      final Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
+        return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
+      } else if (leftExpression instanceof StringLiteral
+          && rightExpression instanceof SymbolReference) {
+        return ((SymbolReference) rightExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) leftExpression).getValue().equalsIgnoreCase(value);
+      }
+    }
+
+    return false;
+  }
+
+  private boolean compareNotEqualsMatch(
+      final Expression expression, final String idOrAttr, final String value) {
+    if (expression instanceof ComparisonExpression
+        && ((ComparisonExpression) expression).getOperator()
+            == ComparisonExpression.Operator.NOT_EQUAL) {
+      final Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      final Expression rightExpression = ((ComparisonExpression) expression).getRight();
       if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
         return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
             && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
@@ -272,41 +336,46 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      final String database,
+      final TableSchema tableSchema,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public void validateDeviceSchema(
-      ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
+      final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName) {
+      final String database, final List<IDeviceID> deviceIDList, final String userName) {
     return null;
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+  public SchemaPartition getSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDList) {
     return null;
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
+  public SchemaPartition getSchemaPartition(final String database) {
     return null;
   }
 
   @Override
   public DataPartition getDataPartition(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
@@ -377,11 +446,6 @@ public class TestMatadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
         return SCHEMA_PARTITION;
       }
     };

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -41,17 +40,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 /** It contains all tables' latest column schema */
 public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
+
+  private final AtomicLong version = new AtomicLong(0);
 
   // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
@@ -175,6 +175,7 @@ public class DataNodeTableCache implements ITableCache {
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .put(tableName, preUpdateTableMap.get(database).get(tableName).getLeft());
       removeTableFromPreUpdateMap(database, tableName);
+      version.incrementAndGet();
       LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -188,6 +189,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       preUpdateTableMap.remove(database);
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -205,6 +207,7 @@ public class DataNodeTableCache implements ITableCache {
       if (preUpdateTableMap.containsKey(database)) {
         preUpdateTableMap.get(database).remove(tableName);
       }
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -228,9 +231,14 @@ public class DataNodeTableCache implements ITableCache {
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }
+      version.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public long getVersion() {
+    return version.get();
   }
 
   public TsTable getTableInWrite(final String database, final String tableName) {
@@ -293,9 +301,7 @@ public class DataNodeTableCache implements ITableCache {
               .fetchTables(
                   tableInput.entrySet().stream()
                       .collect(
-                          Collectors.toMap(
-                              entry -> PathUtils.qualifyDatabaseName(entry.getKey()),
-                              entry -> entry.getValue().keySet())));
+                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
       }
@@ -316,19 +322,23 @@ public class DataNodeTableCache implements ITableCache {
       final Map<String, Map<String, Long>> previousVersions) {
     readWriteLock.writeLock().lock();
     try {
+      final AtomicBoolean isUpdated = new AtomicBoolean(false);
       fetchedTables.forEach(
-          (database, tableInfoMap) -> {
+          (qualifiedDatabase, tableInfoMap) -> {
+            final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
             if (preUpdateTableMap.containsKey(database)) {
               tableInfoMap.forEach(
                   (tableName, tsTable) -> {
                     final Pair<TsTable, Long> existingPair =
                         preUpdateTableMap.get(database).get(tableName);
                     if (Objects.isNull(existingPair)
+                        || Objects.isNull(existingPair.getLeft())
                         || !Objects.equals(
                             existingPair.getRight(),
                             previousVersions.get(database).get(tableName))) {
                       return;
                     }
+                    isUpdated.set(true);
                     LOGGER.info(
                         "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
                         database,
@@ -346,6 +356,9 @@ public class DataNodeTableCache implements ITableCache {
                   });
             }
           });
+      if (isUpdated.get()) {
+        version.incrementAndGet();
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -354,9 +367,13 @@ public class DataNodeTableCache implements ITableCache {
   private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return databaseTableMap.containsKey(database)
-          ? databaseTableMap.get(database).get(tableName)
-          : null;
+      final TsTable result =
+          databaseTableMap.containsKey(database)
+              ? databaseTableMap.get(database).get(tableName)
+              : null;
+      return Objects.nonNull(result)
+          ? result
+          : InformationSchemaUtils.mayGetTable(database, tableName);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -388,42 +405,5 @@ public class DataNodeTableCache implements ITableCache {
     } catch (final Exception e) {
       return null;
     }
-  }
-
-  /** Check whether the given path overlap with some table existence. */
-  public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(final PartialPath path) {
-    readWriteLock.writeLock().lock();
-    try {
-      final String pathString = path.getFullPath();
-      Pair<String, String> result = checkTableExistenceOnGivenPath(pathString, databaseTableMap);
-      if (result == null) {
-        result = checkTableExistenceOnGivenPath(pathString, preUpdateTableMap);
-      }
-      return result;
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
-  }
-
-  private Pair<String, String> checkTableExistenceOnGivenPath(
-      final String path, final Map<String, ? extends Map<String, ?>> tableMap) {
-    final int dbStartIndex = PATH_ROOT.length() + 1;
-    for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
-      final String database = dbEntry.getKey();
-      if (!(path.startsWith(database, dbStartIndex)
-          && path.length() > dbStartIndex + database.length()
-          && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
-        continue;
-      }
-      final int tableStartIndex = dbStartIndex + database.length() + 1;
-      for (final String tableName : dbEntry.getValue().keySet()) {
-        if (path.startsWith(tableName, tableStartIndex)
-            && path.length() > tableStartIndex + tableName.length()
-            && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
-          return new Pair<>(database, tableName);
-        }
-      }
-    }
-    return null;
   }
 }

@@ -202,19 +202,27 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore() {
-    // In the following 5 cases, we should not extract any more tablet events. all the data
+    // In the following 7 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
+    //  0. If the pipe task is currently restarted.
     //  1. If Wal size > maximum size of wal buffer,
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  2. The number of pinned memtables has reached the dangerous threshold.
     //  3. The number of historical tsFile events to transfer has exceeded the limit.
     //  4. The number of realtime tsfile events to transfer has exceeded the limit.
     //  5. The number of linked tsfiles has reached the dangerous threshold.
-    return mayWalSizeReachThrottleThreshold()
+    //  6. The shallow memory usage of the insert node has reached the dangerous threshold.
+    return isPipeTaskCurrentlyRestarted()
+        || mayWalSizeReachThrottleThreshold()
         || mayMemTablePinnedCountReachDangerousThreshold()
         || isHistoricalTsFileEventCountExceededLimit()
         || isRealtimeTsFileEventCountExceededLimit()
-        || mayTsFileLinkedCountReachDangerousThreshold();
+        || mayTsFileLinkedCountReachDangerousThreshold()
+        || mayInsertNodeMemoryReachDangerousThreshold();
+  }
+
+  private boolean isPipeTaskCurrentlyRestarted() {
+    return PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
@@ -243,6 +251,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
     return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  private boolean mayInsertNodeMemoryReachDangerousThreshold() {
+    return 3
+            * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
+            * PipeDataNodeAgent.task().getPipeCount()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
   }
 
   @Override

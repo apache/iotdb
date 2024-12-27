@@ -59,6 +59,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTablets;
 
+  // Used to control the memory allocated for managing slice tsfile in subscription module.
   private static final double TS_FILE_MEMORY_REJECT_THRESHOLD =
       PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
@@ -76,6 +77,11 @@ public class PipeMemoryManager {
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets
         < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
+
+  public boolean isEnough4TsFileSlicing() {
+    return (double) usedMemorySizeInBytesOfTsFiles
+        < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
@@ -491,6 +497,10 @@ public class PipeMemoryManager {
 
   public long getUsedMemorySizeInBytes() {
     return usedMemorySizeInBytes;
+  }
+
+  public long getFreeMemorySizeInBytes() {
+    return TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes;
   }
 
   public long getTotalMemorySizeInBytes() {

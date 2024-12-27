@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -60,6 +62,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -105,6 +108,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
@@ -134,11 +138,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -196,7 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionT
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
@@ -209,7 +211,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
@@ -259,6 +260,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -268,6 +270,7 @@ import org.apache.iotdb.db.service.DataNodeInternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -279,12 +282,16 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
-import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
+import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -307,8 +314,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -316,7 +325,6 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -347,14 +355,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // Check database length here
-    // We need to calculate the database name without "root."
+
     final String databaseName = databaseSchemaStatement.getDatabasePath().getFullPath();
-    if (databaseName.length() > MAX_DATABASE_NAME_LENGTH) {
+    if (databaseName.length() > MAX_DATABASE_NAME_LENGTH
+        || TsFileConstant.PATH_ROOT.equals(databaseName)) {
       final IllegalPathException illegalPathException =
           new IllegalPathException(
               databaseName,
-              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+              TsFileConstant.PATH_ROOT.equals(databaseName)
+                  ? "the database name in tree model must start with 'root.'."
+                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       future.setException(
           new IoTDBException(
               illegalPathException.getMessage(), illegalPathException.getErrorCode()));
@@ -394,15 +404,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterDatabase(
-      DatabaseSchemaStatement databaseSchemaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final DatabaseSchemaStatement databaseSchemaStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TDatabaseSchema databaseSchema =
+    final TDatabaseSchema databaseSchema =
         DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
-    try (ConfigNodeClient configNodeClient =
+    databaseSchema.setIsTableModel(false);
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
+      final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         if (databaseSchemaStatement.getEnablePrintExceptionLog()) {
@@ -415,7 +426,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -433,7 +444,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       final TGetDatabaseReq req =
           new TGetDatabaseReq(
-              databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
+                  databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize())
+              .setIsTableModel(false);
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
@@ -467,12 +479,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteDatabase(
-      DeleteDatabaseStatement deleteDatabaseStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteDatabasesReq req = new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath());
-    try (ConfigNodeClient client =
+      final DeleteDatabaseStatement deleteDatabaseStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TDeleteDatabasesReq req =
+        new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath()).setIsTableModel(false);
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = client.deleteDatabases(req);
+      final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
@@ -487,7 +500,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -495,26 +508,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createFunction(
-      CreateFunctionStatement createFunctionStatement) {
+      Model model,
+      String udfName,
+      String className,
+      Optional<String> stringURI,
+      Class<?> baseClazz) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String udfName = createFunctionStatement.getUdfName();
-    String className = createFunctionStatement.getClassName();
+    if (UDFManagementService.getInstance().checkIsBuiltInFunctionName(model, udfName)) {
+      future.setException(
+          new IoTDBException(
+              String.format(
+                  "Failed to create UDF [%s], the given function name conflicts with the built-in function name.",
+                  udfName.toUpperCase()),
+              TSStatusCode.CREATE_UDF_ERROR.getStatusCode()));
+      return future;
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreateFunctionReq tCreateFunctionReq = new TCreateFunctionReq(udfName, className, false);
+      TCreateFunctionReq tCreateFunctionReq =
+          new TCreateFunctionReq(udfName, className, false).setModel(model);
       String libRoot = UDFExecutableManager.getInstance().getLibRoot();
       String jarFileName;
       ByteBuffer jarFile;
       String jarMd5;
-      if (createFunctionStatement.isUsingURI()) {
-        String uriString = createFunctionStatement.getUriString();
-        if (uriString == null || uriString.isEmpty()) {
-          future.setException(
-              new IoTDBException(
-                  "URI is empty, please specify the URI.",
-                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
-        }
+      if (stringURI.isPresent()) {
+        String uriString = stringURI.get();
         jarFileName = new File(uriString).getName();
         try {
           URI uri = new URI(uriString);
@@ -532,7 +550,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 UDFExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -548,16 +565,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
           }
         } catch (IOException | URISyntaxException e) {
-          LOGGER.warn(
-              "Failed to get executable for UDF({}) using URI: {}.",
-              createFunctionStatement.getUdfName(),
-              createFunctionStatement.getUriString(),
-              e);
+          LOGGER.warn("Failed to get executable for UDF({}) using URI: {}.", udfName, uriString, e);
           future.setException(
               new IoTDBException(
-                  "Failed to get executable for UDF '"
-                      + createFunctionStatement.getUdfName()
-                      + "', please check the URI.",
+                  "Failed to get executable for UDF '" + udfName + "', please check the URI.",
                   TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
@@ -565,19 +576,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tCreateFunctionReq.setJarFile(jarFile);
         tCreateFunctionReq.setJarMD5(jarMd5);
         tCreateFunctionReq.setIsUsingURI(true);
-        tCreateFunctionReq.setJarName(
-            String.format(
-                "%s-%s.%s",
-                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
-                jarMd5,
-                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
+        int index = jarFileName.lastIndexOf(".");
+        if (index < 0) {
+          tCreateFunctionReq.setJarName(String.format("%s-%s", jarFileName, jarMd5));
+        } else {
+          tCreateFunctionReq.setJarName(
+              String.format(
+                  "%s-%s.%s",
+                  jarFileName.substring(0, index), jarMd5, jarFileName.substring(index + 1)));
+        }
       }
 
+      FunctionType functionType = FunctionType.NONE;
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF
-        Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
-        UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
+        Class<?> clazz = Class.forName(className, true, classLoader);
+        Object o = baseClazz.cast(clazz.getDeclaredConstructor().newInstance());
+        if (Model.TABLE.equals(model)) {
+          // we check function type for table model
+          if (o instanceof ScalarFunction) {
+            functionType = FunctionType.SCALAR;
+          } else if (o instanceof AggregateFunction) {
+            functionType = FunctionType.AGGREGATE;
+          } else if (o instanceof TableFunction) {
+            functionType = FunctionType.TABLE;
+          }
+        }
+        tCreateFunctionReq.setFunctionType(functionType);
       } catch (ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException
@@ -585,15 +611,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create function when try to create UDF({}) instance first.",
-            createFunctionStatement.getUdfName(),
+            "Failed to create function when try to create {}({}) instance first.",
+            baseClazz.getSimpleName(),
+            udfName,
             e);
         future.setException(
             new IoTDBException(
                 "Failed to load class '"
-                    + createFunctionStatement.getClassName()
+                    + className
                     + "', because it's not found in jar file or is invalid: "
-                    + createFunctionStatement.getUriString(),
+                    + stringURI.orElse(null),
                 TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
@@ -616,11 +643,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
+  public SettableFuture<ConfigTaskResult> dropFunction(Model model, String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (UDFManagementService.getInstance().checkIsBuiltInFunctionName(model, udfName)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Built-in function %s can not be deregistered.", udfName.toUpperCase()),
+              TSStatusCode.DROP_UDF_ERROR.getStatusCode()));
+      return future;
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropFunction(new TDropFunctionReq(udfName));
+      final TSStatus executionStatus =
+          client.dropFunction(new TDropFunctionReq(udfName).setModel(model));
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn("[{}] Failed to drop function {}.", executionStatus, udfName);
@@ -635,11 +670,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showFunctions() {
+  public SettableFuture<ConfigTaskResult> showFunctions(Model model) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetUDFTableResp getUDFTableResp = client.getUDFTable();
+      TGetUDFTableResp getUDFTableResp = client.getUDFTable(new TGetUdfTableReq(model));
       if (getUDFTableResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(
             new IoTDBException(
@@ -647,7 +682,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // convert UDFTable and buildTsBlock
-      ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
+      ShowFunctionsTask.buildTsBlock(model, getUDFTableResp.getAllUDFInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -704,7 +739,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             String jarFilePathUnderTempDir =
                 TriggerExecutableManager.getInstance()
                         .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                    + File.separator
                     + jarFileName;
             // libRoot should be the path of the specified jar
             libRoot = jarFilePathUnderTempDir;
@@ -870,7 +904,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           final String jarFilePathUnderTempDir =
               PipePluginExecutableManager.getInstance()
                       .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                  + File.separator
                   + jarFileName;
           // libRoot should be the path of the specified jar
           libRoot = jarFilePathUnderTempDir;
@@ -1059,22 +1092,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> flush(
+      final TFlushReq tFlushReq, final boolean onCluster) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
         tsStatus = client.flush(tFlushReq);
-      } catch (ClientManagerException | TException e) {
+      } catch (final ClientManagerException | TException e) {
         future.setException(e);
       }
     } else {
       try {
         StorageEngine.getInstance().operateFlush(tFlushReq);
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }
@@ -1118,11 +1152,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<String> ignoredConfigItems =
-        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+        ConfigurationFileUtils.filterInvalidConfigItems(req.getConfigs());
     TSStatus warningTsStatus = null;
     if (!ignoredConfigItems.isEmpty()) {
       warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      warningTsStatus.setMessage(
+          "ignored config items: "
+              + ignoredConfigItems
+              + " because they are immutable or undefined.");
       if (req.getConfigs().isEmpty()) {
         future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
         return future;
@@ -1171,12 +1208,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
-      IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-      if (!iotdbConfig.isEnableSeqSpaceCompaction()
-          || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+      if (!CompactionTaskManager.getInstance().isInit()) {
         future.setException(
             new IoTDBException(
-                "cannot start repair task because inner space compaction is not enabled",
+                "cannot start repair task because compaction is not enabled",
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
@@ -1292,7 +1327,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> killQuery(KillQueryStatement killQueryStatement) {
+  public SettableFuture<ConfigTaskResult> killQuery(final KillQueryStatement killQueryStatement) {
     int dataNodeId = -1;
     String queryId = killQueryStatement.getQueryId();
     if (!killQueryStatement.isKillAll()) {
@@ -1312,12 +1347,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus = client.killQuery(queryId, dataNodeId);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("Failed to kill query [{}], because {}", queryId, executionStatus.message);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1351,9 +1385,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showClusterParameters() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowVariablesResp showVariablesResp = new TShowVariablesResp();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showVariablesResp = client.showVariables();
     } catch (ClientManagerException | TException e) {
@@ -1368,7 +1402,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showClusterId() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowClusterIdTask.buildTSBlock(
         IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
     return future;
@@ -1376,35 +1410,36 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showVersion() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowVersionTask.buildTsBlock(future);
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showCurrentSqlDialect(final String sqlDialect) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentSqlDialectTask.buildTsBlock(sqlDialect, future);
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase) {
+  public SettableFuture<ConfigTaskResult> showCurrentDatabase(
+      @Nullable final String currentDatabase) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentDatabaseTask.buildTsBlock(currentDatabase, future);
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showCurrentUser(final String currentUser) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentUserTask.buildTsBlock(currentUser, future);
     return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> showCurrentTimestamp() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentTimestampTask.buildTsBlock(future);
     return future;
   }
@@ -1452,7 +1487,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final ShowRegionStatement showRegionStatement, final boolean isTableModel) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowRegionResp showRegionResp = new TShowRegionResp();
-    final TShowRegionReq showRegionReq = new TShowRegionReq();
+    final TShowRegionReq showRegionReq = new TShowRegionReq().setIsTableModel(isTableModel);
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
     if (showRegionStatement.getStorageGroups() == null) {
       showRegionReq.setDatabases(null);
@@ -1537,7 +1572,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showAINodes() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowAINodesResp resp = new TShowAINodesResp();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1546,7 +1581,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     ShowAINodesTask.buildTsBlock(resp, future);
@@ -1564,10 +1599,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute create device template {} in config node, status is {}.",
-            createSchemaTemplateStatement.getName(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1677,11 +1708,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute deactivate device template {} from {} in config node, status is {}.",
-            deactivateTemplateStatement.getTemplateName(),
-            deactivateTemplateStatement.getPathPatternList(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1703,10 +1729,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.dropSchemaTemplate(dropSchemaTemplateStatement.getTemplateName());
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute drop device template {} in config node, status is {}.",
-            dropSchemaTemplateStatement.getTemplateName(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1778,10 +1800,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to alter device template {} in config node, status is {}.",
-            alterSchemaTemplateStatement.getTemplateAlterInfo().getTemplateName(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1833,11 +1851,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute unset device template {} from {} in config node, status is {}.",
-            unsetSchemaTemplateStatement.getTemplateName(),
-            unsetSchemaTemplateStatement.getPath(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1849,18 +1862,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> createPipe(
+      final CreatePipeStatement createPipeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Verify that Pipe is disabled if TSFile encryption is enabled
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      future.setException(
+          new IoTDBException(
+              String.format(
+                  "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
+                  createPipeStatement.getPipeName()),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
 
     // Validate pipe name
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
-              createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
+                  createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1873,27 +1897,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getConnectorAttributes());
     } catch (final Exception e) {
-      LOGGER.info("Failed to validate create pipe statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreatePipeReq req =
+      final TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
               .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
               .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
-      TSStatus tsStatus = configNodeClient.createPipe(req);
+      final TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create pipe {} in config node, status is {}.",
-            createPipeStatement.getPipeName(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1905,18 +1924,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
+  public SettableFuture<ConfigTaskResult> alterPipe(final AlterPipeStatement alterPipeStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
     if (alterPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
-              alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
+                  alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1926,19 +1944,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        String exceptionMessage =
-            String.format(
-                "Failed to get pipe info from config node, status is %s.",
-                getAllPipeInfoResp.getStatus());
-        LOGGER.warn(exceptionMessage);
         future.setException(
-            new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+            new IoTDBException(
+                String.format(
+                    "Failed to get pipe info from config node, status is %s.",
+                    getAllPipeInfoResp.getStatus()),
+                TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
       }
 
       pipeMetaFromCoordinator =
           getAllPipeInfoResp.getAllPipeInfo().stream()
-              .map(PipeMeta::deserialize)
+              .map(PipeMeta::deserialize4Coordinator)
               .filter(
                   pipeMeta ->
                       pipeMeta
@@ -1948,23 +1965,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .findFirst()
               .orElse(null);
       if (pipeMetaFromCoordinator == null) {
-        final String exceptionMessage =
-            String.format(
-                "Failed to alter pipe %s, pipe not found in system.",
-                alterPipeStatement.getPipeName());
-        LOGGER.warn(exceptionMessage);
         future.setException(
-            new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+            new IoTDBException(
+                String.format(
+                    "Failed to alter pipe %s, pipe not found in system.",
+                    alterPipeStatement.getPipeName()),
+                TSStatusCode.PIPE_ERROR.getStatusCode()));
         return future;
       }
-    } catch (Exception e) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter pipe %s, because %s",
-              alterPipeStatement.getPipeName(), e.getMessage());
-      LOGGER.warn(exceptionMessage, e);
+    } catch (final Exception e) {
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to alter pipe %s, because %s",
+                  alterPipeStatement.getPipeName(), e.getMessage()),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2017,8 +2032,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
         }
       }
-    } catch (Exception e) {
-      LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
+    } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
@@ -2038,62 +2052,57 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement) {
+  public SettableFuture<ConfigTaskResult> startPipe(final StartPipeStatement startPipeStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
     if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
-              startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
+                  startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
+      final TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to start pipe {}, status is {}.", startPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement) {
+  public SettableFuture<ConfigTaskResult> dropPipe(final DropPipeStatement dropPipeStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
     if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
-              dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
+                  dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2105,56 +2114,51 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   .setPipeName(dropPipeStatement.getPipeName())
                   .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to drop pipe {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement) {
+  public SettableFuture<ConfigTaskResult> stopPipe(final StopPipeStatement stopPipeStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
     if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
-              stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
+                  stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus tsStatus = configNodeClient.stopPipe(stopPipeStatement.getPipeName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to stop pipe {}, status is {}.", stopPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement) {
+  public SettableFuture<ConfigTaskResult> showPipes(final ShowPipesStatement showPipesStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowPipeReq tShowPipeReq = new TShowPipeReq();
+      final TShowPipeReq tShowPipeReq = new TShowPipeReq();
       if (showPipesStatement.getPipeName() != null) {
         tShowPipeReq.setPipeName(showPipesStatement.getPipeName());
       }
@@ -2164,7 +2168,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -2172,7 +2176,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showSubscriptions(
-      ShowSubscriptionsStatement showSubscriptionsStatement) {
+      final ShowSubscriptionsStatement showSubscriptionsStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     try (final ConfigNodeClient configNodeClient =
@@ -2193,19 +2197,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      ShowSubscriptionTask.buildTSBlock(
+      ShowSubscriptionsTask.buildTSBlock(
           showSubscriptionResp.isSetSubscriptionInfoList()
               ? showSubscriptionResp.getSubscriptionInfoList()
               : Collections.emptyList(),
           future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
+  public SettableFuture<ConfigTaskResult> createTopic(
+      final CreateTopicStatement createTopicStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     final String topicName = createTopicStatement.getTopicName();
@@ -2241,8 +2246,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
       PipeDataNodeAgent.plugin()
           .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
-    } catch (Exception e) {
-      LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
+    } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
       return future;
@@ -2257,7 +2261,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setTopicAttributes(topicAttributes);
       final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to create topic {} in config node, status is {}.", topicName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -2269,7 +2272,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement) {
+  public SettableFuture<ConfigTaskResult> dropTopic(final DropTopicStatement dropTopicStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2279,8 +2282,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   .setIfExistsCondition(dropTopicStatement.hasIfExistsCondition())
                   .setTopicName(dropTopicStatement.getTopicName()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to drop topic {}, status is {}.", dropTopicStatement.getTopicName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -2292,7 +2293,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement) {
+  public SettableFuture<ConfigTaskResult> showTopics(
+      final ShowTopicsStatement showTopicsStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2314,7 +2316,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               ? showTopicResp.getTopicInfoList()
               : Collections.emptyList(),
           future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -2322,7 +2324,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
-      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+      final String queryId, final DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteTimeSeriesReq req =
         new TDeleteTimeSeriesReq(
@@ -2347,10 +2349,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute delete timeseries {} in config node, status is {}.",
-            deleteTimeSeriesStatement.getPathPatternList(),
-            tsStatus);
         if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
           future.setException(
               new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
@@ -2360,7 +2358,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2368,19 +2366,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteLogicalView(
-      String queryId, DeleteLogicalViewStatement deleteLogicalViewStatement) {
+      final String queryId, final DeleteLogicalViewStatement deleteLogicalViewStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final TDeleteLogicalViewReq req =
         new TDeleteLogicalViewReq(
             queryId,
             serializePatternListToByteBuffer(deleteLogicalViewStatement.getPathPatternList()));
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
           tsStatus = client.deleteLogicalView(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
@@ -2393,15 +2391,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute delete view {}, status is {}.",
-            deleteLogicalViewStatement.getPathPatternList(),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2409,7 +2403,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> renameLogicalView(
-      String queryId, RenameLogicalViewStatement renameLogicalViewStatement) {
+      final String queryId, final RenameLogicalViewStatement renameLogicalViewStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // check path
@@ -2450,7 +2444,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "",
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.setException(
           new IoTDBException(
@@ -2468,7 +2463,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       do {
         try {
           tsStatus = client.deleteLogicalView(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
@@ -2481,12 +2476,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to execute delete view {}, status is {}.", oldName, tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2494,7 +2488,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterLogicalView(
-      AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
+      final AlterLogicalViewStatement alterLogicalViewStatement, final MPPQueryContext context) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
@@ -2515,7 +2509,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TransformToViewExpressionVisitor();
     final List<Expression> expressionList = alterLogicalViewStatement.getSourceExpressionList();
     final List<ViewExpression> viewExpressionList = new ArrayList<>();
-    for (Expression expression : expressionList) {
+    for (final Expression expression : expressionList) {
       viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
     }
 
@@ -2528,7 +2522,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         viewPathList.get(i).serialize(stream);
         ViewExpression.serialize(viewExpressionList.get(i), stream);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
 
@@ -2541,7 +2535,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       do {
         try {
           tsStatus = client.alterLogicalView(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
@@ -2554,10 +2548,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute alter view {}, status is {}.",
-            alterLogicalViewStatement.getTargetPathList(),
-            tsStatus);
         if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
           future.setException(
               new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
@@ -2568,25 +2558,25 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
       return future;
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
       return future;
     }
   }
 
   @Override
-  public TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode) {
+  public TSStatus alterLogicalViewByPipe(final AlterLogicalViewNode alterLogicalViewNode) {
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(viewPathToSourceMap.size(), stream);
-      for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+      for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
         entry.getKey().serialize(stream);
         ViewExpression.serialize(entry.getValue(), stream);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
 
@@ -2596,12 +2586,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 ByteBuffer.wrap(stream.toByteArray()))
             .setIsGeneratedByPipe(true);
     TSStatus tsStatus;
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       do {
         try {
           tsStatus = client.alterLogicalView(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
@@ -2619,7 +2609,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             viewPathToSourceMap,
             tsStatus);
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(e.toString());
     }
@@ -2627,15 +2617,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement) {
+  public SettableFuture<ConfigTaskResult> getRegionId(
+      final GetRegionIdStatement getRegionIdStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TGetRegionIdResp resp = new TGetRegionIdResp();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetRegionIdReq tGetRegionIdReq =
           new TGetRegionIdReq(getRegionIdStatement.getPartitionType());
       if (getRegionIdStatement.getDevice() != null) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         getRegionIdStatement.getDevice().serialize(baos);
         tGetRegionIdReq.setDevice(baos.toByteArray());
       } else {
@@ -2650,7 +2641,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     GetRegionIdTask.buildTsBlock(resp, future);
@@ -2659,12 +2650,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> getSeriesSlotList(
-      GetSeriesSlotListStatement getSeriesSlotListStatement) {
+      final GetSeriesSlotListStatement getSeriesSlotListStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetSeriesSlotListReq tGetSeriesSlotListReq =
+      final TGetSeriesSlotListReq tGetSeriesSlotListReq =
           new TGetSeriesSlotListReq(
               getSeriesSlotListStatement.getDatabase(),
               getSeriesSlotListStatement.getPartitionType());
@@ -2673,7 +2664,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     GetSeriesSlotListTask.buildTsBlock(resp, future);
@@ -2682,10 +2673,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> getTimeSlotList(
-      GetTimeSlotListStatement getTimeSlotListStatement) {
+      final GetTimeSlotListStatement getTimeSlotListStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TGetTimeSlotListResp resp = new TGetTimeSlotListResp();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetTimeSlotListReq tGetTimeSlotListReq = new TGetTimeSlotListReq();
       if (getTimeSlotListStatement.getDatabase() != null) {
@@ -2708,7 +2699,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     GetTimeSlotListTask.buildTSBlock(resp, future);
@@ -2717,16 +2708,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> countTimeSlotList(
-      CountTimeSlotListStatement countTimeSlotListStatement) {
+      final CountTimeSlotListStatement countTimeSlotListStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TCountTimeSlotListResp resp = new TCountTimeSlotListResp();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCountTimeSlotListReq tCountTimeSlotListReq = new TCountTimeSlotListReq();
       if (countTimeSlotListStatement.getDatabase() != null) {
         tCountTimeSlotListReq.setDatabase(countTimeSlotListStatement.getDatabase());
       } else if (countTimeSlotListStatement.getDevice() != null) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         countTimeSlotListStatement.getDevice().serialize(baos);
         tCountTimeSlotListReq.setDevice(baos.toByteArray());
       } else if (countTimeSlotListStatement.getRegionId() != -1) {
@@ -2743,7 +2734,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     CountTimeSlotListTask.buildTSBlock(resp, future);
@@ -2752,7 +2743,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> migrateRegion(
-      MigrateRegionStatement migrateRegionStatement) {
+      final MigrateRegionStatement migrateRegionStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2843,7 +2834,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
+      final CreateContinuousQueryStatement createContinuousQueryStatement,
+      final MPPQueryContext context) {
     createContinuousQueryStatement.semanticCheck();
 
     final String queryBody = createContinuousQueryStatement.getQueryBody();
@@ -2851,7 +2843,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateCQReq tCreateCQReq =
           new TCreateCQReq(
@@ -2867,34 +2859,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               context.getSession() == null ? null : context.getSession().getUserName());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to create continuous query {}. TSStatus is {}",
-            executionStatus,
-            createContinuousQueryStatement.getCqId(),
-            executionStatus.message);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId) {
+  public SettableFuture<ConfigTaskResult> dropContinuousQuery(final String cqId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus = client.dropCQ(new TDropCQReq(cqId));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("[{}] Failed to drop continuous query {}.", executionStatus, cqId);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2903,7 +2889,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showContinuousQueries() {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TShowCQResp showCQResp = client.showCQ();
       if (showCQResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -2913,7 +2899,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       // convert cqList and buildTsBlock
       ShowContinuousQueriesTask.buildTsBlock(showCQResp.getCqList(), future);
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
 
@@ -2922,57 +2908,51 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+      final CreateModelStatement createModelStatement, final MPPQueryContext context) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreateModelReq req =
+      final TCreateModelReq req =
           new TCreateModelReq(createModelStatement.getModelName(), createModelStatement.getUri());
       final TSStatus status = client.createModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to create model {}. TSStatus is {}",
-            status,
-            createModelStatement.getModelName(),
-            status.message);
         future.setException(new IoTDBException(status.message, status.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropModel(String modelName) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+  public SettableFuture<ConfigTaskResult> dropModel(final String modelName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelName));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showModels(String modelName) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+  public SettableFuture<ConfigTaskResult> showModels(final String modelName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowModelReq req = new TShowModelReq();
+      final TShowModelReq req = new TShowModelReq();
       if (modelName != null) {
         req.setModelId(modelName);
       }
-      TShowModelResp showModelResp = client.showModel(req);
+      final TShowModelResp showModelResp = client.showModel(req);
       if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(
             new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
@@ -2980,7 +2960,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       // convert model info list and buildTsBlock
       ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -2988,7 +2968,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setSpaceQuota(
-      SetSpaceQuotaStatement setSpaceQuotaStatement) {
+      final SetSpaceQuotaStatement setSpaceQuotaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     final TSetSpaceQuotaReq req = new TSetSpaceQuotaReq();
@@ -2998,11 +2978,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
     spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
     req.setSpaceLimit(spaceQuota);
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       tsStatus = client.setSpaceQuota(req);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -3015,10 +2995,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showSpaceQuota(
-      ShowSpaceQuotaStatement showSpaceQuotaStatement) {
+      final ShowSpaceQuotaStatement showSpaceQuotaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final List<String> databases = new ArrayList<>();
       if (showSpaceQuotaStatement.getDatabases() != null) {
@@ -3030,7 +3010,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(databases);
       // build TSBlock
       ShowSpaceQuotaTask.buildTsBlock(showSpaceQuotaResp, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -3038,21 +3018,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setThrottleQuota(
-      SetThrottleQuotaStatement setThrottleQuotaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final SetThrottleQuotaStatement setThrottleQuotaStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    TSetThrottleQuotaReq req = new TSetThrottleQuotaReq();
+    final TSetThrottleQuotaReq req = new TSetThrottleQuotaReq();
     req.setUserName(setThrottleQuotaStatement.getUserName());
-    TThrottleQuota throttleQuota = new TThrottleQuota();
+    final TThrottleQuota throttleQuota = new TThrottleQuota();
     throttleQuota.setThrottleLimit(setThrottleQuotaStatement.getThrottleLimit());
     throttleQuota.setMemLimit(setThrottleQuotaStatement.getMemLimit());
     throttleQuota.setCpuLimit(setThrottleQuotaStatement.getCpuLimit());
     req.setThrottleQuota(throttleQuota);
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       tsStatus = client.setThrottleQuota(req);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -3065,18 +3045,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showThrottleQuota(
-      ShowThrottleQuotaStatement showThrottleQuotaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowThrottleQuotaStatement showThrottleQuotaStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TShowThrottleReq req = new TShowThrottleReq();
+      final TShowThrottleReq req = new TShowThrottleReq();
       req.setUserName(showThrottleQuotaStatement.getUserName());
-      TThrottleQuotaResp throttleQuotaResp = configNodeClient.showThrottleQuota(req);
+      final TThrottleQuotaResp throttleQuotaResp = configNodeClient.showThrottleQuota(req);
       // build TSBlock
       ShowThrottleQuotaTask.buildTSBlock(throttleQuotaResp, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -3089,7 +3069,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       throttleQuotaResp = configNodeClient.getThrottleQuota();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error(e.getMessage());
     }
     return throttleQuotaResp;
@@ -3098,18 +3078,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public TSpaceQuotaResp getSpaceQuota() {
     TSpaceQuotaResp spaceQuotaResp = new TSpaceQuotaResp();
-    try (ConfigNodeClient configNodeClient =
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       spaceQuotaResp = configNodeClient.getSpaceQuota();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error(e.getMessage());
     }
     return spaceQuotaResp;
   }
 
   @Override
-  public TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req) {
+  public TPipeTransferResp handleTransferConfigPlan(
+      final String clientId, final TPipeTransferReq req) {
     final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
             req.version,
@@ -3136,7 +3117,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showDatabases(final ShowDB showDB) {
+  public SettableFuture<ConfigTaskResult> showDatabases(
+      final ShowDB showDB, final Predicate<String> canSeenDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
@@ -3144,10 +3126,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       final TGetDatabaseReq req =
-          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
-      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails());
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -3155,10 +3138,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster) {
+  public SettableFuture<ConfigTaskResult> showCluster(final ShowCluster showCluster) {
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    ShowClusterStatement treeStatement = new ShowClusterStatement();
+    final ShowClusterStatement treeStatement = new ShowClusterStatement();
     treeStatement.setDetails(showCluster.getDetails().orElse(false));
     return showCluster(treeStatement);
   }
@@ -3167,20 +3150,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> useDatabase(
       final Use useDB, final IClientSession clientSession) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    if (InformationSchemaUtils.mayUseDB(useDB.getDatabaseId().getValue(), clientSession, future)) {
+      return future;
+    }
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabaseId().getValue());
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       final TGetDatabaseReq req =
-          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
       if (!resp.getDatabaseInfoMap().isEmpty()) {
-        if (!resp.getDatabaseInfoMap()
-            .get(PathUtils.qualifyDatabaseName(useDB.getDatabaseId().getValue()))
-            .isIsTableModel()) {
-          throw new DatabaseModelException(useDB.getDatabaseId().getValue(), false);
-        }
         clientSession.setDatabaseName(useDB.getDatabaseId().getValue());
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
@@ -3189,25 +3172,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format("Unknown database %s", useDB.getDatabaseId().getValue()),
                 TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
       }
-    } catch (final IOException | ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
-  private String transformDBName(String dbName) {
-    return ROOT + PATH_SEPARATOR_CHAR + dbName;
-  }
-
   @Override
-  public SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteDatabasesReq req =
-        new TDeleteDatabasesReq(
-            Collections.singletonList(transformDBName(dropDB.getDbName().getValue())));
-    try (ConfigNodeClient client =
+  public SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TDeleteDatabasesReq req =
+        new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
+            .setIsTableModel(true);
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = client.deleteDatabases(req);
+      final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
@@ -3229,7 +3208,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.getCode()));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -3237,7 +3216,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createDatabase(
-      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+      final TDatabaseSchema databaseSchema, final boolean ifExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Construct request using statement
@@ -3249,22 +3228,46 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-        if (ifNotExists) {
+        if (ifExists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
-          LOGGER.info(
-              "Failed to CREATE DATABASE {}, because it already exists", databaseSchema.getName());
           future.setException(
               new IoTDBException(
-                  String.format(
-                      "Database %s already exists", databaseSchema.getName().substring(5)),
+                  String.format("Database %s already exists", databaseSchema.getName()),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
       } else {
-        LOGGER.warn(
-            "Failed to execute create database {} in config node, status is {}.",
-            databaseSchema.getName(),
-            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Construct request using statement
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
+        if (ifNotExists) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          future.setException(
+              new IoTDBException(
+                  String.format("Database %s doesn't exist", databaseSchema.getName().substring(5)),
+                  TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+        }
+      } else {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
     } catch (final ClientManagerException | TException e) {
@@ -3304,12 +3307,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && ifNotExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to create table {}.{} in config node, status is {}.",
-            database,
-            table.getTableName(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3322,20 +3321,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String database, final String tableName, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
+    if (InformationSchemaUtils.mayDescribeTable(database, tableName, isDetails, future)) {
+      return future;
+    }
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDescTableResp resp = configNodeClient.describeTable(database, tableName, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        LOGGER.warn(
-            "Failed to describe tables in database {} in config node, status is {}.",
-            database,
-            resp.getStatus());
         future.setException(
             new IoTDBException(
-                resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-                    ? String.format("Unknown database %s", database)
-                    : resp.getStatus().message,
-                resp.getStatus().code));
+                getTableErrorMessage(resp.getStatus(), database), resp.getStatus().code));
         return future;
       }
       final TsTable table = TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo());
@@ -3355,20 +3350,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String database, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
+    if (InformationSchemaUtils.mayShowTable(database, isDetails, future)) {
+      return future;
+    }
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TShowTableResp resp = configNodeClient.showTables(database, isDetails);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        LOGGER.warn(
-            "Failed to show tables in database {} in config node, status is {}.",
-            database,
-            resp.getStatus());
         future.setException(
             new IoTDBException(
-                resp.getStatus().code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
-                    ? String.format("Unknown database %s", database)
-                    : resp.getStatus().message,
-                resp.getStatus().code));
+                getTableErrorMessage(resp.getStatus(), database), resp.getStatus().code));
         return future;
       }
       if (isDetails) {
@@ -3430,13 +3421,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && tableIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to rename table to {} from table {}.{}, status is {}.",
-            targetName,
-            database,
-            sourceName,
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3471,9 +3457,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to add column to table {}.{}, status is {}.", database, tableName, tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3517,14 +3502,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to rename column from {} to {} for table {}.{}, status is {}.",
-            oldName,
-            newName,
-            database,
-            tableName,
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3566,13 +3545,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to drop column {} for table {}.{}, status is {}.",
-            columnName,
-            database,
-            tableName,
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3611,13 +3585,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn(
-            "Failed to set properties {} to table {}.{}, status is {}.",
-            properties,
-            database,
-            tableName,
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3645,8 +3614,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
-        LOGGER.warn("Failed to drop table {}.{}, status is {}.", database, tableName, tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3675,13 +3644,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // ByteArrayOutputStream won't throw IOException
       }
 
+      final ByteArrayOutputStream modStream = new ByteArrayOutputStream();
+      try (final DataOutputStream outputStream = new DataOutputStream(modStream)) {
+        deleteDevice.serializeModEntries(outputStream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
       final TDeleteTableDeviceReq req =
           new TDeleteTableDeviceReq(
-              PathUtils.qualifyDatabaseName(deleteDevice.getDatabase()),
+              deleteDevice.getDatabase(),
               deleteDevice.getTableName(),
               queryId,
               ByteBuffer.wrap(patternStream.toByteArray()),
-              ByteBuffer.wrap(filterStream.toByteArray()));
+              ByteBuffer.wrap(filterStream.toByteArray()),
+              ByteBuffer.wrap(modStream.toByteArray()));
 
       TDeleteTableDeviceResp resp;
       do {
@@ -3705,13 +3682,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
         DeleteDeviceTask.buildTSBlock(resp.getDeletedNum(), future);
       } else {
-        LOGGER.warn(
-            "Failed to delete devices from table {}.{}, status is {}.",
-            deleteDevice.getDatabase(),
-            deleteDevice.getTableName(),
-            resp.getStatus());
         future.setException(
-            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
+            new IoTDBException(
+                getTableErrorMessage(resp.getStatus(), deleteDevice.getDatabase()),
+                resp.getStatus().getCode()));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3750,6 +3724,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // keep waiting until task ends
     } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
     return tsStatus;
+  }
+
+  private String getTableErrorMessage(final TSStatus status, final String database) {
+    return status.code == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+        ? String.format("Unknown database %s", PathUtils.unQualifyDatabaseName(database))
+        : status.getMessage();
   }
 
   public void handlePipeConfigClientExit(final String clientId) {

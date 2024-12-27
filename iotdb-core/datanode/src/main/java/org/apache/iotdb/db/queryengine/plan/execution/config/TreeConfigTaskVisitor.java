@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
@@ -95,7 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -177,6 +180,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 
 import org.apache.tsfile.exception.NotImplementedException;
+
+import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
+import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 
 public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
@@ -323,25 +329,42 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, MPPQueryContext context) {
-    return new CreateFunctionTask(createFunctionStatement);
+    if (createFunctionStatement.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateFunctionTask(createFunctionStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(
+          getUnTrustedUriErrorMsg(createFunctionStatement.getUriString().get()));
+    }
   }
 
   @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, MPPQueryContext context) {
-    return new DropFunctionTask(dropFunctionStatement);
+    return new DropFunctionTask(Model.TREE, dropFunctionStatement.getUdfName());
   }
 
   @Override
   public IConfigTask visitShowFunctions(
       ShowFunctionsStatement showFunctionsStatement, MPPQueryContext context) {
-    return new ShowFunctionsTask();
+    return new ShowFunctionsTask(Model.TREE);
   }
 
   @Override
   public IConfigTask visitCreateTrigger(
       CreateTriggerStatement createTriggerStatement, MPPQueryContext context) {
-    return new CreateTriggerTask(createTriggerStatement);
+    if (!createTriggerStatement.isUsingURI()
+        || (createTriggerStatement.getUriString() != null
+            && isUriTrusted(createTriggerStatement.getUriString()))) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateTriggerTask(createTriggerStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(createTriggerStatement.getUriString()));
+    }
   }
 
   @Override
@@ -359,7 +382,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipePlugin(
       CreatePipePluginStatement createPipePluginStatement, MPPQueryContext context) {
-    return new CreatePipePluginTask(createPipePluginStatement);
+    if (createPipePluginStatement.getUriString() != null
+        && isUriTrusted(createPipePluginStatement.getUriString())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreatePipePluginTask(createPipePluginStatement);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(
+          getUnTrustedUriErrorMsg(createPipePluginStatement.getUriString()));
+    }
   }
 
   @Override
@@ -468,6 +500,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       CreatePipeStatement createPipeStatement, MPPQueryContext context) {
+    for (String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to create pipe %s, setting %s is not allowed.",
+                createPipeStatement.getPipeName(), ExtractorAttribute));
+      }
+    }
+
     // Inject tree model into the extractor attributes
     createPipeStatement
         .getExtractorAttributes()
@@ -479,6 +520,24 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitAlterPipe(
       AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+
+    for (String ExtractorAttribute : alterPipeStatement.getExtractorAttributes().keySet()) {
+      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+        throw new SemanticException(
+            String.format(
+                "Failed to alter pipe %s, modifying %s is not allowed.",
+                alterPipeStatement.getPipeName(), ExtractorAttribute));
+      }
+    }
+
+    // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
+    // modified, the original sql-dialect is used.
+    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+      alterPipeStatement
+          .getExtractorAttributes()
+          .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    }
+
     return new AlterPipeTask(alterPipeStatement);
   }
 
@@ -493,14 +552,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     return new StopPipeTask(stopPipeStatement);
   }
 
-  @Override
-  public IConfigTask visitShowSubscriptions(
-      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
-    return new ShowSubscriptionTask(showSubscriptionsStatement);
-  }
-
   public IConfigTask visitCreateTopic(
       CreateTopicStatement createTopicStatement, MPPQueryContext context) {
+    // Inject tree model into the topic attributes
+    createTopicStatement
+        .getTopicAttributes()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+
     return new CreateTopicTask(createTopicStatement);
   }
 
@@ -514,6 +572,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowTopics(
       ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
     return new ShowTopicsTask(showTopicsStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
+    return new ShowSubscriptionsTask(showSubscriptionsStatement);
   }
 
   @Override
@@ -634,7 +698,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreateModel(
       CreateModelStatement createModelStatement, MPPQueryContext context) {
-    return new CreateModelTask(createModelStatement, context);
+    if (createModelStatement.getUri() != null && isUriTrusted(createModelStatement.getUri())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateModelTask(createModelStatement, context);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(createModelStatement.getUri()));
+    }
   }
 
   @Override

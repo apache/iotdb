@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -52,7 +53,7 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
     this.attributeProvider = attributeProvider;
   }
 
-  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
+  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) throws MetadataException {
     final ShowDevicesResult result =
         new ShowDevicesResult(
             null,
@@ -67,10 +68,10 @@ public abstract class DeviceUpdater extends DevicePredicateHandler {
     }
   }
 
-  protected abstract void update();
+  protected abstract void update() throws MetadataException;
 
   @Override
-  public void close() {
+  public void close() throws MetadataException {
     prepareBatchResult();
     if (hasComputedResult()) {
       update();

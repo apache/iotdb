@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -159,23 +159,21 @@ public class TsFileAndModSettleToolTest {
     createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
     TsFileResource tsFileResource = new TsFileResource(new File(path));
-    tsFileResource.setModFile(
-        new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+    tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
   }
 
   public void createlModificationFile(String timeseriesPath) {
-    String modFilePath = path + ModificationFile.FILE_SUFFIX;
-    ModificationFile modificationFile = new ModificationFile(modFilePath);
-    List<Modification> mods = new ArrayList<>();
+    ModificationFile modificationFile = new ModificationFile(new File(path));
+    List<ModEntry> mods = new ArrayList<>();
     try {
       MeasurementPath partialPath = new MeasurementPath(timeseriesPath);
-      mods.add(new Deletion(partialPath, 10000000, 1500, 10000));
-      mods.add(new Deletion(partialPath, 10000000, 20000, 30000));
-      mods.add(new Deletion(partialPath, 10000000, 45000, 50000));
-      for (Modification mod : mods) {
+      mods.add(new TreeDeletionEntry(partialPath, 1500, 10000));
+      mods.add(new TreeDeletionEntry(partialPath, 20000, 30000));
+      mods.add(new TreeDeletionEntry(partialPath, 45000, 50000));
+      for (ModEntry mod : mods) {
         modificationFile.write(mod);
       }
       modificationFile.close();
@@ -204,15 +202,15 @@ public class TsFileAndModSettleToolTest {
       for (long timestamp = 0; timestamp < maxTimestamp; timestamp += 1000) {
         for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
           String device = entry.getKey();
-          TSRecord tsRecord = new TSRecord(timestamp, device);
+          TSRecord tsRecord = new TSRecord(device, timestamp);
           for (String sensor : entry.getValue()) {
             DataPoint dataPoint = new LongDataPoint(sensor, timestamp + VALUE_OFFSET);
             tsRecord.addTuple(dataPoint);
           }
-          tsFileWriter.write(tsRecord);
+          tsFileWriter.writeRecord(tsRecord);
         }
       }
-      tsFileWriter.flushAllChunkGroups();
+      tsFileWriter.flush();
       tsFileWriter.close();
     } catch (Throwable e) {
       Assert.fail(e.getMessage());

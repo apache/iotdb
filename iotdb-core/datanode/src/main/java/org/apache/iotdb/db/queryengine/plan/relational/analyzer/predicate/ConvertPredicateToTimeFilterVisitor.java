@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -46,13 +47,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.isTimeColumn;
 
+/** The caller must make sure that the Expression only contains valid time predicate */
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
 
   @Override
   protected Filter visitInPredicate(InPredicate node, Void context) {
-    checkArgument(isTimeColumn(node.getValue()));
     Expression valueList = node.getValueList();
     checkArgument(valueList instanceof InListExpression);
     List<Expression> values = ((InListExpression) valueList).getValues();
@@ -60,7 +60,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       checkArgument(value instanceof LongLiteral);
     }
     if (values.size() == 1) {
-      TimeFilterApi.eq(getLongValue(values.get(0)));
+      return TimeFilterApi.eq(getLongValue(values.get(0)));
     }
     Set<Long> longValues = new HashSet<>();
     for (Expression value : values) {
@@ -111,27 +111,43 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     long value;
     if (node.getLeft() instanceof LongLiteral) {
       value = getLongValue(node.getLeft());
+      switch (node.getOperator()) {
+        case EQUAL:
+          return TimeFilterApi.eq(value);
+        case NOT_EQUAL:
+          return TimeFilterApi.notEq(value);
+        case GREATER_THAN:
+          return TimeFilterApi.lt(value);
+        case GREATER_THAN_OR_EQUAL:
+          return TimeFilterApi.ltEq(value);
+        case LESS_THAN:
+          return TimeFilterApi.gt(value);
+        case LESS_THAN_OR_EQUAL:
+          return TimeFilterApi.gtEq(value);
+        default:
+          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+      }
     } else if (node.getRight() instanceof LongLiteral) {
       value = getLongValue(node.getRight());
+      switch (node.getOperator()) {
+        case EQUAL:
+          return TimeFilterApi.eq(value);
+        case NOT_EQUAL:
+          return TimeFilterApi.notEq(value);
+        case GREATER_THAN:
+          return TimeFilterApi.gt(value);
+        case GREATER_THAN_OR_EQUAL:
+          return TimeFilterApi.gtEq(value);
+        case LESS_THAN:
+          return TimeFilterApi.lt(value);
+        case LESS_THAN_OR_EQUAL:
+          return TimeFilterApi.ltEq(value);
+        default:
+          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+      }
     } else {
       throw new IllegalStateException(
           "Either left or right operand of Time ComparisonExpression should be LongLiteral");
-    }
-    switch (node.getOperator()) {
-      case EQUAL:
-        return TimeFilterApi.eq(value);
-      case NOT_EQUAL:
-        return TimeFilterApi.notEq(value);
-      case GREATER_THAN:
-        return TimeFilterApi.gt(value);
-      case GREATER_THAN_OR_EQUAL:
-        return TimeFilterApi.gtEq(value);
-      case LESS_THAN:
-        return TimeFilterApi.lt(value);
-      case LESS_THAN_OR_EQUAL:
-        return TimeFilterApi.ltEq(value);
-      default:
-        throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
     }
   }
 
@@ -161,7 +177,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
 
-    if (isTimeColumn(firstExpression)) {
+    if (firstExpression instanceof SymbolReference) {
       // firstExpression is TIMESTAMP
       long minValue = getLongValue(secondExpression);
       long maxValue = getLongValue(thirdExpression);
@@ -170,7 +186,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         return TimeFilterApi.eq(minValue);
       }
       return TimeFilterApi.between(minValue, maxValue);
-    } else if (isTimeColumn(secondExpression)) {
+    } else if (secondExpression instanceof SymbolReference) {
       // secondExpression is TIMESTAMP
       long value = getLongValue(firstExpression);
       long maxValue = getLongValue(thirdExpression);
@@ -186,7 +202,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
           value <= maxValue,
           String.format("Predicate [%s] should be simplified in previous step", node));
       return TimeFilterApi.ltEq(value);
-    } else if (isTimeColumn(thirdExpression)) {
+    } else if (thirdExpression instanceof SymbolReference) {
       // thirdExpression is TIMESTAMP
       long value = getLongValue(firstExpression);
       long minValue = getLongValue(secondExpression);

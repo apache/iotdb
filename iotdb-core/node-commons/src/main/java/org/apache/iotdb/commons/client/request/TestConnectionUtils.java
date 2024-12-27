@@ -37,9 +37,9 @@ import java.util.stream.Collectors;
 
 public class TestConnectionUtils {
   private static int dataNodeServiceRequestTimeout =
-      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+      CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
   private static int configNodeServiceRequestTimeout =
-      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+      CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS();
 
   public static <ServiceProviderLocation, RequestType>
       List<TTestConnectionResult> testConnectionsImpl(
@@ -108,6 +108,6 @@ public class TestConnectionUtils {
 
   public static int calculateDnToCnLeaderMaxTime() {
     return calculateCnLeaderToAllDnMaxTime()
-        + CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+        + CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
   }
 }

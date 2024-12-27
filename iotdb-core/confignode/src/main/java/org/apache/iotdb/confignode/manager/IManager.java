@@ -89,6 +89,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
@@ -119,6 +120,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
@@ -422,8 +424,7 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getSchemaPartition(
-      final PathPatternTree patternTree, final boolean isTableModel);
+  TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree);
 
   /**
    * Get SchemaPartition with <databaseName, seriesSlot>.
@@ -437,8 +438,7 @@ public interface IManager {
    *
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionTableResp getOrCreateSchemaPartition(
-      final PathPatternTree patternTree, final boolean isTableModel);
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(final PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition with <databaseName, seriesSlot>.
@@ -522,9 +522,9 @@ public interface IManager {
 
   TSStatus createFunction(TCreateFunctionReq req);
 
-  TSStatus dropFunction(String udfName);
+  TSStatus dropFunction(TDropFunctionReq req);
 
-  TGetUDFTableResp getUDFTable();
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req);
 
   TGetJarInListResp getUDFJar(TGetJarInListReq req);
 

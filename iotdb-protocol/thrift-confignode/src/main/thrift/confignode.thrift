@@ -134,7 +134,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -166,6 +166,7 @@ struct TDeleteDatabaseReq {
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
+  3: optional bool isTableModel
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -216,7 +217,6 @@ struct TDatabaseSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {
@@ -408,8 +408,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -457,10 +457,17 @@ struct TCreateFunctionReq {
   4: optional string jarName
   5: optional binary jarFile
   6: optional string jarMD5
+  7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+  2: optional common.Model model
+}
+
+struct TGetUdfTableReq {
+  1: required common.Model model
 }
 
 // Get UDF table from config node
@@ -612,12 +619,12 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
-  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
+  3: optional bool isTableModel
 }
 
 struct TShowDatabaseResp {
@@ -630,6 +637,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {
@@ -644,6 +652,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsFileSize
 }
 
 struct TShowRegionResp {
@@ -745,6 +754,7 @@ struct TCreatePipeReq {
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
     5: optional bool ifNotExistsCondition
+    6: optional bool needManuallyStart
 }
 
 struct TAlterPipeReq {
@@ -1063,6 +1073,7 @@ struct TDeleteTableDeviceReq {
     3: required string queryId
     4: required binary patternInfo
     5: required binary filterInfo
+    6: required binary modInfo
 }
 
 struct TDeleteTableDeviceResp {
@@ -1426,7 +1437,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF table
    */
-  TGetUDFTableResp getUDFTable()
+  TGetUDFTableResp getUDFTable(TGetUdfTableReq req)
 
   /**
    * Return the UDF jar list of the jar name list

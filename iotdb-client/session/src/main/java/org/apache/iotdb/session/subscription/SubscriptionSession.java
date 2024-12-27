@@ -30,6 +30,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
+import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
@@ -51,7 +52,18 @@ public class SubscriptionSession extends Session {
         port,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.SQL_DIALECT);
+  }
+
+  public SubscriptionSession(final String host, final int port, final String sqlDialect) {
+    this(
+        host,
+        port,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        sqlDialect);
   }
 
   public SubscriptionSession(
@@ -60,6 +72,16 @@ public class SubscriptionSession extends Session {
       final String username,
       final String password,
       final int thriftMaxFrameSize) {
+    this(host, port, username, password, thriftMaxFrameSize, SessionConfig.SQL_DIALECT);
+  }
+
+  private SubscriptionSession(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize,
+      final String sqlDialect) {
     // TODO: more configs control
     super(
         new Session.Builder()
@@ -71,7 +93,8 @@ public class SubscriptionSession extends Session {
             // disable auto fetch
             .enableAutoFetch(false)
             // disable redirection
-            .enableRedirection(false));
+            .enableRedirection(false)
+            .sqlDialect(sqlDialect));
   }
 
   @Override
@@ -108,6 +131,7 @@ public class SubscriptionSession extends Session {
    */
   public void createTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("CREATE TOPIC %s", topicName);
     executeNonQueryStatement(sql);
   }
@@ -125,6 +149,7 @@ public class SubscriptionSession extends Session {
    */
   public void createTopicIfNotExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("CREATE TOPIC IF NOT EXISTS %s", topicName);
     executeNonQueryStatement(sql);
   }
@@ -143,6 +168,7 @@ public class SubscriptionSession extends Session {
    */
   public void createTopic(final String topicName, final Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     createTopic(topicName, properties, false);
   }
 
@@ -158,14 +184,19 @@ public class SubscriptionSession extends Session {
    */
   public void createTopicIfNotExists(final String topicName, final Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     createTopic(topicName, properties, true);
   }
 
   private void createTopic(
       final String topicName, final Properties properties, final boolean isSetIfNotExistsCondition)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (properties.isEmpty()) {
-      createTopic(topicName);
+    if (Objects.isNull(properties) || properties.isEmpty()) {
+      if (isSetIfNotExistsCondition) {
+        createTopicIfNotExists(topicName);
+      } else {
+        createTopic(topicName);
+      }
       return;
     }
     final StringBuilder sb = new StringBuilder();
@@ -202,6 +233,7 @@ public class SubscriptionSession extends Session {
    */
   public void dropTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("DROP TOPIC %s", topicName);
     executeNonQueryStatement(sql);
   }
@@ -219,6 +251,7 @@ public class SubscriptionSession extends Session {
    */
   public void dropTopicIfExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("DROP TOPIC IF EXISTS %s", topicName);
     executeNonQueryStatement(sql);
   }
@@ -232,6 +265,7 @@ public class SubscriptionSession extends Session {
 
   public Optional<Topic> getTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("SHOW TOPIC %s", topicName);
     try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
       final Set<Topic> topics = convertDataSetToTopics(dataSet);
@@ -254,6 +288,7 @@ public class SubscriptionSession extends Session {
 
   public Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     final String sql = String.format("SHOW SUBSCRIPTIONS ON %s", topicName);
     try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
       return convertDataSetToSubscriptions(dataSet);

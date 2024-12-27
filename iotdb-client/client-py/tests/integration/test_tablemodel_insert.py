@@ -17,24 +17,23 @@
 #
 
 import numpy as np
-from datetime import date
-from iotdb.Session import Session
+from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet, ColumnType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from datetime import date
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 
 
 # Test inserting tablet data
-def test_insert_relational_tablet_use_tablet():
+def test_insert_use_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        session = Session(
-            db.get_container_host_ip(), db.get_exposed_port(6667), sql_dialect="table"
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
         )
-        session.open()
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
@@ -96,22 +95,22 @@ def test_insert_relational_tablet_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         timestamps = []
         values = []
@@ -322,7 +321,7 @@ def test_insert_relational_tablet_use_tablet():
         tablet = Tablet(
             table_name, column_names, data_types, values, timestamps, column_types
         )
-        session.insert_relational_tablet(tablet)
+        session.insert(tablet)
         # Calculate the number of rows in the actual time series
         actual = 0
         with session.execute_query_statement(
@@ -375,22 +374,22 @@ def test_insert_relational_tablet_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         timestamps = []
         values = []
@@ -601,7 +600,7 @@ def test_insert_relational_tablet_use_tablet():
         tablet = Tablet(
             table_name, column_names, data_types, values, timestamps, column_types
         )
-        session.insert_relational_tablet(tablet)
+        session.insert(tablet)
         # Calculate the number of rows in the actual time series
         actual = 0
         with session.execute_query_statement(
@@ -621,10 +620,10 @@ def test_insert_relational_tablet_use_tablet():
 def test_insert_relational_tablet_use_numpy_tablet():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        session = Session(
-            db.get_container_host_ip(), db.get_exposed_port(6667), sql_dialect="table"
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
         )
-        session.open()
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
@@ -688,22 +687,22 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
         np_values = [
@@ -852,7 +851,7 @@ def test_insert_relational_tablet_use_numpy_tablet():
             np_timestamps,
             column_types=column_types,
         )
-        session.insert_relational_tablet(np_tablet)
+        session.insert(np_tablet)
         # Calculate the number of rows in the actual time series
         actual = 0
         with session.execute_query_statement(
@@ -905,22 +904,22 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
         np_values = [
@@ -1083,7 +1082,7 @@ def test_insert_relational_tablet_use_numpy_tablet():
             bitmaps=np_bitmaps_,
             column_types=column_types,
         )
-        session.insert_relational_tablet(np_tablet)
+        session.insert(np_tablet)
         # Calculate the number of rows in the actual time series
         actual = 0
         with session.execute_query_statement(
@@ -1103,10 +1102,10 @@ def test_insert_relational_tablet_use_numpy_tablet():
 def test_insert_relational_tablet_auto_create():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        session = Session(
-            db.get_container_host_ip(), db.get_exposed_port(6667), sql_dialect="table"
+        config = TableSessionConfig(
+            node_urls=[f"{db.get_container_host_ip()}:{db.get_exposed_port(6667)}"]
         )
-        session.open()
+        session = TableSession(config)
 
         # Preparation before testing
         session.execute_non_query_statement(
@@ -1156,22 +1155,22 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.ID,
-                ColumnType.ID,
-                ColumnType.ID,
+                ColumnType.TAG,
+                ColumnType.TAG,
+                ColumnType.TAG,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
             ]
             timestamps = []
             values = []
@@ -1382,7 +1381,7 @@ def test_insert_relational_tablet_auto_create():
             tablet = Tablet(
                 table_name, column_names, data_types, values, timestamps, column_types
             )
-            session.insert_relational_tablet(tablet)
+            session.insert(tablet)
 
         # 2、Test inserting NumpyTablet data(Insert 10 times)
         for i in range(1, 10):
@@ -1424,22 +1423,22 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.ID,
-                ColumnType.ID,
-                ColumnType.ID,
+                ColumnType.TAG,
+                ColumnType.TAG,
+                ColumnType.TAG,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
             ]
             np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
             np_values = [
@@ -1588,6 +1587,6 @@ def test_insert_relational_tablet_auto_create():
                 np_timestamps,
                 column_types=column_types,
             )
-            session.insert_relational_tablet(np_tablet)
+            session.insert(np_tablet)
 
         session.close()

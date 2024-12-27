@@ -21,8 +21,9 @@ package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -103,17 +104,17 @@ public class TsFileGenerator implements AutoCloseable {
     long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
     for (long r = 0; r < number; r++) {
-      int row = tablet.rowSize++;
+      int row = tablet.getRowSize();
       startTime += timeGap;
-      timestamps[row] = startTime;
+      tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
-          writer.write(tablet);
+          writer.writeTree(tablet);
         } else {
           writer.writeAligned(tablet);
         }
@@ -121,9 +122,9 @@ public class TsFileGenerator implements AutoCloseable {
       }
     }
     // write
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       if (!isAligned) {
-        writer.write(tablet);
+        writer.writeTree(tablet);
       } else {
         writer.writeAligned(tablet);
       }
@@ -149,17 +150,17 @@ public class TsFileGenerator implements AutoCloseable {
     long startTime = startTimestamp;
 
     for (long r = 0; r < number; r++) {
-      final int row = tablet.rowSize++;
+      final int row = tablet.getRowSize();
       startTime += timeGap;
-      timestamps[row] = startTime;
+      tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));
       }
       // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         if (!isAligned) {
-          writer.write(tablet);
+          writer.writeTree(tablet);
         } else {
           writer.writeAligned(tablet);
         }
@@ -167,9 +168,9 @@ public class TsFileGenerator implements AutoCloseable {
       }
     }
     // write
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       if (!isAligned) {
-        writer.write(tablet);
+        writer.writeTree(tablet);
       } else {
         writer.writeAligned(tablet);
       }
@@ -250,23 +251,21 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateDeletion(final String device, final int number)
       throws IOException, IllegalPathException {
     try (final ModificationFile modificationFile =
-        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
-      writer.flushAllChunkGroups();
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
+      writer.flush();
       final TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {
         return;
       }
 
-      final long fileOffset = tsFile.length();
       final long maxTime = timeSet.last() - 1;
       for (int i = 0; i < number; i++) {
         final int endTime = random.nextInt((int) (maxTime)) + 1;
         final int startTime = random.nextInt(endTime);
         for (final IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
-          final Deletion deletion =
-              new Deletion(
-                  new MeasurementPath(device, measurementSchema.getMeasurementId()),
-                  fileOffset,
+          final ModEntry deletion =
+              new TreeDeletionEntry(
+                  new MeasurementPath(device, measurementSchema.getMeasurementName()),
                   startTime,
                   endTime);
           modificationFile.write(deletion);

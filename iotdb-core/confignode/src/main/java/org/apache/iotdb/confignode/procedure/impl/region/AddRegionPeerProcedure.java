@@ -84,10 +84,10 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           LOGGER.info(
-              "[pid{}][AddRegion] started, region {} will be added to DataNode {}.",
+              "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
               getProcId(),
-              regionId.getId(),
-              destDataNode.getDataNodeId());
+                  regionId,
+              handler.simplifiedLocation(destDataNode));
           handler.addRegionLocation(regionId, destDataNode);
           handler.forceUpdateRegionCache(regionId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(regionId, destDataNode);
@@ -119,8 +119,9 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
               return warnAndRollBackAndNoMoreState(
                   env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
-              // should never happen
-              return warnAndRollBackAndNoMoreState(env, handler, "should never return PROCESSING");
+              LOGGER.info(
+                  "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback");
+              return Flow.NO_MORE_STATE;
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;
@@ -133,10 +134,10 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
-              "[pid{}][AddRegion] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
-              regionId.getId(),
-              destDataNode.getDataNodeId(),
+                  regionId,
+                  handler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));

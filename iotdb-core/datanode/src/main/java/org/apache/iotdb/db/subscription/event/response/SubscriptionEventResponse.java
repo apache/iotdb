@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 public interface SubscriptionEventResponse<E> {
 
@@ -28,9 +31,9 @@ public interface SubscriptionEventResponse<E> {
 
   E getCurrentResponse();
 
-  void prefetchRemainingResponses() throws IOException;
+  void prefetchRemainingResponses() throws Exception;
 
-  void fetchNextResponse() throws IOException;
+  void fetchNextResponse(final long offset) throws Exception;
 
   /////////////////////////////// byte buffer ///////////////////////////////
 
@@ -43,6 +46,10 @@ public interface SubscriptionEventResponse<E> {
   void invalidateCurrentResponseByteBuffer();
 
   /////////////////////////////// lifecycle ///////////////////////////////
+
+  default void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
+    // do nothing
+  }
 
   void nack();
 

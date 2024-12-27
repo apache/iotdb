@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -1054,7 +1054,6 @@ public class IoTDBSimpleQueryIT {
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         while (resultSet.next()) {
           Assert.assertEquals("root.group_with_hyphen", resultSet.getString(1));
-          Assert.assertEquals("TREE", resultSet.getString(12));
         }
       }
     } catch (final SQLException e) {

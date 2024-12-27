@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -33,8 +34,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -68,6 +72,21 @@ public class DataPartition extends Partition {
   public Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       getDataPartitionMap() {
     return dataPartitionMap;
+  }
+
+  public Set<TRegionReplicaSet> getAllReplicaSets() {
+    Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+    for (Entry<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dbEntry : dataPartitionMap.entrySet()) {
+      for (Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          seriesEntry : dbEntry.getValue().entrySet()) {
+        for (Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timeSlotEntry :
+            seriesEntry.getValue().entrySet()) {
+          replicaSets.addAll(timeSlotEntry.getValue());
+        }
+      }
+    }
+    return replicaSets;
   }
 
   public void setDataPartitionMap(
@@ -120,9 +139,9 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      IDeviceID deviceId, Filter timeFilter) {
-    String storageGroup = getDatabaseNameByDevice(deviceId);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
+      final IDeviceID deviceId, final Filter timeFilter) {
+    final String storageGroup = getDatabaseNameByDevice(deviceId);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
     if (!dataPartitionMap.containsKey(storageGroup)
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -144,10 +163,8 @@ public class DataPartition extends Partition {
    * <p>The device id shall be [table, seg1, ....]
    */
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceId, Filter timeFilter) {
-    // TODO perfect this interface, @Potato
-    database = PathUtils.qualifyDatabaseName(database);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
+      final String database, final IDeviceID deviceId, final Filter timeFilter) {
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceId);
     if (!dataPartitionMap.containsKey(database)
         || !dataPartitionMap.get(database).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -162,20 +179,21 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSet(
-      IDeviceID deviceID, TTimePartitionSlot tTimePartitionSlot) {
-    String storageGroup = getDatabaseNameByDevice(deviceID);
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbMap =
+      final IDeviceID deviceID, final TTimePartitionSlot tTimePartitionSlot) {
+    final String storageGroup = getDatabaseNameByDevice(deviceID);
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbMap =
         dataPartitionMap.get(storageGroup);
     if (dbMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    Map<TTimePartitionSlot, List<TRegionReplicaSet>> seriesSlotMap = dbMap.get(seriesPartitionSlot);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final Map<TTimePartitionSlot, List<TRegionReplicaSet>> seriesSlotMap =
+        dbMap.get(seriesPartitionSlot);
     if (seriesSlotMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
 
-    List<TRegionReplicaSet> regionReplicaSets = seriesSlotMap.get(tTimePartitionSlot);
+    final List<TRegionReplicaSet> regionReplicaSets = seriesSlotMap.get(tTimePartitionSlot);
 
     if (regionReplicaSets == null) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -185,23 +203,25 @@ public class DataPartition extends Partition {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
-      IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList, String databaseName) {
+      final IDeviceID deviceID,
+      final List<TTimePartitionSlot> timePartitionSlotList,
+      String databaseName) {
     if (databaseName == null) {
       databaseName = getDatabaseNameByDevice(deviceID);
     }
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
-    List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-        dataBasePartitionMap = dataPartitionMap.get(PathUtils.qualifyDatabaseName(databaseName));
-    Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
+    final List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        dataBasePartitionMap = dataPartitionMap.get(databaseName);
+    final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
-    for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
-      List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
+    for (final TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+      final List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
             String.format(
@@ -215,17 +235,15 @@ public class DataPartition extends Partition {
   }
 
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
-      IDeviceID deviceID, TTimePartitionSlot timePartitionSlot, String databaseName) {
+      final IDeviceID deviceID, final TTimePartitionSlot timePartitionSlot, String databaseName) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
-    if (databaseName != null) {
-      databaseName = PathUtils.qualifyDatabaseName(databaseName);
-    } else {
+    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    if (databaseName == null) {
       databaseName = getDatabaseNameByDevice(deviceID);
     }
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+    final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
@@ -233,7 +251,7 @@ public class DataPartition extends Partition {
               + databaseName
               + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
-    List<TRegionReplicaSet> regions =
+    final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
     // are more than 1 Regions for one timeSlot

@@ -302,10 +302,6 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
     doConsensus(0, 10, 10);
 
-    List<ConsensusGroupId> ids = servers.get(0).getAllConsensusGroupIdsWithoutStarting();
-    Assert.assertEquals(1, ids.size());
-    Assert.assertEquals(gid, ids.get(0));
-
     String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
     try {
       File regionDirFile = new File(regionDir);

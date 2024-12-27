@@ -80,8 +80,7 @@ public class DataNodeInternalRPCServiceImplTest {
     conf.setDataNodeId(dataNodeId);
 
     SchemaEngine.getInstance().init();
-    SchemaEngine.getInstance()
-        .createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
+    SchemaEngine.getInstance().createSchemaRegion("root.ln", new SchemaRegionId(0));
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
     DataNodeRegionManager.getInstance().init();

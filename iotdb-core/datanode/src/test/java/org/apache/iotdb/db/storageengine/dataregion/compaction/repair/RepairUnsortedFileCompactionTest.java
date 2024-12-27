@@ -34,10 +34,13 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -566,9 +569,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       writer.endChunkGroup();
       writer.endFile();
     }
-    ModificationFile modFile = seqResource2.getModFile();
-    Deletion writedModification =
-        new Deletion(new MeasurementPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
+    ModificationFile modFile = seqResource2.getModFileForWrite();
+    ModEntry writedModification =
+        new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), 15);
     modFile.write(writedModification);
     modFile.close();
 
@@ -587,11 +590,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
-    Assert.assertTrue(targetResource.modFileExists());
-    Assert.assertEquals(1, targetResource.getModFile().getModifications().size());
-    Deletion modification =
-        (Deletion) targetResource.getModFile().getModifications().iterator().next();
-    Assert.assertEquals(writedModification.getFileOffset(), modification.getFileOffset());
+    Assert.assertTrue(targetResource.anyModFileExists());
+    Assert.assertEquals(1, targetResource.getAllModEntries().size());
+    ModEntry modification = targetResource.getAllModEntries().iterator().next();
     Assert.assertEquals(writedModification.getEndTime(), modification.getEndTime());
   }
 
@@ -796,6 +797,48 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
           reader.getAlignedChunkMetadata(
               IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       Assert.assertEquals(3, chunkMetadataList.size());
+    }
+  }
+
+  @Test
+  public void testResourceFileLostDevices() throws IOException {
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("d2");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2"),
+          new TimeRange[] {new TimeRange(10, 40)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    // lost d1
+    ITimeIndex timeIndex = new ArrayDeviceTimeIndex();
+    timeIndex.updateStartTime(d2, 10);
+    timeIndex.updateEndTime(d2, 40);
+    resource.setTimeIndex(timeIndex);
+    resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
+      List<IDeviceID> devicesInTargetFile = reader.getAllDevices();
+      Assert.assertEquals(Arrays.asList(d1, d2), devicesInTargetFile);
     }
   }
 }

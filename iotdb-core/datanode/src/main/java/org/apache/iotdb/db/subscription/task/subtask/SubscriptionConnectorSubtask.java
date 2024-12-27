@@ -25,6 +25,8 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,15 +57,6 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
     this.consumerGroupId = consumerGroupId;
   }
 
-  @Override
-  protected boolean executeOnce() {
-    if (isClosed.get()) {
-      return false;
-    }
-
-    return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
-  }
-
   public String getTopicName() {
     return topicName;
   }
@@ -76,12 +69,28 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
     return inputPendingQueue;
   }
 
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
+  //////////////////////////// execution & callback ////////////////////////////
 
   @Override
-  public int getEventCount(final String pipeName) {
-    // count the number of pipe events in sink queue and prefetching queue, note that can safely
-    // ignore lastEvent
-    return SubscriptionAgent.broker().getPipeEventCount(consumerGroupId, topicName);
+  protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
+    // TODO: Futures.withTimeout
+    Futures.addCallback(future, this, subtaskCallbackListeningExecutor);
+  }
+
+  @Override
+  public synchronized void onFailure(final Throwable throwable) {
+    isSubmitted = false;
+
+    // just resubmit
+    submitSelf();
+  }
+
+  @Override
+  protected boolean executeOnce() {
+    if (isClosed.get()) {
+      return false;
+    }
+
+    return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
   }
 }

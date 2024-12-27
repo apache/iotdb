@@ -44,9 +44,10 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_USED_MEMORY;
 
 public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
@@ -77,10 +78,15 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private SortKey currentGroup;
   private final Comparator<SortKey> groupKeyComparator;
 
-  // more than one Blocks may be produced:
-  // 1. more than one group in input block
-  // 2. one group but the evaluated result are split
+  // We limit the size of output block, but the process of one input block may produce more than one
+  // output because:
+  // 1. Input columns can be reused by multiple aggregations, so size of each row maybe larger than
+  // input;
+  // 2. There are many input has been added into HashAggregationBuilder before result produced of
+  // this process, it may produce many rows which number is larger than limit.
   private final Deque<TsBlock> outputs = new LinkedList<>();
+
+  private long maxUsedMemory;
 
   public StreamingHashAggregationOperator(
       OperatorContext operatorContext,
@@ -160,10 +166,6 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       }
 
       processInput(block);
-
-      if (outputs.isEmpty()) {
-        return null;
-      }
     } else {
       // last evaluate
       if (currentGroup != null) {
@@ -173,7 +175,10 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       finished = true;
       closeAggregationBuilder();
     }
-    checkState(!outputs.isEmpty(), "outputs should always not be empty here");
+
+    if (outputs.isEmpty()) {
+      return null;
+    }
 
     resultTsBlock = outputs.removeFirst();
     return checkTsBlockSizeAndGetResult();
@@ -267,6 +272,11 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
 
   private void updateOccupiedMemorySize() {
     long memorySize = aggregationBuilder.getEstimatedSize();
+    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(memorySize));
+    if (memorySize > maxUsedMemory) {
+      operatorContext.recordSpecifiedInfo(MAX_USED_MEMORY, Long.toString(memorySize));
+      maxUsedMemory = memorySize;
+    }
     long delta = memorySize - previousRetainedSize;
     if (delta > 0) {
       memoryReservationManager.reserveMemoryCumulatively(delta);
