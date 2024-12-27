@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.rpc;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TElasticFramedTransportTest {
 
@@ -34,9 +35,13 @@ public class TElasticFramedTransportTest {
   public void testSingularSize() {
 
     try {
-      TElasticFramedTransport transport = new TElasticFramedTransport(
-          new TByteBuffer(ByteBuffer.wrap("GET 127.0.0.1 HTTP/1.1".getBytes(
-              StandardCharsets.UTF_8))), 128 * 1024 * 1024, 512 * 1024 * 1024, false);
+      TElasticFramedTransport transport =
+          new TElasticFramedTransport(
+              new TByteBuffer(
+                  ByteBuffer.wrap("GET 127.0.0.1 HTTP/1.1".getBytes(StandardCharsets.UTF_8))),
+              128 * 1024 * 1024,
+              512 * 1024 * 1024,
+              false);
       transport.open();
       transport.read(ByteBuffer.allocate(4096));
       fail("Exception expected");
@@ -47,9 +52,13 @@ public class TElasticFramedTransportTest {
     }
 
     try {
-      TElasticFramedTransport transport = new TElasticFramedTransport(
-          new TByteBuffer(ByteBuffer.wrap("POST 127.0.0.1 HTTP/1.1".getBytes(
-              StandardCharsets.UTF_8))), 128 * 1024 * 1024, 512 * 1024 * 1024, false);
+      TElasticFramedTransport transport =
+          new TElasticFramedTransport(
+              new TByteBuffer(
+                  ByteBuffer.wrap("POST 127.0.0.1 HTTP/1.1".getBytes(StandardCharsets.UTF_8))),
+              128 * 1024 * 1024,
+              512 * 1024 * 1024,
+              false);
       transport.open();
       transport.read(ByteBuffer.allocate(4096));
       fail("Exception expected");
