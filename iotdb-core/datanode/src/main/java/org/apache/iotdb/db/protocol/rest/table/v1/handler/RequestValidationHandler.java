@@ -50,22 +50,24 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getDatabase(), "database should not be null");
     Objects.requireNonNull(insertTabletRequest.getTable(), "table should not be null");
     Objects.requireNonNull(insertTabletRequest.getColumnNames(), "column_names should not be null");
-    Objects.requireNonNull(insertTabletRequest.getColumnTypes(), "column_types should not be null");
+    Objects.requireNonNull(
+        insertTabletRequest.getColumnCatogories(), "column_catogories should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
     List<String> errorMessages = new ArrayList<>();
     String table = insertTabletRequest.getTable();
-    if (insertTabletRequest.getColumnTypes().size() == 0
-        || insertTabletRequest.getColumnTypes().size()
+    if (insertTabletRequest.getColumnCatogories().size() == 0
+        || insertTabletRequest.getColumnCatogories().size()
             != insertTabletRequest.getColumnNames().size()) {
-      errorMessages.add("column_names and column_types should have the same size");
+      errorMessages.add("column_names and column_catogories should have the same size");
     }
-    if (insertTabletRequest.getColumnTypes().size() != insertTabletRequest.getDataTypes().size()) {
-      errorMessages.add("column_types and data_types should have the same size");
+    if (insertTabletRequest.getColumnCatogories().size()
+        != insertTabletRequest.getDataTypes().size()) {
+      errorMessages.add("column_catogories and data_types should have the same size");
     }
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
-      errorMessages.add("values and data_types should have the same size");
+      errorMessages.add("values and timestamps should have the same size");
     }
 
     for (int i = 0; i < insertTabletRequest.getDataTypes().size(); i++) {
@@ -80,7 +82,9 @@ public class RequestValidationHandler {
       List<Object> values = insertTabletRequest.getValues().get(i);
       if (dataTypeSize != values.size()) {
         errorMessages.add(
-            "The number of values in the " + i + "th row is not equal to the data_types size");
+            "The number of values in the "
+                + (i + 1)
+                + "th row is not equal to the data_types size");
       }
     }
 
