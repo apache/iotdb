@@ -174,7 +174,7 @@ public class TableHttpsExample {
     try {
       HttpPost httpPost = getHttpPost("https://127.0.0.1:18080/rest/table/v1/nonQuery");
       String sql =
-          "{\"database\":\"test\",\"sql\":\"create table sg211 (id1 string TAG,t1 STRING FIELD, s1 FLOAT FIELD)\"}";
+          "{\"database\":\"test\",\"sql\":\"create table sg211 (id1 string TAG,t1 STRING ATTRIBUTE, s1 FLOAT FIELD)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
