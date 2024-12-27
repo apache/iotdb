@@ -26,12 +26,11 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TreeViewSchema {
-  public static final String TREE_VIEW_DATABASE = "tree_view_db";
   public static final String ORIGINAL_NAME = "__original_name";
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
 
   public static boolean isTreeViewTable(final TsTable table) {
-    return table.getPropValue(TREE_VIEW_DATABASE).isPresent();
+    return table.getPropValue(TREE_PATH_PATTERN).isPresent();
   }
 
   public static TSStatus setPathPattern(final TsTable table, final PartialPath pathPattern) {

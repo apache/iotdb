@@ -33,6 +33,11 @@ import java.util.stream.Stream;
 
 public class DataNodeTreeViewSchemaUtils {
 
+  public static String[] getPatternNodes(final TsTable table) {
+    final PartialPath path = getOriginalPattern(table);
+    return Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1);
+  }
+
   public static PartialPath getOriginalPattern(final TsTable table) {
     return table
         .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
@@ -45,12 +50,10 @@ public class DataNodeTreeViewSchemaUtils {
                         TreeViewSchema.TREE_PATH_PATTERN, table.getTableName())));
   }
 
-  public static IDeviceID convertToIDeviceID(final PartialPath pattern, final String[] idValues) {
+  public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(
-            Stream.concat(
-                    Arrays.stream(Arrays.copyOf(pattern.getNodes(), pattern.getNodeLength() - 1)),
-                    Arrays.stream(idValues))
+            Stream.concat(Arrays.stream(getPatternNodes(table)), Arrays.stream(idValues))
                 .toArray(String[]::new)));
   }
 

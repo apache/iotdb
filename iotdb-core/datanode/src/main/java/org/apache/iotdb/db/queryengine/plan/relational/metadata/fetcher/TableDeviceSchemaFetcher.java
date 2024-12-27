@@ -386,8 +386,7 @@ public class TableDeviceSchemaFetcher {
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
     final IDeviceID deviceID =
-        DataNodeTreeViewSchemaUtils.convertToIDeviceID(
-            DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance), idValues);
+        DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       if (Objects.nonNull(fetchPaths)) {
@@ -542,8 +541,7 @@ public class TableDeviceSchemaFetcher {
           tableInstance,
           i);
       final IDeviceID deviceID =
-          DataNodeTreeViewSchemaUtils.convertToIDeviceID(
-              DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance), nodes);
+          DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, nodes);
       final DeviceEntry deviceEntry =
           columns[columns.length - 1].getBoolean(i)
               ? new AlignedDeviceEntry(deviceID, Collections.emptyList())
