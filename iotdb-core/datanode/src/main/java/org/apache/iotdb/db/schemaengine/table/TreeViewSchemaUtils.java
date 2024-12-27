@@ -33,9 +33,10 @@ import java.util.stream.Stream;
 
 public class TreeViewSchemaUtils {
 
-  public static String getOriginalPattern(final TsTable table) {
+  public static PartialPath getOriginalPattern(final TsTable table) {
     return table
         .getPropValue(TreeViewSchema.TREE_PATH_PATTERN)
+        .map(TreeViewSchemaUtils::forceSeparateStringToPartialPath)
         .orElseThrow(
             () ->
                 new SemanticException(
@@ -44,11 +45,11 @@ public class TreeViewSchemaUtils {
                         TreeViewSchema.TREE_PATH_PATTERN, table.getTableName())));
   }
 
-  public static IDeviceID convertToIDeviceID(final String database, final String[] idValues) {
+  public static IDeviceID convertToIDeviceID(final PartialPath pattern, final String[] idValues) {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(
             Stream.concat(
-                    Arrays.stream(forceSeparateStringToPartialPath(database).getNodes()),
+                    Arrays.stream(Arrays.copyOf(pattern.getNodes(), pattern.getNodeLength() - 1)),
                     Arrays.stream(idValues))
                 .toArray(String[]::new)));
   }

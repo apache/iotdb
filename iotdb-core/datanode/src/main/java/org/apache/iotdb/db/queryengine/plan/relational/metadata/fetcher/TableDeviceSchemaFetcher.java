@@ -339,11 +339,7 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             idValues)
-        : tryGetTreeDeviceInCache(
-            deviceEntryList,
-            TreeViewSchemaUtils.getOriginalPattern(tableInstance),
-            fetchPaths,
-            idValues);
+        : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, fetchPaths, idValues);
   }
 
   private boolean tryGetTableDeviceInCache(
@@ -389,10 +385,12 @@ public class TableDeviceSchemaFetcher {
 
   private boolean tryGetTreeDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
-      final String database,
+      final TsTable tableInstance,
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
-    final IDeviceID deviceID = TreeViewSchemaUtils.convertToIDeviceID(database, idValues);
+    final IDeviceID deviceID =
+        TreeViewSchemaUtils.convertToIDeviceID(
+            TreeViewSchemaUtils.getOriginalPattern(tableInstance), idValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       if (Objects.nonNull(fetchPaths)) {
