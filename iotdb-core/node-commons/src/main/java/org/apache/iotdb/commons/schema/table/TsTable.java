@@ -109,14 +109,29 @@ public class TsTable {
     }
   }
 
+  public List<TsTableColumnSchema> getIdColumnSchemaList() {
+    readWriteLock.readLock().lock();
+    try {
+      final List<TsTableColumnSchema> idColumnSchemaList = new ArrayList<>();
+      for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+        if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
+          idColumnSchemaList.add(columnSchema);
+        }
+      }
+      return idColumnSchemaList;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     readWriteLock.writeLock().lock();
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
-      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
         measurementNum++;
       }
     } finally {
@@ -142,11 +157,11 @@ public class TsTable {
     try {
       final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
       if (columnSchema != null
-          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         throw new SchemaExecutionException("Cannot remove an id column: " + columnName);
       } else if (columnSchema != null) {
         columnSchemaMap.remove(columnName);
-        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
           measurementNum--;
         }
       }

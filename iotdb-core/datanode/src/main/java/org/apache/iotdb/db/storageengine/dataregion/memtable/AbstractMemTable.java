@@ -248,7 +248,7 @@ public abstract class AbstractMemTable implements IMemTable {
       if (measurements[i] == null
           || values[i] == null
           || insertRowNode.getColumnCategories() != null
-              && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT) {
+              && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD) {
         schemaList.add(null);
         continue;
       }
@@ -359,7 +359,7 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null
           || (insertTabletNode.getColumnCategories() != null
-              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
         schemaList.add(null);
       } else {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
@@ -796,8 +796,8 @@ public abstract class AbstractMemTable implements IMemTable {
       } else {
         pointDeleted += pair.right.delete(modEntry);
       }
-      if (pair.right.getMemChunkMap().isEmpty()) {
-        memTableMap.remove(pair.left);
+      if (pair.right.isEmpty()) {
+        memTableMap.remove(pair.left).release();
       }
     }
     return pointDeleted;

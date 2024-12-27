@@ -17,15 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
-public class PartitionViolationException extends LoadFileException {
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public PartitionViolationException(String file) {
-    super(String.format("The data of file %s crosses partitions", file));
-  }
+public class LoadReadOnlyException extends IoTDBException {
 
-  public PartitionViolationException() {
-    super("The data of file crosses partitions");
+  public static final String MESSAGE =
+      "Current system mode is read only, does not support load file";
+
+  public LoadReadOnlyException() {
+    super(MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
   }
 }

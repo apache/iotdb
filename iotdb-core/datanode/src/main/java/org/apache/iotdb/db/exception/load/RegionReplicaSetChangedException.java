@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-public class LoadReadOnlyException extends IoTDBException {
+public class RegionReplicaSetChangedException extends LoadFileException {
 
-  public static final String MESSAGE =
-      "Current system mode is read only, does not support load file";
+  public RegionReplicaSetChangedException(TRegionReplicaSet original, TRegionReplicaSet current) {
+    super(
+        String.format(
+            "Region replica set changed from %s to %s during loading TsFile, maybe due to region migration",
+            original, current));
+  }
 
-  public LoadReadOnlyException() {
-    super(MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+  public RegionReplicaSetChangedException() {
+    super("Region replica set changed during loading TsFile, maybe due to region migration");
   }
 }

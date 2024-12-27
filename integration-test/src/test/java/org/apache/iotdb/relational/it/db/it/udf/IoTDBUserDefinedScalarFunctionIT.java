@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.db.it.udf.scalar;
+package org.apache.iotdb.relational.it.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -46,19 +46,19 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBScalarFunctionIT {
+public class IoTDBUserDefinedScalarFunctionIT {
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE test",
         "USE test",
-        "CREATE TABLE vehicle (device_id string id, s1 INT32 measurement, s2 INT64 measurement, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT)",
+        "CREATE TABLE vehicle (device_id string tag, s1 INT32 field, s2 INT64 field, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD)",
         "insert into vehicle(time, device_id, s1, s2, s3, s4, s5) values (1, 'd0', 1, 1, 1.1, 1.1, true)",
         "insert into vehicle(time, device_id, s1, s2, s3, s4, s5) values (2, 'd0', null, 2, 2.2, 2.2, true)",
         "insert into vehicle(time, device_id, s1, s2, s3, s4, s5) values (3, 'd0', 3, 3, null, null, false)",
         "insert into vehicle(time, device_id, s5) values (5, 'd0', true)",
         "CREATE FUNCTION contain_null as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
         "CREATE FUNCTION all_sum as 'org.apache.iotdb.db.query.udf.example.relational.AllSum'",
-        "CREATE TABLE t2 (device_id string id, s1 DATE measurement)",
+        "CREATE TABLE t2 (device_id string tag, s1 DATE field)",
         "insert into t2(time, device_id, s1) values (1, 'd0', '2024-02-28')",
         "insert into t2(time, device_id, s1) values (2, 'd0', '2024-02-29')",
         "insert into t2(time, device_id, s1) values (3, 'd0', '2024-03-01')",
@@ -66,13 +66,13 @@ public class IoTDBScalarFunctionIT {
       };
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
-  public void tearDown() throws Exception {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

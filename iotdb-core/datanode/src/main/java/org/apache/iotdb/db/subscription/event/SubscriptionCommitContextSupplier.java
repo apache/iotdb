@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.subscription.event;
 
-public class LoadEmptyFileException extends LoadFileException {
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
-  public LoadEmptyFileException(final String fileName) {
-    super(fileName);
-  }
+@FunctionalInterface
+public interface SubscriptionCommitContextSupplier {
+
+  SubscriptionCommitContext get();
 }

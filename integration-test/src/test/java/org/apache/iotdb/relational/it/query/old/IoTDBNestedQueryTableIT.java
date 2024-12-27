@@ -75,12 +75,12 @@ public class IoTDBNestedQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "create table vehicle1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 TEXT MEASUREMENT, s4 STRING MEASUREMENT, s5 DATE MEASUREMENT, s6 TIMESTAMP MEASUREMENT)");
+          "create table vehicle1(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD, s4 STRING FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD)");
 
       statement.execute(
-          "create table vehicle2(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 DOUBLE MEASUREMENT, empty DOUBLE MEASUREMENT)");
+          "create table vehicle2(device_id STRING TAG, s1 FLOAT FIELD, s2 DOUBLE FIELD, empty DOUBLE FIELD)");
       statement.execute(
-          "create table likeTest(device_id STRING ID, s1 TEXT MEASUREMENT, s2 STRING MEASUREMENT)");
+          "create table likeTest(device_id STRING TAG, s1 TEXT FIELD, s2 STRING FIELD)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

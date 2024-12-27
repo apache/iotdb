@@ -129,14 +129,15 @@ public class SchemaRegionSnapshotParserTest {
     FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
   }
 
-  public SchemaRegionSnapshotParserTest(SchemaRegionSnapshotParserTestParams params) {
+  public SchemaRegionSnapshotParserTest(final SchemaRegionSnapshotParserTestParams params) {
     this.testParams = params;
   }
 
-  public ISchemaRegion getSchemaRegion(String database, int schemaRegionId) throws Exception {
-    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+  public ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
+      throws Exception {
+    final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
-      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+      SchemaEngine.getInstance().createSchemaRegion(database, regionId);
     }
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }
@@ -488,42 +489,42 @@ public class SchemaRegionSnapshotParserTest {
     // ----------------------------------------------------------------------
     //                            Schema Tree
     // ----------------------------------------------------------------------
-    // This test will construct a complicated mtree. This tree will have
-    // aligned timeseries, tags and attributes, normal timeseries device template.
+    // This test will construct a complicated mTree. This tree will have
+    // aligned timeSeries, tags and attributes, normal timeSeries device template.
     //
     //
     //
-    //                          status(BOOLEAN, RLE) alias(stat)
-    //                         /
-    //                      t2------temperature(INT64, TS_2DIFF,LZ4)
-    //                     /
-    //          sg1------s1------t1(activate template: t1)
-    //         /
-    // root ->|
-    //         \
-    //          sg2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
-    //            \
-    //             t2-------level{tags:"tag1"="t1", attributes: "attri1"="attr1"}
+    //                               status(BOOLEAN, RLE) alias(stat)
+    //                              /
+    //                           t2------temperature(INT64, TS_2DIFF,LZ4)
+    //                          /
+    //               sg1------s1------t1(activate template: t1)
+    //              /
+    // root -> db ->|
     //              \
-    //                t1(aligned)-------temperature(INT32, TS_2DIFF, LZ4){attributes:"attr1"="a1"}
-    //                     \
-    //                      level(INT32m RLE){tags:"tag1"="t1"} alias(lev)
+    //               sg2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
+    //                 \
+    //                  t2-------level{tags:"tag1"="t1", attributes: "attri1"="attr1"}
+    //                   \
+    //                 t1(aligned)-------temperature(INT32, TS_2DIFF, LZ4){attributes:"attr1"="a1"}
+    //                          \
+    //                          level(INT32m RLE){tags:"tag1"="t1"} alias(lev)
     //
     //
-    ISchemaRegion schemaRegion = getSchemaRegion("root", 0);
-    PartialPath databasePath = new PartialPath("root");
-    Template template = new Template();
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final PartialPath databasePath = new PartialPath("root.db");
+    final Template template = new Template();
     template.setId(1);
     template.addMeasurement("date", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-    HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
+    final HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
     planMap.put(
-        "root.sg1.s1.t1",
+        "root.db.sg1.s1.t1",
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg1.s1.t1"), 3, 1));
+            new PartialPath("root.db.sg1.s1.t1"), 3, 1));
     planMap.put(
-        "root.sg1.s1.t2.temperature",
+        "root.db.sg1.s1.t2.temperature",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg1.s1.t2.temperature"),
+            new MeasurementPath("root.db.sg1.s1.t2.temperature"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -532,9 +533,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg1.s1.t2.status",
+        "root.db.sg1.s1.t2.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg1.s1.t2.status"),
+            new MeasurementPath("root.db.sg1.s1.t2.status"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -543,9 +544,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             "statusA"));
     planMap.put(
-        "root.sg2.t1",
+        "root.db.sg2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg2.t1"),
+            new PartialPath("root.db.sg2.t1"),
             new ArrayList<String>() {
               {
                 add("status");
@@ -587,9 +588,9 @@ public class SchemaRegionSnapshotParserTest {
               }
             }));
     planMap.put(
-        "root.sg2.t2.level",
+        "root.db.sg2.t2.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg2.t2.level"),
+            new MeasurementPath("root.db.sg2.t2.level"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.UNCOMPRESSED,
@@ -606,9 +607,9 @@ public class SchemaRegionSnapshotParserTest {
             },
             null));
     planMap.put(
-        "root.sg2.t2.t1",
+        "root.db.sg2.t2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg2.t2.t1"),
+            new PartialPath("root.db.sg2.t2.t1"),
             new ArrayList<String>() {
               {
                 add("temperature");
@@ -661,7 +662,7 @@ public class SchemaRegionSnapshotParserTest {
                 add(new HashMap<>());
               }
             }));
-    for (ISchemaRegionPlan plan : planMap.values()) {
+    for (final ISchemaRegionPlan plan : planMap.values()) {
       if (plan instanceof ICreateTimeSeriesPlan) {
         schemaRegion.createTimeSeries((ICreateTimeSeriesPlan) plan, -1);
       } else if (plan instanceof ICreateAlignedTimeSeriesPlan) {
@@ -671,11 +672,11 @@ public class SchemaRegionSnapshotParserTest {
       }
     }
 
-    File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
     snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
-    SRStatementGenerator statements =
+    final SRStatementGenerator statements =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(
                 config.getSchemaDir()
@@ -692,10 +693,10 @@ public class SchemaRegionSnapshotParserTest {
             databasePath);
     assert statements != null;
     int count = 0;
-    Comparator<String> comparator =
+    final Comparator<String> comparator =
         new Comparator<String>() {
           @Override
-          public int compare(String o1, String o2) {
+          public int compare(final String o1, final String o2) {
             if (o1 == null && o2 == null) {
               return 0;
             } else if (o1 == null) {
@@ -707,11 +708,11 @@ public class SchemaRegionSnapshotParserTest {
             }
           }
         };
-    for (Statement stmt : statements) {
+    for (final Statement stmt : statements) {
       if (stmt instanceof CreateAlignedTimeSeriesStatement) {
-        CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
+        final CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
             (CreateAlignedTimeSeriesStatement) stmt;
-        ICreateAlignedTimeSeriesPlan plan =
+        final ICreateAlignedTimeSeriesPlan plan =
             (ICreateAlignedTimeSeriesPlan)
                 planMap.get(createAlignedTimeSeriesStatement.getDevicePath().toString());
         Assert.assertNotNull(plan);
