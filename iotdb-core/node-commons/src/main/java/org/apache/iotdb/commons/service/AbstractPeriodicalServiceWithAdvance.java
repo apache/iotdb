@@ -35,7 +35,7 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
   protected volatile boolean skipNextSleep = false;
   private volatile boolean allowSubmitListen = false;
 
-  private final ExecutorService securityServiceExecutor;
+  protected ExecutorService securityServiceExecutor;
   private final long intervalMillis;
 
   protected AbstractPeriodicalServiceWithAdvance(
@@ -87,7 +87,6 @@ public abstract class AbstractPeriodicalServiceWithAdvance {
 
   public void stopService() {
     allowSubmitListen = false;
-    securityServiceExecutor.shutdown();
 
     LOGGER.info("{} is stopped successfully.", getClass().getSimpleName());
   }

@@ -288,6 +288,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
   @Override
   public void stop() {
     stopService();
+    securityServiceExecutor.shutdown();
   }
 
   @Override
