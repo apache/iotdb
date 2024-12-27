@@ -56,7 +56,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
   private final boolean needAligned;
-  private final int beginIndex;
 
   public TableDeviceQuerySource(
       final String database,
@@ -66,11 +65,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final DevicePredicateFilter filter,
       final boolean needAligned) {
     this.database = database;
-    this.beginIndex =
-        PathUtils.isTableModelDatabase(database)
-            ? 3
-            : DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(database)
-                .getNodeLength();
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
@@ -222,12 +216,25 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     if (!needAligned) {
       transformToTableDeviceTsBlockColumns(
-          schemaInfo, builder, database, tableName, columnHeaderList, beginIndex);
+          schemaInfo,
+          builder,
+          database,
+          tableName,
+          columnHeaderList,
+          PathUtils.isTableModelDatabase(database)
+              ? 3
+              : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
     } else {
       transformToTreeDeviceTsBlockColumns(
-          schemaInfo, builder, database, tableName, columnHeaderList, beginIndex);
+          schemaInfo,
+          builder,
+          database,
+          tableName,
+          columnHeaderList,
+          DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
     }
   }
 
