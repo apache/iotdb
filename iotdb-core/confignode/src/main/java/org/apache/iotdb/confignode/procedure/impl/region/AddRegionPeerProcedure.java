@@ -86,7 +86,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
           LOGGER.info(
               "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
               getProcId(),
-                  regionId,
+              regionId,
               handler.simplifiedLocation(destDataNode));
           handler.addRegionLocation(regionId, destDataNode);
           handler.forceUpdateRegionCache(regionId, destDataNode, RegionStatus.Adding);
@@ -136,8 +136,8 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
           LOGGER.info(
               "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
-                  regionId,
-                  handler.simplifiedLocation(destDataNode),
+              regionId,
+              handler.simplifiedLocation(destDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));

@@ -106,8 +106,8 @@ public class RemoveRegionPeerProcedure extends RegionMemberChangeProcedure<Remov
                 "[pid{}][RemoveRegion] {} task submitted failed, ConfigNode believe current peer list of {} is {}. Procedure will continue. You should manually clear peer list.",
                 getProcId(),
                 state,
-                consensusGroupId,
-                handler.getRegionReplicaSetString(consensusGroupId));
+                regionId,
+                handler.getRegionReplicaSetString(regionId));
             setNextState(DELETE_OLD_REGION_PEER);
             return Flow.HAS_MORE_STATE;
           }
@@ -118,8 +118,8 @@ public class RemoveRegionPeerProcedure extends RegionMemberChangeProcedure<Remov
                 "[pid{}][RemoveRegion] {} executed failed, ConfigNode believe current peer list of {} is {}. Procedure will continue. You should manually clear peer list.",
                 getProcId(),
                 state,
-                consensusGroupId,
-                handler.getRegionReplicaSetString(consensusGroupId));
+                regionId,
+                handler.getRegionReplicaSetString(regionId));
             setNextState(DELETE_OLD_REGION_PEER);
             return Flow.HAS_MORE_STATE;
           }
@@ -134,7 +134,7 @@ public class RemoveRegionPeerProcedure extends RegionMemberChangeProcedure<Remov
             LOGGER.warn(
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
-                consensusGroupId);
+                regionId);
             setNextState(REMOVE_REGION_LOCATION_CACHE);
             return Flow.HAS_MORE_STATE;
           }
@@ -144,7 +144,7 @@ public class RemoveRegionPeerProcedure extends RegionMemberChangeProcedure<Remov
             LOGGER.warn(
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
-                consensusGroupId);
+                regionId);
             setNextState(REMOVE_REGION_LOCATION_CACHE);
             return Flow.HAS_MORE_STATE;
           }

@@ -2394,16 +2394,16 @@ public class ConfigManager implements IManager {
   public TSStatus extendRegion(TExtendRegionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            ? procedureManager.reconstructRegion(req)
-            : status;
+        ? procedureManager.extendRegion(req)
+        : status;
   }
 
   @Override
   public TSStatus removeRegion(TRemoveRegionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            ? procedureManager.reconstructRegion(req)
-            : status;
+        ? procedureManager.removeRegion(req)
+        : status;
   }
 
   @Override

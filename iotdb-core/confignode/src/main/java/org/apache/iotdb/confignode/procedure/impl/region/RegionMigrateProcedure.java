@@ -82,8 +82,8 @@ public class RegionMigrateProcedure extends RegionMemberChangeProcedure<RegionTr
               "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
               regionId,
-                  handler.simplifiedLocation(originalDataNode),
-                  handler.simplifiedLocation(destDataNode));
+              handler.simplifiedLocation(originalDataNode),
+              handler.simplifiedLocation(destDataNode));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -111,7 +111,7 @@ public class RegionMigrateProcedure extends RegionMemberChangeProcedure<RegionTr
           String cleanHint = "";
           if (env.getConfigManager()
               .getPartitionManager()
-              .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
+              .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), regionId)) {
             cleanHint =
                 "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
           }

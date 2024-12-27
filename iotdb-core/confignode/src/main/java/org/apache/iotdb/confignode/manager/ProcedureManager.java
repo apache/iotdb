@@ -910,7 +910,7 @@ public class ProcedureManager {
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     final TDataNodeLocation targetDataNode =
         configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
-    try (AutoCloseableLock autoCloseableLock =
+    try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
       for (int x : req.getRegionIds()) {
@@ -947,12 +947,13 @@ public class ProcedureManager {
   }
 
   public TSStatus extendRegion(TExtendRegionReq req) {
+    try (AutoCloseableLock ignoredLock =
+                 AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
 
+    }
   }
 
-  public TSStatus removeRegion(TRemoveRegionReq req) {
-
-  }
+  public TSStatus removeRegion(TRemoveRegionReq req) {}
 
   private TSStatus checkReconstructRegion(
       TReconstructRegionReq req,
