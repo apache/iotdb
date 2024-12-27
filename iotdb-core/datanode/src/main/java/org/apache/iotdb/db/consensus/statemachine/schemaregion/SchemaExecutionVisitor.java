@@ -444,7 +444,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
-    final List<TSStatus> statusList = new ArrayList<>(node.getTemplateActivationMap().size());
+    final List<TSStatus> statusList = new ArrayList<>();
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
       final Template template =
@@ -454,13 +454,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
-        statusList.add(RpcUtils.SUCCESS_STATUS);
       } catch (final MetadataException e) {
         logger.error(e.getMessage(), e);
         statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
-    return RpcUtils.getStatus(statusList);
+    return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
   }
 
   @Override
