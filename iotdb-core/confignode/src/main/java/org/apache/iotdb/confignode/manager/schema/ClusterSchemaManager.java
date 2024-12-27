@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -798,6 +799,93 @@ public class ClusterSchemaManager {
     } else {
       return new TGetPathsSetTemplatesResp(pathInfoResp.getStatus());
     }
+  }
+
+  public static TSStatus enrichDatabaseSchemaWithDefaultProperties(
+      final TDatabaseSchema databaseSchema) {
+    TSStatus errorResp = null;
+    final boolean isSystemDatabase =
+        databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
+
+    if (databaseSchema.getTTL() < 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to create database. The TTL should be positive.");
+    }
+
+    if (!databaseSchema.isSetSchemaReplicationFactor()) {
+      databaseSchema.setSchemaReplicationFactor(
+          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The schemaReplicationFactor should be positive.");
+    }
+
+    if (!databaseSchema.isSetDataReplicationFactor()) {
+      databaseSchema.setDataReplicationFactor(
+          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+    } else if (databaseSchema.getDataReplicationFactor() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The dataReplicationFactor should be positive.");
+    }
+
+    if (!databaseSchema.isSetTimePartitionOrigin()) {
+      databaseSchema.setTimePartitionOrigin(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
+    } else if (databaseSchema.getTimePartitionOrigin() < 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionOrigin should be non-negative.");
+    }
+
+    if (!databaseSchema.isSetTimePartitionInterval()) {
+      databaseSchema.setTimePartitionInterval(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
+    } else if (databaseSchema.getTimePartitionInterval() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionInterval should be positive.");
+    }
+
+    if (isSystemDatabase) {
+      databaseSchema.setMinSchemaRegionGroupNum(1);
+    } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
+      databaseSchema.setMinSchemaRegionGroupNum(
+          ConfigNodeDescriptor.getInstance().getConf().getDefaultSchemaRegionGroupNumPerDatabase());
+    } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The schemaRegionGroupNum should be positive.");
+    }
+
+    if (isSystemDatabase) {
+      databaseSchema.setMinDataRegionGroupNum(1);
+    } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
+      databaseSchema.setMinDataRegionGroupNum(
+          ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
+    } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
+    }
+
+    if (errorResp != null) {
+      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
+      return errorResp;
+    }
+
+    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
+    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
+    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+
+    return StatusUtils.OK;
   }
 
   /**
