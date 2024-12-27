@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -2600,6 +2601,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.getThrottleQuota()
         : new TThrottleQuotaResp(status);
+  }
+
+  @Override
+  public TSStatus createTable(
+      final String databaseName,
+      final String tableName,
+      final List<TsTableColumnSchema> columns,
+      final long ttl) {
+    if (!clusterSchemaManager.isDatabaseExist(databaseName)) {
+      final TDatabaseSchema newSchema = new TDatabaseSchema(databaseName);
+      final TSStatus setDefaultStatus =
+          ClusterSchemaManager.enrichDatabaseSchemaWithDefaultProperties(newSchema);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != setDefaultStatus.getCode()
+          || TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              != setDatabase(
+                      new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, newSchema))
+                  .getCode()) {
+        return setDefaultStatus;
+      }
+    }
+    
+    return null;
   }
 
   @Override
