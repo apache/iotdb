@@ -102,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
@@ -1923,6 +1924,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     if (canUseLastCacheOptimize(aggregators, node, timeColumnName)) {
       List<Integer> hitCachesIndexes = new ArrayList<>();
       List<Pair<OptionalLong, TsPrimitiveType[]>> hitCachedResults = new ArrayList<>();
+      List<DeviceEntry> cachedDeviceEntries = new ArrayList<>();
+      List<DeviceEntry> unCachedDeviceEntries = new ArrayList<>();
       long tableTTL =
           DataNodeTTLCache.getInstance()
               .getTTLForTable(
@@ -1973,9 +1976,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   measurementSchemas,
                   allSensors);
           ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+          unCachedDeviceEntries.add(node.getDeviceEntries().get(i));
         } else {
           hitCachesIndexes.add(i);
           hitCachedResults.add(lastByResult.get());
+          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
         }
       }
 
@@ -1986,7 +1991,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               operatorContext,
               aggColumnSchemas,
               aggColumnsIndexArray,
-              node.getDeviceEntries(),
+              unCachedDeviceEntries,
+              cachedDeviceEntries,
               seriesScanOptions,
               measurementColumnNames,
               allSensors,

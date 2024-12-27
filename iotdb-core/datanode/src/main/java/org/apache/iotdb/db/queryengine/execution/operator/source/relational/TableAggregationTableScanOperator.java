@@ -706,7 +706,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
       return;
     }
 
-    appendGroupKeysToResult(currentDeviceIndex);
+    appendGroupKeysToResult(deviceEntries, currentDeviceIndex);
 
     if (dateBinSize > 0) {
       resultTsBlockBuilder.getValueColumnBuilders()[groupingKeySize].writeLong(
@@ -723,12 +723,11 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     resultTsBlockBuilder.declarePosition();
   }
 
-  protected void appendGroupKeysToResult(int currentDeviceIndex) {
+  protected void appendGroupKeysToResult(List<DeviceEntry> deviceEntries, int deviceIndex) {
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     for (int i = 0; i < groupingKeySize; i++) {
       if (TsTableColumnCategory.TAG == groupingKeySchemas.get(i).getColumnCategory()) {
-        String id =
-            (String) deviceEntries.get(currentDeviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
+        String id = (String) deviceEntries.get(deviceIndex).getNthSegment(groupingKeyIndex[i] + 1);
         if (id == null) {
           columnBuilders[i].appendNull();
         } else {
@@ -736,10 +735,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         }
       } else {
         Binary attribute =
-            deviceEntries
-                .get(currentDeviceIndex)
-                .getAttributeColumnValues()
-                .get(groupingKeyIndex[i]);
+            deviceEntries.get(deviceIndex).getAttributeColumnValues().get(groupingKeyIndex[i]);
         if (attribute == null) {
           columnBuilders[i].appendNull();
         } else {

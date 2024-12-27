@@ -68,6 +68,8 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   private final String dbName;
   private int outputDeviceIndex;
   private DeviceEntry currentDeviceEntry;
+  private List<DeviceEntry> cachedDeviceEntries;
+  private final int allDeviceCount;
 
   private final boolean needUpdateCache;
   private final boolean needUpdateNullEntry;
@@ -83,7 +85,8 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
       OperatorContext context,
       List<ColumnSchema> aggColumnSchemas,
       int[] aggColumnsIndexArray,
-      List<DeviceEntry> deviceEntries,
+      List<DeviceEntry> unCachedDeviceEntries,
+      List<DeviceEntry> cachedDeviceEntries,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
@@ -104,8 +107,8 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         context,
         aggColumnSchemas,
         aggColumnsIndexArray,
-        deviceEntries,
-        deviceEntries.size(),
+        unCachedDeviceEntries,
+        unCachedDeviceEntries.size(),
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
@@ -118,6 +121,9 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         canUseStatistics,
         aggregatorInputChannels);
 
+    // notice that: deviceEntries store all unCachedDeviceEntries
+    this.allDeviceCount = cachedDeviceEntries.size() + unCachedDeviceEntries.size();
+    this.cachedDeviceEntries = cachedDeviceEntries;
     this.needUpdateCache = LastQueryUtil.needUpdateCache(seriesScanOptions.getGlobalTimeFilter());
     this.needUpdateNullEntry =
         LastQueryUtil.needUpdateNullEntry(seriesScanOptions.getGlobalTimeFilter());
@@ -146,7 +152,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
       return true;
     }
 
-    return outputDeviceIndex < deviceEntries.size();
+    return outputDeviceIndex < allDeviceCount;
   }
 
   @Override
@@ -160,7 +166,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
 
     while (System.nanoTime() - start < maxRuntime
         && !resultTsBlockBuilder.isFull()
-        && outputDeviceIndex < deviceEntries.size()) {
+        && outputDeviceIndex < allDeviceCount) {
       processCurrentDevice();
     }
 
@@ -174,12 +180,13 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
 
   /** Main process logic, calc the last aggregation results of current device. */
   private void processCurrentDevice() {
-    currentDeviceEntry = deviceEntries.get(outputDeviceIndex);
-
     if (currentHitCacheIndex < hitCachesIndexes.size()
         && outputDeviceIndex == hitCachesIndexes.get(currentHitCacheIndex)) {
+      currentDeviceEntry = cachedDeviceEntries.get(currentHitCacheIndex);
       buildResultUseLastCache();
       return;
+    } else {
+      currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
     }
 
     if (calculateAggregationResultForCurrentTimeRange()) {
@@ -188,7 +195,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   }
 
   private void buildResultUseLastCache() {
-    appendGroupKeysToResult(outputDeviceIndex);
+    appendGroupKeysToResult(cachedDeviceEntries, currentHitCacheIndex);
     Pair<OptionalLong, TsPrimitiveType[]> currentHitResult =
         hitCachedResults.get(currentHitCacheIndex);
     long lastTime = currentHitResult.getLeft().getAsLong();
@@ -203,8 +210,8 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         case TAG:
           String id =
               (String)
-                  deviceEntries
-                      .get(outputDeviceIndex)
+                  cachedDeviceEntries
+                      .get(currentHitCacheIndex)
                       .getNthSegment(aggColumnsIndexArray[columnIdx] + 1);
           if (id == null) {
             if (aggregator.getStep().isOutputPartial()) {
@@ -231,8 +238,8 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
           break;
         case ATTRIBUTE:
           Binary attribute =
-              deviceEntries
-                  .get(outputDeviceIndex)
+              cachedDeviceEntries
+                  .get(currentHitCacheIndex)
                   .getAttributeColumnValues()
                   .get(aggColumnsIndexArray[columnIdx]);
           if (attribute == null) {
@@ -449,6 +456,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries)
+        + RamUsageEstimator.sizeOfCollection(cachedDeviceEntries)
         + RamUsageEstimator.sizeOfCollection(hitCachedResults);
   }
 }
