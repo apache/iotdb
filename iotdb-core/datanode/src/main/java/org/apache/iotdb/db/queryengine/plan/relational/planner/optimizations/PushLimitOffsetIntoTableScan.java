@@ -193,8 +193,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
         // order by measurement or expression, can not push down limit
         if (!tableColumnSchema.containsKey(orderBy)
-            || tableColumnSchema.get(orderBy).getColumnCategory()
-                == TsTableColumnCategory.MEASUREMENT) {
+            || tableColumnSchema.get(orderBy).getColumnCategory() == TsTableColumnCategory.FIELD) {
           context.enablePushDown = false;
           return node;
         }
@@ -204,7 +203,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
       boolean pushLimitToEachDevice = false;
       for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.ID
+        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG
             && !sortSymbols.contains(entry.getKey())) {
           pushLimitToEachDevice = true;
           break;

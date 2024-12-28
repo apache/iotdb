@@ -66,7 +66,7 @@ public class IoTDBFilterBetweenTableIT {
     SQLs.add("CREATE DATABASE " + DATABASE_NAME);
     SQLs.add("USE " + DATABASE_NAME);
     SQLs.add(
-        "CREATE TABLE table1 (device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 TEXT MEASUREMENT)");
+        "CREATE TABLE table1 (device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD)");
     for (int i = 1; i <= ITERATION_TIMES; ++i) {
       SQLs.add(
           String.format(
