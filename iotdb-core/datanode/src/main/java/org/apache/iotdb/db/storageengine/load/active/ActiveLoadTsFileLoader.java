@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetr
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.session.subscription.util.RetryUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,7 +258,11 @@ public class ActiveLoadTsFileLoader {
 
     final File targetDir = new File(failDir.get());
     try {
-      org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+      RetryUtils.retryOnException(
+          () -> {
+            org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+            return null;
+          });
     } catch (final IOException e) {
       LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
     }

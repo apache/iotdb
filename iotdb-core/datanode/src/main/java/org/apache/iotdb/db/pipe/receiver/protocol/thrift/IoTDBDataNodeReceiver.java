@@ -100,6 +100,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.session.subscription.util.RetryUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -539,6 +540,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
+
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
     if (Objects.nonNull(dataBaseName)) {
@@ -559,7 +561,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+        RetryUtils.retryOnException(
+            () -> {FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));return null;});
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -584,6 +587,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadSchemaSnapShot(
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
+
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
