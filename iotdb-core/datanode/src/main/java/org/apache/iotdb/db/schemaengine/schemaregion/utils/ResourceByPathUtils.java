@@ -213,6 +213,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     // mutable aligned TVList
     AlignedTVList list = alignedMemChunk.getWorkingTVList();
+    AlignedTVList cloneList = null;
     list.lockQueryList();
     try {
       if (!isWorkMemTable) {
@@ -242,14 +243,16 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
           list.setOwnerQuery(firstQuery);
 
           // clone TVList
-          AlignedTVList cloneList = list.clone();
+          cloneList = list.clone();
           cloneList.getQueryContextList().add(context);
           alignedTvListQueryMap.put(cloneList, cloneList.rowCount());
-          alignedMemChunk.setWorkingTVList(cloneList);
         }
       }
     } finally {
       list.unlockQueryList();
+    }
+    if (cloneList != null) {
+      alignedMemChunk.setWorkingTVList(cloneList);
     }
     return alignedTvListQueryMap;
   }
@@ -475,6 +478,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
     // mutable tvlist
     TVList list = memChunk.getWorkingTVList();
+    TVList cloneList = null;
     list.lockQueryList();
     try {
       if (!isWorkMemTable) {
@@ -504,14 +508,16 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
           list.setOwnerQuery(firstQuery);
 
           // clone TVList
-          TVList cloneList = list.clone();
+          cloneList = list.clone();
           cloneList.getQueryContextList().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
-          memChunk.setWorkingTVList(cloneList);
         }
       }
     } finally {
       list.unlockQueryList();
+    }
+    if (cloneList != null) {
+      memChunk.setWorkingTVList(cloneList);
     }
     return tvListQueryMap;
   }
