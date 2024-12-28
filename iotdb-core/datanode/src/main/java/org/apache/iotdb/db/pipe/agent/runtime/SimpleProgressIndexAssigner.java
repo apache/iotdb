@@ -31,7 +31,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -86,15 +89,19 @@ public class SimpleProgressIndexAssigner {
     try {
       String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
       rebootTimes = Integer.parseInt(content);
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Cannot parse reboot times from file {}", file.getAbsolutePath(), e);
-      rebootTimes = 0;
+      rebootTimes = (int) (System.currentTimeMillis() / 1000);
     }
   }
 
   private void recordRebootTimes() throws IOException {
     File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
-    FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), StandardCharsets.UTF_8);
+    try (FileOutputStream fos = new FileOutputStream(file, false);
+        FileChannel channel = fos.getChannel()) {
+      channel.write(ByteBuffer.wrap(String.valueOf(rebootTimes + 1).getBytes()));
+      channel.force(true);
+    }
   }
 
   public void assignIfNeeded(InsertNode insertNode) {
