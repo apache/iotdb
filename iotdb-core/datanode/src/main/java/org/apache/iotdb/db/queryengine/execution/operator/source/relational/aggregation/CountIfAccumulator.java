@@ -21,27 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import java.util.Collections;
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
 
 public class CountIfAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CountIfAccumulator.class);
 
   private long countState = 0;
-
-  public CountIfAccumulator(List<TSDataType> seriesDataType) {
-    checkArgument(
-        seriesDataType.size() == 1 && seriesDataType.get(0) == BOOLEAN,
-        "argument of count_if should be one boolean expression");
-  }
 
   @Override
   public long getEstimatedSize() {
@@ -50,14 +37,14 @@ public class CountIfAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new CountIfAccumulator(Collections.singletonList(BOOLEAN));
+    return new CountIfAccumulator();
   }
 
   @Override
   public void addInput(Column[] arguments) {
     int count = arguments[0].getPositionCount();
     for (int i = 0; i < count; i++) {
-      if (arguments[0].getBoolean(i)) {
+      if (!arguments[0].isNull(i) && arguments[0].getBoolean(i)) {
         countState++;
       }
     }
@@ -91,14 +78,21 @@ public class CountIfAccumulator implements TableAccumulator {
   @Override
   public void removeInput(Column[] arguments) {
     for (int i = 0; i < arguments[0].getPositionCount(); i++) {
-      if (arguments[0].getBoolean(i)) {
+      if (!arguments[0].isNull(i) && arguments[0].getBoolean(i)) {
         countState--;
       }
     }
   }
 
   @Override
-  public void addStatistics(Statistics[] statistics) {}
+  public boolean removable() {
+    return true;
+  }
+
+  @Override
+  public void addStatistics(Statistics[] statistics) {
+    throw new UnsupportedOperationException("CountIfAccumulator does not support statistics");
+  }
 
   @Override
   public void reset() {

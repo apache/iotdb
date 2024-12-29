@@ -567,11 +567,18 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:
-      case SqlConstant.COUNT_IF:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] should only have one argument", functionName));
+        }
+        break;
+      case SqlConstant.COUNT_IF:
+        if (argumentTypes.size() != 1 || !isBool(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one boolean expression as argument",
+                  functionName));
         }
         break;
       case SqlConstant.FIRST_AGGREGATION:

@@ -151,7 +151,7 @@ public class AccumulatorFactory {
       case COUNT:
         return new GroupedCountAccumulator();
       case COUNT_IF:
-        return new GroupedCountIfAccumulator(inputDataTypes);
+        return new GroupedCountIfAccumulator();
       case AVG:
         return new GroupedAvgAccumulator(inputDataTypes.get(0));
       case SUM:
@@ -205,7 +205,7 @@ public class AccumulatorFactory {
       case COUNT:
         return new CountAccumulator();
       case COUNT_IF:
-        return new CountIfAccumulator(inputDataTypes);
+        return new CountIfAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
       case SUM:

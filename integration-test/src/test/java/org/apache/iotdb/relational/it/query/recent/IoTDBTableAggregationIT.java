@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -752,6 +753,14 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    assertTestFail(
+        "select count_if(device_id) from table1",
+        "700: Error occurred while parsing SQL to physical plan: line 1:32 no viable alternative at input 'select count_if(device_id) from table1");
+
+    assertTestFail(
+        "select count_if(s5, device_id != 'd01') from table1",
+        "700: Error occurred while parsing SQL to physical plan: line 1:45 no viable alternative at input 'select count_if(s5, device_id != 'd01') from table1'");
   }
 
   @Test

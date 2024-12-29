@@ -23,25 +23,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
 
 public class GroupedCountIfAccumulator implements GroupedAccumulator {
   private final LongBigArray countValues = new LongBigArray(0L);
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedCountIfAccumulator.class);
-
-  public GroupedCountIfAccumulator(List<TSDataType> seriesDataType) {
-    checkArgument(
-        seriesDataType.size() == 1 && seriesDataType.get(0) == BOOLEAN,
-        "argument of count_if should be one boolean expression");
-  }
 
   @Override
   public long getEstimatedSize() {
@@ -56,7 +44,7 @@ public class GroupedCountIfAccumulator implements GroupedAccumulator {
   @Override
   public void addInput(int[] groupIds, Column[] arguments) {
     for (int i = 0; i < groupIds.length; i++) {
-      if (arguments[0].getBoolean(i)) {
+      if (!arguments[0].isNull(i) && arguments[0].getBoolean(i)) {
         countValues.increment(groupIds[i]);
       }
     }
