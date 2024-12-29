@@ -95,18 +95,18 @@ public class SubcolumnNewQueryIndexTest {
 
         int bw = SubcolumnByteRLETest.bitWidth(block_size);
 
-        int beta = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 6);
+        int beta = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         int l = (m + beta - 1) / beta;
 
-        int[] bitWidthList = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, 8, l);
+        int[] bitWidthList = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, 8, l);
         startBitPosition += 8 * l;
 
         int[][] subcolumnList = new int[l][remainder];
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteTest.bytesToBool(encoded_result, startBitPosition);
+            boolean type = SubcolumnByteRLETest.bytesToBool(encoded_result, startBitPosition);
             startBitPosition += 1;
             if (!type) {
 
@@ -119,7 +119,7 @@ public class SubcolumnNewQueryIndexTest {
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
-                    subcolumnList[i][index] = SubcolumnByteTest.bytesToInt(encoded_result,
+                    subcolumnList[i][index] = SubcolumnByteRLETest.bytesToInt(encoded_result,
                             startBitPosition + index * bitWidthList[i], bitWidthList[i]);
                     int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] > value) {
@@ -137,7 +137,7 @@ public class SubcolumnNewQueryIndexTest {
 
             } else {
 
-                int index = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 16);
+                int index = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
                 if (lower_bound <= 0) {
@@ -146,63 +146,27 @@ public class SubcolumnNewQueryIndexTest {
                     continue;
                 }
 
-                int[] run_length = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, bw, index);
+                int[] run_length = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bw, index);
                 startBitPosition += bw * index;
 
-                int[] rle_values = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
+                int[] rle_values = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
                         index);
                 startBitPosition += bitWidthList[i] * index;
 
-                // 如果 candidate_length 较大，那么全展开再查找
-                if (candidate_length >= remainder / 2) {
-                    int currentIndex = 0;
-                    for (int j = 0; j < index; j++) {
-                        int endPos = run_length[j];
-                        while (currentIndex < endPos) {
-                            subcolumnList[i][currentIndex] = rle_values[j];
-                            currentIndex++;
-                        }
+                int new_length = 0;
+                int rleIndex = 0;
+                int currentPos = 0;
+                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+
+                for (int j = 0; j < candidate_length; j++) {
+                    int index_candidate = candidate_indices[j];
+
+                    while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
+                        currentPos += run_length[rleIndex];
+                        rleIndex++;
                     }
 
-                    int new_length = 0;
-                    for (int j = 0; j < candidate_length; j++) {
-                        int index_candidate = candidate_indices[j];
-                        int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
-
-                        if (subcolumnList[i][index_candidate] > value) {
-                            result[result_length[0]] = block_size * block_index + index_candidate;
-                            result_length[0]++;
-                        } else if (subcolumnList[i][index_candidate] == value) {
-                            candidate_indices[new_length] = index_candidate;
-                            new_length++;
-                        }
-                    }
-
-                    candidate_length = new_length;
-                    
-
-                } else {
-
-                    int new_length = 0;
-                    for (int j = 0; j < candidate_length; j++) {
-                        int index_candidate = candidate_indices[j];
-                        int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
-
-                        // 二分查找
-                        int left = 0;
-                        int right = index - 1;
-
-                        while (left < right) {
-                            int mid = (left + right) / 2;
-                            if (run_length[mid] <= index_candidate) {
-                                left = mid + 1;
-                            } else {
-                                right = mid;
-                            }
-                        }
-
-                        int rleIndex = left;
-
+                    if (rleIndex < index) {
                         if (rle_values[rleIndex] > value) {
                             result[result_length[0]] = block_size * block_index + index_candidate;
                             result_length[0]++;
@@ -211,11 +175,10 @@ public class SubcolumnNewQueryIndexTest {
                             new_length++;
                         }
                     }
-
-                    candidate_length = new_length;
                 }
 
-                
+                candidate_length = new_length;
+
             }
         }
 
@@ -267,7 +230,7 @@ public class SubcolumnNewQueryIndexTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_index_new.csv";
+        String outputPath = output_parent_dir + "test_byte_query_index_new3.csv";
 
         // int block_size = 1024;
         int block_size = 512;

@@ -114,12 +114,14 @@ public class SubcolumnQueryIndexTest {
                 }
 
                 int new_length = 0;
+                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
                     subcolumnList[i][index] = SubcolumnByteTest.bytesToInt(encoded_result,
                             startBitPosition + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                    
                     if (subcolumnList[i][index] > value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
@@ -160,9 +162,11 @@ public class SubcolumnQueryIndexTest {
                 }
 
                 int new_length = 0;
+                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
-                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                    
                     if (subcolumnList[i][index_candidate] > value) {
                         result[result_length[0]] = block_size * block_index + index_candidate;
                         result_length[0]++;
