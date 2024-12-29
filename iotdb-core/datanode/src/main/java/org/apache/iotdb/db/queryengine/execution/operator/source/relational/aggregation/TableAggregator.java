@@ -106,4 +106,8 @@ public class TableAggregator {
   public int getChannelCount() {
     return this.inputChannels.length;
   }
+
+  public void close() {
+    accumulator.close();
+  }
 }

@@ -865,4 +865,10 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
+
+  @Override
+  public void close() throws Exception {
+    super.close();
+    tableAggregators.forEach(TableAggregator::close);
+  }
 }
