@@ -550,6 +550,7 @@ public class TableDistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
+  // TODO(UDF): 参考 visitAggregation 和 visitSort
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
     if (node.isStreamable()) {

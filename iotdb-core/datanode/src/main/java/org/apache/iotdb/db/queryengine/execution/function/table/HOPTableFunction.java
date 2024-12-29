@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.function.table;
 
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.table.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
+import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.DescriptorParameterSpecification;
@@ -31,14 +33,16 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.IntStream;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.GenericTable.GENERIC_TABLE;
 
 public class HOPTableFunction extends TableFunction {
@@ -84,12 +88,24 @@ public class HOPTableFunction extends TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
+    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
+    DescriptorArgument descriptorArgument = (DescriptorArgument) arguments.get(TIMECOL_PARAMETER_NAME);
+    String expectedFieldName = descriptorArgument.getDescriptor().orElseThrow(
+            ()->new UDFException("The descriptor of the argument is empty")).getFields().get(0).getName();
+    int requiredIndex = -1;
+    for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
+      Optional<String> fieldName = tableArgument.getFieldNames().get(i);
+      if(fieldName.isPresent()&&expectedFieldName.equals(fieldName.get())){
+        requiredIndex = i;
+        break;
+      }
+    }
+    if(requiredIndex == -1){
+      throw new UDFException("The required field is not found in the input table");
+    }
     return TableFunctionAnalysis.builder()
         .requiredColumns(
-            DATA_PARAMETER_NAME,
-            IntStream.range(0, ((TableArgument) arguments.get(DATA_PARAMETER_NAME)).size())
-                .boxed()
-                .collect(toImmutableList()))
+            DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
         .build();
   }
 
@@ -98,8 +114,16 @@ public class HOPTableFunction extends TableFunction {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return null;
+        return new HOPDataProcessor();
       }
     };
+  }
+
+  private static class HOPDataProcessor implements  TableFunctionDataProcessor{
+
+    @Override
+    public void process(List<Optional<List<Column>>> input, List<ColumnBuilder> properColumnBuilders, List<ColumnBuilder> passThroughIndexBuilder) {
+
+    }
   }
 }

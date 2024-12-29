@@ -19,26 +19,39 @@
 
 package org.apache.iotdb.udf.api.relational.table.processor;
 
+import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
-import org.apache.iotdb.udf.api.relational.table.TableFunctionPartition;
+import org.apache.iotdb.udf.api.relational.access.Record;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * Each instance of TableFunctionDataProcessor processes one partition of data.
+ */
 public interface TableFunctionDataProcessor {
 
   /**
    * This method processes a portion of data. It is called multiple times until the partition is
    * fully processed.
    *
-   * @param input a tuple of {@link TableFunctionPartition} including one partition for each table
-   *     function's input table. Pages list is ordered according to the corresponding argument
+   * @param input {@link Record} including a portion of one partition for each table
+   *     function's input table. Input is ordered according to the corresponding argument
    *     specifications in {@link TableFunction}. A page for an argument consists of columns
-   *     requested during analysis (see {@link TableFunctionAnalysis#getRequiredColumns}). If all
-   *     sources are fully processed, the argument is null.
-   * @return {@link List<Column>} including proper columns and index of pass through columns.
+   *     requested during analysis (see {@link TableFunctionAnalysis#getRequiredColumns}).
+   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
    */
-  List<Column> process(List<TableFunctionPartition> input);
+  void process(Record input, List<ColumnBuilder> columnBuilders);
+
+
+  /**
+   * This method is called after all data is processed. It is used to finalize the output table.
+   * All remaining data should be written to the columnBuilders.
+   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   */
+  void finish(List<ColumnBuilder> columnBuilders);
 }

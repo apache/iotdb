@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational.table;
+package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.Iterator;
 
-public interface TableFunctionPartition extends Iterator<Record> {
-  int size();
+public interface PartitionHandler{
+
+  void addTsBlock(TsBlock tsBlock);
 }

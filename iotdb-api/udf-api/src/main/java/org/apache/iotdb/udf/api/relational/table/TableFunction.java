@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table;
 
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
@@ -40,7 +41,7 @@ public abstract class TableFunction {
   // TODO(UDF): 我觉得这里增大了用户的理解成本，是否考虑能够直接在analyze中决定返回表头就好了
   public abstract Optional<Descriptor> getReturnProperColumns();
 
-  public abstract TableFunctionAnalysis analyze(Map<String, Argument> arguments);
+  public abstract TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException;
 
   public abstract TableFunctionProcessorProvider getProcessorProvider(
       Map<String, Argument> arguments);

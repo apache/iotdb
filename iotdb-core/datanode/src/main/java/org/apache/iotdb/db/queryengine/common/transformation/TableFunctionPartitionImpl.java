@@ -21,18 +21,14 @@ package org.apache.iotdb.db.queryengine.common.transformation;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
-import org.apache.iotdb.udf.api.relational.access.Record;
-import org.apache.iotdb.udf.api.relational.table.TableFunctionPartition;
-import org.apache.iotdb.udf.api.type.Binary;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.TableFunctionPartition;
 import org.apache.iotdb.udf.api.type.Type;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -100,80 +96,5 @@ public class TableFunctionPartitionImpl implements TableFunctionPartition {
   @Override
   public int size() {
     return endPosition - startPosition + 1;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return positionIndex <= endPosition;
-  }
-
-  @Override
-  public Record next() {
-    final int index = positionIndex - positionOffsets.get(blockIndex);
-    final int block = blockIndex;
-    positionIndex++;
-    if (positionIndex >= positionOffsets.get(blockIndex + 1)) {
-      // it will never throw IndexOutOfBoundsException because it has been checked in hasNext()
-      blockIndex++;
-    }
-    return new Record() {
-      @Override
-      public int getInt(int columnIndex) {
-        return columns.get(block)[columnIndex].getInt(index);
-      }
-
-      @Override
-      public long getLong(int columnIndex) {
-        return columns.get(block)[columnIndex].getLong(index);
-      }
-
-      @Override
-      public float getFloat(int columnIndex) {
-        return columns.get(block)[columnIndex].getFloat(index);
-      }
-
-      @Override
-      public double getDouble(int columnIndex) {
-        return columns.get(block)[columnIndex].getDouble(index);
-      }
-
-      @Override
-      public boolean getBoolean(int columnIndex) {
-        return columns.get(block)[columnIndex].getBoolean(index);
-      }
-
-      @Override
-      public Binary getBinary(int columnIndex) {
-        return null; // TODO(UDF)
-      }
-
-      @Override
-      public String getString(int columnIndex) {
-        return columns
-            .get(block)[columnIndex]
-            .getBinary(index)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      }
-
-      @Override
-      public LocalDate getLocalDate(int columnIndex) {
-        return null; // TODO(UDF)
-      }
-
-      @Override
-      public Type getDataType(int columnIndex) {
-        return outputDataTypes.get(columnIndex);
-      }
-
-      @Override
-      public boolean isNull(int columnIndex) {
-        return columns.get(block)[columnIndex].isNull(index);
-      }
-
-      @Override
-      public int size() {
-        return columns.size();
-      }
-    };
   }
 }
