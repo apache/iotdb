@@ -56,10 +56,13 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
-public class TableLastQueryOperator extends TableAggregationTableScanOperator {
+/**
+ * This class is used to execute aggregation table scan when apply {@code canUseLastCacheOptimize()}
+ */
+public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableLastQueryOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryAggTableScanOperator.class);
 
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
@@ -80,7 +83,7 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
   // indicates the index of last(time) aggregation
   private int lastTimeAggregationIdx = -1;
 
-  public TableLastQueryOperator(
+  public LastQueryAggTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       List<ColumnSchema> aggColumnSchemas,
@@ -136,14 +139,6 @@ public class TableLastQueryOperator extends TableAggregationTableScanOperator {
         lastTimeAggregationIdx = i;
       }
     }
-  }
-
-  @Override
-  public boolean isFinished() throws Exception {
-    if (!finished) {
-      finished = !hasNextWithTimer();
-    }
-    return finished;
   }
 
   @Override

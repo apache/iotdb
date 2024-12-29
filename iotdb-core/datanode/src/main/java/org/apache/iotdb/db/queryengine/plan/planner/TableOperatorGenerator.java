@@ -73,11 +73,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableLastQueryOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
@@ -1901,7 +1902,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TableAggregationTableScanOperator.class.getSimpleName());
+                AbstractAggTableScanOperator.class.getSimpleName());
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
@@ -1978,8 +1979,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
 
       // context add TableLastQueryOperator
-      TableLastQueryOperator lastQueryOperator =
-          new TableLastQueryOperator(
+      LastQueryAggTableScanOperator lastQueryOperator =
+          new LastQueryAggTableScanOperator(
               node.getPlanNodeId(),
               operatorContext,
               aggColumnSchemas,
@@ -2004,8 +2005,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
       return lastQueryOperator;
     } else {
-      TableAggregationTableScanOperator aggTableScanOperator =
-          new TableAggregationTableScanOperator(
+      DefaultAggTableScanOperator aggTableScanOperator =
+          new DefaultAggTableScanOperator(
               node.getPlanNodeId(),
               operatorContext,
               aggColumnSchemas,

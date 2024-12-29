@@ -71,10 +71,10 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
-public class TableAggregationTableScanOperator extends AbstractDataSourceOperator {
+public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableAggregationTableScanOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(AbstractAggTableScanOperator.class);
 
   private boolean finished = false;
   private TsBlock inputTsBlock;
@@ -116,7 +116,7 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
 
   private boolean allAggregatorsHasFinalResult = false;
 
-  public TableAggregationTableScanOperator(
+  public AbstractAggTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       List<ColumnSchema> aggColumnSchemas,
@@ -229,6 +229,8 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     return checkTsBlockSizeAndGetResult();
   }
 
+  protected abstract void updateResultTsBlock();
+
   protected void buildResultTsBlock() {
     resultTsBlock =
         resultTsBlockBuilder.build(
@@ -321,12 +323,6 @@ public class TableAggregationTableScanOperator extends AbstractDataSourceOperato
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
-  }
-
-  protected void updateResultTsBlock() {
-    appendAggregationResult();
-    // after appendAggregationResult invoked, aggregators must be cleared
-    resetTableAggregators();
   }
 
   protected boolean calcFromCachedData() {
