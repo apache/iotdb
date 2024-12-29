@@ -12,7 +12,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnTSDIFFByteTest {
+public class TSDIFFSubcolumnByteTest {
     // TS2DIFF+Subcolumn SubcolumnByteTest
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {

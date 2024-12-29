@@ -12,8 +12,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnByteBlockSizeTest {
-    // SubcolumnByteTest 测试不同 block size
+public class SubcolumnByteRLEBlockSizeTest {
+    // SubcolumnByteRLETest 测试不同 block size
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -60,7 +60,7 @@ public class SubcolumnByteBlockSizeTest {
 
         for (int block_size : block_size_list) {
 
-            String outputPath = output_parent_dir + "subcolumn_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_rle_block_" + block_size + ".csv";
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
             String[] head = {
@@ -114,7 +114,7 @@ public class SubcolumnByteBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnByteTest.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnByteRLETest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -128,7 +128,7 @@ public class SubcolumnByteBlockSizeTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int[] data2_arr_decoded = SubcolumnByteTest.Decoder(encoded_result);
+                    int[] data2_arr_decoded = SubcolumnByteRLETest.Decoder(encoded_result);
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // assert data2_arr[i] == data2_arr_decoded[i]
                         //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];

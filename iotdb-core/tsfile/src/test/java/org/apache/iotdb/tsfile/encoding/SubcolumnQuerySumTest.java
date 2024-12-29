@@ -31,8 +31,6 @@ public class SubcolumnQuerySumTest {
         int[] result = new int[data_length];
         int[] result_length = new int[1];
 
-        long[] sum_result = new long[data_length];
-
         for (int i = 0; i < num_blocks; i++) {
             startBitPosition = BlockQuerySum(encoded_result, i, block_size, block_size, startBitPosition, result,
                     result_length);
