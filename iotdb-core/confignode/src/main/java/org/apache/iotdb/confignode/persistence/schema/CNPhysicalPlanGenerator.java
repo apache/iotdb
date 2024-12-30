@@ -188,12 +188,8 @@ public class CNPhysicalPlanGenerator
   private void generateUserRolePhysicalPlan(final boolean isUser) {
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      final Pair<String, Boolean> versionAndName =
-          readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      if (versionAndName == null) {
-        return;
-      }
-      final String user = versionAndName.left;
+      int tag = dataInputStream.readInt();
+      String user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan createUser =
@@ -213,7 +209,8 @@ public class CNPhysicalPlanGenerator
 
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
-      while (dataInputStream.available() != 0) {
+      int num = dataInputStream.readInt();
+      for (int i = 0; i < num; i++) {
         final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final PartialPath priPath;
         try {
@@ -237,7 +234,8 @@ public class CNPhysicalPlanGenerator
   private void generateGrantRolePhysicalPlan() {
     try (final DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
-      while (roleInputStream.available() != 0) {
+      int roleNum = roleInputStream.readInt();
+      for (int i = 0; i < roleNum; i++) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);

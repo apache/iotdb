@@ -201,6 +201,9 @@ public class CNPhysicalPlanGeneratorTest {
     authorInfo.authorNonQuery(plan);
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
     plan.setPassword(AuthUtils.encryptPassword("password"));
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     answerSet.add(plan.hashCode());
 
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
