@@ -64,7 +64,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String CONSENSUS = "Consensus";
   private static final String STREAM_ENGINE = "StreamEngine";
   private static final String DIRECT_BUFFER = "DirectBuffer";
-  private static final String[] LEVELS = {"0", "1", "2"};
+  private static final String[] LEVELS = {"0", "1", "2", "3", "4"};
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -178,7 +178,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            LEVELS[2]);
+            LEVELS[3]);
     memtableMemorySize.set(memtableSize);
     timePartitionInfoMemorySize =
         metricService.getOrCreateGauge(
@@ -189,7 +189,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            LEVELS[2]);
+            LEVELS[3]);
     timePartitionInfoMemorySize.set(timePartitionInfoSize);
     compactionMemorySize =
         metricService.getOrCreateGauge(
@@ -247,14 +247,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     LEVELS[1]));
     writeMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     compactionMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    Arrays.asList(
-            STORAGE_ENGINE_WRITE,
-            STORAGE_ENGINE_WRITE_MEMTABLE,
-            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
-            STORAGE_ENGINE_COMPACTION)
+    Arrays.asList(STORAGE_ENGINE_WRITE, STORAGE_ENGINE_COMPACTION)
         .forEach(
             name ->
                 metricService.remove(
@@ -266,6 +260,20 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     OFF_HEAP,
                     Tag.LEVEL.toString(),
                     LEVELS[2]));
+    memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
+    timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
+    Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
+        .forEach(
+            name ->
+                metricService.remove(
+                    MetricType.GAUGE,
+                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Tag.NAME.toString(),
+                    name,
+                    Tag.TYPE.toString(),
+                    OFF_HEAP,
+                    Tag.LEVEL.toString(),
+                    LEVELS[3]));
   }
 
   public static ThresholdMemoryMetrics getInstance() {

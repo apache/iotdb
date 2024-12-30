@@ -78,10 +78,7 @@ public class WritingMetrics implements IMetricSet {
             FLUSH_STAGE_ENCODING);
     flushStageIOTimer =
         metricService.getOrCreateTimer(
-            Metric.FLUSH_COST.toString(),
-            MetricLevel.NORMAL,
-            Tag.STAGE.toString(),
-            FLUSH_STAGE_IO);
+            Metric.FLUSH_COST.toString(), MetricLevel.NORMAL, Tag.STAGE.toString(), FLUSH_STAGE_IO);
     writePlanIndicesTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_COST.toString(),
@@ -210,10 +207,7 @@ public class WritingMetrics implements IMetricSet {
             Metric.WAL_BUFFER.toString(), MetricLevel.NORMAL, Tag.NAME.toString(), USED_RATIO);
     entriesCountHistogram =
         metricService.getOrCreateHistogram(
-            Metric.WAL_BUFFER.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            ENTRIES_COUNT);
+            Metric.WAL_BUFFER.toString(), MetricLevel.NORMAL, Tag.NAME.toString(), ENTRIES_COUNT);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
