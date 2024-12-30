@@ -32,11 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,14 +46,37 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private final SqlParser relationalSqlParser = new SqlParser();
-
   private final LoadTableStatementDataTypeConvertExecutionVisitor
       tableStatementDataTypeConvertExecutionVisitor =
           new LoadTableStatementDataTypeConvertExecutionVisitor(
-              this::executeStatementForTableModel);
+              ((statement, databaseName) ->
+                  Coordinator.getInstance()
+                      .executeForTableModel(
+                          statement,
+                          relationalSqlParser,
+                          SESSION_MANAGER.getCurrSession(),
+                          SESSION_MANAGER.requestQueryId(),
+                          SESSION_MANAGER.getSessionInfoOfPipeReceiver(
+                              SESSION_MANAGER.getCurrSession(), databaseName),
+                          "",
+                          LocalExecutionPlanner.getInstance().metadata,
+                          IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+                      .status));
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
       treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
+          new LoadTreeStatementDataTypeConvertExecutionVisitor(
+              statement ->
+                  Coordinator.getInstance()
+                      .executeForTreeModel(
+                          statement,
+                          SESSION_MANAGER.requestQueryId(),
+                          SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+                          "",
+                          ClusterPartitionFetcher.getInstance(),
+                          ClusterSchemaFetcher.getInstance(),
+                          IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                          false)
+                      .status);
 
   public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadStatementTSStatusVisitor();
@@ -64,53 +85,28 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
 
   public TSStatus convertForTableModel(LoadTsFile loadTsFileTableStatement) {
     try {
-      final String dataBaseName = loadTsFileTableStatement.getDatabase();
       return loadTsFileTableStatement
-          .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(null, dataBaseName))
+          .accept(
+              tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase())
           .orElse(null);
     } catch (Exception e) {
-      LOGGER.warn("Failed to convert data types for table model.", e);
+      LOGGER.warn(
+          "Failed to convert data types for table model statement {}.",
+          loadTsFileTableStatement,
+          e);
       return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
-  private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
-    return Coordinator.getInstance()
-        .executeForTableModel(
-            statement,
-            relationalSqlParser,
-            SESSION_MANAGER.getCurrSession(),
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                SESSION_MANAGER.getCurrSession(), dataBaseName),
-            "",
-            LocalExecutionPlanner.getInstance().metadata,
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
-        .status;
-  }
-
-  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileStatement) {
+  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileTreeStatement) {
     try {
-      return loadTsFileStatement
+      return loadTsFileTreeStatement
           .accept(treeStatementDataTypeConvertExecutionVisitor, null)
           .orElse(null);
     } catch (Exception e) {
-      LOGGER.warn("Failed to convert data types for tree model.", e);
+      LOGGER.warn(
+          "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
       return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
-  }
-
-  private TSStatus executeStatementForTreeModel(final Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            statement,
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
-        .status;
   }
 }

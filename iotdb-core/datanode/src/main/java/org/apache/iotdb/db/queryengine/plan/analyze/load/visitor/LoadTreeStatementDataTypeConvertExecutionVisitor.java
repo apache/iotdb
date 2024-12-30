@@ -41,7 +41,7 @@ import java.io.File;
 import java.util.Optional;
 
 public class LoadTreeStatementDataTypeConvertExecutionVisitor
-    extends StatementVisitor<Optional<TSStatus>, TSStatus> {
+    extends StatementVisitor<Optional<TSStatus>, Void> {
 
   private final StatementExecutor statementExecutor;
 
@@ -59,13 +59,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   }
 
   @Override
-  public Optional<TSStatus> visitNode(final StatementNode statementNode, final TSStatus status) {
+  public Optional<TSStatus> visitNode(final StatementNode statementNode, final Void v) {
     return Optional.empty();
   }
 
   @Override
   public Optional<TSStatus> visitLoadFile(
-      final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
+      final LoadTsFileStatement loadTsFileStatement, final Void v) {
 
     LOGGER.warn(
         "Data type mismatch for LoadTsFileStatement: {}. Start data type conversion.",

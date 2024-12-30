@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +41,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class LoadTableStatementDataTypeConvertExecutionVisitor
-    extends AstVisitor<Optional<TSStatus>, Pair<TSStatus, String>> {
+    extends AstVisitor<Optional<TSStatus>, String> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTableStatementDataTypeConvertExecutionVisitor.class);
@@ -61,9 +60,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
   @Override
   public Optional<TSStatus> visitLoadTsFile(
-      final LoadTsFile loadTsFileStatement, final Pair<TSStatus, String> statusAndDatabaseName) {
-    final String databaseName = statusAndDatabaseName.getRight();
-
+      final LoadTsFile loadTsFileStatement, final String databaseName) {
     if (Objects.isNull(databaseName)) {
       LOGGER.warn(
           "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
