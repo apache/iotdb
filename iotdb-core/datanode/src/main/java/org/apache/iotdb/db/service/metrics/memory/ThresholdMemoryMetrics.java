@@ -43,8 +43,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private Gauge writeMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge dataNodeDevicePathCacheMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-  private Gauge timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge bufferedArraysMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge compactionMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge queryEngineMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge schemaEngineMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -60,10 +60,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE =
       "StorageEngine-Write-Memtable-DevicePathCache";
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS =
+      "StorageEngine-Write-Memtable-BufferedArrays";
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
-  private static final String STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS =
-      "StorageEngine-Write-BufferedArrays";
   private static final String STORAGE_ENGINE_COMPACTION = "StorageEngine-Compaction";
   private static final String QUERY_ENGINE = "QueryEngine";
   private static final String SCHEMA_ENGINE = "SchemaEngine";
@@ -222,6 +222,17 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[4]);
     dataNodeDevicePathCacheMemorySize.set(dataNodeDevicePathCacheSize);
+    bufferedArraysMemorySize =
+        metricService.getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[4]);
+    bufferedArraysMemorySize.set(bufferedArraySize);
     timePartitionInfoMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -233,17 +244,6 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[3]);
     timePartitionInfoMemorySize.set(timePartitionInfoSize);
-    bufferedArraysMemorySize =
-        metricService.getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS,
-            Tag.TYPE.toString(),
-            ON_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[3]);
-    bufferedArraysMemorySize.set(bufferedArraySize);
   }
 
   @Override
@@ -288,6 +288,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     OFF_HEAP,
                     Tag.LEVEL.toString(),
                     LEVELS[1]));
+    unbindStorageEngineRelatedMemoryMetrics(metricService);
+  }
+
+  private void unbindStorageEngineRelatedMemoryMetrics(AbstractMetricService metricService) {
     writeMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     compactionMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     Arrays.asList(STORAGE_ENGINE_WRITE, STORAGE_ENGINE_COMPACTION)
@@ -305,10 +309,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
     memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     bufferedArraysMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    Arrays.asList(
-            STORAGE_ENGINE_WRITE_MEMTABLE,
-            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
-            STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS)
+    Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
         .forEach(
             name ->
                 metricService.remove(
@@ -321,7 +322,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     LEVELS[3]));
     dataNodeDevicePathCacheMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    Collections.singletonList(STORAGE_ENGINE_WRITE_MEMTABLE_CACHE)
+    Arrays.asList(
+            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE, STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS)
         .forEach(
             name ->
                 metricService.remove(
