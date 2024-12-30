@@ -41,9 +41,9 @@ public class LoadTsFile extends Statement {
   private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean deleteAfterLoad;
-  private boolean convertOnTypeMismatch;
-  private boolean autoCreateDatabase;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;

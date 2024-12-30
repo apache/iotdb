@@ -47,17 +47,19 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean verifySchema;
-  private boolean deleteAfterLoad;
-  private boolean convertOnTypeMismatch;
-  private boolean autoCreateDatabase;
+  private boolean verifySchema = true;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
@@ -253,7 +255,8 @@ public class LoadTsFileStatement extends Statement {
     if (database != null) {
       loadAttributes.put(DATABASE_NAME_KEY, database);
     }
-    loadAttributes.put(ON_SUCCESS_KEY, String.valueOf(deleteAfterLoad));
+    loadAttributes.put(
+        ON_SUCCESS_KEY, deleteAfterLoad ? ON_SUCCESS_DELETE_VALUE : ON_SUCCESS_NONE_VALUE);
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
     if (model != null) {
       loadAttributes.put(MODEL_KEY, model);

@@ -93,8 +93,8 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String ON_SUCCESS_KEY = "on-success";
-  private static final String ON_SUCCESS_DELETE_VALUE = "delete";
-  private static final String ON_SUCCESS_NONE_VALUE = "none";
+  public static final String ON_SUCCESS_DELETE_VALUE = "delete";
+  public static final String ON_SUCCESS_NONE_VALUE = "none";
   private static final Set<String> ON_SUCCESS_VALUE_SET =
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(ON_SUCCESS_DELETE_VALUE, ON_SUCCESS_NONE_VALUE)));
@@ -110,7 +110,7 @@ public class LoadTsFileConfigurator {
 
   public static boolean parseOrGetDefaultOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(ON_SUCCESS_KEY);
-    return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
+    return !StringUtils.isEmpty(value) && ON_SUCCESS_DELETE_VALUE.equalsIgnoreCase(value);
   }
 
   public static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert-on-type-mismatch";
