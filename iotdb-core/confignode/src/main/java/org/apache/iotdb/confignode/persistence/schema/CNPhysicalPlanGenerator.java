@@ -66,7 +66,6 @@ import java.util.Stack;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.commons.utils.IOUtils.readAuthString;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
 public class CNPhysicalPlanGenerator
@@ -182,12 +181,8 @@ public class CNPhysicalPlanGenerator
   private void generateUserRolePhysicalPlan(boolean isUser) {
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      final Pair<String, Boolean> versionAndName =
-          readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      if (versionAndName == null) {
-        return;
-      }
-      String user = versionAndName.left;
+      int tag = dataInputStream.readInt();
+      String user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan createUser =
@@ -207,7 +202,8 @@ public class CNPhysicalPlanGenerator
 
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
-      while (dataInputStream.available() != 0) {
+      int num = dataInputStream.readInt();
+      for (int i = 0; i < num; i++) {
         final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final PartialPath priPath;
         try {
@@ -231,7 +227,8 @@ public class CNPhysicalPlanGenerator
   private void generateGrantRolePhysicalPlan() {
     try (DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
-      while (roleInputStream.available() != 0) {
+      int roleNum = roleInputStream.readInt();
+      for (int i = 0; i < roleNum; i++) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
