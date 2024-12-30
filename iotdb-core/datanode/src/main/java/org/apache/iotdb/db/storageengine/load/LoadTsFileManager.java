@@ -51,8 +51,8 @@ import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import org.apache.iotdb.session.subscription.util.RetryUtils;
+
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -565,8 +565,12 @@ public class LoadTsFileManager {
             }
             final Path writerPath = writer.getFile().toPath();
             if (Files.exists(writerPath)) {
-              RetryUtils.retryOnException(()->{Files.delete(writerPath);return null;});
-              //Files.delete(writerPath);
+              RetryUtils.retryOnException(
+                  () -> {
+                    Files.delete(writerPath);
+                    return null;
+                  });
+              // Files.delete(writerPath);
             }
           } catch (IOException e) {
             LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
@@ -581,8 +585,12 @@ public class LoadTsFileManager {
             modificationFile.close();
             final Path modificationFilePath = modificationFile.getFile().toPath();
             if (Files.exists(modificationFilePath)) {
-              RetryUtils.retryOnException(()->{Files.delete(modificationFilePath);return null;});
-              //Files.delete(modificationFilePath);
+              RetryUtils.retryOnException(
+                  () -> {
+                    Files.delete(modificationFilePath);
+                    return null;
+                  });
+              // Files.delete(modificationFilePath);
             }
           } catch (IOException e) {
             LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
@@ -590,8 +598,12 @@ public class LoadTsFileManager {
         }
       }
       try {
-        RetryUtils.retryOnException(()->{Files.delete(taskDir.toPath());return null;});
-        //Files.delete(taskDir.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.delete(taskDir.toPath());
+              return null;
+            });
+        // Files.delete(taskDir.toPath());
       } catch (DirectoryNotEmptyException e) {
         LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {

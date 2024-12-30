@@ -20,10 +20,10 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.session.subscription.util.RetryUtils;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.iotdb.session.subscription.util.RetryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,15 +97,17 @@ public class FileUtils {
       }
     }
     try {
-      RetryUtils.retryOnException(() -> {Files.delete(file.toPath()); return null;});
-    }
-    catch (DirectoryNotEmptyException e) {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.delete(file.toPath());
+            return null;
+          });
+    } catch (DirectoryNotEmptyException e) {
       LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
       LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
     }
   }
-
 
   public static void deleteDirectoryAndEmptyParent(File folder) {
     deleteFileOrDirectory(folder);

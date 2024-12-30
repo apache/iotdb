@@ -55,11 +55,13 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the source file
    * @throws IOException if an I/O error occurs
    */
-
   public synchronized Path deleteFile() throws IOException {
     final Path sourcePath = getPath();
-    return RetryUtils.retryOnException(() -> {Files.delete(sourcePath);
-      return sourcePath;});
+    return RetryUtils.retryOnException(
+        () -> {
+          Files.delete(sourcePath);
+          return sourcePath;
+        });
   }
 
   /**
@@ -68,7 +70,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public synchronized Path moveFile(final String target) throws IOException {
-//    return this.moveFile(Paths.get(target));
+    //    return this.moveFile(Paths.get(target));
     return RetryUtils.retryOnException(() -> this.moveFile(Paths.get(target)));
   }
 
@@ -81,7 +83,8 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
     if (!Files.exists(target.getParent())) {
       Files.createDirectories(target.getParent());
     }
-    return RetryUtils.retryOnException(()->Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING));
+    return RetryUtils.retryOnException(
+        () -> Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING));
   }
 
   /**
@@ -90,7 +93,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public synchronized Path copyFile(final String target) throws IOException {
-    return RetryUtils.retryOnException(()->this.copyFile(Paths.get(target)));
+    return RetryUtils.retryOnException(() -> this.copyFile(Paths.get(target)));
   }
 
   /**
@@ -102,8 +105,13 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
     if (!Files.exists(target.getParent())) {
       Files.createDirectories(target.getParent());
     }
-    return RetryUtils.retryOnException(()->Files.copy(
-        getPath(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES));
+    return RetryUtils.retryOnException(
+        () ->
+            Files.copy(
+                getPath(),
+                target,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.COPY_ATTRIBUTES));
   }
 
   @Override

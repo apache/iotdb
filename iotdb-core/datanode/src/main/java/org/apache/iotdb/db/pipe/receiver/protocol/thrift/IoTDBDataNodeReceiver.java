@@ -98,9 +98,9 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.subscription.util.RetryUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.session.subscription.util.RetryUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -540,7 +540,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
     if (Objects.nonNull(dataBaseName)) {
@@ -562,7 +561,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
         RetryUtils.retryOnException(
-            () -> {FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));return null;});
+            () -> {
+              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              return null;
+            });
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

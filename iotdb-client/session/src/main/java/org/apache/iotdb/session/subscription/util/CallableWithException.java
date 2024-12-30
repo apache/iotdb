@@ -20,5 +20,5 @@
 package org.apache.iotdb.session.subscription.util;
 
 public interface CallableWithException<E, T extends Exception> {
-    E call() throws T;
+  E call() throws T;
 }

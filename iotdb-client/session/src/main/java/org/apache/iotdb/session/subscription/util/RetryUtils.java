@@ -23,25 +23,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RetryUtils {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RetryUtils.class);
-    public static final int MAX_RETRIES = 3;
+  private static final Logger LOGGER = LoggerFactory.getLogger(RetryUtils.class);
+  public static final int MAX_RETRIES = 3;
 
-    private RetryUtils() {}
+  private RetryUtils() {}
 
-    public static <E, T extends Exception> E retryOnException(CallableWithException<E, T> callable) throws T {
-        int attempt = 0;
-        while (attempt < MAX_RETRIES) {
-            try {
-                return callable.call();
-            } catch (Exception e) {
-                attempt++;
-                if (attempt >= MAX_RETRIES) {
-                    throw e;
-                }
-            }
+  public static <E, T extends Exception> E retryOnException(CallableWithException<E, T> callable)
+      throws T {
+    int attempt = 0;
+    while (attempt < MAX_RETRIES) {
+      try {
+        return callable.call();
+      } catch (Exception e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          throw e;
         }
-        return null;
+      }
     }
-
-
+    return null;
+  }
 }
