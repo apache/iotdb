@@ -1309,12 +1309,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.deleteDevice(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
-  @Override
-  public TSStatus updateTreeView() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.updateTreeView(), status -> !updateConfigNodeLeader(status));
-  }
-
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
 
     public Factory(
