@@ -73,7 +73,7 @@ public class PathPrivilege {
   public void setGrantOptInt(Set<Integer> grantOpts) {
     this.grantOpts = new HashSet<>();
     for (Integer priv : grantOpts) {
-      this.privileges.add(PrivilegeType.values()[priv]);
+      this.grantOpts.add(PrivilegeType.values()[priv]);
     }
   }
 

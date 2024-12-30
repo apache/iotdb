@@ -70,6 +70,9 @@ public class AuthorityChecker {
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
+  private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
+      "No permissions for this operation, please add grant option to privilege ";
+
   private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
       MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
@@ -130,10 +133,11 @@ public class AuthorityChecker {
     }
   }
 
-  public static TSStatus getOptTSStatus(boolean hasGrantOpt, String errMsg) {
+  public static TSStatus getOptTSStatus(boolean hasGrantOpt, PrivilegeType privilegeType) {
     return hasGrantOpt
         ? SUCCEED
-        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode()).setMessage(errMsg);
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + privilegeType);
   }
 
   public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
@@ -149,12 +153,34 @@ public class AuthorityChecker {
             .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
   }
 
+  public static TSStatus getGrantOptTSStatus(
+      boolean hasPermission, PrivilegeType neededPrivilege, String database) {
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(NO_GRANT_OPT_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
+  }
+
+  public static TSStatus getGrantOptTSStatus(
+      boolean hasPermission, PrivilegeType neededPrivilege, String database, String table) {
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
+            .setMessage(
+                NO_GRANT_OPT_PERMISSION_PROMOTION
+                    + neededPrivilege
+                    + " ON "
+                    + database
+                    + "."
+                    + table);
+  }
+
   public static TSStatus getTSStatus(
       boolean hasPermission, PrivilegeType neededPrivilege, String database) {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + "ON DB:" + database);
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " ON DB:" + database);
   }
 
   public static TSStatus getTSStatus(
@@ -162,7 +188,8 @@ public class AuthorityChecker {
     return hasPermission
         ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + "ON " + database + "." + table);
+            .setMessage(
+                NO_PERMISSION_PROMOTION + neededPrivilege + " ON " + database + "." + table);
   }
 
   public static TSStatus getTSStatus(
@@ -221,9 +248,33 @@ public class AuthorityChecker {
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
+  public static boolean checkSystemPermissionGrantOption(
+      String userName, PrivilegeType permission) {
+    return authorityFetcher.get().checkUserSysPrivilegesGrantOpt(userName, permission).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkAnyScopePermissionGrantOption(
+      String userName, PrivilegeType permission) {
+    return authorityFetcher
+            .get()
+            .checkUserAnyScopePrivilegeGrantOption(userName, permission)
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
   public static boolean checkDBPermission(
       String userName, String database, PrivilegeType permission) {
     return authorityFetcher.get().checkUserDBPrivileges(userName, database, permission).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkDBPermissionGrantOption(
+      String userName, String database, PrivilegeType permission) {
+    return authorityFetcher
+            .get()
+            .checkUserDBPrivilegesGrantOpt(userName, database, permission)
+            .getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
@@ -232,6 +283,15 @@ public class AuthorityChecker {
     return authorityFetcher
             .get()
             .checkUserTBPrivileges(userName, database, table, permission)
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkTablePermissionGrantOption(
+      String userName, String database, String table, PrivilegeType permission) {
+    return authorityFetcher
+            .get()
+            .checkUserTBPrivilegesGrantOpt(userName, database, table, permission)
             .getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
@@ -246,17 +306,14 @@ public class AuthorityChecker {
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  public static boolean checkGrantOption(
-      String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
-    for (String s : privilegeList) {
-      if (authorityFetcher
-              .get()
-              .checkUserPathPrivilegesGrantOpt(
-                  userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()))
-              .getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return false;
-      }
+  public static boolean checkPathPermissionGrantOption(
+      String userName, PrivilegeType privilegeType, List<PartialPath> nodeNameList) {
+    if (authorityFetcher
+            .get()
+            .checkUserPathPrivilegesGrantOpt(userName, nodeNameList, privilegeType)
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return false;
     }
     return true;
   }

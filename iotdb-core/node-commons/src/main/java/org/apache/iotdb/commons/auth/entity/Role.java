@@ -207,13 +207,13 @@ public class Role {
           }
         }
         roleResp.setSysPriSet(privs);
-        privs.clear();
+        Set<Integer> privGrantopt = new HashSet<>();
         for (PrivilegeType priv : sysPriGrantOpt) {
           if (priv.forRelationalSys()) {
-            privs.add(priv.ordinal());
+            privGrantopt.add(priv.ordinal());
           }
         }
-        roleResp.setSysPriSetGrantOpt(privs);
+        roleResp.setSysPriSetGrantOpt(privGrantopt);
         roleResp.setAnyScopeSet(getPrivilegeIntSet(anyScopePrivilegeSet));
         roleResp.setAnyScopeGrantSet(getPrivilegeIntSet(anyScopePrivileGrantOptSet));
         roleResp.setPrivilegeList(new ArrayList<>());
@@ -401,26 +401,45 @@ public class Role {
         && this.objectPrivilegeMap.get(dbname).checkTablePrivilege(tbname, priv);
   }
 
+  public boolean checkAnyScopePrivilege(PrivilegeType priv) {
+    return anyScopePrivilegeSet.contains(priv);
+  }
+
   public boolean checkDatabasePrivilege(String dbname, PrivilegeType priv) {
-    return this.objectPrivilegeMap.containsKey(dbname)
-        && this.objectPrivilegeMap.get(dbname).checkDBPrivilege(priv);
+    return checkAnyScopePrivilege(priv)
+        || (this.objectPrivilegeMap.containsKey(dbname)
+            && this.objectPrivilegeMap.get(dbname).checkDBPrivilege(priv));
   }
 
   public boolean checkTablePrivilege(String dbname, String table, PrivilegeType priv) {
-    return this.objectPrivilegeMap.containsKey(dbname)
-        && (this.objectPrivilegeMap.get(dbname).checkDBPrivilege(priv)
-            || this.objectPrivilegeMap.get(dbname).checkTablePrivilege(table, priv));
+    return checkAnyScopePrivilege(priv)
+        || (this.objectPrivilegeMap.containsKey(dbname)
+            && (this.objectPrivilegeMap.get(dbname).checkDBPrivilege(priv)
+                || this.objectPrivilegeMap.get(dbname).checkTablePrivilege(table, priv)));
   }
 
   public boolean checkDatabasePrivilegeGrantOption(String dbname, PrivilegeType priv) {
+    if (checkAnyScopePrivilegeGrantOption(priv)) {
+      return true;
+    }
     return this.objectPrivilegeMap.containsKey(dbname)
         && this.objectPrivilegeMap.get(dbname).checkDBGrantOption(priv);
   }
 
   public boolean checkTablePrivilegeGrantOption(String dbname, String table, PrivilegeType priv) {
+    if (checkAnyScopePrivilegeGrantOption(priv)) {
+      return true;
+    }
+    if (checkDatabasePrivilegeGrantOption(dbname, priv)) {
+      return true;
+    }
     return this.objectPrivilegeMap.containsKey(dbname)
-        && (this.objectPrivilegeMap.get(dbname).checkDBGrantOption(priv)
-            || this.objectPrivilegeMap.get(dbname).checkTableGrantOption(table, priv));
+        && this.objectPrivilegeMap.get(dbname).checkTableGrantOption(table, priv);
+  }
+
+  public boolean checkAnyScopePrivilegeGrantOption(PrivilegeType priv) {
+    return this.anyScopePrivileGrantOptSet.contains(priv)
+        && this.anyScopePrivilegeSet.contains(priv);
   }
 
   public boolean checkPathPrivilege(PartialPath path, PrivilegeType priv) {

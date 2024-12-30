@@ -872,34 +872,31 @@ public class AuthorInfoTest {
     // check visible
     assertEquals(
         authorInfo
-            .checkUserPrivileges("user", new PrivilegeUnion("testdb", PrivilegeType.INVALID))
+            .checkUserPrivileges("user", new PrivilegeUnion("testdb", null))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertEquals(
         authorInfo
-            .checkUserPrivileges("user", new PrivilegeUnion("database", PrivilegeType.INVALID))
+            .checkUserPrivileges("user", new PrivilegeUnion("database", null))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertEquals(
         authorInfo
-            .checkUserPrivileges(
-                "user", new PrivilegeUnion("database", "table", PrivilegeType.INVALID))
+            .checkUserPrivileges("user", new PrivilegeUnion("database", "table", null))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertEquals(
         authorInfo
-            .checkUserPrivileges(
-                "user", new PrivilegeUnion("database", "table2", PrivilegeType.INVALID))
+            .checkUserPrivileges("user", new PrivilegeUnion("database", "table2", null))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertEquals(
         authorInfo
-            .checkUserPrivileges(
-                "user", new PrivilegeUnion("database2", "table2", PrivilegeType.INVALID))
+            .checkUserPrivileges("user", new PrivilegeUnion("database2", "table2", null))
             .getStatus()
             .getCode(),
         TSStatusCode.SUCCESS_STATUS.getStatusCode());

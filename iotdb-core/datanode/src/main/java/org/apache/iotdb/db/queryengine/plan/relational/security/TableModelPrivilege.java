@@ -59,4 +59,29 @@ public enum TableModelPrivilege {
         throw new IllegalStateException("Unexpected value:" + this);
     }
   }
+
+  public static TableModelPrivilege getTableModelType(PrivilegeType privilegeType) {
+    switch (privilegeType) {
+      case MANAGE_ROLE:
+        return TableModelPrivilege.MANAGE_ROLE;
+      case MANAGE_USER:
+        return TableModelPrivilege.MANAGE_USER;
+      case MAINTAIN:
+        return TableModelPrivilege.MAINTAIN;
+      case CREATE:
+        return TableModelPrivilege.CREATE;
+      case DROP:
+        return TableModelPrivilege.DROP;
+      case ALTER:
+        return TableModelPrivilege.ALTER;
+      case SELECT:
+        return TableModelPrivilege.SELECT;
+      case INSERT:
+        return TableModelPrivilege.INSERT;
+      case DELETE:
+        return TableModelPrivilege.DELETE;
+      default:
+        throw new IllegalStateException("Unexpected value:" + privilegeType);
+    }
+  }
 }

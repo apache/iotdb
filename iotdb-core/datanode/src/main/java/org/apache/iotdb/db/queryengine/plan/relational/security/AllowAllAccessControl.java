@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
 public class AllowAllAccessControl implements AccessControl {
   @Override
@@ -80,5 +81,10 @@ public class AllowAllAccessControl implements AccessControl {
   @Override
   public void checkUserHasMaintainPrivilege(String userName) {
     // allow anything
+  }
+
+  @Override
+  public void checkUserCanRunAuthorStatement(String userName, RelationalAuthorStatement statement) {
+    //
   }
 }

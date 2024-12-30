@@ -457,7 +457,7 @@ public class AuthUtils {
       default:
         // Not reach here.
         LOGGER.warn("Not support position");
-        return PrivilegeType.INVALID;
+        throw new RuntimeException("Not support position");
     }
   }
 
@@ -533,7 +533,7 @@ public class AuthUtils {
       case 5:
         return PrivilegeType.DELETE;
       default:
-        return PrivilegeType.INVALID;
+        throw new RuntimeException("Not support position");
     }
   }
 

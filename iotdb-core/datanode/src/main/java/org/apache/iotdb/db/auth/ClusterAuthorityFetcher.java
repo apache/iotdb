@@ -73,7 +73,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
-  private boolean acceptCache = true;
+  private boolean acceptCache = false;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -239,7 +239,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             role.checkDatabasePrivilegeGrantOption(union.getDBName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
                 username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
-            .setUsername(database));
+            .setDatabase(database));
   }
 
   @Override
@@ -269,9 +269,21 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             role.checkTablePrivilegeGrantOption(
                 union.getDBName(), union.getTbName(), union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
-                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
             .setDatabase(database)
             .setTable(table));
+  }
+
+  @Override
+  public TSStatus checkUserAnyScopePrivilegeGrantOption(
+      String username, PrivilegeType permisssion) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permisssion, false, true),
+        (role, union) -> role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.RELATIONAL.ordinal(), permisssion.ordinal(), true));
   }
 
   /** -- check database/table visible -- * */
@@ -280,13 +292,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     checkCacheAvailable();
     return checkPrivilege(
         username,
-        new PrivilegeUnion(database, PrivilegeType.INVALID, false),
+        new PrivilegeUnion(database, null, false),
         (role, union) -> role.checkDBVisible(union.getDBName()),
-        new TCheckUserPrivilegesReq(
-                username,
-                PrivilegeModelType.RELATIONAL.ordinal(),
-                PrivilegeType.INVALID.ordinal(),
-                false)
+        new TCheckUserPrivilegesReq(username, PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
             .setDatabase(database));
   }
 
@@ -295,13 +303,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     checkCacheAvailable();
     return checkPrivilege(
         username,
-        new PrivilegeUnion(database, table, PrivilegeType.INVALID, false),
+        new PrivilegeUnion(database, table, null, false),
         (role, union) -> role.checkTBVisible(union.getDBName(), union.getTbName()),
-        new TCheckUserPrivilegesReq(
-                username,
-                PrivilegeModelType.RELATIONAL.ordinal(),
-                PrivilegeType.INVALID.ordinal(),
-                false)
+        new TCheckUserPrivilegesReq(username, PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
             .setDatabase(database)
             .setTable(table));
   }
