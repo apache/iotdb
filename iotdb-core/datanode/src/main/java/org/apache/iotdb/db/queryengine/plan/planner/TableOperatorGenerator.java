@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -71,12 +73,16 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
@@ -86,6 +92,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -96,7 +103,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDateLiteralVisitor;
@@ -153,6 +162,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
@@ -166,6 +176,8 @@ import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -183,6 +195,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -204,6 +217,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -1888,7 +1902,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TableAggregationTableScanOperator.class.getSimpleName());
+                AbstractAggTableScanOperator.class.getSimpleName());
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
@@ -1904,39 +1918,124 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
-
-    for (int i = 0; i < node.getDeviceEntries().size(); i++) {
-      AlignedFullPath alignedPath =
-          constructAlignedPath(
-              node.getDeviceEntries().get(i),
-              measurementColumnNames,
-              measurementSchemas,
-              allSensors);
-      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-    }
-
     context.getDriverContext().setInputDriver(true);
 
-    TableAggregationTableScanOperator aggTableScanOperator =
-        new TableAggregationTableScanOperator(
-            node.getPlanNodeId(),
-            operatorContext,
-            aggColumnSchemas,
-            aggColumnsIndexArray,
-            node.getDeviceEntries(),
-            seriesScanOptions,
-            measurementColumnNames,
-            allSensors,
-            measurementSchemas,
-            aggregators,
-            groupingKeySchemas,
-            groupingKeyIndex,
-            timeRangeIterator,
-            scanAscending,
-            canUseStatistic,
-            aggregatorInputChannels);
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
-    return aggTableScanOperator;
+    if (canUseLastCacheOptimize(aggregators, node, timeColumnName)) {
+      List<Integer> hitCachesIndexes = new ArrayList<>();
+      List<Pair<OptionalLong, TsPrimitiveType[]>> hitCachedResults = new ArrayList<>();
+      List<DeviceEntry> cachedDeviceEntries = new ArrayList<>();
+      List<DeviceEntry> unCachedDeviceEntries = new ArrayList<>();
+      long tableTTL =
+          DataNodeTTLCache.getInstance()
+              .getTTLForTable(
+                  node.getQualifiedObjectName().getDatabaseName(),
+                  node.getQualifiedObjectName().getObjectName());
+      Filter updateTimeFilter =
+          updateFilterUsingTTL(seriesScanOptions.getGlobalTimeFilter(), tableTTL);
+      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+        Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
+            TableDeviceSchemaCache.getInstance()
+                .getLastRow(
+                    node.getQualifiedObjectName().getDatabaseName(),
+                    node.getDeviceEntries().get(i).getDeviceID(),
+                    "",
+                    measurementColumnNames);
+        boolean allHitCache = true;
+        if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
+          for (int j = 0; j < lastByResult.get().getRight().length; j++) {
+            TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
+            if (tsPrimitiveType == null
+                || (updateTimeFilter != null
+                    && !LastQueryUtil.satisfyFilter(
+                        updateTimeFilter,
+                        new TimeValuePair(
+                            lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
+              // the process logic is different from tree model which examine if
+              // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
+              // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
+              // but it should skip in table model
+              allHitCache = false;
+              break;
+            }
+          }
+        } else {
+          allHitCache = false;
+        }
+
+        if (!allHitCache) {
+          AlignedFullPath alignedPath =
+              constructAlignedPath(
+                  node.getDeviceEntries().get(i),
+                  measurementColumnNames,
+                  measurementSchemas,
+                  allSensors);
+          ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+          unCachedDeviceEntries.add(node.getDeviceEntries().get(i));
+        } else {
+          hitCachesIndexes.add(i);
+          hitCachedResults.add(lastByResult.get());
+          cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+        }
+      }
+
+      // context add TableLastQueryOperator
+      LastQueryAggTableScanOperator lastQueryOperator =
+          new LastQueryAggTableScanOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              unCachedDeviceEntries,
+              cachedDeviceEntries,
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels,
+              node.getQualifiedObjectName(),
+              hitCachesIndexes,
+              hitCachedResults);
+
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+      return lastQueryOperator;
+    } else {
+      DefaultAggTableScanOperator aggTableScanOperator =
+          new DefaultAggTableScanOperator(
+              node.getPlanNodeId(),
+              operatorContext,
+              aggColumnSchemas,
+              aggColumnsIndexArray,
+              node.getDeviceEntries(),
+              node.getDeviceEntries().size(),
+              seriesScanOptions,
+              measurementColumnNames,
+              allSensors,
+              measurementSchemas,
+              aggregators,
+              groupingKeySchemas,
+              groupingKeyIndex,
+              timeRangeIterator,
+              scanAscending,
+              canUseStatistic,
+              aggregatorInputChannels);
+      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+        AlignedFullPath alignedPath =
+            constructAlignedPath(
+                node.getDeviceEntries().get(i),
+                measurementColumnNames,
+                measurementSchemas,
+                allSensors);
+        ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+      }
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
+      return aggTableScanOperator;
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
@@ -2046,5 +2145,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     return new boolean[] {canUseStatistic, isAscending};
+  }
+
+  private boolean canUseLastCacheOptimize(
+      List<TableAggregator> aggregators, AggregationTableScanNode node, String timeColumnName) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
+      return false;
+    }
+
+    // has value filter, can not optimize
+    if (node.getPushDownPredicate() != null) {
+      return false;
+    }
+
+    // has date_bin, can not optimize
+    if (!node.getGroupingKeys().isEmpty()
+        && node.getProjection() != null
+        && !node.getProjection().getMap().isEmpty()) {
+      return false;
+    }
+
+    for (TableAggregator aggregator : aggregators) {
+      if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
+        if (!((LastDescAccumulator) aggregator.getAccumulator()).isTimeColumn()) {
+          return false;
+        }
+      } else if (aggregator.getAccumulator() instanceof LastByDescAccumulator) {
+        if (!((LastByDescAccumulator) aggregator.getAccumulator()).yIsTimeColumn()) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
