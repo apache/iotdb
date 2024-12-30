@@ -39,7 +39,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -147,8 +146,44 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     FileInputStream inputStream = new FileInputStream(entryFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      int version = dataInputStream.readInt();
+      boolean fromOldVersion = false;
+      int tag = dataInputStream.readInt();
+      if (tag < 0) {
+        fromOldVersion = true;
+      }
       User user = new User();
+
+      if (fromOldVersion) {
+        String name =
+            IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+        user.setName(name);
+        user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setSysPrivilegesWithMask(dataInputStream.readInt());
+        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        for (int i = 0; dataInputStream.available() != 0; i++) {
+          pathPrivilegeList.add(
+              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+        }
+        user.setPrivilegeList(pathPrivilegeList);
+
+        File roleOfUser = checkFileAvaliable(entryName, "_role");
+
+        Set<String> roleList = new HashSet<>();
+        if (roleOfUser != null && roleOfUser.exists()) {
+          inputStream = new FileInputStream(roleOfUser);
+          try (DataInputStream roleInpuStream =
+              new DataInputStream(new BufferedInputStream(inputStream))) {
+
+            for (int i = 0; roleInpuStream.available() != 0; i++) {
+              String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
+              roleList.add(rolename);
+            }
+          }
+        }
+        user.setRoleSet(roleList);
+        return user;
+      }
+      assert (tag == VERSION);
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setSysPrivilegesWithMask(dataInputStream.readInt());
@@ -264,37 +299,26 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
 
-    try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
-      try {
-        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
-        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+    try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      // for IOTDB 1.2, the username's length will be stored as a negative number.
+      byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
+      IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
+      outputStream.write(strBuffer);
+      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
-        int privilegeNum = user.getPathPrivilegeList().size();
-        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-        for (int i = 0; i < privilegeNum; i++) {
-          PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
-          IOUtils.writeString(
-              outputStream,
-              pathPrivilege.getPath().getFullPath(),
-              STRING_ENCODING,
-              encodingBufferLocal);
-          IOUtils.writeInt(
-              outputStream, pathPrivilege.getPrivilegeIntSet().size(), encodingBufferLocal);
-          for (Integer item : pathPrivilege.getPrivilegeIntSet()) {
-            IOUtils.writeInt(outputStream, item, encodingBufferLocal);
-          }
-        }
-        int userNum = user.getRoleSet().size();
-        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
-        for (String roleName : user.getRoleSet()) {
-          IOUtils.writeString(outputStream, roleName, STRING_ENCODING, encodingBufferLocal);
-        }
-        outputStream.flush();
-
-      } catch (Exception e) {
-        throw new IOException(e);
+      int privilegeNum = user.getPathPrivilegeList().size();
+      for (int i = 0; i < privilegeNum; i++) {
+        PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
+        IOUtils.writePathPrivilege(
+            outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
     }

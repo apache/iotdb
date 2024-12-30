@@ -106,8 +106,14 @@ public class IOUtils {
   public static String readString(
       DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
       throws IOException {
-    byte[] strBuffer;
     int length = inputStream.readInt();
+    return readString(inputStream, encoding, strBufferLocal, length);
+  }
+
+  public static String readString(
+      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal, int length)
+      throws IOException {
+    byte[] strBuffer;
     if (length > 0) {
       if (strBufferLocal != null) {
         strBuffer = strBufferLocal.get();
