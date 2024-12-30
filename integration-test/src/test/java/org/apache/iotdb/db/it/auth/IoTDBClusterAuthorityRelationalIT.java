@@ -25,14 +25,15 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.db.auth.BasicAuthorityCache;
-import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -47,6 +48,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -173,7 +175,11 @@ public class IoTDBClusterAuthorityRelationalIT {
   }
 
   private void grantPrivilegeAndCheck(
-      SyncConfigNodeIServiceClient client, String name, boolean toUser, PrivilegeUnion union)
+      SyncConfigNodeIServiceClient client,
+      String username,
+      String rolename,
+      boolean toUser,
+      PrivilegeUnion union)
       throws TException {
     TSStatus status;
     AuthorRType type;
@@ -187,8 +193,8 @@ public class IoTDBClusterAuthorityRelationalIT {
     TAuthorizerRelationalReq authorizerRelationalReq =
         new TAuthorizerRelationalReq(
             type.ordinal(),
-            toUser ? name : "",
-            toUser ? "" : name,
+            toUser ? username : "",
+            toUser ? "" : rolename,
             "",
             union.getDBName() == null ? "" : union.getDBName(),
             union.getTbName() == null ? "" : union.getTbName(),
@@ -196,16 +202,22 @@ public class IoTDBClusterAuthorityRelationalIT {
             union.isGrantOption());
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    int reqtype = -1;
+    if (union.getPrivilegeType().isRelationalPrivilege()) {
+      reqtype = PrivilegeModelType.RELATIONAL.ordinal();
+    } else if (union.getPrivilegeType().isSystemPrivilege()) {
+      reqtype = PrivilegeModelType.SYSTEM.ordinal();
+    }
     TCheckUserPrivilegesReq checkUserPrivilegesReq =
         new TCheckUserPrivilegesReq(
-                name,
-                PrivilegeModelType.RELATIONAL.ordinal(),
-                union.getPrivilegeType().ordinal(),
-                union.isGrantOption())
-            .setDatabase(union.getDBName());
+            username, reqtype, union.getPrivilegeType().ordinal(), union.isGrantOption());
+    if (union.getDBName() != null) {
+      checkUserPrivilegesReq.setDatabase(union.getDBName());
+    }
     if (union.getTbName() != null) {
       checkUserPrivilegesReq.setTable(union.getTbName());
     }
+
     TPermissionInfoResp resp = client.checkUserPrivileges(checkUserPrivilegesReq);
     assertEquals(resp.status.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (toUser) {
@@ -245,8 +257,8 @@ public class IoTDBClusterAuthorityRelationalIT {
                 .contains(union.getPrivilegeType().ordinal()));
       }
     } else {
-      assertTrue(resp.getRoleInfo().containsKey(name));
-      TRoleResp roleResp = resp.getRoleInfo().get(name);
+      assertTrue(resp.getRoleInfo().containsKey(rolename));
+      TRoleResp roleResp = resp.getRoleInfo().get(rolename);
       if (union.isForAny()) {
         assertTrue(roleResp.getAnyScopeGrantSet().contains(union.getPrivilegeType().ordinal()));
       }
@@ -278,6 +290,14 @@ public class IoTDBClusterAuthorityRelationalIT {
     }
   }
 
+  private void expectSuccess(TPermissionInfoResp resp) {
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+  }
+
+  private void expectFailed(TPermissionInfoResp resp) {
+    assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), resp.getStatus().getCode());
+  }
+
   @Test
   public void permissionTest()
       throws TException, ClientManagerException, IOException, InterruptedException {
@@ -294,15 +314,24 @@ public class IoTDBClusterAuthorityRelationalIT {
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_ROLE, true);
       grantSysPrivilegeAndCheck(client, "user1", "role1", false, PrivilegeType.MAINTAIN, true);
       grantPrivilegeAndCheck(
-          client, "user1", true, new PrivilegeUnion("database", "table", PrivilegeType.SELECT));
+          client, "user1", "", true, new PrivilegeUnion("database", "table", PrivilegeType.SELECT));
       grantPrivilegeAndCheck(
-          client, "user1", true, new PrivilegeUnion("database2", PrivilegeType.ALTER));
+          client, "user1", "", true, new PrivilegeUnion("database2", PrivilegeType.ALTER));
       grantPrivilegeAndCheck(
-          client, "user1", true, new PrivilegeUnion(PrivilegeType.INSERT, true, true));
+          client, "user1", "", true, new PrivilegeUnion(PrivilegeType.INSERT, true, true));
       grantPrivilegeAndCheck(
-          client, "role1", false, new PrivilegeUnion("database", "table2", PrivilegeType.DELETE));
+          client,
+          "user1",
+          "role1",
+          false,
+          new PrivilegeUnion("database", "table2", PrivilegeType.DELETE));
       grantPrivilegeAndCheck(
-          client, "role1", false, new PrivilegeUnion("database2", PrivilegeType.CREATE, true));
+          client,
+          "user1",
+          "role1",
+          false,
+          new PrivilegeUnion("database2", PrivilegeType.CREATE, true));
+
       // privileges status
       // user1 <-- role1
       // user1 : MANAGE_USER, MANAGE_ROLE(with grant option)
@@ -312,111 +341,137 @@ public class IoTDBClusterAuthorityRelationalIT {
       // role1: MAINTAIN(with grant option)
       //        "database"."table2" delete,
       //        "database2".*       create(with grant option);
-      testClusterAuthorFetcher(false);
-      testClusterAuthorFetcher(true);
+
+      // check login
+      TLoginReq req = new TLoginReq("user1", "password");
+      expectSuccess(client.login(req));
+
+      // check user has role.
+      TAuthorizerReq user_role_req =
+          new TAuthorizerReq(
+              0,
+              "user1",
+              "role1",
+              "",
+              "",
+              Collections.emptySet(),
+              false,
+              AuthUtils.serializePartialPathList(Collections.emptyList()));
+      expectSuccess(client.checkRoleOfUser(user_role_req));
+
+      // check db is visible
+      TCheckUserPrivilegesReq check_req =
+          new TCheckUserPrivilegesReq("user1", PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
+              .setDatabase("database");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check db is visible, because any privileges, so database3 is visible.
+      check_req =
+          new TCheckUserPrivilegesReq("user1", PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
+              .setDatabase("database3");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check table is visible.
+      check_req =
+          new TCheckUserPrivilegesReq("user1", PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
+              .setDatabase("database")
+              .setTable("table");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check db privileges
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.ALTER.ordinal(),
+                  false)
+              .setDatabase("database2");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check db privileges, success for any
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.INSERT.ordinal(),
+                  false)
+              .setDatabase("database10");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check db privileges, success for role
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.CREATE.ordinal(),
+                  false)
+              .setDatabase("database2");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check db privileges grant option,
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.CREATE.ordinal(),
+                  true)
+              .setDatabase("database2");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check tb privilege
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.SELECT.ordinal(),
+                  false)
+              .setDatabase("database")
+              .setTable("table");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check tb privilege
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.ALTER.ordinal(),
+                  false)
+              .setDatabase("database2")
+              .setTable("table");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check tb privilege
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.CREATE.ordinal(),
+                  false)
+              .setDatabase("database2")
+              .setTable("table");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check tb privilege
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.DELETE.ordinal(),
+                  false)
+              .setDatabase("database")
+              .setTable("table2");
+      expectSuccess(client.checkUserPrivileges(check_req));
+
+      // check tb privilege
+      check_req =
+          new TCheckUserPrivilegesReq(
+                  "user1",
+                  PrivilegeModelType.RELATIONAL.ordinal(),
+                  PrivilegeType.SELECT.ordinal(),
+                  false)
+              .setDatabase("database")
+              .setTable("table2");
+      expectFailed(client.checkUserPrivileges(check_req));
     }
-  }
-
-  private void testClusterAuthorFetcher(boolean acceptCache) {
-    ClusterAuthorityFetcher authorityFetcher =
-        new ClusterAuthorityFetcher(new BasicAuthorityCache());
-    authorityFetcher.setAcceptCache(acceptCache);
-    assertEquals(
-        authorityFetcher.checkUser("user1", "password").getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    assertTrue(authorityFetcher.checkRole("user1", "password"));
-    assertEquals(
-        authorityFetcher.checkDBVisible("user1", "database").getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    assertEquals(
-        authorityFetcher.checkDBVisible("user1", "database3").getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
-    assertEquals(
-        authorityFetcher.checkTBVisible("user1", "database", "table").getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    assertEquals(
-        authorityFetcher.checkTBVisible("user1", "database2", "table").getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // Any privilege
-    assertEquals(
-        authorityFetcher.checkTBVisible("user1", "database", "table2").getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher.checkUserDBPrivileges("user1", "database", PrivilegeType.SELECT).getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
-    assertEquals(
-        authorityFetcher.checkUserDBPrivileges("user1", "database2", PrivilegeType.ALTER).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // from role
-    assertEquals(
-        authorityFetcher
-            .checkUserDBPrivileges("user1", "database2", PrivilegeType.CREATE)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivileges("user1", "database", "table", PrivilegeType.SELECT)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // for database.*
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivileges("user1", "database2", "table_no", PrivilegeType.ALTER)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // for any privilege
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivileges("user1", "database_no", "table_no", PrivilegeType.INSERT)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    // for any insert (with grant option)
-    assertEquals(
-        authorityFetcher
-            .checkUserDBPrivilegesGrantOpt("user1", "database_no", PrivilegeType.INSERT)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    assertEquals(
-        authorityFetcher
-            .checkUserDBPrivilegesGrantOpt("user1", "database2", PrivilegeType.DELETE)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
-
-    assertEquals(
-        authorityFetcher
-            .checkUserDBPrivilegesGrantOpt("user1", "database2", PrivilegeType.CREATE)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.SELECT)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
-
-    // for any privilege
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.INSERT)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher
-            .checkUserTBPrivilegesGrantOpt("user1", "database2", "table_no", PrivilegeType.CREATE)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MAINTAIN).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-    assertEquals(
-        authorityFetcher
-            .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MANAGE_USER)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
   }
 }

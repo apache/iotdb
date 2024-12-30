@@ -338,23 +338,41 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private boolean checkEntryPrivileges(Role role, PrivilegeUnion union) {
     switch (union.getModelType()) {
       case TREE:
+        if (union.isGrantOption()) {
+          return role.checkPathPrivilegeGrantOpt(union.getPath(), union.getPrivilegeType());
+        }
         return role.checkPathPrivilege(union.getPath(), union.getPrivilegeType());
       case RELATIONAL:
-        if (union.getTbName() == null) {
-          if (union.getPrivilegeType() == PrivilegeType.INVALID) {
+        // check any scope privilege
+        if (union.isForAny()) {
+          if (union.isGrantOption()) {
+            return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
+          }
+          return role.checkAnyScopePrivilege(union.getPrivilegeType());
+        } else if (union.getTbName() == null) {
+          if (union.getPrivilegeType() == null) {
             return role.checkDBVisible(union.getDBName());
           }
-          LOGGER.warn("go in there, check db");
+          if (union.isGrantOption()) {
+            return role.checkDatabasePrivilegeGrantOption(
+                union.getDBName(), union.getPrivilegeType());
+          }
           return role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType());
         } else {
-          if (union.getPrivilegeType() == PrivilegeType.INVALID) {
+          if (union.getPrivilegeType() == null) {
             return role.checkTBVisible(union.getDBName(), union.getTbName());
           }
-          LOGGER.warn("go in there, check tb");
+          if (union.isGrantOption()) {
+            return role.checkTablePrivilegeGrantOption(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType());
+          }
           return role.checkTablePrivilege(
               union.getDBName(), union.getTbName(), union.getPrivilegeType());
         }
       case SYSTEM:
+        if (union.isGrantOption()) {
+          return role.checkSysPriGrantOpt(union.getPrivilegeType());
+        }
         return role.checkSysPrivilege(union.getPrivilegeType());
     }
     return false;

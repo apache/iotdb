@@ -776,22 +776,32 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
     PrivilegeModelType reqType = PrivilegeModelType.values()[req.getReqtype()];
-    PrivilegeType permission = PrivilegeType.values()[req.getPermission()];
+    PrivilegeType permission;
+    if (req.getPermission() == -1) {
+      permission = null;
+    } else {
+      permission = PrivilegeType.values()[req.getPermission()];
+    }
     switch (reqType) {
       case TREE:
         List<PartialPath> partialPaths =
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
         return configManager.checkUserPrivileges(
-            req.getUsername(), new PrivilegeUnion(partialPaths, permission));
+            req.getUsername(), new PrivilegeUnion(partialPaths, permission, req.isGrantOpt()));
       case SYSTEM:
-        return configManager.checkUserPrivileges(req.getUsername(), new PrivilegeUnion(permission));
-      case RELATIONAL:
         return configManager.checkUserPrivileges(
-            req.getUsername(),
-            req.isSetTable()
-                ? new PrivilegeUnion(
-                    req.getDatabase(), req.getTable(), permission, req.isGrantOpt())
-                : new PrivilegeUnion(req.getDatabase(), permission, req.isGrantOpt()));
+            req.getUsername(), new PrivilegeUnion(permission, req.isGrantOpt()));
+      case RELATIONAL:
+        PrivilegeUnion union;
+        if (!req.isSetDatabase() && !req.isSetTable()) {
+          union = new PrivilegeUnion(permission, req.isGrantOpt(), true);
+        } else if (req.isSetTable()) {
+          union =
+              new PrivilegeUnion(req.getDatabase(), req.getTable(), permission, req.isGrantOpt());
+        } else {
+          union = new PrivilegeUnion(req.getDatabase(), permission, req.isGrantOpt());
+        }
+        return configManager.checkUserPrivileges(req.getUsername(), union);
       default:
         return AuthUtils.generateEmptyPermissionInfoResp();
     }
@@ -800,27 +810,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req) {
     return configManager.fetchAuthizedPatternTree(req.getUsername(), req.getPermission());
-  }
-
-  @Override
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req) {
-    PrivilegeType type = PrivilegeType.values()[req.getPermission()];
-    PrivilegeModelType model = PrivilegeModelType.values()[req.getReqtype()];
-    switch (model) {
-      case TREE:
-        List<PartialPath> partialPath =
-            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
-        return configManager.checkUserPrivilegeGrantOpt(
-            req.getUsername(), new PrivilegeUnion(partialPath, type, true));
-      case RELATIONAL:
-        return configManager.checkUserPrivilegeGrantOpt(
-            req.getUsername(), new PrivilegeUnion(req.getDatabase(), req.getTable(), type, true));
-
-      case SYSTEM:
-        return configManager.checkUserPrivilegeGrantOpt(
-            req.getUsername(), new PrivilegeUnion(type));
-    }
-    return AuthUtils.generateEmptyPermissionInfoResp();
   }
 
   @Override

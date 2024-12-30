@@ -708,13 +708,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
-  @Override
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
-      throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
   public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.checkRoleOfUser(req), resp -> !updateConfigNodeLeader(resp.status));

@@ -79,20 +79,19 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
     admin = getEntry(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
+      PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
+      PathPrivilege pathPri = new PathPrivilege(rootPath);
       for (PrivilegeType item : PrivilegeType.values()) {
         if (item.isSystemPrivilege()) {
           admin.grantSysPrivilege(item, true);
         } else if (item.isRelationalPrivilege()) {
-          admin.grantDBPrivilege("*", item, true);
-          admin.grantTBPrivilege("*", "*", item, true);
-        } else {
-          PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
-          PathPrivilege pathPri = new PathPrivilege(rootPath);
+          admin.grantAnyScopePrivilege(item, true);
+        } else if (item.isPathPrivilege()) {
           pathPri.grantPrivilege(item, true);
-          admin.getPathPrivilegeList().clear();
-          admin.getPathPrivilegeList().add(pathPri);
         }
       }
+      admin.getPathPrivilegeList().clear();
+      admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
       // This error only leads to  a lack of permissions for list.
       LOGGER.warn("Got a wrong path for root to init");

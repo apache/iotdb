@@ -44,8 +44,7 @@ public enum PrivilegeType {
   ALTER(PrivilegeModelType.RELATIONAL),
   SELECT(PrivilegeModelType.RELATIONAL),
   INSERT(PrivilegeModelType.RELATIONAL),
-  DELETE(PrivilegeModelType.RELATIONAL),
-  INVALID(PrivilegeModelType.INVALID);
+  DELETE(PrivilegeModelType.RELATIONAL);
 
   private static final int PRIVILEGE_COUNT = values().length - 1;
 
@@ -100,7 +99,7 @@ public enum PrivilegeType {
   }
 
   public boolean forRelationalSys() {
-    if (this == MANAGE_DATABASE || this == MANAGE_USER || this == MANAGE_ROLE) {
+    if (this == MAINTAIN || this == MANAGE_USER || this == MANAGE_ROLE) {
       return true;
     }
     return false;

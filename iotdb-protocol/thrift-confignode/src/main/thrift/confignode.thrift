@@ -1418,8 +1418,6 @@ service IConfigNodeRPCService {
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
-  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
-
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
 

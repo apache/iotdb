@@ -215,6 +215,10 @@ public class AuthorInfo implements SnapshotProcessor {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
+            if (priv.isRelationalPrivilege()) {
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt, true));
+              continue;
+            }
             for (PartialPath path : nodeNameList) {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(path, priv, grantOpt));
             }
@@ -271,7 +275,7 @@ public class AuthorInfo implements SnapshotProcessor {
     String table = authorPlan.getTableName();
     boolean grantOpt = authorPlan.getGrantOpt();
     int type = authorPlan.getPermission();
-    PrivilegeType priv = PrivilegeType.INVALID;
+    PrivilegeType priv = null;
     if (authorType.ordinal() >= ConfigPhysicalPlanType.RGrantUserAny.ordinal()
         && authorType.ordinal() <= ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal()) {
       priv = PrivilegeType.values()[type];
@@ -583,6 +587,9 @@ public class AuthorInfo implements SnapshotProcessor {
       throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
     User user = authorizer.getUser(username);
+    if (user == null) {
+      return AuthUtils.generateEmptyPermissionInfoResp();
+    }
     TUserResp tUserResp = user.getUserInfo(type);
     // Permission information for roles owned by users
     if (!user.getRoleSet().isEmpty()) {

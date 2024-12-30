@@ -1445,6 +1445,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.privilegeObjectScope().ON() == null) {
       String privilegeText = ctx.privilegeObjectScope().systemPrivilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (!priv.isSystemPrivilege() || !priv.forRelationalSys()) {
+        throw new SemanticException(priv.toString() + " is not System privilege");
+      }
       return new RelationalAuthorStatement(
           toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
           priv,
@@ -1454,6 +1457,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (!priv.isRelationalPrivilege()) {
+        throw new SemanticException(priv.toString() + "is not Relational privilege");
+      }
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         toTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
@@ -1469,15 +1475,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser
                 ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
                 : toTable ? AuthorRType.GRANT_ROLE_TB : AuthorRType.GRANT_ROLE_DB,
-            toTable ? databaseName : obj,
-            toTable ? obj : "",
+            toTable ? databaseName.toLowerCase() : obj.toLowerCase(),
+            toTable ? obj.toLowerCase() : "",
             priv,
             toUser ? username : "",
             toUser ? "" : username,
             grantOption);
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
-        String db = ctx.privilegeObjectScope().objectScope().dbname.getText();
-        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText();
+        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
+        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_ROLE_TB,
             db,
@@ -1534,15 +1540,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromUser
                 ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
                 : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
-            fromTable ? databaseName : obj,
-            fromTable ? obj : "",
+            fromTable ? databaseName.toLowerCase() : obj.toLowerCase(),
+            fromTable ? obj.toLowerCase() : "",
             priv,
             fromUser ? username : "",
             fromUser ? "" : username,
             grantOption);
       } else if (!ctx.privilegeObjectScope().objectScope().isEmpty()) {
-        String db = ctx.privilegeObjectScope().objectScope().dbname.getText();
-        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText();
+        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
+        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_ROLE_TB,
             db,
