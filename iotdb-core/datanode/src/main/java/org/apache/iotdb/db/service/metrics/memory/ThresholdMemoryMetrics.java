@@ -58,7 +58,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";
-  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE = "StorageEngine-Write-Memtable-DevicePathCache";
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE =
+      "StorageEngine-Write-Memtable-DevicePathCache";
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
   private static final String STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS =
@@ -162,8 +163,9 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
     long compactionSize = storageEngineSize - writeSize;
     long bufferedArraySize =
-        (long) (config.getAllocateMemoryForStorageEngine()
-            * config.getBufferedArraysMemoryProportion());
+        (long)
+            (config.getAllocateMemoryForStorageEngine()
+                * config.getBufferedArraysMemoryProportion());
     writeMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -202,7 +204,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[3]);
     memtableMemorySize.set(memtableSize);
-    // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of memory is not divided)
+    // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of
+    // memory is not divided)
     long dataNodeDevicePathCacheSize =
         (long)
             (config.getAllocateMemoryForStorageEngine()
@@ -302,7 +305,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
     memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     bufferedArraysMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
-    Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO, STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS)
+    Arrays.asList(
+            STORAGE_ENGINE_WRITE_MEMTABLE,
+            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
+            STORAGE_ENGINE_WRITE_BUFFERED_ARRAYS)
         .forEach(
             name ->
                 metricService.remove(
