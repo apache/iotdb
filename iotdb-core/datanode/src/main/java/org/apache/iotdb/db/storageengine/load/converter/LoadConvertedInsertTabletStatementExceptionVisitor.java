@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.load.visitor;
+package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadStatementExceptionVisitor extends StatementVisitor<TSStatus, Exception> {
+public class LoadConvertedInsertTabletStatementExceptionVisitor
+    extends StatementVisitor<TSStatus, Exception> {
 
   @Override
   public TSStatus visitNode(final StatementNode node, final Exception context) {

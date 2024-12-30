@@ -17,17 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.load;
+package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.visitor.LoadStatementExceptionVisitor;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.visitor.LoadStatementTSStatusVisitor;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.visitor.LoadTableStatementDataTypeConvertExecutionVisitor;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.visitor.LoadTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -78,10 +74,10 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
                           false)
                       .status);
 
-  public static final LoadStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
-      new LoadStatementTSStatusVisitor();
-  public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
-      new LoadStatementExceptionVisitor();
+  public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+      new LoadConvertedInsertTabletStatementTSStatusVisitor();
+  public static final LoadConvertedInsertTabletStatementExceptionVisitor
+      STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
   public TSStatus convertForTableModel(LoadTsFile loadTsFileTableStatement) {
     try {

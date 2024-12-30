@@ -17,14 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.load.visitor;
+package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileDataTypeMismatchConvertHandler;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.statement.LoadConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.load.visitor;
+package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -29,7 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
+public class LoadConvertedInsertTabletStatementTSStatusVisitor
+    extends StatementVisitor<TSStatus, TSStatus> {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
