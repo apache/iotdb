@@ -410,7 +410,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     } catch (MergeException e) {
       // This exception may be caused by drop database
-      e.printStackTrace();
       if (!tsFileManager.isAllowCompaction()) {
         return Collections.emptyList();
       }
