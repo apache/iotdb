@@ -35,6 +35,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -75,8 +78,38 @@ public class LocalFileUserAccessorTest {
     accessor.saveEntry(user);
     accessor.reset();
     User loadUser = accessor.loadEntry("test");
-    String d1 = user.toString();
-    String d2 = loadUser.toString();
     assertEquals(user, loadUser);
+  }
+
+  @Test
+  public void testLoadOldVersion() throws IOException, IllegalPathException {
+    User role = new User();
+    role.setName("root");
+    role.setPassword("password");
+    List<PathPrivilege> pathPriList = new ArrayList<>();
+    PathPrivilege rootPathPriv = new PathPrivilege(new PartialPath("root.**"));
+    PathPrivilege normalPathPriv = new PathPrivilege(new PartialPath("root.b.c.**"));
+    for (PrivilegeType privilegeType : PrivilegeType.values()) {
+      if (privilegeType.isRelationalPrivilege()) continue;
+      if (privilegeType.isSystemPrivilege()) {
+        role.grantSysPrivilege(privilegeType, true);
+      } else if (privilegeType.isPathPrivilege()) {
+        rootPathPriv.grantPrivilege(privilegeType, true);
+        normalPathPriv.grantPrivilege(privilegeType, true);
+      }
+    }
+    pathPriList.add(rootPathPriv);
+    pathPriList.add(normalPathPriv);
+    role.setPrivilegeList(pathPriList);
+    role.setSysPriGrantOpt(new HashSet<>());
+    role.setSysPrivilegeSet(new HashSet<>());
+    role.setRoleSet(new HashSet<>());
+    accessor.saveUserOldVersion(role);
+    User newRole = accessor.loadEntry("root");
+    assertEquals(role, newRole);
+    newRole.setName("root2");
+    accessor.saveEntry(newRole);
+    User newRole2 = accessor.loadEntry("root2");
+    assertEquals(newRole, newRole2);
   }
 }
