@@ -124,7 +124,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
-            SCHEMA_ENGINE,
+            STREAM_ENGINE,
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
