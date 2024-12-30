@@ -157,7 +157,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             OFF_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[1]);
-    schemaEngineMemorySize.set(storageEngineSize);
+    storageEngineMemorySize.set(storageEngineSize);
     writeMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
