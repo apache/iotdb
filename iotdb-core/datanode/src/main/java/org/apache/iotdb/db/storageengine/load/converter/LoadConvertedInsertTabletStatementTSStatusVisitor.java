@@ -36,7 +36,8 @@ public class LoadConvertedInsertTabletStatementTSStatusVisitor
 
   @Override
   public TSStatus visitNode(final StatementNode node, final TSStatus context) {
-    return context;
+    return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+        .setMessage(context.getMessage());
   }
 
   @Override
@@ -51,18 +52,15 @@ public class LoadConvertedInsertTabletStatementTSStatusVisitor
         || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
       return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-
     } else if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
       return new TSStatus(TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-
     } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
         && (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
             && config.isEnablePartialInsert())) {
       return new TSStatus(TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-
     return visitStatement(insertBaseStatement, context);
   }
 }

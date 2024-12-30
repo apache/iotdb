@@ -32,7 +32,7 @@ public class LoadConvertedInsertTabletStatementExceptionVisitor
 
   @Override
   public TSStatus visitNode(final StatementNode node, final Exception context) {
-    return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+    return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
         .setMessage(context.getMessage());
   }
 
@@ -42,12 +42,10 @@ public class LoadConvertedInsertTabletStatementExceptionVisitor
     if (context instanceof LoadRuntimeOutOfMemoryException) {
       return new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-
     } else if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.LOAD_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-
     return visitStatement(loadTsFileStatement, context);
   }
 }
