@@ -37,6 +37,10 @@ public interface IWritableMemChunk extends WALEntryValue {
   int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
+  long MAX_SERIES_POINT_NUMBER =
+      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+  long TARGET_CHUNK_SIZE = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
   boolean putLongWithFlushCheck(long t, long v);
 
   boolean putIntWithFlushCheck(long t, int v);

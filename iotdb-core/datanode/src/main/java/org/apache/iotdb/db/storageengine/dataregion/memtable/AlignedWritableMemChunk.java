@@ -131,7 +131,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
     list.putAlignedValue(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -170,7 +170,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results) {
     list.putAlignedValues(t, v, bitMaps, start, end, results);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -830,5 +830,22 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementName(), -1));
     }
     return columnIndexList;
+  }
+
+  private boolean reachChunkSizeOrPointNumThreshold() {
+    if (rowCount() >= MAX_SERIES_POINT_NUMBER) {
+      return true;
+    }
+    long[] totalBinaryChunkSize = new long[dataTypes.size()];
+    for (AlignedTVList alignedTvList : sortedList) {
+      long[] binaryChunkSize = alignedTvList.memoryBinaryChunkSize();
+      for (int i = 0; i < binaryChunkSize.length; i++) {
+        totalBinaryChunkSize[i] += binaryChunkSize[i];
+        if (totalBinaryChunkSize[i] >= TARGET_CHUNK_SIZE) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -52,10 +51,6 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList implements WALEntryValue {
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-  protected static final long TARGET_CHUNK_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  protected static final long MAX_SERIES_POINT_NUMBER =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
@@ -162,6 +157,10 @@ public abstract class TVList implements WALEntryValue {
 
   public int seqRowCount() {
     return seqRowCount;
+  }
+
+  public long chunkSize() {
+    return 0;
   }
 
   public int count() {
@@ -306,10 +305,6 @@ public abstract class TVList implements WALEntryValue {
 
   public void putBinary(long time, Binary value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return rowCount >= MAX_SERIES_POINT_NUMBER;
   }
 
   public void putBoolean(long time, boolean value) {

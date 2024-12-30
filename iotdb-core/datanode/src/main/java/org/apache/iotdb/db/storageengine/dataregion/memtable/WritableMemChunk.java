@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
@@ -53,8 +51,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   private List<TVList> sortedList;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
@@ -198,37 +194,37 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putLongWithFlushCheck(long t, long v) {
     list.putLong(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putIntWithFlushCheck(long t, int v) {
     list.putInt(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putFloatWithFlushCheck(long t, float v) {
     list.putFloat(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putDoubleWithFlushCheck(long t, double v) {
     list.putDouble(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBinaryWithFlushCheck(long t, Binary v) {
     list.putBinary(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBooleanWithFlushCheck(long t, boolean v) {
     list.putBoolean(t, v);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -239,39 +235,39 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end) {
     list.putLongs(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end) {
     list.putInts(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end) {
     list.putFloats(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end) {
     list.putDoubles(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBinariesWithFlushCheck(
       long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     list.putBinaries(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
   public boolean putBooleansWithFlushCheck(
       long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     list.putBooleans(t, v, bitMap, start, end);
-    return list.reachChunkSizeOrPointNumThreshold();
+    return reachChunkSizeOrPointNumThreshold();
   }
 
   @Override
@@ -358,6 +354,14 @@ public class WritableMemChunk implements IWritableMemChunk {
       rowCount += tvList.rowCount();
     }
     return rowCount;
+  }
+
+  public long chunkSize() {
+    long chunkSize = list.chunkSize();
+    for (TVList tvList : sortedList) {
+      chunkSize += tvList.chunkSize();
+    }
+    return chunkSize;
   }
 
   @Override
@@ -629,6 +633,10 @@ public class WritableMemChunk implements IWritableMemChunk {
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
     memChunk.list = TVList.deserialize(stream);
     return memChunk;
+  }
+
+  private boolean reachChunkSizeOrPointNumThreshold() {
+    return rowCount() >= MAX_SERIES_POINT_NUMBER || chunkSize() >= TARGET_CHUNK_SIZE;
   }
 
   public List<TVList> getSortedList() {

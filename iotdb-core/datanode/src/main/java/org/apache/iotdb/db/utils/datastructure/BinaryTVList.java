@@ -108,8 +108,8 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return memoryBinaryChunkSize >= TARGET_CHUNK_SIZE || rowCount >= MAX_SERIES_POINT_NUMBER;
+  public long chunkSize() {
+    return memoryBinaryChunkSize;
   }
 
   @Override
