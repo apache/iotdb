@@ -36,8 +36,7 @@ public class LoadConvertedInsertTabletStatementTSStatusVisitor
 
   @Override
   public TSStatus visitNode(final StatementNode node, final TSStatus context) {
-    return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-        .setMessage(context.getMessage());
+    return context;
   }
 
   @Override
