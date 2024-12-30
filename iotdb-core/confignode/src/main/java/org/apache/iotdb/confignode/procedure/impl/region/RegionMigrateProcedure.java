@@ -83,11 +83,11 @@ public class RegionMigrateProcedure
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           LOGGER.info(
-              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}.",
+              "[pid{}][MigrateRegion] started, {} will be migrated from DataNode {} to {}.",
               getProcId(),
-              consensusGroupId.getId(),
-              originalDataNode.getDataNodeId(),
-              destDataNode.getDataNodeId());
+              consensusGroupId,
+              handler.simplifiedLocation(originalDataNode),
+              handler.simplifiedLocation(destDataNode));
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -113,23 +113,23 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.CHECK_REMOVE_REGION_PEER);
           break;
         case CHECK_REMOVE_REGION_PEER:
+          String cleanHint = "";
           if (env.getConfigManager()
               .getPartitionManager()
               .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
-            LOGGER.warn(
-                "[pid{}][MigrateRegion] success, but you may need to manually clean the old region to make everything works fine",
-                getProcId());
-          } else {
-            LOGGER.info(
-                "[pid{}][MigrateRegion] success, region {} has been migrated from DataNode {} to {}. Procedure took {} (started at {})",
-                getProcId(),
-                consensusGroupId.getId(),
-                originalDataNode.getDataNodeId(),
-                destDataNode.getDataNodeId(),
-                CommonDateTimeUtils.convertMillisecondToDurationStr(
-                    System.currentTimeMillis() - getSubmittedTime()),
-                DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
+            cleanHint =
+                "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
           }
+          LOGGER.info(
+              "[pid{}][MigrateRegion] success,{} {} has been migrated from DataNode {} to {}. Procedure took {} (started at {}).",
+              getProcId(),
+              cleanHint,
+              consensusGroupId,
+              handler.simplifiedLocation(originalDataNode),
+              handler.simplifiedLocation(destDataNode),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  System.currentTimeMillis() - getSubmittedTime()),
+              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());

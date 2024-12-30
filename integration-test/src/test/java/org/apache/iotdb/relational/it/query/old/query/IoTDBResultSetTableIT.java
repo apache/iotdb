@@ -56,8 +56,8 @@ public class IoTDBResultSetTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE t1(device STRING ID, status BOOLEAN MEASUREMENT, temperature FLOAT MEASUREMENT, type INT32 MEASUREMENT, grade INT64 MEASUREMENT)",
-        "CREATE TABLE sg(device STRING ID, status FLOAT MEASUREMENT)",
+        "CREATE TABLE t1(device STRING TAG, status BOOLEAN FIELD, temperature FLOAT FIELD, type INT32 FIELD, grade INT64 FIELD)",
+        "CREATE TABLE sg(device STRING TAG, status FLOAT FIELD)",
       };
 
   private static final String[] emptyResultSet = new String[] {};
@@ -161,7 +161,7 @@ public class IoTDBResultSetTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE test(device STRING ID, s1 INT64 MEASUREMENT, s2 INT64 MEASUREMENT, s3 INT64 MEASUREMENT)");
+          "CREATE TABLE test(device STRING TAG, s1 INT64 FIELD, s2 INT64 FIELD, s3 INT64 FIELD)");
 
       for (int i = 0; i < 10; i++) {
         statement.addBatch(

@@ -17,15 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
-public class PartitionViolationException extends LoadFileException {
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-  public PartitionViolationException(String file) {
-    super(String.format("The data of file %s crosses partitions", file));
+public class RegionReplicaSetChangedException extends LoadFileException {
+
+  public RegionReplicaSetChangedException(TRegionReplicaSet original, TRegionReplicaSet current) {
+    super(
+        String.format(
+            "Region replica set changed from %s to %s during loading TsFile, maybe due to region migration",
+            original, current));
   }
 
-  public PartitionViolationException() {
-    super("The data of file crosses partitions");
+  public RegionReplicaSetChangedException() {
+    super("Region replica set changed during loading TsFile, maybe due to region migration");
   }
 }

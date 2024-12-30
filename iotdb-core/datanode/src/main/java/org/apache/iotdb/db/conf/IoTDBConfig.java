@@ -1176,6 +1176,8 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private int loadTsFileRetryCountOnRegionChange = 10;
+
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
   private boolean loadActiveListeningEnable = true;
@@ -2152,13 +2154,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
-  }
-
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
   }
 
   public boolean isEnablePartialInsert() {
@@ -4136,6 +4131,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public int getLoadTsFileRetryCountOnRegionChange() {
+    return loadTsFileRetryCountOnRegionChange;
+  }
+
+  public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
+    this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
   }
 
   public double getLoadWriteThroughputBytesPerSecond() {

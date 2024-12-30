@@ -551,7 +551,7 @@ public class ValueConverter {
   }
 
   public static Binary convertTextToBlob(final Binary value) {
-    return parseBlob(value.toString());
+    return value;
   }
 
   public static Binary convertTextToString(final Binary value) {
@@ -715,7 +715,7 @@ public class ValueConverter {
   }
 
   public static Binary convertStringToBlob(final Binary value) {
-    return parseBlob(value.toString());
+    return value;
   }
 
   public static Binary convertStringToText(final Binary value) {

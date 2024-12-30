@@ -82,7 +82,7 @@ public class IoTDBDeletionTableIT {
       new String[] {
         "CREATE DATABASE IF NOT EXISTS test",
         "USE test",
-        "CREATE TABLE IF NOT EXISTS vehicle0(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+        "CREATE TABLE IF NOT EXISTS vehicle0(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
       };
 
   private final String insertTemplate =
@@ -129,7 +129,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
-          "CREATE TABLE vehicle1(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT, attr1 ATTRIBUTE)");
+          "CREATE TABLE vehicle1(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD, attr1 ATTRIBUTE)");
 
       statement.execute("insert into vehicle1(time, deviceId, s0) values (10, 'd0', 310)");
       statement.execute("insert into vehicle1(time, deviceId, s3) values (10, 'd0','text')");
@@ -139,7 +139,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicle1  WHERE s0 <= 300 AND s0 > 0");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's0' does not exist or is not an id column", e.getMessage());
+        assertEquals("701: The column 's0' does not exist or is not an tag column", e.getMessage());
       }
 
       try {
@@ -161,21 +161,21 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's3' does not exist or is not an id column", e.getMessage());
+        assertEquals("701: The column 's3' does not exist or is not an tag column", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE s4 != true");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's4' does not exist or is not an id column", e.getMessage());
+        assertEquals("701: The column 's4' does not exist or is not an tag column", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE time < 10 and deviceId > 'd0'");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The operator of id predicate must be '=' for 'd0'", e.getMessage());
+        assertEquals("701: The operator of tag predicate must be '=' for 'd0'", e.getMessage());
       }
 
       try {
@@ -192,7 +192,7 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals(
-            "701: The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead",
+            "701: The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead",
             e.getMessage());
       }
 
@@ -298,7 +298,8 @@ public class IoTDBDeletionTableIT {
       statement.execute("CREATE DATABASE ln3");
       statement.execute("use ln3");
       statement.execute(
-          "CREATE TABLE vehicle3(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)");
+          String.format(
+              "CREATE TABLE vehicle3(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)"));
 
       statement.execute(
           "INSERT INTO vehicle3(time, deviceId, s4) " + "values(1509465600000, 'd0', true)");
@@ -391,7 +392,7 @@ public class IoTDBDeletionTableIT {
         assertEquals(250, cnt);
       }
 
-      // invalid deletion, d1 not exists
+      // Invalid deletion, d1 not exists
       statement.execute("DELETE FROM vehicle6 WHERE time <= 200 and deviceId = 'd1'");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle6")) {
         int cnt = 0;
@@ -413,7 +414,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               testNum));
 
       for (int i = 1; i <= 10000; i++) {
@@ -443,7 +444,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               testNum));
 
       for (int i = 1; i <= 1000; i++) {
@@ -482,7 +483,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               9));
 
       statement.execute("insert into vehicle9(time, deviceId, s2) values(9,'d0',9.8)");
@@ -515,11 +516,11 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d_1(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d_1(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               10));
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d_2(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d_2(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               10));
 
       statement.execute(
@@ -543,7 +544,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               11));
 
       statement.execute("INSERT INTO vehicle11(time, deviceId, s4) VALUES(300, 'device,1', true)");
@@ -597,7 +598,7 @@ public class IoTDBDeletionTableIT {
 
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               testNum));
 
       try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
@@ -681,14 +682,14 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
-          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
-      // id1 is null for this record
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
+          "create table t" + testNum + " (tag1 string tag, tag2 string tag, s1 int32 field)");
+      // tag1 is null for this record
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (1, '1', 1)");
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (2, '', 2)");
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (3, NULL, 3)");
       statement.execute("flush");
 
-      statement.execute("delete from t" + testNum + " where id1 is NULL and time <= 1");
+      statement.execute("delete from t" + testNum + " where tag1 is NULL and time <= 1");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
         assertEquals(2, set.getLong("time"));
@@ -697,7 +698,7 @@ public class IoTDBDeletionTableIT {
         assertFalse(set.next());
       }
 
-      statement.execute("delete from t" + testNum + " where id2 is NULL");
+      statement.execute("delete from t" + testNum + " where tag2 is NULL");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
         assertEquals(2, set.getLong("time"));
@@ -720,14 +721,14 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
-          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
-      // id1 is null for this record
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (1, '1', 1)");
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (2, '', 2)");
-      statement.execute("insert into t" + testNum + " (time, id2, s1) values (3, NULL, 3)");
+          "create table t" + testNum + " (tag1 string tag, tag2 string tag, s1 int32 field)");
+      // tag1 is null for this record
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (1, '1', 1)");
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (2, '', 2)");
+      statement.execute("insert into t" + testNum + " (time, tag2, s1) values (3, NULL, 3)");
       statement.execute("flush");
 
-      statement.execute("delete from t" + testNum + " where id2 = ''");
+      statement.execute("delete from t" + testNum + " where tag2 = ''");
       try (ResultSet set = statement.executeQuery("SELECT * FROM t" + testNum + " order by time")) {
         assertTrue(set.next());
         assertEquals(1, set.getLong("time"));
@@ -747,7 +748,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.execute(
-          "create table t" + testNum + " (id1 string id, id2 string id, s1 int32 measurement)");
+          "create table t" + testNum + " (tag1 string tag, tag2 string tag, s1 int32 field)");
 
       try {
         statement.execute("delete from t" + testNum + " where time > 10 and time <= 1");
@@ -930,7 +931,7 @@ public class IoTDBDeletionTableIT {
       statement.execute(
           "create table t"
               + testNum
-              + "(country id,region id, city id, device id, ab1 ATTRIBUTE, s1 int32, s2 float, s3 boolean, s4 string)");
+              + "(country tag,region tag, city tag, device tag, ab1 ATTRIBUTE, s1 int32, s2 float, s3 boolean, s4 string)");
       statement.execute(
           "INSERT INTO t"
               + testNum
@@ -1541,7 +1542,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("create database if not exists test");
       statement.execute("use test");
 
-      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute("create table table1(deviceId STRING TAG, s0 INT32 FIELD)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         statement.execute(
@@ -1593,7 +1594,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("create database if not exists test");
       statement.execute("use test");
 
-      statement.execute("create table table1(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute("create table table1(deviceId STRING TAG, s0 INT32 FIELD)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointNumPerFile; j++) {
@@ -1658,7 +1659,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
       statement.execute(
           String.format(
-              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 TEXT MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               testNum));
 
       for (int d = 0; d < deviceNum; d++) {

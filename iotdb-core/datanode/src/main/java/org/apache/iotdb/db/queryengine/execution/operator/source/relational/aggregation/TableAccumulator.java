@@ -57,4 +57,8 @@ public interface TableAccumulator {
   default boolean removable() {
     return false;
   }
+
+  default void close() {
+    // do nothing
+  }
 }
