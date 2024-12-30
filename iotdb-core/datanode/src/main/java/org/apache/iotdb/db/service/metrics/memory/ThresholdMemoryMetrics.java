@@ -64,6 +64,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String CONSENSUS = "Consensus";
   private static final String STREAM_ENGINE = "StreamEngine";
   private static final String DIRECT_BUFFER = "DirectBuffer";
+  private static final String[] LEVELS = {"0", "1", "2"};
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -76,7 +77,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "0");
+            LEVELS[0]);
     totalMemorySize.set(Runtime.getRuntime().maxMemory());
     bindStorageEngineRelatedMemoryMetrics(metricService);
     queryEngineMemorySize =
@@ -88,7 +89,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     queryEngineMemorySize.set(config.getAllocateMemoryForRead());
     schemaEngineMemorySize =
         metricService.getOrCreateGauge(
@@ -99,7 +100,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     schemaEngineMemorySize.set(config.getAllocateMemoryForSchema());
     consensusMemorySize =
         metricService.getOrCreateGauge(
@@ -110,7 +111,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     consensusMemorySize.set(config.getAllocateMemoryForConsensus());
     streamEngineMemorySize =
         metricService.getOrCreateGauge(
@@ -121,7 +122,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     streamEngineMemorySize.set(config.getAllocateMemoryForPipe());
     directBufferMemorySize =
         metricService.getOrCreateGauge(
@@ -132,7 +133,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             ON_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     directBufferMemorySize.set(systemInfo.getTotalDirectBufferMemorySizeLimit());
   }
 
@@ -155,7 +156,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            "1");
+            LEVELS[1]);
     schemaEngineMemorySize.set(storageEngineSize);
     writeMemorySize =
         metricService.getOrCreateGauge(
@@ -166,7 +167,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            "2");
+            LEVELS[2]);
     writeMemorySize.set(writeSize);
     memtableMemorySize =
         metricService.getOrCreateGauge(
@@ -177,7 +178,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            "2");
+            LEVELS[2]);
     memtableMemorySize.set(memtableSize);
     timePartitionInfoMemorySize =
         metricService.getOrCreateGauge(
@@ -188,7 +189,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            "2");
+            LEVELS[2]);
     timePartitionInfoMemorySize.set(timePartitionInfoSize);
     compactionMemorySize =
         metricService.getOrCreateGauge(
@@ -199,7 +200,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             OFF_HEAP,
             Tag.LEVEL.toString(),
-            "2");
+            LEVELS[2]);
     compactionMemorySize.set(compactionSize);
   }
 
@@ -232,7 +233,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.TYPE.toString(),
                     ON_HEAP,
                     Tag.LEVEL.toString(),
-                    "1"));
+                    LEVELS[1]));
     Collections.singletonList(DIRECT_BUFFER)
         .forEach(
             name ->
@@ -244,7 +245,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.TYPE.toString(),
                     OFF_HEAP,
                     Tag.LEVEL.toString(),
-                    "1"));
+                    LEVELS[1]));
     writeMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
     timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -264,7 +265,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.TYPE.toString(),
                     OFF_HEAP,
                     Tag.LEVEL.toString(),
-                    "2"));
+                    LEVELS[2]));
   }
 
   public static ThresholdMemoryMetrics getInstance() {
