@@ -118,4 +118,8 @@ public class TableAggregator {
   public AggregationNode.Step getStep() {
     return this.step;
   }
+
+  public void close() {
+    accumulator.close();
+  }
 }

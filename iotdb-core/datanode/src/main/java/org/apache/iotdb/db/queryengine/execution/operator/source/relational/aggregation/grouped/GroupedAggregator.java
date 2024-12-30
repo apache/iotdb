@@ -98,4 +98,8 @@ public class GroupedAggregator {
   public long getEstimatedSize() {
     return accumulator.getEstimatedSize();
   }
+
+  public void close() {
+    accumulator.close();
+  }
 }
