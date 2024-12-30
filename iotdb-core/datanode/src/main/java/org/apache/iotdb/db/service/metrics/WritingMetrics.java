@@ -67,37 +67,37 @@ public class WritingMetrics implements IMetricSet {
     flushStageSortTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             FLUSH_STAGE_SORT);
     flushStageEncodingTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             FLUSH_STAGE_ENCODING);
     flushStageIOTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             FLUSH_STAGE_IO);
     writePlanIndicesTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             WRITE_PLAN_INDICES);
     metricService.createAutoGauge(
         Metric.PENDING_FLUSH_TASK.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.NORMAL,
         FlushManager.getInstance(),
         FlushManager::getNumberOfPendingTasks,
         Tag.TYPE.toString(),
         PENDING_TASK_NUM);
     metricService.createAutoGauge(
         Metric.PENDING_FLUSH_TASK.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.NORMAL,
         FlushManager.getInstance(),
         FlushManager::getNumberOfPendingSubTasks,
         Tag.TYPE.toString(),
@@ -139,19 +139,19 @@ public class WritingMetrics implements IMetricSet {
     sortTaskTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_SUB_TASK_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             SORT_TASK);
     encodingTaskTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_SUB_TASK_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             ENCODING_TASK);
     ioTaskTimer =
         metricService.getOrCreateTimer(
             Metric.FLUSH_SUB_TASK_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             IO_TASK);
   }
@@ -200,73 +200,73 @@ public class WritingMetrics implements IMetricSet {
   private void bindWALMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.WAL_NODE_NUM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.NORMAL,
         WAL_MANAGER,
         WALManager::getWALNodesNum,
         Tag.NAME.toString(),
         WAL_NODES_NUM);
     usedRatioHistogram =
         metricService.getOrCreateHistogram(
-            Metric.WAL_BUFFER.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), USED_RATIO);
+            Metric.WAL_BUFFER.toString(), MetricLevel.NORMAL, Tag.NAME.toString(), USED_RATIO);
     entriesCountHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             SERIALIZED_WAL_BUFFER_SIZE_BYTE);
     wroteWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             WROTE_WAL_BUFFER_SIZE_BYTE);
     walCompressCostHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             WAL_COMPRESS_COST_NS);
     walUncompressCostHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             WAL_UNCOMPRESS_COST_NS);
     readWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             READ_WAL_BUFFER_SIZE_BYTE);
     readWALBufferCostHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             READ_WAL_BUFFER_COST_NS);
     writeWALBufferCostHistogram =
         metricService.getOrCreateHistogram(
             Metric.WAL_BUFFER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             WRITE_WAL_BUFFER_COST_NS);
     walQueueMaxMemSizeGauge =
         metricService.getOrCreateGauge(
             Metric.WAL_QUEUE_MEM_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             WAL_QUEUE_MAX_MEM_COST);
     SystemInfo systemInfo = SystemInfo.getInstance();
     metricService.createAutoGauge(
         Metric.WAL_QUEUE_MEM_COST.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.NORMAL,
         systemInfo,
         SystemInfo::getCurrentWalQueueMemoryCost,
         Tag.NAME.toString(),
@@ -324,7 +324,7 @@ public class WritingMetrics implements IMetricSet {
     globalMemoryTableInfoTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             MAKE_CHECKPOINT,
             Tag.TYPE.toString(),
@@ -332,7 +332,7 @@ public class WritingMetrics implements IMetricSet {
     createMemoryTableTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             MAKE_CHECKPOINT,
             Tag.TYPE.toString(),
@@ -340,7 +340,7 @@ public class WritingMetrics implements IMetricSet {
     flushMemoryTableTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             MAKE_CHECKPOINT,
             Tag.TYPE.toString(),
@@ -348,7 +348,7 @@ public class WritingMetrics implements IMetricSet {
     serializeWalEntryTotalTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             SERIALIZE_WAL_ENTRY,
             Tag.TYPE.toString(),
@@ -356,7 +356,7 @@ public class WritingMetrics implements IMetricSet {
     syncTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             SYNC_WAL_BUFFER,
             Tag.TYPE.toString(),
@@ -364,7 +364,7 @@ public class WritingMetrics implements IMetricSet {
     fsyncTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.STAGE.toString(),
             SYNC_WAL_BUFFER,
             Tag.TYPE.toString(),
@@ -465,20 +465,20 @@ public class WritingMetrics implements IMetricSet {
         MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.MEMTABLE_THRESHOLD.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.NORMAL,
                 Tag.TYPE.toString(),
                 FLUSH_THRESHOLD);
     rejectThreholdGauge =
         MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.MEMTABLE_THRESHOLD.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.NORMAL,
                 Tag.TYPE.toString(),
                 REJECT_THRESHOLD);
 
     memtableLiveTimer =
         MetricService.getInstance()
-            .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.IMPORTANT);
+            .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.NORMAL);
   }
 
   public void unbindDataRegionMetrics() {
@@ -515,7 +515,7 @@ public class WritingMetrics implements IMetricSet {
     MetricService.getInstance()
         .createAutoGauge(
             Metric.DATA_REGION_MEM_COST.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             dataRegion,
             DataRegion::getMemCost,
             Tag.REGION.toString(),
@@ -541,7 +541,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricService.getInstance()
                     .getOrCreateHistogram(
                         Metric.WAL_NODE_INFO.toString(),
-                        MetricLevel.IMPORTANT,
+                        MetricLevel.NORMAL,
                         Tag.NAME.toString(),
                         name,
                         Tag.TYPE.toString(),
@@ -578,7 +578,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricService.getInstance()
                     .getOrCreateHistogram(
                         Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-                        MetricLevel.IMPORTANT,
+                        MetricLevel.NORMAL,
                         Tag.NAME.toString(),
                         name,
                         Tag.REGION.toString(),
@@ -589,7 +589,7 @@ public class WritingMetrics implements IMetricSet {
     return MetricService.getInstance()
         .getOrCreateCounter(
             Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             WAL_FLUSH_MEMTABLE_COUNT);
   }
@@ -598,7 +598,7 @@ public class WritingMetrics implements IMetricSet {
     return MetricService.getInstance()
         .getOrCreateCounter(
             Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             TIMED_FLUSH_MEMTABLE_COUNT);
   }
@@ -607,7 +607,7 @@ public class WritingMetrics implements IMetricSet {
     return MetricService.getInstance()
         .getOrCreateCounter(
             Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             SERIES_FULL_FLUSH_MEMTABLE);
   }
@@ -616,7 +616,7 @@ public class WritingMetrics implements IMetricSet {
     return MetricService.getInstance()
         .getOrCreateCounter(
             Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             MANUAL_FLUSH_MEMTABLE_COUNT);
   }
@@ -625,7 +625,7 @@ public class WritingMetrics implements IMetricSet {
     return MetricService.getInstance()
         .getOrCreateCounter(
             Metric.FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.TYPE.toString(),
             MEM_CONTROL_FLUSH_MEMTABLE_COUNT);
   }
@@ -634,14 +634,14 @@ public class WritingMetrics implements IMetricSet {
     MetricService.getInstance()
         .getOrCreateCounter(
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
 
   public void createActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
-        .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+        .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.NORMAL);
   }
 
   public void removeSeriesFullFlushMemTableCounterMetrics() {
@@ -728,7 +728,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             (long) (ratio * 100),
             Metric.WAL_NODE_INFO.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             EFFECTIVE_RATIO_INFO,
             Tag.TYPE.toString(),
@@ -740,7 +740,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             ram,
             Metric.WAL_NODE_INFO.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT,
             Tag.TYPE.toString(),
@@ -752,7 +752,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             ram,
             Metric.WAL_NODE_INFO.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH,
             Tag.TYPE.toString(),
@@ -765,7 +765,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             (long) (compressionRatio * 100),
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             COMPRESSION_RATIO,
             Tag.REGION.toString(),
@@ -783,7 +783,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             memSize,
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             MEM_TABLE_SIZE,
             Tag.REGION.toString(),
@@ -792,7 +792,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             seriesNum,
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             SERIES_NUM,
             Tag.REGION.toString(),
@@ -801,7 +801,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             totalPointsNum,
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             POINTS_NUM,
             Tag.REGION.toString(),
@@ -810,7 +810,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             avgSeriesNum,
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             AVG_SERIES_POINT_NUM,
             Tag.REGION.toString(),
@@ -826,7 +826,7 @@ public class WritingMetrics implements IMetricSet {
         .histogram(
             size,
             Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             FLUSH_TSFILE_SIZE,
             Tag.REGION.toString(),
@@ -978,14 +978,14 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.NORMAL,
             Tag.REGION.toString(),
             dataRegionId);
   }
 
   public void recordActiveTimePartitionCount(int number) {
     MetricService.getInstance()
-        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
+        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.NORMAL);
   }
 
   // endregion
