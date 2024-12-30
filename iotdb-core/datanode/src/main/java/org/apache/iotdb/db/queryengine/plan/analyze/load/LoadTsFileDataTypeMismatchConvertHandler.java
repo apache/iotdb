@@ -103,12 +103,9 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
 
   public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileStatement) {
     try {
-      TSStatus status =
-          loadTsFileStatement
-              .accept(treeStatementDataTypeConvertExecutionVisitor, null)
-              .orElse(null);
-      LOGGER.info("the status of convertForTreeModel is {}", status);
-      return status;
+      return loadTsFileStatement
+          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
+          .orElse(null);
     } catch (Exception e) {
       LOGGER.error("Failed to convert data types for tree model.", e);
       return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
