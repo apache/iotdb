@@ -17,8 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.util;
+package org.apache.iotdb.session.util;
 
-public interface CallableWithException<E, T extends Exception> {
-  E call() throws T;
+public class RetryUtils {
+  public static final int MAX_RETRIES = 3;
+
+  private RetryUtils() {}
+
+  public static <E, T extends Exception> E retryOnException(CallableWithException<E, T> callable)
+      throws T {
+    int attempt = 0;
+    while (attempt < MAX_RETRIES) {
+      try {
+        return callable.call();
+      } catch (Exception e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          throw e;
+        }
+      }
+    }
+    return null;
+  }
 }

@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.resource.snapshot;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.session.subscription.util.RetryUtils;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +81,6 @@ public abstract class PipeSnapshotResourceManager {
             FileUtils.copyFile(new File(snapshotPath), new File(copiedFilePath));
             return null;
           });
-      // FileUtils.copyFile(new File(snapshotPath), new File(copiedFilePath));
       copiedSnapshotPath2ReferenceCountMap.put(copiedFilePath, new AtomicLong(1));
       return copiedFilePath;
     } finally {
@@ -147,7 +146,6 @@ public abstract class PipeSnapshotResourceManager {
       if (count == 0) {
         copiedSnapshotPath2ReferenceCountMap.remove(snapshotPath);
         FileUtils.deleteFileOrDirectoryWithRetry(new File(snapshotPath));
-        // FileUtils.deleteFileOrDirectory(new File(snapshotPath));
       }
     } finally {
       lock.unlock();

@@ -37,7 +37,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.subscription.util.RetryUtils;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -118,7 +118,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
                 return null;
               });
-          // FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "Receiver id = {}: Original receiver file dir {} was deleted.",
               receiverId.get(),

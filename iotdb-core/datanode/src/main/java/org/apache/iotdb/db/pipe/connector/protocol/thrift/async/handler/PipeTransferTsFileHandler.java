@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -238,7 +239,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
         // Delete current file when using tsFile as batch
         if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          FileUtils.delete(currentFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(currentFile);
+                return null;
+              });
         }
       } catch (final IOException e) {
         LOGGER.warn(
@@ -341,7 +346,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
       // Delete current file when using tsFile as batch
       if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        FileUtils.delete(currentFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
       }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);

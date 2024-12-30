@@ -20,7 +20,7 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
-import org.apache.iotdb.session.subscription.util.RetryUtils;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,7 +70,6 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public synchronized Path moveFile(final String target) throws IOException {
-    //    return this.moveFile(Paths.get(target));
     return RetryUtils.retryOnException(() -> this.moveFile(Paths.get(target)));
   }
 
