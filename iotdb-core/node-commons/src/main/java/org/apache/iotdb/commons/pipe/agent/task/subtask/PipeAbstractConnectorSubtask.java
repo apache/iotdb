@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -33,17 +34,25 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 
 public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
+
+  private static final long EXECUTOR_PRE_SUBTASK_TIMEOUT_MS =
+      CommonDescriptor.getInstance().getConfig().getExecutorPreSubtaskTimeoutMs();
 
   // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
   protected ExecutorService subtaskCallbackListeningExecutor;
+
+  // For thread pool to execute timeout callbacks
+  protected ScheduledExecutorService subtaskTimeoutListeningExecutor;
 
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
@@ -63,9 +72,11 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
       final ExecutorService subtaskCallbackListeningExecutor,
+      final ScheduledExecutorService subtaskTimeoutListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
+    this.subtaskTimeoutListeningExecutor = subtaskTimeoutListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
   }
 
@@ -223,6 +234,10 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
     Futures.addCallback(future, this, subtaskCallbackListeningExecutor);
+    Futures.withTimeout(
+        future,
+        Duration.ofMinutes(EXECUTOR_PRE_SUBTASK_TIMEOUT_MS),
+        subtaskTimeoutListeningExecutor);
   }
 
   protected synchronized void setLastExceptionEvent(final Event event) {
