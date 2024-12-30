@@ -56,8 +56,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
   // These are only used when constructed from tree model SQL
-  private final LoadTsFileStatement loadTsFileStatement;
-
+  private final LoadTsFileStatement loadTsFileTreeStatement;
   // These are only used when constructed from table model SQL
   private final LoadTsFile loadTsFileTableStatement;
 
@@ -85,7 +84,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected final LoadTsFileDataTypeMismatchConvertHandler loadTsFileDataTypeMismatchConvertHandler;
 
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    this.loadTsFileStatement = loadTsFileStatement;
+    this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
@@ -113,7 +112,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.database = loadTsFileTableStatement.getDatabase();
     this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
 
-    this.loadTsFileStatement = null;
+    this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
     this.context = context;
   }
@@ -148,9 +147,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         setFailAnalysisForAuthException(analysis, e);
         return false;
       } catch (VerifyMetadataTypeMismatchException e) {
-        this.executeDataTypeConversionOnTypeMismatch(analysis);
-        // just return false to STOP the analysis process, the real result on the conversion will be
-        // set in the analysis.
+        executeDataTypeConversionOnTypeMismatch(analysis);
+        // just return false to STOP the analysis process,
+        // the real result on the conversion will be set in the analysis.
         return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
@@ -190,14 +189,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   public void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
-
-    TSStatus status;
-    if (isTableModelStatement) {
-      status =
-          loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(loadTsFileTableStatement);
-    } else {
-      status = loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileStatement);
-    }
+    final TSStatus status =
+        isTableModelStatement
+            ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
+                loadTsFileTableStatement)
+            : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileTreeStatement);
 
     if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       analysis.setFailStatus(status);
@@ -215,7 +211,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     if (isTableModelStatement) {
       // Do nothing by now.
     } else {
-      analysis.setRealStatement(loadTsFileStatement);
+      analysis.setRealStatement(loadTsFileTreeStatement);
     }
   }
 
@@ -223,7 +219,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addTsFileResource(tsFileResource);
     } else {
-      loadTsFileStatement.addTsFileResource(tsFileResource);
+      loadTsFileTreeStatement.addTsFileResource(tsFileResource);
     }
   }
 
@@ -231,7 +227,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addWritePointCount(writePointCount);
     } else {
-      loadTsFileStatement.addWritePointCount(writePointCount);
+      loadTsFileTreeStatement.addWritePointCount(writePointCount);
     }
   }
 
