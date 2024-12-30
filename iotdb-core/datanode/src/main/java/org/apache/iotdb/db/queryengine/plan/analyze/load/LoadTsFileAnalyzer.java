@@ -147,7 +147,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         setFailAnalysisForAuthException(analysis, e);
         return false;
       } catch (VerifyMetadataTypeMismatchException e) {
-        executeDataTypeConversionOnTypeMismatch(analysis);
+        executeDataTypeConversionOnTypeMismatch(analysis, e);
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
@@ -175,15 +175,21 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected abstract void analyzeSingleTsFile(final File tsFile)
       throws IOException, AuthException, VerifyMetadataException;
 
-  protected void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
+  protected void executeDataTypeConversionOnTypeMismatch(
+      final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
     final TSStatus status =
-        isTableModelStatement
-            ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
-                loadTsFileTableStatement)
-            : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileTreeStatement);
+        isConvertOnTypeMismatch
+            ? (isTableModelStatement
+                ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
+                    loadTsFileTableStatement)
+                : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(
+                    loadTsFileTreeStatement))
+            : null;
 
-    if (status != null
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    if (status == null) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       analysis.setFailStatus(status);
     }

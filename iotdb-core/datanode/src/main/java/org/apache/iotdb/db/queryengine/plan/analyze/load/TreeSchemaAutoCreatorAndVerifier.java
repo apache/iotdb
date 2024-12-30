@@ -81,6 +81,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TreeSchemaAutoCreatorAndVerifier {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TreeSchemaAutoCreatorAndVerifier.class);
 

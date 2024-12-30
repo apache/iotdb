@@ -46,7 +46,9 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
       LoggerFactory.getLogger(LoadTsFileDataTypeMismatchConvertHandler.class);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
   private final SqlParser relationalSqlParser = new SqlParser();
+
   private final LoadTableStatementDataTypeConvertExecutionVisitor
       tableStatementDataTypeConvertExecutionVisitor =
           new LoadTableStatementDataTypeConvertExecutionVisitor(
@@ -59,6 +61,18 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
       new LoadStatementTSStatusVisitor();
   public static final LoadStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new LoadStatementExceptionVisitor();
+
+  public TSStatus convertForTableModel(LoadTsFile loadTsFileTableStatement) {
+    try {
+      final String dataBaseName = loadTsFileTableStatement.getDatabase();
+      return loadTsFileTableStatement
+          .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(null, dataBaseName))
+          .orElse(null);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to convert data types for table model.", e);
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
     return Coordinator.getInstance()
@@ -75,6 +89,17 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
         .status;
   }
 
+  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileStatement) {
+    try {
+      return loadTsFileStatement
+          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
+          .orElse(null);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to convert data types for tree model.", e);
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
   private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
@@ -87,28 +112,5 @@ public class LoadTsFileDataTypeMismatchConvertHandler {
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
             false)
         .status;
-  }
-
-  public TSStatus convertForTableModel(LoadTsFile loadTsFileTableStatement) {
-    try {
-      final String dataBaseName = loadTsFileTableStatement.getDatabase();
-      return loadTsFileTableStatement
-          .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(null, dataBaseName))
-          .orElse(null);
-    } catch (Exception e) {
-      LOGGER.error("Failed to convert data types for table model.", e);
-      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
-    }
-  }
-
-  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileStatement) {
-    try {
-      return loadTsFileStatement
-          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
-          .orElse(null);
-    } catch (Exception e) {
-      LOGGER.error("Failed to convert data types for tree model.", e);
-      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
-    }
   }
 }

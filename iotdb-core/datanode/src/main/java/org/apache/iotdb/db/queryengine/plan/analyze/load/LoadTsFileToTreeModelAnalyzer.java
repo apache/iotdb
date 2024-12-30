@@ -87,7 +87,7 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       setFailAnalysisForAuthException(analysis, e);
       return analysis;
     } catch (VerifyMetadataTypeMismatchException e) {
-      executeDataTypeConversionOnTypeMismatch(analysis);
+      executeDataTypeConversionOnTypeMismatch(analysis, e);
       return analysis;
     } catch (Exception e) {
       final String exceptionMessage =
