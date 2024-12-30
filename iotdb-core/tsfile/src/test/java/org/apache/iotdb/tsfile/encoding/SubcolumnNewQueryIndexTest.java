@@ -42,7 +42,7 @@ public class SubcolumnNewQueryIndexTest {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                if (value >= lower_bound && value <= upper_bound) {
+                if (value >= lower_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
@@ -236,18 +236,18 @@ public class SubcolumnNewQueryIndexTest {
         int block_size = 512;
 
         HashMap<String, int[]> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", new int[] { 8850000, 8855000 });
+        queryRange.put("Air-pressure", new int[] { 8720000, 8820000 });
         queryRange.put("Bird-migration", new int[] { 2500000, 2600000 });
-        queryRange.put("Bitcoin-price", new int[] { 170000000, 172000000 });
+        queryRange.put("Bitcoin-price", new int[] { 160000000, 170000000 });
         queryRange.put("Blockchain-tr", new int[] { 100000, 300000 });
-        queryRange.put("City-temp", new int[] { 600, 700 });
+        queryRange.put("City-temp", new int[] { 500, 700 });
         queryRange.put("Dewpoint-temp", new int[] { 9500, 9600 });
         queryRange.put("IR-bio-temp", new int[] { -300, -200 });
         queryRange.put("PM10-dust", new int[] { 1000, 2000 });
         queryRange.put("Stocks-DE", new int[] { 40000, 50000 });
         queryRange.put("Stocks-UK", new int[] { 20000, 30000 });
         queryRange.put("Stocks-USA", new int[] { 5000, 6000 });
-        queryRange.put("Wind-Speed", new int[] { 30, 40 });
+        queryRange.put("Wind-Speed", new int[] { 50, 60 });
 
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容

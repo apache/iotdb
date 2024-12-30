@@ -42,7 +42,7 @@ public class SubcolumnQueryIndexTest {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                if (value >= lower_bound && value <= upper_bound) {
+                if (value >= lower_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
@@ -245,7 +245,7 @@ public class SubcolumnQueryIndexTest {
         queryRange.put("Stocks-DE", new int[] { 40000, 50000 });
         queryRange.put("Stocks-UK", new int[] { 20000, 30000 });
         queryRange.put("Stocks-USA", new int[] { 5000, 6000 });
-        queryRange.put("Wind-Speed", new int[] { 30, 40 });
+        queryRange.put("Wind-Speed", new int[] { 50, 60 });
 
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容

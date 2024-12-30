@@ -16,7 +16,7 @@ import com.csvreader.CsvWriter;
 public class SubcolumnNewQuerySumTest {
     // SubcolumnByteRLETest Query Sum
 
-    public static void Query(byte[] encoded_result, int lower_bound, int upper_bound) {
+    public static void Query(byte[] encoded_result) {
 
         int startBitPosition = 0;
         int data_length = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
@@ -41,10 +41,8 @@ public class SubcolumnNewQuerySumTest {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                if (value >= lower_bound && value <= upper_bound) {
-                    result[result_length[0]] = value;
-                    result_length[0]++;
-                }
+                result[result_length[0]] = value;
+                result_length[0]++;
                 startBitPosition += 32;
             }
         } else {
@@ -91,12 +89,12 @@ public class SubcolumnNewQuerySumTest {
             if (!type) {
 
                 for (int j = 0; j < remainder; j++) {
-                    int value = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition + j * bitWidthList[i], bitWidthList[i]);
+                    int value = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition + j * bitWidthList[i],
+                            bitWidthList[i]);
                     result[result_length[0]] += value << (i * beta);
                 }
 
                 startBitPosition += bitWidthList[i] * remainder;
-
 
             } else {
                 int index = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 16);
@@ -105,7 +103,8 @@ public class SubcolumnNewQuerySumTest {
                 int[] run_length = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bw, index);
                 startBitPosition += bw * index;
 
-                int[] rle_values = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i], index);
+                int[] rle_values = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
+                        index);
                 startBitPosition += bitWidthList[i] * index;
 
                 for (int j = 0; j < index; j++) {
@@ -162,20 +161,6 @@ public class SubcolumnNewQuerySumTest {
 
         // int block_size = 1024;
         int block_size = 512;
-
-        HashMap<String, int[]> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", new int[] { 8850000, 8855000 });
-        queryRange.put("Bird-migration", new int[] { 2500000, 2600000 });
-        queryRange.put("Bitcoin-price", new int[] { 170000000, 172000000 });
-        queryRange.put("Blockchain-tr", new int[] { 100000, 300000 });
-        queryRange.put("City-temp", new int[] { 600, 700 });
-        queryRange.put("Dewpoint-temp", new int[] { 9500, 9600 });
-        queryRange.put("IR-bio-temp", new int[] { -300, -200 });
-        queryRange.put("PM10-dust", new int[] { 1000, 2000 });
-        queryRange.put("Stocks-DE", new int[] { 40000, 50000 });
-        queryRange.put("Stocks-UK", new int[] { 20000, 30000 });
-        queryRange.put("Stocks-USA", new int[] { 5000, 6000 });
-        queryRange.put("Wind-Speed", new int[] { 30, 40 });
 
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
@@ -248,8 +233,7 @@ public class SubcolumnNewQuerySumTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Query(encoded_result, queryRange.get(datasetName)[0],
-                        queryRange.get(datasetName)[1]);
+                Query(encoded_result);
             }
 
             e = System.nanoTime();
