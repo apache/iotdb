@@ -33,7 +33,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
 
-  private volatile long lastRunningTime = System.currentTimeMillis();
+  private volatile long startRunningTime = System.currentTimeMillis();
 
   private static final long CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL = 1000;
   private long closedSubtaskCleanupRoundCounter = 0;
@@ -50,7 +50,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
     while (true) {
-      lastRunningTime = System.currentTimeMillis();
+      startRunningTime = System.currentTimeMillis();
       cleanupClosedSubtasksIfNecessary();
       final boolean canSleepBeforeNextRound = runSubtasks();
       sleepIfNecessary(canSleepBeforeNextRound);
@@ -84,11 +84,10 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
       } catch (final Exception e) {
+
         if (Thread.interrupted()) {
-          if (Thread.interrupted()) {
-            LOGGER.warn(
-                "The thread was interrupted, and the pipe processor subtask being executed has timed out.");
-          }
+          LOGGER.warn(
+              "The thread was interrupted, and the pipe processor subtask being executed has timed out.");
         }
         if (subtask.isClosed()) {
           LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
@@ -136,11 +135,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     subtasks.add(pipeProcessorSubtask);
   }
 
-  public int getSubtaskSize() {
-    return subtasks.size();
-  }
-
-  public long getLastRunningTime() {
-    return lastRunningTime;
+  public long getStartRunningTime() {
+    return startRunningTime;
   }
 }

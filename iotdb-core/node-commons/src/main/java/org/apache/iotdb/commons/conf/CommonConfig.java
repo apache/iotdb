@@ -206,7 +206,7 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
-  private long executorPreSubtaskTimeoutMs = 900000;
+  private long pipeSubtaskExecutionTimeoutMs = 900000;
 
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
@@ -930,12 +930,12 @@ public class CommonConfig {
             Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
-  public long getExecutorPreSubtaskTimeoutMs() {
-    return executorPreSubtaskTimeoutMs;
+  public long getPipeSubtaskExecutionTimeoutMs() {
+    return pipeSubtaskExecutionTimeoutMs;
   }
 
-  public void setExecutorPreSubtaskTimeoutMs(long executorPreSubtaskTimeoutMs) {
-    this.executorPreSubtaskTimeoutMs = executorPreSubtaskTimeoutMs;
+  public void setPipeSubtaskExecutionTimeoutMs(long pipeSubtaskExecutionTimeoutMs) {
+    this.pipeSubtaskExecutionTimeoutMs = pipeSubtaskExecutionTimeoutMs;
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {

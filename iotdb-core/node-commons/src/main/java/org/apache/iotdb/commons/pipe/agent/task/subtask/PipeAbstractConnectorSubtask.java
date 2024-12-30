@@ -43,7 +43,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
 
   private static final long EXECUTOR_PRE_SUBTASK_TIMEOUT_MS =
-      CommonDescriptor.getInstance().getConfig().getExecutorPreSubtaskTimeoutMs();
+      CommonDescriptor.getInstance().getConfig().getPipeSubtaskExecutionTimeoutMs();
 
   // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;

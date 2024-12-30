@@ -33,8 +33,8 @@ public class PipeProcessorSubtaskWorkerManager {
 
   private static final int MAX_THREAD_NUM =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
-  private static final long EXECUTOR_PRE_SUBTASK_TIMEOUT_MS =
-      CommonDescriptor.getInstance().getConfig().getExecutorPreSubtaskTimeoutMs();
+  private static final long PIPE_SUBTASK_EXECUTION_TIMEOUT_MS =
+      CommonDescriptor.getInstance().getConfig().getPipeSubtaskExecutionTimeoutMs();
 
   private final PipeProcessorSubtaskWorker[] workers;
 
@@ -85,22 +85,22 @@ public class PipeProcessorSubtaskWorkerManager {
       while (true) {
         int minTimeIndex = 0;
         long minTime =
-            workers[0] != null ? workers[0].getLastRunningTime() : System.currentTimeMillis();
+            workers[0] != null ? workers[0].getStartRunningTime() : System.currentTimeMillis();
 
         for (int i = 1; i < workers.length; i++) {
           final PipeProcessorSubtaskWorker w = workers[i];
-          if (w != null && w.getLastRunningTime() < minTime) {
-            minTime = w.getLastRunningTime();
+          if (w != null && w.getStartRunningTime() < minTime) {
+            minTime = w.getStartRunningTime();
             minTimeIndex = i;
           }
         }
 
         try {
-          Thread.sleep(EXECUTOR_PRE_SUBTASK_TIMEOUT_MS - (System.currentTimeMillis() - minTime));
+          Thread.sleep(PIPE_SUBTASK_EXECUTION_TIMEOUT_MS - (System.currentTimeMillis() - minTime));
 
           // Check if the worker has exceeded the timeout and hasn't processed the next task
           if (workers[minTimeIndex] == null
-              || workers[minTimeIndex].getLastRunningTime() != minTime) {
+              || workers[minTimeIndex].getStartRunningTime() != minTime) {
             continue;
           }
 

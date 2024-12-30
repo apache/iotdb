@@ -321,11 +321,11 @@ public class CommonDescriptor {
                 "pipe_subtask_executor_basic_check_point_interval_by_time_duration",
                 String.valueOf(
                     config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()))));
-    config.setExecutorPreSubtaskTimeoutMs(
+    config.setPipeSubtaskExecutionTimeoutMs(
         Long.parseLong(
             properties.getProperty(
-                "executor_pre_subtask_timeout_ms",
-                String.valueOf(config.getExecutorPreSubtaskTimeoutMs()))));
+                "pipe_subtask_execution_timeout_ms",
+                String.valueOf(config.getPipeSubtaskExecutionTimeoutMs()))));
     config.setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
         Long.parseLong(
             properties.getProperty(
