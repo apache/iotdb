@@ -113,12 +113,6 @@ public class IoTDBTableAggregationIT {
         "CLEAR ATTRIBUTE CACHE",
       };
 
-  //  public static void main(String[] args) {
-  //    for (String sql : createSqls) {
-  //      System.out.println(sql + ";");
-  //    }
-  //  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);

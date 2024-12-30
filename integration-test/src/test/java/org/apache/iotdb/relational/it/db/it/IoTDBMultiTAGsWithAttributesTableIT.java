@@ -158,14 +158,6 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   String[] retArray;
   static String sql;
 
-  //  public static void main(String[] args) {
-  //    for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5)) {
-  //      for (String sql : sqlList) {
-  //        System.out.println(sql + ";");
-  //      }
-  //    }
-  //  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
@@ -2086,6 +2078,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time<1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
     repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
 
+    // last query with gt time filter
     retArray =
         new String[] {
           "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d1,14,",
