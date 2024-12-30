@@ -474,7 +474,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.info(
           "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans",
           e.getMessage());
-      result.setCode(e.getErrorCode());
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
