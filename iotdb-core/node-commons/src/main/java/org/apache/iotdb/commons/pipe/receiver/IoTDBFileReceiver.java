@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.session.subscription.util.RetryUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +113,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(() -> {FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());return null;});
+          //FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "Receiver id = {}: Original receiver file dir {} was deleted.",
               receiverId.get(),
@@ -440,7 +442,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void deleteFile(final File file) {
     if (file.exists()) {
       try {
-        FileUtils.delete(file);
+        RetryUtils.retryOnException(() -> FileUtils.delete(file));
+       // FileUtils.delete(file);
         LOGGER.info(
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
@@ -749,7 +752,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     if (writingFile != null) {
       try {
-        FileUtils.delete(writingFile);
+        RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
+       // FileUtils.delete(writingFile);
         LOGGER.info(
             "Receiver id = {}: Handling exit: Writing file {} was deleted.",
             receiverId.get(),
@@ -774,7 +778,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(() -> {FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());return null;});
+         // FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
               receiverId.get(),
