@@ -34,10 +34,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LoadTsFileDataTypeMismatchConvertHandler {
+public class LoadTsFileDataTypeConverter {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(LoadTsFileDataTypeMismatchConvertHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDataTypeConverter.class);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 

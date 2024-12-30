@@ -97,7 +97,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           try {
             result =
                 statement.accept(
-                    LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_STATUS_VISITOR,
+                    LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
                     statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
@@ -109,16 +109,14 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Thread.sleep(100L * (i + 1));
               result =
                   statement.accept(
-                      LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_STATUS_VISITOR,
+                      LoadTsFileDataTypeConverter.STATEMENT_STATUS_VISITOR,
                       statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
               Thread.currentThread().interrupt();
             }
-            result =
-                statement.accept(
-                    LoadTsFileDataTypeMismatchConvertHandler.STATEMENT_EXCEPTION_VISITOR, e);
+            result = statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

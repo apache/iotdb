@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeMismatchConvertHandler;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -82,7 +82,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  protected final LoadTsFileDataTypeMismatchConvertHandler loadTsFileDataTypeMismatchConvertHandler;
+  protected final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
 
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileTreeStatement = loadTsFileStatement;
@@ -94,7 +94,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
-    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
+    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
@@ -111,7 +111,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
-    this.loadTsFileDataTypeMismatchConvertHandler = new LoadTsFileDataTypeMismatchConvertHandler();
+    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
@@ -181,10 +181,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     final TSStatus status =
         isConvertOnTypeMismatch
             ? (isTableModelStatement
-                ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
-                    loadTsFileTableStatement)
-                : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(
-                    loadTsFileTreeStatement))
+                ? loadTsFileDataTypeConverter.convertForTableModel(loadTsFileTableStatement)
+                : loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileTreeStatement))
             : null;
 
     if (status == null) {
