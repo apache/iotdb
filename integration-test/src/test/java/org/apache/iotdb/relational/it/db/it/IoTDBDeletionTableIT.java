@@ -146,7 +146,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicle1  WHERE s1 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's1' does not exist or is not an id column", e.getMessage());
+        assertEquals("701: The column 's1' does not exist or is not an tag column", e.getMessage());
       }
 
       try {
@@ -154,7 +154,7 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals(
-            "701: The column 'attr1' does not exist or is not an id column", e.getMessage());
+            "701: The column 'attr1' does not exist or is not an tag column", e.getMessage());
       }
 
       try {
@@ -875,7 +875,7 @@ public class IoTDBDeletionTableIT {
         statement.execute(
             "create table if not exists table"
                 + testNum
-                + "(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+                + "(deviceId STRING TAG, s0 INT32 field)");
 
         for (int i = 1; i <= fileNumMax; i++) {
           for (int j = 0; j < pointPerFile; j++) {
@@ -1169,7 +1169,7 @@ public class IoTDBDeletionTableIT {
       statement.execute(
           "create table if not exists table"
               + testNum
-              + "(deviceId STRING ID, s0 INT32 MEASUREMENT)");
+              + "(deviceId STRING ID, s0 INT32 field)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
@@ -1469,17 +1469,17 @@ public class IoTDBDeletionTableIT {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db3");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE db1.table" + testNum + " (id1 string id, m1 int32 measurement)");
+          "CREATE TABLE db1.table" + testNum + " (id1 string tag, m1 int32 field)");
       session.executeNonQueryStatement(
           "INSERT INTO db1.table" + testNum + " (time, id1, m1) VALUES (1, 'd1', 1)");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE db2.table" + testNum + " (id1 string id, m1 int32 measurement)");
+          "CREATE TABLE db2.table" + testNum + " (id1 string tag, m1 int32 field)");
       session.executeNonQueryStatement(
           "INSERT INTO db2.table" + testNum + " (time, id1, m1) VALUES (2, 'd2', 2)");
 
       session.executeNonQueryStatement(
-          "CREATE TABLE db3.table" + testNum + " (id1 string id, m1 int32 measurement)");
+          "CREATE TABLE db3.table" + testNum + " (id1 string tag, m1 int32 field)");
       session.executeNonQueryStatement(
           "INSERT INTO db3.table" + testNum + " (time, id1, m1) VALUES (3, 'd3', 3)");
 
