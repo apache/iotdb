@@ -139,14 +139,14 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicle1  WHERE s0 <= 300 AND s0 > 0");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's0' does not exist or is not an tag column", e.getMessage());
+        assertEquals("701: The column 's0' does not exist or is not a tag column", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE s1 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's1' does not exist or is not an tag column", e.getMessage());
+        assertEquals("701: The column 's1' does not exist or is not a tag column", e.getMessage());
       }
 
       try {
