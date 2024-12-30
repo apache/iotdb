@@ -873,9 +873,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("use test");
 
         statement.execute(
-            "create table if not exists table"
-                + testNum
-                + "(deviceId STRING TAG, s0 INT32 field)");
+            "create table if not exists table" + testNum + "(deviceId STRING TAG, s0 INT32 field)");
 
         for (int i = 1; i <= fileNumMax; i++) {
           for (int j = 0; j < pointPerFile; j++) {
@@ -1167,9 +1165,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("use test");
 
       statement.execute(
-          "create table if not exists table"
-              + testNum
-              + "(deviceId STRING ID, s0 INT32 field)");
+          "create table if not exists table" + testNum + "(deviceId STRING TAG, s0 INT32 field)");
 
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {

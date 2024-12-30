@@ -475,7 +475,7 @@ public class AnalyzeUtils {
     int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not an id column");
+          "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
     // the first segment is the table name, so + 1
@@ -546,7 +546,7 @@ public class AnalyzeUtils {
     int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not an id column");
+          "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
     IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
