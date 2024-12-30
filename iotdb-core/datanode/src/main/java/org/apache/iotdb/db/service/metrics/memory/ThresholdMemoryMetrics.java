@@ -42,6 +42,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private Gauge storageEngineMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge writeMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge dataNodeDevicePathCacheMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge timePartitionInfoMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge compactionMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge queryEngineMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -56,6 +57,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE = "StorageEngine-Write-Memtable-DevicePathCache";
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
   private static final String STORAGE_ENGINE_COMPACTION = "StorageEngine-Compaction";
@@ -131,7 +133,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.NAME.toString(),
             DIRECT_BUFFER,
             Tag.TYPE.toString(),
-            ON_HEAP,
+            OFF_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[1]);
     directBufferMemorySize.set(systemInfo.getTotalDirectBufferMemorySizeLimit());
@@ -139,14 +141,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
 
   private void bindStorageEngineRelatedMemoryMetrics(AbstractMetricService metricService) {
     long storageEngineSize = config.getAllocateMemoryForStorageEngine();
-    long writeSize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
-    long memtableSize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
-    long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
-    long compactionSize = storageEngineSize - writeSize;
+    // Total memory size of storage engine
     storageEngineMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -154,10 +149,15 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.NAME.toString(),
             STORAGE_ENGINE,
             Tag.TYPE.toString(),
-            OFF_HEAP,
+            ON_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[1]);
     storageEngineMemorySize.set(storageEngineSize);
+    // The memory of storage engine divided into Write and Compaction 2 part
+    long writeSize =
+        (long)
+            (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
+    long compactionSize = storageEngineSize - writeSize;
     writeMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -165,32 +165,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE,
             Tag.TYPE.toString(),
-            OFF_HEAP,
+            ON_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[2]);
     writeMemorySize.set(writeSize);
-    memtableMemorySize =
-        metricService.getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE,
-            Tag.TYPE.toString(),
-            OFF_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[3]);
-    memtableMemorySize.set(memtableSize);
-    timePartitionInfoMemorySize =
-        metricService.getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
-            Tag.TYPE.toString(),
-            OFF_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[3]);
-    timePartitionInfoMemorySize.set(timePartitionInfoSize);
     compactionMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -198,10 +176,54 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.NAME.toString(),
             STORAGE_ENGINE_COMPACTION,
             Tag.TYPE.toString(),
-            OFF_HEAP,
+            ON_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[2]);
     compactionMemorySize.set(compactionSize);
+    // The write memory of storage engine divided into MemTable and TimePartitionInfo 2 parts
+    long memtableSize =
+        (long)
+            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
+    long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
+    memtableMemorySize =
+        metricService.getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_MEMTABLE,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[3]);
+    memtableMemorySize.set(memtableSize);
+    // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of memory is not divided)
+    long dataNodeDevicePathCacheSize =
+        (long)
+            (config.getAllocateMemoryForStorageEngine()
+                * config.getWriteProportionForMemtable()
+                * config.getDevicePathCacheProportion());
+    dataNodeDevicePathCacheMemorySize =
+        metricService.getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[4]);
+    dataNodeDevicePathCacheMemorySize.set(dataNodeDevicePathCacheSize);
+    timePartitionInfoMemorySize =
+        metricService.getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[3]);
+    timePartitionInfoMemorySize.set(timePartitionInfoSize);
   }
 
   @Override
@@ -257,7 +279,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),
-                    OFF_HEAP,
+                    ON_HEAP,
                     Tag.LEVEL.toString(),
                     LEVELS[2]));
     memtableMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -271,9 +293,22 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),
-                    OFF_HEAP,
+                    ON_HEAP,
                     Tag.LEVEL.toString(),
                     LEVELS[3]));
+    dataNodeDevicePathCacheMemorySize = DoNothingMetricManager.DO_NOTHING_GAUGE;
+    Collections.singletonList(STORAGE_ENGINE_WRITE_MEMTABLE_CACHE)
+        .forEach(
+            name ->
+                metricService.remove(
+                    MetricType.GAUGE,
+                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Tag.NAME.toString(),
+                    name,
+                    Tag.TYPE.toString(),
+                    ON_HEAP,
+                    Tag.LEVEL.toString(),
+                    LEVELS[4]));
   }
 
   public static ThresholdMemoryMetrics getInstance() {
