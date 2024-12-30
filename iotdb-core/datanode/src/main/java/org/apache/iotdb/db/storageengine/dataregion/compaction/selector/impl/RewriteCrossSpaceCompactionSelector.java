@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -409,6 +410,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     } catch (MergeException e) {
       // This exception may be caused by drop database
+      e.printStackTrace();
       if (!tsFileManager.isAllowCompaction()) {
         return Collections.emptyList();
       }
@@ -466,7 +468,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
+      for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo unseqDeviceInfo = it.next();
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -601,20 +604,20 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return false;
       }
 
-      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
-        // TimeIndex may be degraded after this check, but it will not affect the correctness of
-        // task
-        // selection
-        boolean candidate1NeedDeserialize =
-            !candidate1.hasDetailedDeviceInfo()
-                && candidate1.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-        boolean candidate2NeedDeserialize =
-            !candidate2.hasDetailedDeviceInfo()
-                && candidate2.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-        if (!loadDeviceTimeIndex && (candidate1NeedDeserialize || candidate2NeedDeserialize)) {
-          return true;
-        }
+      // TimeIndex may be degraded after this check, but it will not affect the correctness of task
+      // selection
+      boolean candidate1NeedDeserialize =
+          !candidate1.hasDetailedDeviceInfo()
+              && candidate1.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+      boolean candidate2NeedDeserialize =
+          !candidate2.hasDetailedDeviceInfo()
+              && candidate2.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+      if (!loadDeviceTimeIndex && (candidate1NeedDeserialize || candidate2NeedDeserialize)) {
+        return true;
+      }
 
+      for (Iterator<DeviceInfo> it = candidate2.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo device = it.next();
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;
