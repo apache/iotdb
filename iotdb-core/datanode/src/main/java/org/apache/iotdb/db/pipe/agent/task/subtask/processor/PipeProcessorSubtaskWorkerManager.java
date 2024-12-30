@@ -24,10 +24,11 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Logger;
 
 public class PipeProcessorSubtaskWorkerManager {
 
@@ -65,7 +66,7 @@ public class PipeProcessorSubtaskWorkerManager {
   public static class PipeProcessorTimedTimeOutChecker implements Runnable {
 
     private static final Logger LOGGER =
-        Logger.getLogger(PipeProcessorTimedTimeOutChecker.class.getName());
+        LoggerFactory.getLogger(PipeProcessorTimedTimeOutChecker.class);
 
     PipeProcessorSubtaskWorker[] workers;
     ListenableFuture[] listenableFuture;
@@ -117,11 +118,11 @@ public class PipeProcessorSubtaskWorkerManager {
 
         } catch (InterruptedException e) {
           // The thread was interrupted, log the exception
-          LOGGER.warning("Thread was interrupted: " + e.getMessage());
+          LOGGER.warn("Thread was interrupted: {}", e.getMessage(), e);
           Thread.currentThread().interrupt(); // Reset the interrupt status
         } catch (Exception e) {
           // Log any other exceptions that occur
-          LOGGER.warning("An exception occurred  " + e.getMessage());
+          LOGGER.warn("An exception occurred  {}", e.getMessage(), e);
         }
       }
     }

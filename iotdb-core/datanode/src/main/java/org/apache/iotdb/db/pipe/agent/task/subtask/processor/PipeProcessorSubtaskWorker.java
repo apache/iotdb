@@ -84,7 +84,6 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
       } catch (final Exception e) {
-
         if (Thread.interrupted()) {
           LOGGER.warn(
               "The thread was interrupted, and the pipe processor subtask being executed has timed out.");

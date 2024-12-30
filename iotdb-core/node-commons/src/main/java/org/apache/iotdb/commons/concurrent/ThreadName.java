@@ -136,7 +136,7 @@ public enum ThreadName {
   PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
-  PIPE_SUBTASK_TIMEOUT_CHECK_EXECUTOR_POOL("Pipe-SubTask-Timeout-Executor-Pool"),
+  PIPE_SUBTASK_TIMEOUT_CHECK_EXECUTOR_POOL("Pipe-SubTask-Timeout-Check-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
