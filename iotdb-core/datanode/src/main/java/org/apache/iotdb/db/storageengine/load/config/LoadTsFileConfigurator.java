@@ -113,7 +113,7 @@ public class LoadTsFileConfigurator {
     return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
   }
 
-  public static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert_on_type_mismatch";
+  public static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert-on-type-mismatch";
   private static final boolean CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE = true;
 
   public static void validateConvertOnTypeMismatchParam(final String convertOnTypeMismatch) {
@@ -121,8 +121,8 @@ public class LoadTsFileConfigurator {
         && !"false".equalsIgnoreCase(convertOnTypeMismatch)) {
       throw new SemanticException(
           String.format(
-              "Given convert_on_type_mismatch value '%s' is not supported, please input a valid boolean value.",
-              convertOnTypeMismatch));
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              CONVERT_ON_TYPE_MISMATCH_KEY, convertOnTypeMismatch));
     }
   }
 
