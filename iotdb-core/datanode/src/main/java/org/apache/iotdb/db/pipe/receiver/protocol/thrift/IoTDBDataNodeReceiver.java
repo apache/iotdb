@@ -589,7 +589,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadSchemaSnapShot(
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
-
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),

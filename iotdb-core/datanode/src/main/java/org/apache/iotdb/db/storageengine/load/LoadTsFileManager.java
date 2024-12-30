@@ -570,7 +570,6 @@ public class LoadTsFileManager {
                     Files.delete(writerPath);
                     return null;
                   });
-              // Files.delete(writerPath);
             }
           } catch (IOException e) {
             LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
@@ -590,7 +589,6 @@ public class LoadTsFileManager {
                     Files.delete(modificationFilePath);
                     return null;
                   });
-              // Files.delete(modificationFilePath);
             }
           } catch (IOException e) {
             LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
@@ -603,7 +601,6 @@ public class LoadTsFileManager {
               Files.delete(taskDir.toPath());
               return null;
             });
-        // Files.delete(taskDir.toPath());
       } catch (DirectoryNotEmptyException e) {
         LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {

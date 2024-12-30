@@ -120,7 +120,6 @@ public abstract class IoTDBReceiverAgent {
             FileUtils.deleteDirectory(receiverFileDir);
             return null;
           });
-      // FileUtils.deleteDirectory(receiverFileDir);
       LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
     } catch (final Exception e) {
       LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);

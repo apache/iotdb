@@ -446,7 +446,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (file.exists()) {
       try {
         RetryUtils.retryOnException(() -> FileUtils.delete(file));
-        // FileUtils.delete(file);
         LOGGER.info(
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
@@ -756,7 +755,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (writingFile != null) {
       try {
         RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
-        // FileUtils.delete(writingFile);
         LOGGER.info(
             "Receiver id = {}: Handling exit: Writing file {} was deleted.",
             receiverId.get(),
@@ -786,7 +784,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
                 return null;
               });
-          // FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
               receiverId.get(),
