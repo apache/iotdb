@@ -189,7 +189,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
       analysis.setFailStatus(status);
     }
     analysis.setFinishQueryAfterAnalyze(true);
