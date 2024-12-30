@@ -81,6 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -163,7 +164,7 @@ public class TsFileResource implements PersistentResource {
 
   private TsFileID tsFileID;
 
-  private long ramSize;
+  private long deviceTimeIndexRamSize;
 
   private AtomicInteger tierLevel;
 
@@ -1048,12 +1049,21 @@ public class TsFileResource implements PersistentResource {
    * @return resource map size
    */
   public long calculateRamSize() {
-    if (ramSize == 0) {
-      ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-      return ramSize;
-    } else {
-      return ramSize;
+    if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      return INSTANCE_SIZE + timeIndex.calculateRamSize();
     }
+    if (deviceTimeIndexRamSize == 0) {
+      deviceTimeIndexRamSize = timeIndex.calculateRamSize();
+    }
+    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+  }
+
+  // used for compaction
+  public Optional<Long> getDeviceTimeIndexRamSize() {
+    if (!this.isClosed()) {
+      return Optional.empty();
+    }
+    return Optional.of(deviceTimeIndexRamSize);
   }
 
   public long getMaxPlanIndex() {
@@ -1257,10 +1267,6 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getRamSize() {
-    return ramSize;
-  }
-
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(getTimeIndexType());
@@ -1274,12 +1280,8 @@ public class TsFileResource implements PersistentResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-
-    long beforeRamSize = ramSize;
-
-    ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-
-    return beforeRamSize - ramSize;
+    // deviceTimeIndexRamSize has already been calculated before
+    return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
