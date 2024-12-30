@@ -66,9 +66,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       return Optional.empty();
     }
 
-    LOGGER.warn(
-        "Data type mismatch for LoadTsFileStatement: {}. Start data type conversion.",
-        loadTsFileStatement);
+    LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionEventTableParser parser =
