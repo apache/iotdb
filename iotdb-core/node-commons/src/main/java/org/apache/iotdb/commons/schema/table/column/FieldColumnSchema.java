@@ -32,20 +32,20 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class MeasurementColumnSchema extends TsTableColumnSchema {
+public class FieldColumnSchema extends TsTableColumnSchema {
 
   private final TSEncoding encoding;
 
   private final CompressionType compressor;
 
   // Only for information schema
-  public MeasurementColumnSchema(final String columnName, final TSDataType dataType) {
+  public FieldColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
     this.encoding = TSEncoding.PLAIN;
     this.compressor = CompressionType.UNCOMPRESSED;
   }
 
-  public MeasurementColumnSchema(
+  public FieldColumnSchema(
       final String columnName,
       final TSDataType dataType,
       final TSEncoding encoding,
@@ -55,7 +55,7 @@ public class MeasurementColumnSchema extends TsTableColumnSchema {
     this.compressor = compressor;
   }
 
-  public MeasurementColumnSchema(
+  public FieldColumnSchema(
       final String columnName,
       final TSDataType dataType,
       final TSEncoding encoding,
@@ -68,7 +68,7 @@ public class MeasurementColumnSchema extends TsTableColumnSchema {
 
   @Override
   public TsTableColumnCategory getColumnCategory() {
-    return TsTableColumnCategory.MEASUREMENT;
+    return TsTableColumnCategory.FIELD;
   }
 
   public TSEncoding getEncoding() {
@@ -92,21 +92,21 @@ public class MeasurementColumnSchema extends TsTableColumnSchema {
     ReadWriteIOUtils.write(props, outputStream);
   }
 
-  static MeasurementColumnSchema deserialize(final InputStream stream) throws IOException {
+  static FieldColumnSchema deserialize(final InputStream stream) throws IOException {
     final String columnName = ReadWriteIOUtils.readString(stream);
     final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     final TSEncoding encoding = ReadWriteIOUtils.readEncoding(stream);
     final CompressionType compressor = ReadWriteIOUtils.readCompressionType(stream);
     final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
-    return new MeasurementColumnSchema(columnName, dataType, encoding, compressor, props);
+    return new FieldColumnSchema(columnName, dataType, encoding, compressor, props);
   }
 
-  static MeasurementColumnSchema deserialize(final ByteBuffer buffer) {
+  static FieldColumnSchema deserialize(final ByteBuffer buffer) {
     final String columnName = ReadWriteIOUtils.readString(buffer);
     final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     final TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
     final CompressionType compressor = ReadWriteIOUtils.readCompressionType(buffer);
     final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
-    return new MeasurementColumnSchema(columnName, dataType, encoding, compressor, props);
+    return new FieldColumnSchema(columnName, dataType, encoding, compressor, props);
   }
 }

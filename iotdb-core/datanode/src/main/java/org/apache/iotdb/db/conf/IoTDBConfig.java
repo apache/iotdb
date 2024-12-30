@@ -2156,13 +2156,6 @@ public class IoTDBConfig {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
   }
 
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
-  }
-
   public boolean isEnablePartialInsert() {
     return enablePartialInsert;
   }

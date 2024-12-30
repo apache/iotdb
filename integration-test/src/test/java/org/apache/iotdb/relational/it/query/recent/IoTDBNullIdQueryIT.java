@@ -53,9 +53,9 @@ public class IoTDBNullIdQueryIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE testNullId(id1 STRING ID, id2 STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
+        "CREATE TABLE testNullId(id1 STRING TAG, id2 STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD)",
         "INSERT INTO testNullId(time,id1,id2,s1,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
-        "CREATE TABLE table1(device_id STRING ID, color STRING ATTRIBUTE, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT64 MEASUREMENT)",
+        "CREATE TABLE table1(device_id STRING TAG, color STRING ATTRIBUTE, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 INT64 FIELD)",
         // in seq disk
         "INSERT INTO table1(time,device_id,color,s1,s2,s3) "
             + "values(1, 'd1', 'green', 1, false, 11)",
