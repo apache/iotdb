@@ -69,6 +69,7 @@ keyWords
     | CONTAIN
     | CONTAINS
     | CONTINUOUS
+    | CONVERTONTYPEMISMATCH
     | COUNT
     | CQ
     | CQS

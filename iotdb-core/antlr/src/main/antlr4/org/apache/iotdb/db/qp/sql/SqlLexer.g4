@@ -189,6 +189,10 @@ CONTINUOUS
     : C O N T I N U O U S
     ;
 
+CONVERTONTYPEMISMATCH
+    : C O N V E R T O N T Y P E M I S M A T C H
+    ;
+
 COUNT
     : C O U N T
     ;
