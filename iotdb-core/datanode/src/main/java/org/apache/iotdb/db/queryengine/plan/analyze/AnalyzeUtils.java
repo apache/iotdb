@@ -556,7 +556,7 @@ public class AnalyzeUtils {
   private static IDPredicate getIdPredicate(
       ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-      throw new SemanticException("The operator of id predicate must be '=' for " + right);
+      throw new SemanticException("The operator of tag predicate must be '=' for " + right);
     }
 
     String rightHandValue;
@@ -564,10 +564,10 @@ public class AnalyzeUtils {
       rightHandValue = ((StringLiteral) right).getValue();
     } else if (right instanceof NullLiteral) {
       throw new SemanticException(
-          "The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead");
+          "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead");
     } else {
       throw new SemanticException(
-          "The right hand value of id predicate must be a string: " + right);
+          "The right hand value of tag predicate must be a string: " + right);
     }
     // the first segment is the table name, so + 1
     return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
