@@ -39,4 +39,8 @@ public interface GroupedAccumulator {
   void prepareFinal();
 
   void reset();
+
+  default void close() {
+    // do nothing
+  }
 }

@@ -275,7 +275,8 @@ class RatisConsensus implements IConsensus {
   }
 
   /** Launch a consensus write with retry mechanism */
-  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
+  private RaftClientReply writeWithRetry(
+      CheckedSupplier<RaftClientReply, IOException> caller, RaftGroupId groupId)
       throws IOException {
     RaftClientReply reply = null;
     try {
@@ -287,6 +288,9 @@ class RatisConsensus implements IConsensus {
 
     if (reply == null) {
       return RaftClientReply.newBuilder()
+          .setClientId(ClientId.emptyClientId())
+          .setServerId(server.get().getId())
+          .setGroupId(groupId)
           .setSuccess(false)
           .setException(
               new RaftException("null reply received in writeWithRetry for request " + caller))
@@ -295,13 +299,14 @@ class RatisConsensus implements IConsensus {
     return reply;
   }
 
-  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
-    return writeWithRetry(() -> server.get().submitClientRequest(request));
+  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request, RaftGroupId groupId)
+      throws IOException {
+    return writeWithRetry(() -> server.get().submitClientRequest(request), groupId);
   }
 
-  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
-      throws IOException {
-    return writeWithRetry(() -> client.getRaftClient().io().send(message));
+  private RaftClientReply writeRemotelyWithRetry(
+      RatisClient client, Message message, RaftGroupId groupId) throws IOException {
+    return writeWithRetry(() -> client.getRaftClient().io().send(message), groupId);
   }
 
   /**
@@ -323,7 +328,7 @@ class RatisConsensus implements IConsensus {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
-        logger.warn("leader {} read only, force step down failed due to {}", myself, e);
+        logger.warn("leader {} read only, force step down failed due to, ", myself, e);
       }
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     }
@@ -344,7 +349,7 @@ class RatisConsensus implements IConsensus {
         && waitUntilLeaderReady(raftGroupId)) {
       try (AutoCloseable ignored =
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
-        RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
+        RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest, raftGroupId);
         if (localServerReply.isSuccess()) {
           ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
           return (TSStatus) responseMessage.getContentHolder();
@@ -365,7 +370,7 @@ class RatisConsensus implements IConsensus {
     try (AutoCloseable ignored =
             RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
         RatisClient client = getRaftClient(raftGroup)) {
-      RaftClientReply reply = writeRemotelyWithRetry(client, message);
+      RaftClientReply reply = writeRemotelyWithRetry(client, message, raftGroupId);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
