@@ -175,6 +175,34 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected abstract void analyzeSingleTsFile(final File tsFile)
       throws IOException, AuthException, VerifyMetadataException;
 
+  protected void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
+    final TSStatus status =
+        isTableModelStatement
+            ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
+                loadTsFileTableStatement)
+            : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileTreeStatement);
+
+    if (status != null
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      analysis.setFailStatus(status);
+    }
+    analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
+  }
+
+  protected void setRealStatement(IAnalysis analysis) {
+    if (isTableModelStatement) {
+      // Do nothing by now.
+    } else {
+      analysis.setRealStatement(loadTsFileTreeStatement);
+    }
+  }
+
+  protected String getStatementString() {
+    return statementString;
+  }
+
   protected TsFileResource constructTsFileResource(
       final TsFileSequenceReader reader, final File tsFile) throws IOException {
     final TsFileResource tsFileResource = new TsFileResource(tsFile);
@@ -186,33 +214,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       tsFileResource.deserialize();
     }
     return tsFileResource;
-  }
-
-  public void executeDataTypeConversionOnTypeMismatch(IAnalysis analysis) {
-    final TSStatus status =
-        isTableModelStatement
-            ? loadTsFileDataTypeMismatchConvertHandler.convertForTableModel(
-                loadTsFileTableStatement)
-            : loadTsFileDataTypeMismatchConvertHandler.convertForTreeModel(loadTsFileTreeStatement);
-
-    if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      analysis.setFailStatus(status);
-    }
-
-    analysis.setFinishQueryAfterAnalyze(true);
-    setRealStatement(analysis);
-  }
-
-  protected String getStatementString() {
-    return statementString;
-  }
-
-  protected void setRealStatement(IAnalysis analysis) {
-    if (isTableModelStatement) {
-      // Do nothing by now.
-    } else {
-      analysis.setRealStatement(loadTsFileTreeStatement);
-    }
   }
 
   protected void addTsFileResource(TsFileResource tsFileResource) {
