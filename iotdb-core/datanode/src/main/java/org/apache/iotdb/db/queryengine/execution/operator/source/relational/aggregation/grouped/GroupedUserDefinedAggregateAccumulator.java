@@ -131,4 +131,10 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   public void reset() {
     stateArray.reset();
   }
+
+  @Override
+  public void close() {
+    aggregateFunction.beforeDestroy();
+    stateArray.forEach(State::destroyState);
+  }
 }

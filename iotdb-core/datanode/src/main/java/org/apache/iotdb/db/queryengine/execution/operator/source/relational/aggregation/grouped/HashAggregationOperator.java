@@ -197,6 +197,7 @@ public class HashAggregationOperator extends AbstractOperator {
   @Override
   public void close() throws Exception {
     child.close();
+    aggregators.forEach(GroupedAggregator::close);
   }
 
   @Override
