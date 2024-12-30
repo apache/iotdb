@@ -40,8 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -197,27 +195,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  protected void prepareCompactionModFiles() throws IOException {
-    if (!TsFileResource.useSharedModFile) {
-      return;
-    }
-    TsFileResource firstSource = filesView.sourceFilesInLog.get(0);
-    TsFileResource firstTarget = filesView.targetFilesInPerformer.get(0);
-    ModFileManagement modFileManagement = firstSource.getModFileManagement();
-    ModificationFile modificationFile = modFileManagement.allocateFor(firstTarget);
-    for (TsFileResource tsFileResource : filesView.targetFilesInPerformer) {
-      tsFileResource.setModFileManagement(modFileManagement);
-      modFileManagement.addReference(tsFileResource, modificationFile);
-      tsFileResource.setSharedModFile(modificationFile, false);
-    }
-    for (TsFileResource tsFileResource : filesView.sourceFilesInLog) {
-      tsFileResource.setCompactionModFile(modificationFile);
-    }
-  }
-
   protected void prepare() throws IOException, DiskSpaceInsufficientException {
     calculateSourceFilesAndTargetFiles();
-    prepareCompactionModFiles();
+    CompactionUtils.prepareCompactionModFiles(
+        filesView.targetFilesInPerformer, filesView.sourceFilesInLog);
     isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
     Arrays.fill(isHoldingWriteLock, false);
     String dataDirectory =
