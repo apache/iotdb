@@ -154,21 +154,21 @@ public class IoTDBDeletionTableIT {
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals(
-            "701: The column 'attr1' does not exist or is not an tag column", e.getMessage());
+            "701: The column 'attr1' does not exist or is not a tag column", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's3' does not exist or is not an tag column", e.getMessage());
+        assertEquals("701: The column 's3' does not exist or is not a tag column", e.getMessage());
       }
 
       try {
         statement.execute("DELETE FROM vehicle1  WHERE s4 != true");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: The column 's4' does not exist or is not an tag column", e.getMessage());
+        assertEquals("701: The column 's4' does not exist or is not a tag column", e.getMessage());
       }
 
       try {
