@@ -46,6 +46,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
@@ -110,7 +111,7 @@ public class InformationSchemaContentSupplierFactory {
         totalSize = resp.getDatabaseInfoMapSize();
         iterator = resp.getDatabaseInfoMap().entrySet().iterator();
       } catch (final Exception e) {
-        // TODO
+        lastException = e;
       }
     }
 
@@ -154,6 +155,7 @@ public class InformationSchemaContentSupplierFactory {
     // We initialize it later for the convenience of data preparation
     protected int totalSize;
     protected int nextConsumedIndex;
+    protected Exception lastException;
 
     private TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -167,6 +169,9 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public TsBlock next() {
+      if (Objects.nonNull(lastException)) {
+        throw new NoSuchElementException(lastException.getMessage());
+      }
       if (nextConsumedIndex >= totalSize) {
         throw new NoSuchElementException();
       }
