@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaRes
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -1200,6 +1201,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public ShowTable4InformationSchemaResp showTables4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new ShowTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllTables().entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          entry.getValue().stream()
+                              .map(
+                                  pair -> {
+                                    final TTableInfo info =
+                                        new TTableInfo(
+                                            pair.getLeft().getTableName(),
+                                            pair.getLeft()
+                                                .getPropValue(TTL_PROPERTY)
+                                                .orElse(TTL_INFINITE));
+                                    info.setState(pair.getRight().ordinal());
+                                    return info;
+                                  })
+                              .collect(Collectors.toList()))));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public FetchTableResp fetchTables(final FetchTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
@@ -1234,6 +1263,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           StatusUtils.OK,
           tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
           null);
+    } catch (final MetadataException e) {
+      return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public DescTableResp descTable4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
+      final Pair<TsTable, Set<String>> pair =
+          tableModelMTree.getTableSchemaDetails(databasePath, plan.getTableName());
+      return new DescTableResp(StatusUtils.OK, pair.getLeft(), pair.getRight());
+
     } catch (final MetadataException e) {
       return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
     } finally {
