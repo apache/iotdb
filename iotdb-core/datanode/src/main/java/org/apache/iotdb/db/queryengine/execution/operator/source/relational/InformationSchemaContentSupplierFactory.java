@@ -41,34 +41,38 @@ public class InformationSchemaContentSupplierFactory {
   public static Iterator<TsBlock> getSupplier(
       final String tableName, final List<TSDataType> dataTypes) {
     if (tableName.equals(InformationSchema.QUERIES)) {
-      return new TsBlockSupplier(
-          dataTypes, Coordinator.getInstance().getAllQueryExecutions().size()) {
-
-        private final long currTime = System.currentTimeMillis();
-        private final List<IQueryExecution> queryExecutions =
-            Coordinator.getInstance().getAllQueryExecutions();
-
-        @Override
-        protected void constructLine() {
-          IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
-
-          if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
-            String[] splits = queryExecution.getQueryId().split("_");
-            int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
-
-            columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
-            columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
-            columnBuilders[2].writeInt(dataNodeId);
-            columnBuilders[3].writeFloat(
-                (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
-            columnBuilders[4].writeBinary(
-                BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
-            resultBuilder.declarePosition();
-          }
-        }
-      };
+      return new QueriesSupplier(dataTypes);
     } else {
       throw new UnsupportedOperationException("Unknown table: " + tableName);
+    }
+  }
+
+  private static class QueriesSupplier extends TsBlockSupplier {
+    private final long currTime = System.currentTimeMillis();
+    private final List<IQueryExecution> queryExecutions =
+        Coordinator.getInstance().getAllQueryExecutions();
+
+    private QueriesSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes, Coordinator.getInstance().getAllQueryExecutions().size());
+    }
+
+    @Override
+    protected void constructLine() {
+      IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
+
+      if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+        String[] splits = queryExecution.getQueryId().split("_");
+        int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
+
+        columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
+        columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
+        columnBuilders[2].writeInt(dataNodeId);
+        columnBuilders[3].writeFloat(
+            (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
+        columnBuilders[4].writeBinary(
+            BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+        resultBuilder.declarePosition();
+      }
     }
   }
 
