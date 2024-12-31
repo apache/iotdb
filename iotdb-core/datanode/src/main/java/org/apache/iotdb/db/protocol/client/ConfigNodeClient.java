@@ -125,6 +125,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TInformationSchemaDescTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TInformationSchemaShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -1289,11 +1291,23 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TInformationSchemaShowTableResp showTables4InformationSchema() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.describeTable(database, tableName, isDetails),
         resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TInformationSchemaDescTableResp descTables4InformationSchema() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.descTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
