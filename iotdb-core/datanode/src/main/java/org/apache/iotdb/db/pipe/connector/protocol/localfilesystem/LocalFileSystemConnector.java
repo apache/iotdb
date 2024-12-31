@@ -89,7 +89,7 @@ public class LocalFileSystemConnector implements PipeConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    handshake();
+    // Do nothing
   }
 
   @Override
