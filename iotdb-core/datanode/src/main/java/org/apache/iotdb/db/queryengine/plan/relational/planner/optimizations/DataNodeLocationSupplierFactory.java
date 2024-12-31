@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -92,14 +92,7 @@ public class DataNodeLocationSupplierFactory {
       } else if (tableName.equals(InformationSchema.DATABASES)
           || tableName.equals(InformationSchema.TABLES)
           || tableName.equals(InformationSchema.COLUMNS)) {
-        return Collections.singletonList(
-            new TDataNodeLocation(
-                config.getDataNodeId(),
-                null,
-                new TEndPoint(config.getInternalAddress(), config.getInternalPort()),
-                null,
-                null,
-                null));
+        return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
       } else {
         throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
