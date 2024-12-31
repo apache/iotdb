@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class CompactionEstimateUtils {
 
@@ -101,11 +102,12 @@ public class CompactionEstimateUtils {
         averageChunkMetadataSize);
   }
 
-  public static long roughEstimateMetadataCostInCompaction(
+  static Optional<MetadataInfo> collectMetadataInfo(
       List<TsFileResource> resources, CompactionType taskType) throws IOException {
     if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return -1L;
+      return Optional.empty();
     }
+    MetadataInfo metadataInfo = new MetadataInfo();
     long cost = 0L;
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
@@ -113,28 +115,39 @@ public class CompactionEstimateUtils {
         cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
-          for (Map.Entry<IDeviceID, Long> entry : getDeviceMetadataSizeMap(reader).entrySet()) {
+          for (Map.Entry<IDeviceID, Long> entry :
+              getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
           }
         }
       }
-      return cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
+      metadataInfo.metadataMemCost =
+          cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
+      return Optional.of(metadataInfo);
     } finally {
       CompactionEstimateUtils.releaseReadLock(resources);
     }
   }
 
-  public static Map<IDeviceID, Long> getDeviceMetadataSizeMap(CompactionTsFileReader reader)
-      throws IOException {
+  public static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
+      CompactionTsFileReader reader, MetadataInfo roughMetadataInfo) throws IOException {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
-      IDeviceID deviceID = deviceIterator.next().getLeft();
+      Pair<IDeviceID, Boolean> deviceAlignedPair = deviceIterator.next();
+      IDeviceID deviceID = deviceAlignedPair.getLeft();
+      boolean isAligned = deviceAlignedPair.getRight();
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
       long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
       Map<String, Pair<Long, Long>> timeseriesMetadataOffsetByDevice =
           reader.getTimeseriesMetadataOffsetByDevice(firstMeasurementNodeOfCurrentDevice);
+      if (isAligned) {
+        roughMetadataInfo.maxConcurrentAlignedSeriesNum =
+            Math.max(
+                roughMetadataInfo.maxConcurrentAlignedSeriesNum,
+                timeseriesMetadataOffsetByDevice.size());
+      }
       for (Pair<Long, Long> offsetPair : timeseriesMetadataOffsetByDevice.values()) {
         totalTimeseriesMetadataSizeOfCurrentDevice += (offsetPair.right - offsetPair.left);
       }
@@ -167,5 +180,24 @@ public class CompactionEstimateUtils {
 
   public static void releaseReadLock(List<TsFileResource> resources) {
     resources.forEach(TsFileResource::readUnlock);
+  }
+}
+
+class MetadataInfo {
+  public long metadataMemCost;
+  public int maxConcurrentAlignedSeriesNum;
+
+  public int getMaxConcurrentSeriesNum() {
+    int compactionMaxAlignedSeriesNumInOneBatch =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
+    compactionMaxAlignedSeriesNumInOneBatch =
+        Math.min(
+            compactionMaxAlignedSeriesNumInOneBatch <= 0
+                ? Integer.MAX_VALUE
+                : compactionMaxAlignedSeriesNumInOneBatch,
+            maxConcurrentAlignedSeriesNum);
+    return Math.max(
+        compactionMaxAlignedSeriesNumInOneBatch,
+        IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum());
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
@@ -75,21 +76,18 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   @Override
   public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
       throws IOException {
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
-            resources, CompactionType.INNER_SEQ_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
+    Optional<MetadataInfo> metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfo(resources, CompactionType.INNER_SEQ_COMPACTION);
+    if (!metadataInfo.isPresent()) {
+      return -1L;
     }
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    int maxConcurrentSeriesNum = metadataInfo.get().getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     // source files (chunk + uncompressed page)
     // target file (chunk + unsealed page writer)
     return 2 * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataCost;
+        + metadataInfo.get().metadataMemCost;
   }
 }
