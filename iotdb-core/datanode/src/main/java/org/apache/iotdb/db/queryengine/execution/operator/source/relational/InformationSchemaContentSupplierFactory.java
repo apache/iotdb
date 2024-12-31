@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -31,17 +36,23 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.BytesUtils;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
   public static Iterator<TsBlock> getSupplier(
-      final String tableName, final List<TSDataType> dataTypes) {
+      final String tableName, final List<TSDataType> dataTypes, final String userName) {
     if (tableName.equals(InformationSchema.QUERIES)) {
       return new QueriesSupplier(dataTypes);
+    } else if (tableName.equals(InformationSchema.DATABASES)) {
+      return new DatabaseSupplier(dataTypes);
     } else {
       throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -53,7 +64,8 @@ public class InformationSchemaContentSupplierFactory {
         Coordinator.getInstance().getAllQueryExecutions();
 
     private QueriesSupplier(final List<TSDataType> dataTypes) {
-      super(dataTypes, Coordinator.getInstance().getAllQueryExecutions().size());
+      super(dataTypes);
+      this.totalSize = queryExecutions.size();
     }
 
     @Override
@@ -76,17 +88,40 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
+  private static class DatabaseSupplier extends TsBlockSupplier {
+    private final TShowDatabaseResp resp;
+
+    private DatabaseSupplier(final List<TSDataType> dataTypes) {
+      super(dataTypes);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        resp =
+            client.showDatabase(
+                new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
+                    .setIsTableModel(true));
+      } catch (final Exception e) {
+        // TODO
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      // TODO
+    }
+  }
+
   private abstract static class TsBlockSupplier implements Iterator<TsBlock> {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
-    private final int totalSize;
+
+    // We initialize it later for the convenience of data preparation
+    protected int totalSize;
     protected int nextConsumedIndex;
 
-    private TsBlockSupplier(final List<TSDataType> dataTypes, final int totalSize) {
+    private TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
       this.columnBuilders = resultBuilder.getValueColumnBuilders();
-      this.totalSize = totalSize;
     }
 
     @Override
