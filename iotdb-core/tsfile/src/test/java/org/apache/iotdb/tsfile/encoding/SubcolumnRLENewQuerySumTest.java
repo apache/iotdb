@@ -13,16 +13,16 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnRLEQuerySumTest {
-    // SubcolumnByteRLETest Query Sum
+public class SubcolumnRLENewQuerySumTest {
+    // SubcolumnByteRLENewTest Query Sum
 
     public static void Query(byte[] encoded_result) {
 
         int startBitPosition = 0;
-        int data_length = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -40,7 +40,7 @@ public class SubcolumnRLEQuerySumTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                int value = SubcolumnByteRLENewTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
                 result[result_length[0]] = value;
                 result_length[0]++;
                 startBitPosition += 32;
@@ -61,10 +61,10 @@ public class SubcolumnRLEQuerySumTest {
             int startBitPosition, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = SubcolumnByteRLENewTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int m = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 6);
+        int m = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         if (m == 0) {
@@ -73,23 +73,23 @@ public class SubcolumnRLEQuerySumTest {
             return startBitPosition;
         }
 
-        int bw = SubcolumnByteRLETest.bitWidth(block_size);
+        byte bw = SubcolumnByteRLENewTest.bitWidthByte(block_size);
 
-        int beta = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 6);
+        byte beta = SubcolumnByteRLENewTest.bytesToByte(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         int l = (m + beta - 1) / beta;
 
-        int[] bitWidthList = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, 8, l);
+        byte[] bitWidthList = SubcolumnByteRLENewTest.bitUnpackingByte(encoded_result, startBitPosition, 8, l);
         startBitPosition += 8 * l;
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteRLETest.bytesToBool(encoded_result, startBitPosition);
+            boolean type = SubcolumnByteRLENewTest.bytesToBool(encoded_result, startBitPosition);
             startBitPosition += 1;
             if (!type) {
 
                 for (int j = 0; j < remainder; j++) {
-                    int value = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition + j * bitWidthList[i],
+                    byte value = SubcolumnByteRLENewTest.bytesToByte(encoded_result, startBitPosition + j * bitWidthList[i],
                             bitWidthList[i]);
                     result[result_length[0]] += value << (i * beta);
                 }
@@ -97,13 +97,13 @@ public class SubcolumnRLEQuerySumTest {
                 startBitPosition += bitWidthList[i] * remainder;
 
             } else {
-                int index = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 16);
+                int index = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
-                int[] run_length = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bw, index);
+                int[] run_length = SubcolumnByteRLENewTest.bitUnpacking(encoded_result, startBitPosition, bw, index);
                 startBitPosition += bw * index;
 
-                int[] rle_values = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
+                byte[] rle_values = SubcolumnByteRLENewTest.bitUnpackingByte(encoded_result, startBitPosition, bitWidthList[i],
                         index);
                 startBitPosition += bitWidthList[i] * index;
 
@@ -157,7 +157,7 @@ public class SubcolumnRLEQuerySumTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_sum_0.csv";
+        String outputPath = output_parent_dir + "test_byte_query_sum_1.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -219,7 +219,7 @@ public class SubcolumnRLEQuerySumTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = SubcolumnByteRLETest.Encoder(data2_arr, block_size, encoded_result);
+                length = SubcolumnByteRLENewTest.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
