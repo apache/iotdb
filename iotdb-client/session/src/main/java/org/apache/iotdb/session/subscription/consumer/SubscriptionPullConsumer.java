@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.slf4j.Logger;
@@ -155,7 +156,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throws SubscriptionException {
     // parse topic names from external source
     Set<String> parsedTopicNames =
-        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+        topicNames.stream()
+            .map(IdentifierUtils::checkAndParseIdentifier)
+            .collect(Collectors.toSet());
 
     if (!parsedTopicNames.isEmpty()) {
       // filter unsubscribed topics
@@ -180,7 +183,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       LOGGER.info(
           "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
           this,
-          parsedTopicNames,
+          CollectionUtils.getLimitedString(parsedTopicNames, 32),
           timeoutMs);
       return messages;
     }

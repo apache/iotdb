@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -601,7 +601,17 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
+  // cannot use FileTimeIndex
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  // can use FileTimeIndex
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 
@@ -1435,28 +1445,32 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
     }
 
-    exclusiveModFileFuture =
-        upgradeModFileThreadPool.submit(
-            () -> {
-              ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
-              newMFile.getFile().delete();
-              try {
-                for (Modification oldMod : oldModFile.getModifications()) {
-                  newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
-                }
-              } finally {
-                newMFile.close();
-              }
-              oldModFile.remove();
-              return newMFile;
-            });
+    if (upgradeModFileThreadPool != null) {
+      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
+    } else {
+      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
+    }
+  }
+
+  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
+    ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
+    newMFile.getFile().delete();
+    try {
+      for (Modification oldMod : oldModFile.getModifications()) {
+        newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
+      }
+    } finally {
+      newMFile.close();
+    }
+    oldModFile.remove();
+    return newMFile;
   }
 
   public TsFileResource getPrev() {

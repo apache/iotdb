@@ -1840,8 +1840,8 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
-    public String getSQLDialect() {
-      return IClientSession.SqlDialect.TREE.toString();
+    public IClientSession.SqlDialect getSQLDialect() {
+      return IClientSession.SqlDialect.TREE;
     }
 
     @Override
@@ -1891,6 +1891,11 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public boolean isQuery() {
+      return false;
+    }
+
+    @Override
+    public boolean isUserQuery() {
       return false;
     }
   }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -37,25 +37,23 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
   public MergeSortInnerJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
-      int leftJoinKeyPosition,
+      int[] leftJoinKeyPositions,
       int[] leftOutputSymbolIdx,
       Operator rightChild,
-      int rightJoinKeyPosition,
+      int[] rightJoinKeyPositions,
       int[] rightOutputSymbolIdx,
-      JoinKeyComparator joinKeyComparator,
-      List<TSDataType> dataTypes,
-      Type joinKeyType) {
+      List<JoinKeyComparator> joinKeyComparators,
+      List<TSDataType> dataTypes) {
     super(
         operatorContext,
         leftChild,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftOutputSymbolIdx,
         rightChild,
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightOutputSymbolIdx,
-        joinKeyComparator,
-        dataTypes,
-        joinKeyType);
+        joinKeyComparators,
+        dataTypes);
   }
 
   @Override
@@ -87,13 +85,19 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in right, because NULL value can not appear in the inner join result
+    while (currentRightHasNullValue()) {
+      if (rightFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue right < left, until right >= left
-    while (comparator.lessThan(
+    while (lessThan(
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex,
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex)) {
       if (rightFinishedWithIncIndex()) {
         return true;
@@ -103,17 +107,21 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
       return true;
     }
 
+    // skip all NULL values in left, because NULL value can not appear in the inner join result
+    while (currentLeftHasNullValue()) {
+      if (leftFinishedWithIncIndex()) {
+        return true;
+      }
+    }
     // continue left < right, until left >= right
-    while (comparator.lessThan(
+    while (lessThan(
         leftBlock,
-        leftJoinKeyPosition,
+        leftJoinKeyPositions,
         leftIndex,
         rightBlockList.get(rightBlockListIdx),
-        rightJoinKeyPosition,
+        rightJoinKeyPositions,
         rightIndex)) {
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
+      if (leftFinishedWithIncIndex()) {
         return true;
       }
     }
@@ -122,15 +130,24 @@ public class MergeSortInnerJoinOperator extends AbstractMergeSortJoinOperator {
     }
 
     // has right values equal to current left, append to join result, inc leftIndex
-    if (hasMatchedRightValueToProbeLeft()) {
-      leftIndex++;
-      if (leftIndex >= leftBlock.getPositionCount()) {
-        resetLeftBlock();
-        return true;
-      }
+    return hasMatchedRightValueToProbeLeft() && leftFinishedWithIncIndex();
+  }
+
+  @Override
+  protected boolean lessThan(
+      TsBlock leftBlock,
+      int[] leftPositions,
+      int lIndex,
+      TsBlock rightBlock,
+      int[] rightPositions,
+      int rIndex) {
+
+    // if join key size equals to 1, can return true in inner join
+    if (rightPositions.length == 1 && rightBlock.getColumn(rightPositions[0]).isNull(rIndex)) {
+      return true;
     }
 
-    return false;
+    return examineLessThan(leftBlock, leftPositions, lIndex, rightBlock, rightPositions, rIndex);
   }
 
   @Override

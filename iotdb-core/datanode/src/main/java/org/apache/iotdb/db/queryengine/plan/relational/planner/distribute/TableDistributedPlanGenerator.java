@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -112,22 +111,22 @@ public class TableDistributedPlanGenerator
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   public TableDistributedPlanGenerator(
-      MPPQueryContext queryContext,
-      Analysis analysis,
-      SymbolAllocator symbolAllocator,
-      DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+      final MPPQueryContext queryContext,
+      final Analysis analysis,
+      final SymbolAllocator symbolAllocator,
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
-  public List<PlanNode> genResult(PlanNode node, PlanContext context) {
-    List<PlanNode> res = node.accept(this, context);
+  public List<PlanNode> genResult(final PlanNode node, final PlanContext context) {
+    final List<PlanNode> res = node.accept(this, context);
     if (res.size() == 1) {
       return res;
     } else if (res.size() > 1) {
-      CollectNode collectNode =
+      final CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
@@ -138,34 +137,35 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitPlan(
-      PlanNode node, TableDistributedPlanGenerator.PlanContext context) {
+      final PlanNode node, final TableDistributedPlanGenerator.PlanContext context) {
     if (node instanceof WritePlanNode) {
       return Collections.singletonList(node);
     }
 
-    List<List<PlanNode>> children =
+    final List<List<PlanNode>> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .collect(toImmutableList());
 
-    PlanNode newNode = node.clone();
-    for (List<PlanNode> planNodes : children) {
+    final PlanNode newNode = node.clone();
+    for (final List<PlanNode> planNodes : children) {
       planNodes.forEach(newNode::addChild);
     }
     return Collections.singletonList(newNode);
   }
 
   @Override
-  public List<PlanNode> visitExplainAnalyze(ExplainAnalyzeNode node, PlanContext context) {
-    List<PlanNode> children = genResult(node.getChild(), context);
+  public List<PlanNode> visitExplainAnalyze(
+      final ExplainAnalyzeNode node, final PlanContext context) {
+    final List<PlanNode> children = genResult(node.getChild(), context);
     node.setChild(children.get(0));
     return Collections.singletonList(node);
   }
 
   @Override
-  public List<PlanNode> visitOutput(OutputNode node, PlanContext context) {
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+  public List<PlanNode> visitOutput(final OutputNode node, final PlanContext context) {
+    final List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    final OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
@@ -457,18 +457,19 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitDeviceTableScan(DeviceTableScanNode node, PlanContext context) {
-    Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
+  public List<PlanNode> visitDeviceTableScan(
+      final DeviceTableScanNode node, final PlanContext context) {
+    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
 
-    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
-      List<TRegionReplicaSet> regionReplicaSets =
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      final List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
               node.getQualifiedObjectName().getDatabaseName(),
               deviceEntry.getDeviceID(),
               node.getTimeFilter());
 
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        DeviceTableScanNode deviceTableScanNode =
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
                 k -> {
@@ -498,12 +499,13 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
+    final List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
-    for (Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry : tableScanNodeMap.entrySet()) {
-      TRegionReplicaSet regionReplicaSet = entry.getKey();
-      DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
+    for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
+        tableScanNodeMap.entrySet()) {
+      final TRegionReplicaSet regionReplicaSet = entry.getKey();
+      final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
       subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subDeviceTableScanNode);
@@ -741,18 +743,18 @@ public class TableDistributedPlanGenerator
   }
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
-      OrderingScheme childOrdering, List<PlanNode> childrenNodes) {
+      final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
     checkArgument(!childrenNodes.isEmpty(), "childrenNodes should not be empty");
 
     if (childrenNodes.size() == 1) {
       return childrenNodes.get(0);
     }
 
-    PlanNode firstChild = childrenNodes.get(0);
+    final PlanNode firstChild = childrenNodes.get(0);
 
     // children has sort property, use MergeSort to merge children
     if (childOrdering != null) {
-      MergeSortNode mergeSortNode =
+      final MergeSortNode mergeSortNode =
           new MergeSortNode(queryId.genPlanNodeId(), childOrdering, firstChild.getOutputSymbols());
       childrenNodes.forEach(mergeSortNode::addChild);
       nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), childOrdering);
@@ -760,7 +762,7 @@ public class TableDistributedPlanGenerator
     }
 
     // children has no sort property, use CollectNode to merge children
-    CollectNode collectNode =
+    final CollectNode collectNode =
         new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
     return collectNode;
@@ -807,7 +809,7 @@ public class TableDistributedPlanGenerator
         break;
       }
       if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
-          == TsTableColumnCategory.ID) {
+          == TsTableColumnCategory.TAG) {
         // segments[0] is always tableName
         orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
       } else {
@@ -941,12 +943,11 @@ public class TableDistributedPlanGenerator
 
   private List<PlanNode> visitAbstractTableDeviceQuery(
       final AbstractTableDeviceQueryNode node, final PlanContext context) {
-    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
-        .get(database)
+        .get(node.getDatabase())
         .forEach(
             (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
 
@@ -970,7 +971,7 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitTableDeviceFetch(
       final TableDeviceFetchNode node, final PlanContext context) {
-    final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
+    final String database = node.getDatabase();
     final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     final SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
     final Map<TSeriesPartitionSlot, TRegionReplicaSet> databaseMap =

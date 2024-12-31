@@ -41,6 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.LongConsumer;
 
 /**
  * This class extends the TsFileSequenceReader class to read and manage TsFile with a focus on
@@ -72,9 +73,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   }
 
   @Override
-  protected ByteBuffer readData(long position, int totalSize) throws IOException {
+  protected ByteBuffer readData(long position, int totalSize, LongConsumer ioSizeRecorder)
+      throws IOException {
     acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
-    ByteBuffer buffer = super.readData(position, totalSize);
+    ByteBuffer buffer = super.readData(position, totalSize, ioSizeRecorder);
     if (position >= metadataOffset) {
       CompactionMetrics.getInstance()
           .recordReadInfo(compactionType, CompactionIoDataType.METADATA, totalSize);
@@ -112,14 +114,6 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   public InputStream wrapAsInputStream() throws IOException {
     return this.tsFileInput.wrapAsInputStream();
-  }
-
-  public ByteBuffer readPageWithoutUnCompressing(long startOffset, int pageSize)
-      throws IOException {
-    if (pageSize == 0) {
-      return null;
-    }
-    return readData(startOffset, pageSize);
   }
 
   public Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>>

@@ -32,22 +32,23 @@ public class PathPatternUtil {
    * The input string is a single node of a path pattern. Return true if the node may be a
    * patternNode that can match batch explicit node names. e.g. *, e.g. *, **, d*, *d*.
    */
-  public static boolean hasWildcard(String node) {
+  public static boolean hasWildcard(final String node) {
     return node != null
         && (node.startsWith(ONE_LEVEL_PATH_WILDCARD) || node.endsWith(ONE_LEVEL_PATH_WILDCARD));
   }
 
-  public static boolean isMultiLevelMatchWildcard(String node) {
+  public static boolean isMultiLevelMatchWildcard(final String node) {
     return MULTI_LEVEL_PATH_WILDCARD.equals(node);
   }
 
   /**
    * Determine if a node pattern matches a node name.
    *
-   * @param patternNode must be a string starts or ends with *, e.g. *, **, d*, *d*
+   * @param patternNode must be a full path node or a string starts or ends with *, e.g. d, *, **,
+   *     d*, *d*
    * @param nodeName node to match
    */
-  public static boolean isNodeMatch(String patternNode, String nodeName) {
+  public static boolean isNodeMatch(final String patternNode, final String nodeName) {
     if (patternNode.equals(ONE_LEVEL_PATH_WILDCARD)
         || patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
       return true;

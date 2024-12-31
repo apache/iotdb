@@ -26,7 +26,7 @@ public class NoAvailableRegionGroupException extends ConfigNodeException {
   private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
   private static final String DATA_REGION_GROUP = "DataRegionGroup";
 
-  public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
+  public NoAvailableRegionGroupException(final TConsensusGroupType regionGroupType) {
     super(
         String.format(
             "There are no available %s RegionGroups currently, "

@@ -111,8 +111,9 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
           TSStatus result;
           try {
             result =
-                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                    statement, statementExecutor.execute(statement));
+                statement.accept(
+                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                    statementExecutor.execute(statement));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -123,8 +124,9 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
-                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                      statement, statementExecutor.execute(statement));
+                  statement.accept(
+                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                      statementExecutor.execute(statement));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
