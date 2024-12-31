@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -30,15 +32,19 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
+import java.security.AccessControlException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
@@ -52,7 +58,7 @@ public class InformationSchemaContentSupplierFactory {
     if (tableName.equals(InformationSchema.QUERIES)) {
       return new QueriesSupplier(dataTypes);
     } else if (tableName.equals(InformationSchema.DATABASES)) {
-      return new DatabaseSupplier(dataTypes);
+      return new DatabaseSupplier(dataTypes, userName);
     } else {
       throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -89,16 +95,20 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class DatabaseSupplier extends TsBlockSupplier {
-    private final TShowDatabaseResp resp;
+    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private final String userName;
 
-    private DatabaseSupplier(final List<TSDataType> dataTypes) {
+    private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        resp =
+        final TShowDatabaseResp resp =
             client.showDatabase(
                 new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
                     .setIsTableModel(true));
+        totalSize = resp.getDatabaseInfoMapSize();
+        iterator = resp.getDatabaseInfoMap().entrySet().iterator();
       } catch (final Exception e) {
         // TODO
       }
@@ -106,7 +116,33 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      // TODO
+      if (!iterator.hasNext()) {
+        throw new NoSuchElementException();
+      }
+      final Map.Entry<String, TDatabaseInfo> info = iterator.next();
+      try {
+        Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanShowOrUseDatabase(userName, info.getKey());
+      } catch (final AccessControlException e) {
+        return;
+      }
+      final TDatabaseInfo storageGroupInfo = info.getValue();
+      columnBuilders[0].writeBinary(new Binary(info.getKey(), TSFileConfig.STRING_CHARSET));
+
+      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+        columnBuilders[1].writeBinary(
+            new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[1].writeBinary(
+            new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      columnBuilders[2].writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      columnBuilders[3].writeInt(storageGroupInfo.getDataReplicationFactor());
+      columnBuilders[4].writeLong(storageGroupInfo.getTimePartitionInterval());
+      columnBuilders[5].writeInt(storageGroupInfo.getSchemaRegionNum());
+      columnBuilders[6].writeInt(storageGroupInfo.getDataRegionNum());
+      resultBuilder.declarePosition();
     }
   }
 
