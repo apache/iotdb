@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.export.ExportTsFileConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.consensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
@@ -28,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSslConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSyncConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.localfilesystem.LocalFileSystemConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
@@ -88,7 +88,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
-  EXPORT_TSFILE_CONNECTOR("export-tsfile-connector", ExportTsFileConnector.class),
+  LOCAL_FILE_SYSTEM_CONNECTOR("local-file-system-connector", LocalFileSystemConnector.class),
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
@@ -102,7 +102,7 @@ public enum BuiltinPipePlugin {
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
   PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncConnector.class),
-  EXPORT_TSFILE_SINK("export-tsfile-sink", ExportTsFileConnector.class),
+  LOCAL_FILE_SYSTEM_SINK("local-file-system-sink", LocalFileSystemConnector.class),
   ;
 
   private final String pipePluginName;
@@ -158,7 +158,7 @@ public enum BuiltinPipePlugin {
                   OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
-                  EXPORT_TSFILE_CONNECTOR.getPipePluginName().toUpperCase(),
+                  LOCAL_FILE_SYSTEM_CONNECTOR.getPipePluginName().toUpperCase(),
                   // Sinks
                   IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
@@ -168,5 +168,5 @@ public enum BuiltinPipePlugin {
                   WRITE_BACK_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase(),
-                  EXPORT_TSFILE_SINK.getPipePluginName().toUpperCase())));
+                  LOCAL_FILE_SYSTEM_SINK.getPipePluginName().toUpperCase())));
 }

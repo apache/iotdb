@@ -238,8 +238,9 @@ public class PipeConnectorConstant {
                   CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
                   CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
 
-  public static final String CONNECTOR_EXPORT_TSFILE_PATH_KEY = "connector.export-tsfile.path";
-  public static final String SINK_EXPORT_TSFILE_PATH_KEY = "sink.export-tsfile.path";
+  public static final String CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY =
+      "connector.local-file-system.path";
+  public static final String SINK_LOCAL_FILE_SYSTEM_PATH_KEY = "sink.local-file-system.path";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

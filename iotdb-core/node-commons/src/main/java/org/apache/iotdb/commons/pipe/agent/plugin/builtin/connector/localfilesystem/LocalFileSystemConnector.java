@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.export;
+package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.localfilesystem;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderConnector;
 
@@ -27,4 +27,4 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderC
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the Export TsFile connector.
  */
-public class ExportTsFileConnector extends PlaceholderConnector {}
+public class LocalFileSystemConnector extends PlaceholderConnector {}

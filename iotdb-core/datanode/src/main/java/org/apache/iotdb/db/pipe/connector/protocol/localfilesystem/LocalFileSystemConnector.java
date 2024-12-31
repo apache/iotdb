@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.exportfile;
+package org.apache.iotdb.db.pipe.connector.protocol.localfilesystem;
 
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -37,11 +37,11 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXPORT_TSFILE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXPORT_TSFILE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOCAL_FILE_SYSTEM_PATH_KEY;
 
-public class ExportTsFileConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ExportTsFileConnector.class);
+public class LocalFileSystemConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileSystemConnector.class);
 
   private File exportPath;
 
@@ -52,18 +52,18 @@ public class ExportTsFileConnector implements PipeConnector {
         args -> (boolean) args[0] || (boolean) args[1],
         String.format(
             "One of %s and %s must be specified",
-            CONNECTOR_EXPORT_TSFILE_PATH_KEY, SINK_EXPORT_TSFILE_PATH_KEY),
-        parameters.hasAttribute(CONNECTOR_EXPORT_TSFILE_PATH_KEY),
-        parameters.hasAttribute(SINK_EXPORT_TSFILE_PATH_KEY));
+            CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY, SINK_LOCAL_FILE_SYSTEM_PATH_KEY),
+        parameters.hasAttribute(CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY),
+        parameters.hasAttribute(SINK_LOCAL_FILE_SYSTEM_PATH_KEY));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    if (parameters.hasAttribute(SINK_EXPORT_TSFILE_PATH_KEY)) {
-      exportPath = new File(parameters.getString(SINK_EXPORT_TSFILE_PATH_KEY));
-    } else if (parameters.hasAttribute(CONNECTOR_EXPORT_TSFILE_PATH_KEY)) {
-      exportPath = new File(parameters.getString(CONNECTOR_EXPORT_TSFILE_PATH_KEY));
+    if (parameters.hasAttribute(SINK_LOCAL_FILE_SYSTEM_PATH_KEY)) {
+      exportPath = new File(parameters.getString(SINK_LOCAL_FILE_SYSTEM_PATH_KEY));
+    } else if (parameters.hasAttribute(CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY)) {
+      exportPath = new File(parameters.getString(CONNECTOR_LOCAL_FILE_SYSTEM_PATH_KEY));
     } else {
       // This should not happen
       throw new PipeException("Export TsFile path not found in parameters");
@@ -76,8 +76,10 @@ public class ExportTsFileConnector implements PipeConnector {
       throw new PipeException("Handshake should not take place before customize");
     }
 
-    if (!exportPath.exists() && !exportPath.mkdirs()) {
-      throw new PipeException("Export TsFile path not exist and can't be created");
+    synchronized (LocalFileSystemConnector.class) {
+      if (!exportPath.exists() && !exportPath.mkdirs()) {
+        throw new PipeException("Export TsFile path not exist and can't be created");
+      }
     }
 
     if (!exportPath.isDirectory()) {
@@ -100,7 +102,7 @@ public class ExportTsFileConnector implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "{} only supports PipeTsFileInsertionEvent", ExportTsFileConnector.class.getName());
+          "{} only supports PipeTsFileInsertionEvent", LocalFileSystemConnector.class.getName());
       return;
     }
 
@@ -128,7 +130,7 @@ public class ExportTsFileConnector implements PipeConnector {
       return;
     }
 
-    if (!event.increaseReferenceCount(ExportTsFileConnector.class.getName())) {
+    if (!event.increaseReferenceCount(LocalFileSystemConnector.class.getName())) {
       return;
     }
     try {
@@ -145,7 +147,7 @@ public class ExportTsFileConnector implements PipeConnector {
           targetPath.getAbsolutePath(),
           e);
     } finally {
-      event.decreaseReferenceCount(ExportTsFileConnector.class.getName(), false);
+      event.decreaseReferenceCount(LocalFileSystemConnector.class.getName(), false);
     }
   }
 
