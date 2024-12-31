@@ -32,8 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -60,12 +58,16 @@ public class SimpleProgressIndexAssigner {
   public void start() {
     isSimpleConsensusEnable =
         IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS);
-    LOGGER.info("Start SimpleProgressIndexAssigner ...");
+    LOGGER.info("Starting SimpleProgressIndexAssigner ...");
 
     try {
       makeDirIfNecessary();
       parseRebootTimes();
       recordRebootTimes();
+      LOGGER.info(
+          "SimpleProgressIndexAssigner started successfully. isSimpleConsensusEnable: {}, rebootTimes: {}",
+          isSimpleConsensusEnable,
+          rebootTimes);
     } catch (Exception e) {
       LOGGER.error("Cannot start SimpleProgressIndexAssigner because of {}", e.getMessage(), e);
     }
@@ -98,11 +100,11 @@ public class SimpleProgressIndexAssigner {
   }
 
   private void recordRebootTimes() {
-    File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
-    try (FileOutputStream fos = new FileOutputStream(file, false);
-        FileChannel channel = fos.getChannel()) {
-      channel.write(ByteBuffer.wrap(String.valueOf(rebootTimes + 1).getBytes()));
-      channel.force(true);
+    final File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
+    try (final FileOutputStream fos = new FileOutputStream(file, false)) {
+      fos.write(String.valueOf(rebootTimes + 1).getBytes(StandardCharsets.UTF_8));
+      fos.flush();
+      fos.getFD().sync();
     } catch (final Exception e) {
       LOGGER.error(
           "Cannot record reboot times {} to file {}, the reboot times will not be updated",
