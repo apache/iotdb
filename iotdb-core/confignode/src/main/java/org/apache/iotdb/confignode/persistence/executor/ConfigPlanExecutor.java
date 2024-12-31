@@ -328,6 +328,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.fetchTables((FetchTablePlan) req);
       case DescTable:
         return clusterSchemaInfo.descTable((DescTablePlan) req);
+      case DescTable4InformationSchema:
+        return clusterSchemaInfo.descTable4InformationSchema();
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:

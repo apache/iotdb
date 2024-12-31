@@ -756,7 +756,7 @@ public class ConfigMTree {
     return getAllDatabasePaths(true).stream()
         .collect(
             Collectors.toMap(
-                PartialPath::getFullPath,
+                databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
                 databasePath -> {
                   try {
                     return getAllTablesUnderSpecificDatabase(databasePath);

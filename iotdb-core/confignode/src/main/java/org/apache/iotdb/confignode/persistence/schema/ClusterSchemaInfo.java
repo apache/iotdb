@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.DescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTable4InformationSchemaResp;
@@ -79,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -1270,16 +1273,46 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public DescTableResp descTable4InformationSchema() {
+  public DescTable4InformationSchemaResp descTable4InformationSchema() {
     databaseReadWriteLock.readLock().lock();
     try {
-      final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
-      final Pair<TsTable, Set<String>> pair =
-          tableModelMTree.getTableSchemaDetails(databasePath, plan.getTableName());
-      return new DescTableResp(StatusUtils.OK, pair.getLeft(), pair.getRight());
-
-    } catch (final MetadataException e) {
-      return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
+      return new DescTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllDatabasePaths(true).stream()
+              .collect(
+                  Collectors.toMap(
+                      databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                      databasePath -> {
+                        try {
+                          return tableModelMTree
+                              .getAllTablesUnderSpecificDatabase(databasePath)
+                              .stream()
+                              .map(
+                                  pair -> {
+                                    try {
+                                      return tableModelMTree.getTableSchemaDetails(
+                                          databasePath, pair.getLeft().getTableName());
+                                    } catch (final MetadataException ignore) {
+                                      // Table path must exist because the "getTableSchemaDetails()"
+                                      // is called in databaseReadWriteLock.readLock().
+                                    }
+                                    return new Pair<TsTable, Set<String>>(null, null);
+                                  })
+                              .collect(
+                                  Collectors.toMap(
+                                      pair -> pair.getLeft().getTableName(),
+                                      pair ->
+                                          new TTableColumnInfo()
+                                              .setTableInfo(
+                                                  TsTableInternalRPCUtil.serializeSingleTsTable(
+                                                      pair.getLeft()))
+                                              .setPreDeletedColumns(pair.getRight())));
+                        } catch (final MetadataException ignore) {
+                          // Database path must exist because the "getAllDatabasePaths()" is called
+                          // in databaseReadWriteLock.readLock().
+                        }
+                        return Collections.emptyMap();
+                      })));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
