@@ -102,15 +102,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               deviceTableScanNode.getPushDownOffset(),
               deviceTableScanNode.isPushLimitToEachDevice()));
     } else if (node instanceof InformationSchemaTableScanNode) {
-      return Optional.of(
-          new InformationSchemaTableScanNode(
-              node.getPlanNodeId(),
-              node.getQualifiedObjectName(),
-              newOutputs,
-              newAssignments,
-              node.getPushDownPredicate(),
-              node.getPushDownLimit(),
-              node.getPushDownOffset()));
+      // For the convenience of execution stage, column-prune for InformationSchemaTableScanNode is
+      // not supported now.
+      return Optional.empty();
     } else {
       throw new UnsupportedOperationException(
           "Unknown TableScanNode type: " + node.getClass().getSimpleName());
