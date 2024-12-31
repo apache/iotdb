@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXPORT_TSFILE_PATH_KEY;
@@ -105,16 +106,41 @@ public class ExportTsFileConnector implements PipeConnector {
 
     final PipeTsFileInsertionEvent event = (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final File sourceTsFile = event.getTsFile();
-    final File targetPath = new File(exportPath, sourceTsFile.getName());
+    final File targetPath =
+        new File(
+            exportPath.getPath()
+                + File.separator
+                + event.getPipeNameWithCreationTime()
+                + File.separator
+                + sourceTsFile.getName());
+    if (targetPath.exists()) {
+      LOGGER.info(
+          "File already exists when exporting tsfile, will skip this file. Origin: {}, Target: {}",
+          sourceTsFile.getAbsolutePath(),
+          targetPath.getAbsolutePath());
+      return;
+    }
+    if (!targetPath.getParentFile().exists() && !targetPath.getParentFile().mkdirs()) {
+      LOGGER.warn(
+          "Parent directory creation failed when exporting tsfile. Origin: {}, Target: {}",
+          sourceTsFile.getAbsolutePath(),
+          targetPath.getAbsolutePath());
+      return;
+    }
 
     if (!event.increaseReferenceCount(ExportTsFileConnector.class.getName())) {
       return;
     }
     try {
       Files.copy(sourceTsFile.toPath(), targetPath.toPath());
+    } catch (final FileAlreadyExistsException e) {
+      LOGGER.info(
+          "File already exists when exporting tsfile, will skip this file. Origin: {}, Target: {}",
+          sourceTsFile.getAbsolutePath(),
+          targetPath.getAbsolutePath());
     } catch (final IOException e) {
       LOGGER.warn(
-          "File renaming failed when exporting tsfile. Origin: {}, Target: {}",
+          "File copy failed when exporting tsfile. Origin: {}, Target: {}",
           sourceTsFile.getAbsolutePath(),
           targetPath.getAbsolutePath(),
           e);
