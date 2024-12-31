@@ -102,7 +102,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               deviceTableScanNode.getPushDownOffset(),
               deviceTableScanNode.isPushLimitToEachDevice()));
     } else if (node instanceof InformationSchemaTableScanNode) {
-      // For the convenience of execution stage, column-prune for InformationSchemaTableScanNode is
+      // For the convenience of process in execution stage, column-prune for
+      // InformationSchemaTableScanNode is
       // not supported now.
       return Optional.empty();
     } else {
