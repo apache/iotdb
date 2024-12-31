@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -28,12 +29,11 @@ public class TreeDeviceViewSchema extends TableSchema {
     super(tableName, columns);
   }
 
-  // TODO
   public String getTreeDBName() {
-    return null;
+    return "root.tree";
   }
 
   public Map<String, String> getMeasurementColumnNameMap() {
-    return null;
+    return Collections.emptyMap();
   }
 }

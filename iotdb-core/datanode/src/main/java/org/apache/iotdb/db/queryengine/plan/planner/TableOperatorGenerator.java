@@ -333,7 +333,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         "view for non aligned devices in tree is not supported");
   }
 
-  private IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
+  public static IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
       String treeDBName) {
     try {
       PartialPath db = new PartialPath(treeDBName);

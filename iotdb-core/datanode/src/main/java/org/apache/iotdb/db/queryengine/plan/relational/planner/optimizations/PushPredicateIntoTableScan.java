@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -478,7 +479,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         startTime = System.nanoTime();
         final DataPartition dataPartition =
             fetchDataPartitionByDevices(
-                tableScanNode.getQualifiedObjectName().getDatabaseName(),
+                // for tree view, we need to pass actual tree db name to this method
+                tableScanNode instanceof TreeDeviceViewScanNode
+                    ? ((TreeDeviceViewScanNode) tableScanNode).getTreeDBName()
+                    : tableScanNode.getQualifiedObjectName().getDatabaseName(),
                 deviceEntries,
                 timeFilter);
 
@@ -759,7 +763,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private DataPartition fetchDataPartitionByDevices(
-        final String database,
+        final String
+            database, // for tree view, database should be the real tree db name with `root.` prefix
         final List<DeviceEntry> deviceEntries,
         final Filter globalTimeFilter) {
       final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
