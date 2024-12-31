@@ -182,22 +182,3 @@ public class CompactionEstimateUtils {
     resources.forEach(TsFileResource::readUnlock);
   }
 }
-
-class MetadataInfo {
-  public long metadataMemCost;
-  public int maxConcurrentAlignedSeriesNum;
-
-  public int getMaxConcurrentSeriesNum() {
-    int compactionMaxAlignedSeriesNumInOneBatch =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
-    compactionMaxAlignedSeriesNumInOneBatch =
-        Math.min(
-            compactionMaxAlignedSeriesNumInOneBatch <= 0
-                ? Integer.MAX_VALUE
-                : compactionMaxAlignedSeriesNumInOneBatch,
-            maxConcurrentAlignedSeriesNum);
-    return Math.max(
-        compactionMaxAlignedSeriesNumInOneBatch,
-        IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum());
-  }
-}
