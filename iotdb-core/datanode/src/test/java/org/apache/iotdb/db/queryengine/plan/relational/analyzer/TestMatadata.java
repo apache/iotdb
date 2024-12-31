@@ -277,16 +277,16 @@ public class TestMatadata implements Metadata {
             new AlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()),
             new NonAlignedAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_4), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
       }
 
       return ImmutableList.of(
           new AlignedDeviceEntry(
               IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
           new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()));
     }
 
     if (expressionList.size() == 2) {
