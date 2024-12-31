@@ -20,18 +20,23 @@
 package org.apache.iotdb.confignode.consensus.response.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.util.Set;
+import java.util.Map;
 
 public class DescTable4InformationSchemaResp implements DataSet {
+  private final TSStatus status;
+  private final Map<String, Map<String, TTableColumnInfo>> tableColumnInfoMap;
 
   public DescTable4InformationSchemaResp(
-      final TSStatus status, final TsTable table, final Set<String> preDeletedColumns) {}
+      final TSStatus status, final Map<String, Map<String, TTableColumnInfo>> tableColumnInfoMap) {
+    this.status = status;
+    this.tableColumnInfoMap = tableColumnInfoMap;
+  }
 
   public TDescTable4InformationSchemaResp convertToTDescTable4InformationSchemaResp() {
-    return null;
+    return new TDescTable4InformationSchemaResp(status).setTableColumnInfoMap(tableColumnInfoMap);
   }
 }
