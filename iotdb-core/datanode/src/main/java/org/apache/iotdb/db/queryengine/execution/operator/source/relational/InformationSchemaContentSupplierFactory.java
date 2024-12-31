@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.BytesUtils;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
@@ -66,7 +67,6 @@ public class InformationSchemaContentSupplierFactory {
           }
         }
       };
-
     } else {
       throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -92,6 +92,9 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public TsBlock next() {
+      if (nextConsumedIndex >= totalSize) {
+        throw new NoSuchElementException();
+      }
       while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
         constructLine();
         nextConsumedIndex++;
