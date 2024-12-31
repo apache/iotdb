@@ -130,13 +130,16 @@ public class AuthorInfo implements SnapshotProcessor {
         int pos = 0;
         for (PartialPath path : list) {
           if (!authorizer.checkUserPrivileges(
-              username, new PrivilegeUnion(path, union.getPrivilegeType()))) {
+              username,
+              new PrivilegeUnion(path, union.getPrivilegeType(), union.isGrantOption()))) {
             failedList.add(pos);
           }
           pos++;
         }
-        if (failedList.size() == list.size()) {
-          status = false;
+        if (union.isGrantOption()) {
+          status = failedList.isEmpty();
+        } else {
+          status = failedList.size() != list.size();
         }
       } else {
         status = authorizer.checkUserPrivileges(username, union);

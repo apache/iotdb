@@ -209,7 +209,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } else {
       return checkPrivilegeFromConfigNode(
               new TCheckUserPrivilegesReq(
-                      username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false)
+                      username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), true)
                   .setPaths(AuthUtils.serializePartialPathList(paths)))
           .getStatus();
     }
