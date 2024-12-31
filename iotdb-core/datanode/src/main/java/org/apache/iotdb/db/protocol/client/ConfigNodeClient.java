@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -125,8 +126,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TInformationSchemaDescTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TInformationSchemaShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -157,6 +156,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
@@ -1291,7 +1291,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TInformationSchemaShowTableResp showTables4InformationSchema() throws TException {
+  public TShowTable4InformationSchemaResp showTables4InformationSchema() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
   }
@@ -1305,7 +1305,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TInformationSchemaDescTableResp descTables4InformationSchema() throws TException {
+  public TDescTable4InformationSchemaResp descTables4InformationSchema() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.descTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
   }
