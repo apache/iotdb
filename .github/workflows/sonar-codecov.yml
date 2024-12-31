@@ -9,7 +9,7 @@ on:
       - master
       - "rel/*"
       - "rc/*"
-      - 'TreeToTableView'
+      - 'force_ci/**'
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -19,7 +19,7 @@ on:
       - "rel/*"
       - "new_*"
       - "rc/*"
-      - 'TreeToTableView'
+      - 'force_ci/**'
     paths-ignore:
       - "docs/**"
       - 'site/**'

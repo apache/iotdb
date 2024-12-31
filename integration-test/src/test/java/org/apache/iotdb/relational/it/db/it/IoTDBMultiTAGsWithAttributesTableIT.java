@@ -39,18 +39,18 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
 import static org.junit.Assert.fail;
 
-/** In this IT, table has more than one IDs and Attributes. */
+/** In this IT, table has more than one TAGs and Attributes. */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBMultiIDsWithAttributesTableIT {
+public class IoTDBMultiTAGsWithAttributesTableIT {
   private static final String DATABASE_NAME = "db";
 
   private static final String[] sql1 =
       new String[] {
         "CREATE DATABASE db",
         "USE db",
-        "CREATE TABLE table0 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum FLOAT measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, ts TIMESTAMP measurement, stringV STRING measurement, doubleNum DOUBLE measurement)",
+        "CREATE TABLE table0 (device string tag, level string tag, attr1 string attribute, attr2 string attribute, num int32 field, bigNum int64 field, "
+            + "floatNum FLOAT field, str TEXT field, bool BOOLEAN field, date DATE field, blob BLOB field, ts TIMESTAMP field, stringV STRING field, doubleNum DOUBLE field)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l1', 'c', 'd', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool,blob,ts,doubleNum) values('d1', 'l2', 'y', 'z', 20,2,2147483648,434.12,'pineapple',TRUE,X'108DCD62',2024-09-24T06:15:35.000+00:00,6666.8)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l3', 't', 'a', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -91,8 +91,8 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   private static final String[] sql3 =
       new String[] {
-        "CREATE TABLE table1 (device string id, level string id, attr1 string attribute, attr2 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement, date DATE measurement, blob BLOB measurement, doubleNum DOUBLE measurement)",
+        "CREATE TABLE table1 (device string tag, level string tag, attr1 string attribute, attr2 string attribute, num int32 field, bigNum int64 field, "
+            + "floatNum double field, str TEXT field, bool BOOLEAN field, date DATE field, blob BLOB field, doubleNum DOUBLE field)",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, date, blob) values('d1', 'l1', 'c', 'd', 0, 3, 2947483648,231.2121, 'coconut', FALSE, '2023-01-01', X'100DCD62')",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l2', 'y', 'z', 20, 2, 2147483648,434.12, 'pineapple', TRUE, X'101DCD62')",
         "insert into table1(device, level, attr1, attr2, time, num, bigNum, floatNum, str, bool, blob) values('d1', 'l3', 't', 'a', 40, 1, 2247483648,12.123, 'apricot', TRUE, null)",
@@ -116,29 +116,29 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   private static final String[] sql4 =
       new String[] {
-        "create table students(region STRING ID, student_id INT32 MEASUREMENT, name STRING MEASUREMENT, genders text MEASUREMENT, date_of_birth DATE MEASUREMENT)",
-        "create table teachers(region STRING ID, teacher_id INT32 MEASUREMENT, course_id INT32 MEASUREMENT, age INT32 MEASUREMENT)",
-        "create table courses(course_id STRING ID, course_name STRING MEASUREMENT, teacher_id INT32 MEASUREMENT)",
-        "create table grades(grade_id STRING ID, course_id INT32 MEASUREMENT, student_id INT32 MEASUREMENT, score INT32 MEASUREMENT)",
-        "insert into students(time,region,student_id,name,genders,date_of_birth) values"
+        "create table students(region STRING TAG, student_tag INT32 FIELD, name STRING FIELD, genders text FIELD, date_of_birth DATE FIELD)",
+        "create table teachers(region STRING TAG, teacher_tag INT32 FIELD, course_tag INT32 FIELD, age INT32 FIELD)",
+        "create table courses(course_tag STRING TAG, course_name STRING FIELD, teacher_tag INT32 FIELD)",
+        "create table grades(grade_tag STRING TAG, course_tag INT32 FIELD, student_tag INT32 FIELD, score INT32 FIELD)",
+        "insert into students(time,region,student_tag,name,genders,date_of_birth) values"
             + "(1,'haidian',1,'Lucy','女','2015-10-10'),(2,'haidian',2,'Jack','男','2015-09-24'),(3,'chaoyang',3,'Sam','男','2014-07-20'),(4,'chaoyang',4,'Lily','女','2015-03-28'),"
             + "(5,'xicheng',5,'Helen','女','2016-01-22'),(6,'changping',6,'Nancy','女','2017-12-20'),(7,'changping',7,'Mike','男','2016-11-22'),(8,'shunyi',8,'Bob','男','2016-05-12')",
-        "insert into teachers(time,region,teacher_id,course_id,age) values"
+        "insert into teachers(time,region,teacher_tag,course_tag,age) values"
             + "(1,'haidian',1001,10000001,25),(2,'haidian',1002,10000002,26),(3,'chaoyang',1003,10000003,28),"
             + "(4,'chaoyang',1004,10000004,27),(5,'xicheng',1005,10000005,26)",
-        "insert into courses(time,course_id,course_name,teacher_id) values"
+        "insert into courses(time,course_tag,course_name,teacher_tag) values"
             + "(1,10000001,'数学',1001),(2,10000002,'语文',1002),(3,10000003,'英语',1003),"
             + "(4,10000004,'体育',1004),(5,10000005,'历史',1005)",
-        "insert into grades(time,grade_id,course_id,student_id,score) values"
+        "insert into grades(time,grade_tag,course_tag,student_tag,score) values"
             + "(1,1111,10000001,1,99),(2,1112,10000002,2,90),(3,1113,10000003,3,85),(4,1114,10000004,4,89),(5,1115,10000005,5,98),"
             + "(6,1113,10000003,6,55),(7,1114,10000004,7,60),(8,1115,10000005,8,100),(9,1114,10000001,2,99),(10,1115,10000002,1,95)"
       };
 
   private static final String[] sql5 =
       new String[] {
-        "create table tableA(device STRING ID, value INT32 MEASUREMENT)",
-        "create table tableB(device STRING ID, value INT32 MEASUREMENT)",
-        "create table tableC(device STRING ID, value INT32 MEASUREMENT)",
+        "create table tableA(device STRING TAG, value INT32 FIELD)",
+        "create table tableB(device STRING TAG, value INT32 FIELD)",
+        "create table tableC(device STRING TAG, value INT32 FIELD)",
         "insert into tableA(time,device,value) values('2020-01-01 00:00:01.000', 'd1', 1)",
         "insert into tableA(time,device,value) values('2020-01-01 00:00:03.000', 'd1', 3)",
         "flush",
@@ -316,7 +316,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void sortAllIDTimesTest() {
+  public void sortAllTAGTimesTest() {
     String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num"};
     String[] retArray =
         new String[] {
@@ -364,7 +364,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void sortIDWithExpressionTest() {
+  public void sortTAGWithExpressionTest() {
     String[] expectedHeader = new String[] {"level", "sum", "attr1", "device", "time"};
     String[] retArray =
         new String[] {
@@ -553,7 +553,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
 
-    // ID has null value
+    // TAG has null value
     expectedHeader =
         new String[] {
           "count_num",
@@ -1169,14 +1169,15 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,",
         };
-    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader1, retArray, DATABASE_NAME, 2);
+
     sql =
         "select last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(str,time),last_by(bool,time),last_by(date,time),last_by(ts,time),last_by(stringv,time),last_by(blob,time) from table0 where device='d2'";
     retArray =
         new String[] {
           "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,null,",
         };
-    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader2, retArray, DATABASE_NAME, 2);
 
     sql =
         "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv) from table0 where device='d2'";
@@ -1184,14 +1185,15 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader1, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader1, retArray, DATABASE_NAME, 2);
+
     sql =
         "select last_by(time,time),last_by(time,device),last_by(time,level),last_by(time,attr1),last_by(time,attr2),last_by(time,num),last_by(time,bignum),last_by(time,floatnum),last_by(time,str),last_by(time,bool),last_by(time,date),last_by(time,ts),last_by(time,stringv),last_by(time,blob) from table0 where device='d2'";
     retArray =
         new String[] {
           "1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,1970-01-01T00:00:00.080Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader2, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader2, retArray, DATABASE_NAME, 2);
 
     String[] expectedHeader11 = buildHeaders(expectedHeader1.length * 2);
     sql =
@@ -1200,7 +1202,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {
           "1971-08-20T11:33:20.000Z,d2,l5,null,null,15,3147483648,235.213,watermelon,true,2023-01-01,null,null,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-04-26T17:46:40.000Z,1971-01-01T00:01:40.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-08-20T11:33:20.000Z,1971-01-01T00:01:40.000Z,1971-01-01T00:01:40.000Z,",
         };
-    tableResultSetEqualTest(sql, expectedHeader11, retArray, DATABASE_NAME);
+    repeatTest(sql, expectedHeader11, retArray, DATABASE_NAME, 2);
 
     sql =
         "select first_by(time,time),first_by(device,time),first_by(level,time),first_by(attr1,time),first_by(attr2,time),first_by(num,time),first_by(bignum,time),first_by(floatnum,time),first_by(str,time),first_by(bool,time),first_by(date,time),first_by(ts,time),first_by(stringv,time) from table0 where device='d2' and time>80";
@@ -1747,7 +1749,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   public void fourTableJoinTest() {
     expectedHeader =
         new String[] {
-          "time", "s_id", "s_name", "s_birth", "t_id", "t_c_id", "c_name", "g_id", "score"
+          "time", "s_tag", "s_name", "s_birth", "t_tag", "t_c_tag", "c_name", "g_tag", "score"
         };
     retArray =
         new String[] {
@@ -1759,16 +1761,16 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         };
     sql =
         "select s.time,"
-            + "         s.student_id as s_id, s.name as s_name, s.date_of_birth as s_birth,"
-            + "         t.teacher_id as t_id, t.course_id as t_c_id,"
+            + "         s.student_tag as s_tag, s.name as s_name, s.date_of_birth as s_birth,"
+            + "         t.teacher_tag as t_tag, t.course_tag as t_c_tag,"
             + "         c.course_name as c_name,"
-            + "         g.grade_id as g_id, g.score as score "
+            + "         g.grade_tag as g_tag, g.score as score "
             + "from students s, teachers t, courses c, grades g "
             + "where s.time=t.time AND c.time=g.time AND s.time=c.time "
-            + "order by s.student_id, t.teacher_id, c.course_id,g.grade_id";
+            + "order by s.student_tag, t.teacher_tag, c.course_tag,g.grade_tag";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
-    expectedHeader = new String[] {"region", "name", "teacher_id", "course_name", "score"};
+    expectedHeader = new String[] {"region", "name", "teacher_tag", "course_name", "score"};
 
     retArray =
         new String[] {
@@ -1776,11 +1778,11 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         };
     sql =
         "select s.region, s.name,"
-            + "           t.teacher_id,"
+            + "           t.teacher_tag,"
             + "           c.course_name,"
             + "           g.score "
             + "from students s, teachers t, courses c, grades g "
-            + "where s.time=c.time and c.time=g.time and t.teacher_id = 1005 limit 1";
+            + "where s.time=c.time and c.time=g.time and t.teacher_tag = 1005 limit 1";
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
@@ -2033,6 +2035,66 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
+  public void lastCacheTest() {
+    expectedHeader =
+        new String[] {
+          "level", "attr1", "device", "attr2", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13", "_col14", "_col15"
+        };
+
+    // last query without filter
+    retArray =
+        new String[] {
+          "l1,c,d1,d,1971-01-01T00:01:40.000Z,d1,l1,c,d,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d1,11,",
+          "l2,yy,d1,zz,1971-04-26T17:46:40.000Z,d1,l2,yy,zz,1971-04-26T17:46:40.000Z,12,2146483648,45.231,1971-04-26T17:46:40.000Z,d1,12,",
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d1,14,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d1,13,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d1,15,",
+          "l1,d,d2,c,1971-01-01T00:01:40.000Z,d2,l1,d,c,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d2,11,",
+          "l2,vv,d2,null,1971-04-26T17:46:40.000Z,d2,l2,vv,null,1971-04-26T17:46:40.000Z,12,2146483648,45.231,1971-04-26T17:46:40.000Z,d2,12,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d2,14,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d2,13,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d2,15,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    // last query with lt time filter
+    retArray =
+        new String[] {
+          "l1,c,d1,d,1971-01-01T00:01:40.000Z,d1,l1,c,d,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d1,11,",
+          "l2,yy,d1,zz,1971-01-01T00:00:00.100Z,d1,l2,yy,zz,1971-01-01T00:00:00.100Z,10,3147483648,231.55,1971-01-01T00:00:00.100Z,d1,10,",
+          "l3,t,d1,a,1971-01-01T00:00:00.500Z,d1,l3,t,a,1971-01-01T00:00:00.500Z,4,2147493648,213.1,1971-01-01T00:00:00.500Z,d1,4,",
+          "l4,null,d1,null,1971-01-01T00:00:01.000Z,d1,l4,null,null,1971-01-01T00:00:01.000Z,5,2149783648,56.32,1971-01-01T00:00:01.000Z,d1,5,",
+          "l5,null,d1,null,1971-01-01T00:00:10.000Z,d1,l5,null,null,1971-01-01T00:00:10.000Z,7,2147983648,213.112,1971-01-01T00:00:10.000Z,d1,7,",
+          "l1,d,d2,c,1971-01-01T00:01:40.000Z,d2,l1,d,c,1971-01-01T00:01:40.000Z,11,2147468648,54.121,1971-01-01T00:01:40.000Z,d2,11,",
+          "l2,vv,d2,null,1971-01-01T00:00:00.100Z,d2,l2,vv,null,1971-01-01T00:00:00.100Z,10,3147483648,231.55,1971-01-01T00:00:00.100Z,d2,10,",
+          "l3,null,d2,null,1971-01-01T00:00:00.500Z,d2,l3,null,null,1971-01-01T00:00:00.500Z,4,2147493648,213.1,1971-01-01T00:00:00.500Z,d2,4,",
+          "l4,null,d2,null,1971-01-01T00:00:01.000Z,d2,l4,null,null,1971-01-01T00:00:01.000Z,5,2149783648,56.32,1971-01-01T00:00:01.000Z,d2,5,",
+          "l5,null,d2,null,1971-01-01T00:00:10.000Z,d2,l5,null,null,1971-01-01T00:00:10.000Z,7,2147983648,213.112,1971-01-01T00:00:10.000Z,d2,7,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time<1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+
+    // last query with gt time filter
+    retArray =
+        new String[] {
+          "l3,t,d1,a,1971-04-26T17:46:40.020Z,d1,l3,t,a,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d1,14,",
+          "l4,null,d1,null,1971-04-26T18:01:40.000Z,d1,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d1,13,",
+          "l5,null,d1,null,1971-08-20T11:33:20.000Z,d1,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d1,15,",
+          "l3,null,d2,null,1971-04-26T17:46:40.020Z,d2,l3,null,null,1971-04-26T17:46:40.020Z,14,2907483648,231.34,1971-04-26T17:46:40.020Z,d2,14,",
+          "l4,null,d2,null,1971-04-26T18:01:40.000Z,d2,l4,null,null,1971-04-26T18:01:40.000Z,13,2107483648,54.12,1971-04-26T18:01:40.000Z,d2,13,",
+          "l5,null,d2,null,1971-08-20T11:33:20.000Z,d2,l5,null,null,1971-08-20T11:33:20.000Z,15,3147483648,235.213,1971-08-20T11:33:20.000Z,d2,15,",
+        };
+    sql =
+        "select level, attr1, device, attr2, last_by(time,time),last_by(device,time),last_by(level,time),last_by(attr1,time),last_by(attr2,time),last(time),"
+            + "last_by(num,time),last_by(bignum,time),last_by(floatnum,time),last_by(time,time),last_by(device,time),last_by(num,time) from table0 where time>1971-04-26T17:46:40.000 group by attr1, device, attr2, level order by device,level,attr1,attr2";
+    repeatTest(sql, expectedHeader, retArray, DATABASE_NAME, 3);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
@@ -2058,6 +2120,13 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
         FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
+  }
+
+  public static void repeatTest(
+      String sql, String[] expectedHeader, String[] retArray, String dbName, int repeatTimes) {
+    for (int i = 0; i < repeatTimes; i++) {
+      tableResultSetEqualTest(sql, expectedHeader, retArray, dbName);
+    }
   }
 
   public static String[] buildHeaders(int length) {

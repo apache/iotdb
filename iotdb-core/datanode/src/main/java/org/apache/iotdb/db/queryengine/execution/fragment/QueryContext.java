@@ -119,8 +119,7 @@ public class QueryContext {
     }
 
     List<ModEntry> modEntries =
-        ModificationUtils.sortAndMerge(
-            getAllModifications(tsFileResource).getOverlapped(deviceID, measurement));
+        getAllModifications(tsFileResource).getOverlapped(deviceID, measurement);
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
@@ -129,6 +128,8 @@ public class QueryContext {
               .filter(mod -> mod.affects(deviceID) && mod.affects(measurement))
               .collect(Collectors.toList());
     }
+    modEntries = ModificationUtils.sortAndMerge(modEntries);
+
     return modEntries;
   }
 
@@ -138,9 +139,16 @@ public class QueryContext {
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
-
-    return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource).getDeviceOverlapped(new PartialPath(deviceID)));
+    List<ModEntry> modEntries =
+        getAllModifications(tsFileResource).getOverlapped(new PartialPath(deviceID));
+    if (deviceID.isTableModel()) {
+      // the pattern tree has false-positive for table model deletion, so we do a further
+      //     filtering
+      modEntries =
+          modEntries.stream().filter(mod -> mod.affects(deviceID)).collect(Collectors.toList());
+    }
+    modEntries = ModificationUtils.sortAndMerge(modEntries);
+    return modEntries;
   }
 
   /**

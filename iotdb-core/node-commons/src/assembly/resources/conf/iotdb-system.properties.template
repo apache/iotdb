@@ -1476,11 +1476,6 @@ iot_consensus_cache_window_time_in_ms=-1
 # Datatype: boolean
 enable_wal_compression=true
 
-# Blocking queue capacity of each PageCacheDeletionBuffer, restricts maximum number of entry in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-page_cache_deletion_buffer_queue_capacity=500
-
 ####################
 ### IoTConsensus Configuration
 ####################
@@ -1896,6 +1891,12 @@ iot_consensus_v2_pipeline_size=5
 # effectiveMode: restart
 # Datatype: string
 iot_consensus_v2_mode=batch
+
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
+# restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+deletion_ahead_log_buffer_queue_capacity=500
 
 ####################
 ### Procedure Configuration

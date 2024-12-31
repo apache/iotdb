@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Repa
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -68,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
@@ -840,5 +843,55 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       List<IDeviceID> devicesInTargetFile = reader.getAllDevices();
       Assert.assertEquals(Arrays.asList(d1, d2), devicesInTargetFile);
     }
+  }
+
+  @Test
+  public void testQueryRepairResult() throws IOException, IllegalPathException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(5, 30)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource1.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
+
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource2)) {
+      writer.startChunkGroup("d2");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(5, 30)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource2.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
+
+    tsFileManager.add(resource1, true);
+    tsFileManager.add(resource2, true);
+
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource1, true, 0);
+    Assert.assertTrue(task.start());
+
+    task = new RepairUnsortedFileCompactionTask(0, tsFileManager, resource2, true, 0);
+    Assert.assertTrue(task.start());
+
+    List<TsFileResource> sourceTsFileResources = tsFileManager.getTsFileList(false);
+    List<IFullPath> fullPaths = getPaths(sourceTsFileResources);
+    Map<IFullPath, List<TimeValuePair>> dataByQuery1 =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, sourceTsFileResources, Collections.emptyList(), true);
+    Map<IFullPath, List<TimeValuePair>> dataByQuery2 =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, sourceTsFileResources, Collections.emptyList(), false);
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(dataByQuery1, dataByQuery2));
   }
 }

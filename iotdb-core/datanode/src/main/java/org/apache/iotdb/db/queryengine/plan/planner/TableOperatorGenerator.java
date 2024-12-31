@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -66,21 +67,28 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
@@ -90,6 +98,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -100,7 +109,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDateLiteralVisitor;
@@ -164,6 +175,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
@@ -177,6 +189,8 @@ import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -194,6 +208,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -201,7 +216,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
@@ -215,6 +230,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -376,25 +392,27 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         node,
         parameter.measurementColumnNames,
         parameter.measurementSchemas,
-        parameter.allSensors);
+        parameter.allSensors,
+        TreeAlignedDeviceViewScanNode.class.getSimpleName());
 
     return treeAlignedDeviceViewScanOperator;
   }
 
   private void addSource(
-      AbstractTableScanOperator tableScanOperator,
+      AbstractDataSourceOperator sourceOperator,
       LocalExecutionPlanContext context,
       DeviceTableScanNode node,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas,
-      Set<String> allSensors) {
+      Set<String> allSensors,
+      String planNodeName) {
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(sourceOperator);
 
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
       if (node.getDeviceEntries().get(i) == null) {
         throw new IllegalStateException(
-            "Device entries of index " + i + " in DeviceTableScanNode is empty");
+            "Device entries of index " + i + " in " + planNodeName + " is empty");
       }
       AlignedFullPath alignedPath =
           constructAlignedPath(
@@ -408,7 +426,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     context.getDriverContext().setInputDriver(true);
   }
 
-  // fieldColumnsRenameMap will always
   private AbstractTableScanOperator.AbstractTableScanOperatorParameter
       constructAbstractTableScanOperatorParameter(
           DeviceTableScanNode node,
@@ -433,14 +450,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
 
       switch (schema.getColumnCategory()) {
-        case ID:
+        case TAG:
         case ATTRIBUTE:
           columnsIndexArray[idx++] =
               requireNonNull(
                   idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
           columnSchemas.add(schema);
           break;
-        case MEASUREMENT:
+        case FIELD:
           columnsIndexArray[idx++] = measurementColumnCount;
           measurementColumnCount++;
 
@@ -466,8 +483,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (!outputSet.contains(entry.getKey())
-          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+      if (!outputSet.contains(entry.getKey()) && entry.getValue().getColumnCategory() == FIELD) {
         measurementColumnCount++;
         String realMeasurementName =
             fieldColumnsRenameMap.getOrDefault(
@@ -549,7 +565,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         node,
         parameter.measurementColumnNames,
         parameter.measurementSchemas,
-        parameter.allSensors);
+        parameter.allSensors,
+        DeviceTableScanNode.class.getSimpleName());
 
     return tableScanOperator;
   }
@@ -1859,12 +1876,34 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
-    return super.visitAggregationTreeDeviceViewScan(node, context);
+
+    AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
+        constructAbstractAggTableScanOperatorParameter(
+            node,
+            context,
+            TreeAlignedDeviceViewAggregationScanOperator.class.getSimpleName(),
+            node.getMeasurementColumnNameMap());
+
+    TreeAlignedDeviceViewAggregationScanOperator treeAlignedDeviceViewAggregationScanOperator =
+        new TreeAlignedDeviceViewAggregationScanOperator(parameter, idColumnValueExtractor);
+
+    addSource(
+        treeAlignedDeviceViewAggregationScanOperator,
+        context,
+        node,
+        parameter.getMeasurementColumnNames(),
+        parameter.getMeasurementSchemas(),
+        parameter.getAllSensors(),
+        AggregationTreeDeviceViewScanNode.class.getSimpleName());
+    return treeAlignedDeviceViewAggregationScanOperator;
   }
 
-  @Override
-  public Operator visitAggregationTableScan(
-      AggregationTableScanNode node, LocalExecutionPlanContext context) {
+  private AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter
+      constructAbstractAggTableScanOperatorParameter(
+          AggregationTableScanNode node,
+          LocalExecutionPlanContext context,
+          String className,
+          Map<String, String> fieldColumnsRenameMap) {
 
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -1898,17 +1937,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             requireNonNull(node.getAssignments().get(symbol), symbol + " is null");
         if (!aggColumnLayout.containsKey(symbol)) {
           switch (schema.getColumnCategory()) {
-            case ID:
+            case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
                   requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
-            case MEASUREMENT:
+            case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
               measurementColumnCount++;
-              measurementColumnNames.add(schema.getName());
+              String realMeasurementName =
+                  fieldColumnsRenameMap.getOrDefault(schema.getName(), schema.getName());
+              measurementColumnNames.add(realMeasurementName);
               measurementSchemas.add(
-                  new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+                  new MeasurementSchema(realMeasurementName, getTSDataType(schema.getType())));
               measurementColumnsIndexMap.put(symbol.getName(), measurementColumnCount - 1);
               break;
             case TIME:
@@ -1931,12 +1972,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
       if (!aggColumnLayout.containsKey(entry.getKey())
-          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+          && entry.getValue().getColumnCategory() == FIELD) {
         measurementColumnCount++;
-        measurementColumnNames.add(entry.getValue().getName());
+        String realMeasurementName =
+            fieldColumnsRenameMap.getOrDefault(
+                entry.getValue().getName(), entry.getValue().getName());
+        measurementColumnNames.add(realMeasurementName);
         measurementSchemas.add(
-            new MeasurementSchema(
-                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
+            new MeasurementSchema(realMeasurementName, getTSDataType(entry.getValue().getType())));
         measurementColumnsIndexMap.put(entry.getKey().getName(), measurementColumnCount - 1);
       } else if (entry.getValue().getColumnCategory() == TIME) {
         timeColumnName = entry.getKey().getName();
@@ -2007,10 +2050,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     final OperatorContext operatorContext =
         context
             .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableAggregationTableScanOperator.class.getSimpleName());
+            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
@@ -2026,43 +2066,136 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
-
-    for (int i = 0; i < node.getDeviceEntries().size(); i++) {
-      if (node.getDeviceEntries().get(i) == null) {
-        throw new IllegalStateException(
-            "Device entries of index " + i + " in AggregationTableScanNode is empty");
-      }
-      AlignedFullPath alignedPath =
-          constructAlignedPath(
-              node.getDeviceEntries().get(i),
-              measurementColumnNames,
-              measurementSchemas,
-              allSensors);
-      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-    }
-
     context.getDriverContext().setInputDriver(true);
 
-    TableAggregationTableScanOperator aggTableScanOperator =
-        new TableAggregationTableScanOperator(
-            node.getPlanNodeId(),
-            operatorContext,
-            aggColumnSchemas,
-            aggColumnsIndexArray,
-            node.getDeviceEntries(),
-            seriesScanOptions,
-            measurementColumnNames,
-            allSensors,
-            measurementSchemas,
-            aggregators,
-            groupingKeySchemas,
-            groupingKeyIndex,
-            timeRangeIterator,
-            scanAscending,
-            canUseStatistic,
-            aggregatorInputChannels);
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggTableScanOperator);
-    return aggTableScanOperator;
+    return new AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter(
+        node.getPlanNodeId(),
+        operatorContext,
+        aggColumnSchemas,
+        aggColumnsIndexArray,
+        node.getDeviceEntries(),
+        node.getDeviceEntries().size(),
+        seriesScanOptions,
+        measurementColumnNames,
+        allSensors,
+        measurementSchemas,
+        aggregators,
+        groupingKeySchemas,
+        groupingKeyIndex,
+        timeRangeIterator,
+        scanAscending,
+        canUseStatistic,
+        aggregatorInputChannels,
+        timeColumnName);
+  }
+
+  // used for AggregationTableScanNode
+  private AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter
+      constructAbstractAggTableScanOperatorParameter(
+          AggregationTableScanNode node, LocalExecutionPlanContext context) {
+    return constructAbstractAggTableScanOperatorParameter(
+        node, context, AbstractAggTableScanOperator.class.getSimpleName(), Collections.emptyMap());
+  }
+
+  @Override
+  public Operator visitAggregationTableScan(
+      AggregationTableScanNode node, LocalExecutionPlanContext context) {
+
+    AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
+        constructAbstractAggTableScanOperatorParameter(node, context);
+
+    if (canUseLastCacheOptimize(
+        parameter.getTableAggregators(), node, parameter.getTimeColumnName())) {
+      return constructLastQueryAggTableScanOperator(node, parameter, context);
+    } else {
+      DefaultAggTableScanOperator aggTableScanOperator = new DefaultAggTableScanOperator(parameter);
+
+      addSource(
+          aggTableScanOperator,
+          context,
+          node,
+          parameter.getMeasurementColumnNames(),
+          parameter.getMeasurementSchemas(),
+          parameter.getAllSensors(),
+          AggregationTableScanNode.class.getSimpleName());
+      return aggTableScanOperator;
+    }
+  }
+
+  private LastQueryAggTableScanOperator constructLastQueryAggTableScanOperator(
+      AggregationTableScanNode node,
+      AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter,
+      LocalExecutionPlanContext context) {
+    List<Integer> hitCachesIndexes = new ArrayList<>();
+    List<Pair<OptionalLong, TsPrimitiveType[]>> hitCachedResults = new ArrayList<>();
+    List<DeviceEntry> cachedDeviceEntries = new ArrayList<>();
+    List<DeviceEntry> unCachedDeviceEntries = new ArrayList<>();
+    long tableTTL =
+        DataNodeTTLCache.getInstance()
+            .getTTLForTable(
+                node.getQualifiedObjectName().getDatabaseName(),
+                node.getQualifiedObjectName().getObjectName());
+    Filter updateTimeFilter =
+        updateFilterUsingTTL(parameter.getSeriesScanOptions().getGlobalTimeFilter(), tableTTL);
+    for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+      Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
+          TableDeviceSchemaCache.getInstance()
+              .getLastRow(
+                  node.getQualifiedObjectName().getDatabaseName(),
+                  node.getDeviceEntries().get(i).getDeviceID(),
+                  "",
+                  parameter.getMeasurementColumnNames());
+      boolean allHitCache = true;
+      if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
+        for (int j = 0; j < lastByResult.get().getRight().length; j++) {
+          TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
+          if (tsPrimitiveType == null
+              || (updateTimeFilter != null
+                  && !LastQueryUtil.satisfyFilter(
+                      updateTimeFilter,
+                      new TimeValuePair(
+                          lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
+            // the process logic is different from tree model which examine if
+            // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
+            // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
+            // but it should skip in table model
+            allHitCache = false;
+            break;
+          }
+        }
+      } else {
+        allHitCache = false;
+      }
+
+      if (!allHitCache) {
+        AlignedFullPath alignedPath =
+            constructAlignedPath(
+                node.getDeviceEntries().get(i),
+                parameter.getMeasurementColumnNames(),
+                parameter.getMeasurementSchemas(),
+                parameter.getAllSensors());
+        ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+        unCachedDeviceEntries.add(node.getDeviceEntries().get(i));
+      } else {
+        hitCachesIndexes.add(i);
+        hitCachedResults.add(lastByResult.get());
+        cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+      }
+    }
+
+    parameter.setDeviceEntries(unCachedDeviceEntries);
+
+    // context add TableLastQueryOperator
+    LastQueryAggTableScanOperator lastQueryOperator =
+        new LastQueryAggTableScanOperator(
+            parameter,
+            cachedDeviceEntries,
+            node.getQualifiedObjectName(),
+            hitCachesIndexes,
+            hitCachedResults);
+
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    return lastQueryOperator;
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
@@ -2172,5 +2305,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
     }
     return new boolean[] {canUseStatistic, isAscending};
+  }
+
+  private boolean canUseLastCacheOptimize(
+      List<TableAggregator> aggregators, AggregationTableScanNode node, String timeColumnName) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
+      return false;
+    }
+
+    // has value filter, can not optimize
+    if (node.getPushDownPredicate() != null) {
+      return false;
+    }
+
+    // has date_bin, can not optimize
+    if (!node.getGroupingKeys().isEmpty()
+        && node.getProjection() != null
+        && !node.getProjection().getMap().isEmpty()) {
+      return false;
+    }
+
+    for (TableAggregator aggregator : aggregators) {
+      if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
+        if (!((LastDescAccumulator) aggregator.getAccumulator()).isTimeColumn()) {
+          return false;
+        }
+      } else if (aggregator.getAccumulator() instanceof LastByDescAccumulator) {
+        if (!((LastByDescAccumulator) aggregator.getAccumulator()).yIsTimeColumn()) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

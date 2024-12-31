@@ -960,8 +960,9 @@ public class TableDistributedPlanGenerator
         break;
       }
       if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
-          == TsTableColumnCategory.ID) {
+          == TsTableColumnCategory.TAG) {
 
+        // segments[0] is always tableName for table model
         Function<DeviceEntry, String> iDColumnFunction =
             extractor
                 .<Function<DeviceEntry, String>>map(
@@ -971,7 +972,6 @@ public class TableDistributedPlanGenerator
                                 treeDeviceIdColumnValueExtractor.extract(
                                     deviceEntry.getDeviceID(), idx))
                 .orElseGet(() -> deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
-        // segments[0] is always tableName for table model
         orderingRules.add(iDColumnFunction);
       } else {
         orderingRules.add(

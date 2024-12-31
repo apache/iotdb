@@ -285,6 +285,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -348,14 +349,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // Check database length here
-    // We need to calculate the database name without "root."
+
     final String databaseName = databaseSchemaStatement.getDatabasePath().getFullPath();
-    if (databaseName.length() > MAX_DATABASE_NAME_LENGTH) {
+    if (databaseName.length() > MAX_DATABASE_NAME_LENGTH
+        || TsFileConstant.PATH_ROOT.equals(databaseName)) {
       final IllegalPathException illegalPathException =
           new IllegalPathException(
               databaseName,
-              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+              TsFileConstant.PATH_ROOT.equals(databaseName)
+                  ? "the database name in tree model must start with 'root.'."
+                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       future.setException(
           new IoTDBException(
               illegalPathException.getMessage(), illegalPathException.getErrorCode()));

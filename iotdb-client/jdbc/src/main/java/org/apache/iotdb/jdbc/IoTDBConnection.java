@@ -145,6 +145,10 @@ public class IoTDBConnection implements Connection {
     return url;
   }
 
+  public IoTDBConnectionParams getParams() {
+    return params;
+  }
+
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
     throw new SQLException("Does not support isWrapperFor");
