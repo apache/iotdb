@@ -650,6 +650,12 @@ public class FragmentInstanceContext extends QueryContext {
     releaseResource();
   }
 
+  /**
+   * It checks all referenced TVList by the query: 1. If current is not the owner, just remove
+   * itself from query context list 2. If current query is the owner and no other query use it now,
+   * release the TVList 3. If current query is the owner and other queries still use it, set the
+   * next query as owner
+   */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
       tvList.lockQueryList();
@@ -657,7 +663,6 @@ public class FragmentInstanceContext extends QueryContext {
       try {
         queryContextList.remove(this);
         if (tvList.getOwnerQuery() == this) {
-          tvList.setOwnerQuery(null);
           if (queryContextList.isEmpty()) {
             LOGGER.debug(
                 "TVList {} is released by the query, FragmentInstance Id is {}",
@@ -667,7 +672,7 @@ public class FragmentInstanceContext extends QueryContext {
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
           } else {
             LOGGER.debug(
-                "TVList {} is owned by another query, FragmentInstance Id is {}",
+                "TVList {} is now owned by another query, FragmentInstance Id is {}",
                 tvList,
                 ((FragmentInstanceContext) queryContextList.get(0)).getId());
             tvList.setOwnerQuery(queryContextList.get(0));

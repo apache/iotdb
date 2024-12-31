@@ -35,6 +35,7 @@ import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -66,7 +67,9 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   private void initAllPageReaders(
-      IChunkMetadata metadata, List<Statistics> pageStats, List<int[]> pageOffsetsList) {
+      IChunkMetadata metadata,
+      List<Statistics<? extends Serializable>> pageStats,
+      List<int[]> pageOffsetsList) {
     Supplier<TsBlock> tsBlockSupplier = new TsBlockSupplier();
     for (int i = 0; i < pageStats.size(); i++) {
       MemPageReader pageReader =

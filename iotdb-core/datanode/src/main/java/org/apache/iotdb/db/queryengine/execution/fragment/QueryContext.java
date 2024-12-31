@@ -74,7 +74,7 @@ public class QueryContext {
 
   private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
-  // accessed tvlists for the query
+  // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();
 
   public QueryContext() {}

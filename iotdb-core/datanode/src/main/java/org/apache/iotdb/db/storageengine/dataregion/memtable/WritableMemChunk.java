@@ -70,6 +70,20 @@ public class WritableMemChunk implements IWritableMemChunk {
         list.sort();
         sortedList.add(list);
       } else {
+        /*
+         * +----------------------+
+         * |      MemTable        |
+         * |                      |
+         * |   +---------------+  |          +----------+
+         * |   | sorted TVList |  |      +---+   Query  |
+         * |   +------^--------+  |      |   +----------+
+         * |          |           |      |
+         * +----------+-----------+      |
+         *            | Clone + Sort     |
+         *      +-----+------+           |
+         *      |   TVList   | <---------+
+         *      +------------+
+         */
         QueryContext firstQuery = list.getQueryContextList().get(0);
         // reserve query memory
         if (firstQuery instanceof FragmentInstanceContext) {
@@ -81,6 +95,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         list.setOwnerQuery(firstQuery);
         // clone tv list
         TVList cloneList = list.clone();
+        cloneList.sort();
         sortedList.add(cloneList);
       }
     } finally {
@@ -306,6 +321,8 @@ public class WritableMemChunk implements IWritableMemChunk {
     TVList cloneList = null;
     list.lockQueryList();
     try {
+      // During flush, if the working TVList is not sorted and referenced by some query, we need to
+      // clone it. The query still refer to original unsorted TVList.
       if (!list.isSorted() && !list.getQueryContextList().isEmpty()) {
         QueryContext firstQuery = list.getQueryContextList().get(0);
         // reserve query memory
@@ -543,6 +560,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void encode(IChunkWriter chunkWriter) {
+    // use original encode method when TVList handover never happens.
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingTVList(chunkWriter);
       return;
@@ -573,10 +591,10 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   /**
-   * Release process for memtable flush. Release the TVList if there is no query on it, otherwise
-   * set query owner and release the TVList until query finishes.
+   * Release the TVList after flush if there is no more query on it, otherwise set query owner and
+   * the unfinished query is responsible to release the TVList.
    *
-   * @param tvList
+   * @param tvList TVList
    */
   private void maybeReleaseTvList(TVList tvList) {
     tvList.lockQueryList();
@@ -586,7 +604,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       } else {
         QueryContext firstQuery = tvList.getQueryContextList().get(0);
         // transfer memory from write process to read process. Here it reserves read memory and
-        // releaseFlushedMemTable will release write memory.
+        // releaseFlushedMemTable will release write memory correspondingly.
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();

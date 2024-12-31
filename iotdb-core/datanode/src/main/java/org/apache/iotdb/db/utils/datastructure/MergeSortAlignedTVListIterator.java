@@ -38,7 +38,10 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
 
   private final int[] alignedTvListOffsets;
 
+  // Remember the selected columns for prepareNext
+  // column index -> [selectedTVList, selectedIndex]
   private final int[][] columnAccessInfo;
+
   private long time;
   private final BitMap bitMap;
 
@@ -89,7 +92,7 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
       if (iterator.hasNext() && iterator.currentTime() <= time) {
         if (i == 0 || iterator.currentTime() < time) {
           for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
-            int rowIndex = iterator.getValidRowIndex(columnIndex);
+            int rowIndex = iterator.getSelectedIndex(columnIndex);
             columnAccessInfo[columnIndex][0] = i;
             columnAccessInfo[columnIndex][1] = rowIndex;
             if (iterator.isNull(rowIndex, columnIndex)) {
@@ -99,7 +102,7 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
           time = iterator.currentTime();
         } else {
           for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
-            int rowIndex = iterator.getValidRowIndex(columnIndex);
+            int rowIndex = iterator.getSelectedIndex(columnIndex);
             // update if the column is not null
             if (!iterator.isNull(rowIndex, columnIndex)) {
               columnAccessInfo[columnIndex][0] = i;

@@ -430,7 +430,10 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
-  /** the threshold when working TVList is sorted and handover in writable memtable */
+  /**
+   * the threshold when working TVList is sorted and added into immutable TVList list in the
+   * writable memtable
+   */
   private int tvListSortThreshold = 0;
 
   /** When average series point number reaches this, flush the memtable to disk */

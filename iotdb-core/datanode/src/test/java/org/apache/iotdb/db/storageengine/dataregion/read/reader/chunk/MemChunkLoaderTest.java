@@ -21,11 +21,18 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
+import org.apache.tsfile.file.metadata.statistics.BooleanStatistics;
+import org.apache.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.tsfile.file.metadata.statistics.FloatStatistics;
+import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -35,6 +42,8 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -55,9 +64,14 @@ public class MemChunkLoaderTest {
   public void testBooleanMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.BOOLEAN);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildBooleanTvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> booleanTvListMap = buildBooleanTvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(booleanTvListMap);
+    List<TVList> booleanTvLists = new ArrayList<>(booleanTvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(booleanTvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -66,8 +80,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(BooleanStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -75,10 +89,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(BooleanStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(3L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.BOOLEAN);
 
     MemChunkReader chunkReader =
@@ -130,9 +144,14 @@ public class MemChunkLoaderTest {
   public void testInt32MemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.INT32);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildInt32TvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> int32TvListMap = buildInt32TvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(int32TvListMap);
+    List<TVList> int32TvLists = new ArrayList<>(int32TvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(int32TvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -141,8 +160,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(IntegerStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -150,10 +169,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(IntegerStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(2L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.INT32);
 
     MemChunkReader chunkReader =
@@ -205,9 +224,14 @@ public class MemChunkLoaderTest {
   public void testInt64MemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.INT64);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildInt64TvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> int64TvListMap = buildInt64TvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(int64TvListMap);
+    List<TVList> int64TvLists = new ArrayList<>(int64TvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(int64TvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -216,8 +240,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(LongStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -225,10 +249,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(LongStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(2L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.INT64);
 
     MemChunkReader chunkReader =
@@ -280,9 +304,14 @@ public class MemChunkLoaderTest {
   public void testFloatMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.FLOAT);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildFloatTvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> floatTvListMap = buildFloatTvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(floatTvListMap);
+    List<TVList> floatTvLists = new ArrayList<>(floatTvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(floatTvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -291,8 +320,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(FloatStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -300,10 +329,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(FloatStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(2L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.FLOAT);
 
     MemChunkReader chunkReader =
@@ -355,9 +384,14 @@ public class MemChunkLoaderTest {
   public void testDoubleMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.DOUBLE);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildDoubleTvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> doubleTvListMap = buildDoubleTvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(doubleTvListMap);
+    List<TVList> doubleTvLists = new ArrayList<>(doubleTvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(doubleTvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -366,8 +400,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(DoubleStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -375,10 +409,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(DoubleStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(2L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.DOUBLE);
 
     MemChunkReader chunkReader =
@@ -430,9 +464,14 @@ public class MemChunkLoaderTest {
   public void testTextMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.TEXT);
-    Mockito.when(chunk.getTvListQueryMap()).thenReturn(buildTextTvListMap());
-    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
+    Map<TVList, Integer> textTvListMap = buildTextTvListMap();
+    Mockito.when(chunk.getTvListQueryMap()).thenReturn(textTvListMap);
+    List<TVList> textTvLists = new ArrayList<>(textTvListMap.keySet());
+    MergeSortTvListIterator timeValuePairIterator =
+        new MergeSortTvListIterator(textTvLists, null, null);
+    Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
+    ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
     MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
@@ -441,8 +480,8 @@ public class MemChunkLoaderTest {
       assertNull(e.getMessage());
     }
 
-    Statistics pageStatitstics = Mockito.mock(Statistics.class);
-    List<Statistics> pageStats = Arrays.asList(pageStatitstics);
+    Statistics<? extends Serializable> pageStatistics = Mockito.mock(BinaryStatistics.class);
+    List<Statistics<? extends Serializable>> pageStats = Collections.singletonList(pageStatistics);
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageStatisticsList()).thenReturn(pageStats);
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
@@ -450,10 +489,10 @@ public class MemChunkLoaderTest {
     ChunkMetadata chunkMetadata1 = Mockito.mock(ChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
-    Statistics statistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> statistics = Mockito.mock(BinaryStatistics.class);
     Mockito.when(statistics.getCount()).thenReturn(2L);
 
-    Mockito.when(chunkMetadata1.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.TEXT);
 
     MemChunkReader chunkReader =

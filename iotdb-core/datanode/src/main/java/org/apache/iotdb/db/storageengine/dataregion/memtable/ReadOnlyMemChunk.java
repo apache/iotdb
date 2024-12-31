@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,13 +75,15 @@ public class ReadOnlyMemChunk {
   private List<TimeRange> deletionList;
 
   // Read only chunk is now regarded as multiple pages. Apart from chunk statistics,
-  // we need to collect page statistic and MergeSortTvListIterator offset for each page.
-  private List<Statistics> pageStatisticsList;
+  // we need to collect page statistic.
+  private List<Statistics<? extends Serializable>> pageStatisticsList;
 
-  // page offsets
+  // page offsets in the MemChunk. For example, there are two TVList/AlignedTVList. TVList1: 1,
+  // 2, 3, 4, 5, 6, 7 TVList2: 1, 3, 5, 7, 8, 9 If each page has 3 points in it. The page offset
+  // lists would be [[0, 0], [3, 2], [6, 3], [7, 6]]. [7, 6] means the end.
   protected List<int[]> pageOffsetsList;
 
-  // tvlist rowCount during query
+  // TVList and its rowCount during query
   private Map<TVList, Integer> tvListQueryMap;
 
   private MergeSortTvListIterator timeValuePairIterator;
@@ -139,7 +142,7 @@ public class ReadOnlyMemChunk {
 
   public void initChunkMetaFromTvLists() {
     // create chunk statistics
-    Statistics chunkStatistics = Statistics.getStatsByType(dataType);
+    Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
     int cnt = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
@@ -147,13 +150,14 @@ public class ReadOnlyMemChunk {
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
-        Statistics stats = Statistics.getStatsByType(dataType);
+        Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
         pageStatisticsList.add(stats);
         pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
       }
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       if (!isPointDeleted(tvPair.getTimestamp(), deletionList, deleteCursor)) {
-        Statistics pageStatistics = pageStatisticsList.get(pageStatisticsList.size() - 1);
+        Statistics<? extends Serializable> pageStatistics =
+            pageStatisticsList.get(pageStatisticsList.size() - 1);
         switch (dataType) {
           case BOOLEAN:
             chunkStatistics.update(tvPair.getTimestamp(), tvPair.getValue().getBoolean());
@@ -311,7 +315,7 @@ public class ReadOnlyMemChunk {
     return deletionList;
   }
 
-  public List<Statistics> getPageStatisticsList() {
+  public List<Statistics<? extends Serializable>> getPageStatisticsList() {
     return pageStatisticsList;
   }
 

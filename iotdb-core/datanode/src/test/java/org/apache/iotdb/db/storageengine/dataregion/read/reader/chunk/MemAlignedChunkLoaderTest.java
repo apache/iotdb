@@ -22,13 +22,14 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -70,7 +71,7 @@ public class MemAlignedChunkLoaderTest {
 
     // Mock getTimeStatisticsList & getValuesStatisticsList
     List<Statistics<? extends Serializable>> timeStatitsticsList = new ArrayList<>();
-    Statistics timeStatistics = Mockito.mock(Statistics.class);
+    Statistics<? extends Serializable> timeStatistics = Mockito.mock(TimeStatistics.class);
     Mockito.when(timeStatistics.getCount()).thenReturn(2L);
     timeStatitsticsList.add(timeStatistics);
     Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
@@ -101,17 +102,18 @@ public class MemAlignedChunkLoaderTest {
     // Mock AlignedReadOnlyMemChunk Getter
     List<int[]> pageOffsets = Arrays.asList(new int[] {0, 0}, new int[] {2, 1});
     Mockito.when(chunk.getPageOffsetsList()).thenReturn(pageOffsets);
-
-    List<TSEncoding> encodingList =
-        Arrays.asList(new TSEncoding[] {null, null, null, null, null, null});
-
-    Mockito.when(chunk.getEncodingList()).thenReturn(encodingList);
-    Mockito.when(chunk.getDataTypes()).thenReturn(buildTsDataTypes());
-    Mockito.when(chunk.getColumnIndexList()).thenReturn(null);
+    List<TSDataType> dataTypes = buildTsDataTypes();
+    Mockito.when(chunk.getDataTypes()).thenReturn(dataTypes);
     Mockito.when(chunk.getTimeColumnDeletion()).thenReturn(null);
     Mockito.when(chunk.getValueColumnsDeletionList()).thenReturn(null);
-    Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(buildAlignedTvListMap());
     Mockito.when(chunk.getContext()).thenReturn(ctx);
+
+    Map<AlignedTVList, Integer> alignedTvListMap = buildAlignedTvListMap();
+    Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(alignedTvListMap);
+    List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListMap.keySet());
+    MergeSortAlignedTVListIterator timeValuePairIterator =
+        new MergeSortAlignedTVListIterator(alignedTvLists, dataTypes, null, null, null, false);
+    Mockito.when(chunk.getMergeSortAlignedTVListIterator()).thenReturn(timeValuePairIterator);
 
     AlignedChunkMetadata chunkMetadata1 = Mockito.mock(AlignedChunkMetadata.class);
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);

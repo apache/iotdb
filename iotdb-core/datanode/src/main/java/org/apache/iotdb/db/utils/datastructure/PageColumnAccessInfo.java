@@ -22,7 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
 
 public class PageColumnAccessInfo {
-  // time -> (selectedTVList, rowIndex)
+  // time -> (selectedTVList, selectedIndex)
   private final int[][] indices;
   private int count;
 

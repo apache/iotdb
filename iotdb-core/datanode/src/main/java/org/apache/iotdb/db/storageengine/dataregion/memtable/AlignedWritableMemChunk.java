@@ -205,6 +205,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         list.setOwnerQuery(firstQuery);
         // clone tv list
         AlignedTVList cloneList = list.clone();
+        cloneList.sort();
         sortedList.add(cloneList);
       }
     } finally {
@@ -671,9 +672,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
   @Override
   public void encode(IChunkWriter chunkWriter) {
+    // use original encode method when TVList handover never happens. It runs a little faster.
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(chunkWriter);
       return;

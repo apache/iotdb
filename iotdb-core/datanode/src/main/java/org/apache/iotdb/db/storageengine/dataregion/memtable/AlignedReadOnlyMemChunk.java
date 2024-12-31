@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -75,6 +74,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   // AlignedTVList rowCount during query
   protected Map<AlignedTVList, Integer> alignedTvListQueryMap;
 
+  // For example, it stores time series [s1, s2, s3] in AlignedWritableMemChunk.
+  // When we select two of time series [s1, s3], the column index list should be [0, 2]
   private final List<Integer> columnIndexList;
 
   private MergeSortAlignedTVListIterator timeValuePairIterator;
@@ -83,11 +84,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
    * The constructor for Aligned type.
    *
    * @param context query context
+   * @param columnIndexList column index list
    * @param schema VectorMeasurementSchema
-   * @param alignedTvListQueryMap VectorTvList
+   * @param alignedTvListQueryMap AlignedTvList map
    * @param timeColumnDeletion The timeRange of deletionList
    * @param valueColumnsDeletionList time value column deletionList
-   * @throws QueryProcessException if there is unsupported data type.
    */
   public AlignedReadOnlyMemChunk(
       QueryContext context,
@@ -119,135 +120,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
         alignedTvList.sort();
-      }
-    }
-  }
-
-  private void updateTimeStatistics(
-      long[] time,
-      int count,
-      Statistics<? extends Serializable> chunkTimeStatistics,
-      Statistics<? extends Serializable> pageTimeStatistics) {
-    // update time statistics
-    for (int index = 0; index < count; index++) {
-      chunkTimeStatistics.update(time[index]);
-      pageTimeStatistics.update(time[index]);
-    }
-    pageTimeStatistics.setEmpty(count == 0);
-  }
-
-  private void checkValueStatistics(
-      Statistics<? extends Serializable>[] chunkValueStatistics,
-      Statistics<? extends Serializable>[] pageValueStatistics,
-      List<TSDataType> dataTypes,
-      int columnIndex) {
-    if (pageValueStatistics[columnIndex] == null) {
-      Statistics<? extends Serializable> valueStatistics =
-          Statistics.getStatsByType(dataTypes.get(columnIndex));
-      pageValueStatistics[columnIndex] = valueStatistics;
-    }
-    if (chunkValueStatistics[columnIndex] == null) {
-      Statistics<? extends Serializable> chunkValueStats =
-          Statistics.getStatsByType(dataTypes.get(columnIndex));
-      chunkValueStatistics[columnIndex] = chunkValueStats;
-    }
-  }
-
-  private void updateValueStatistics(
-      long[] time,
-      PageColumnAccessInfo[] columnAccessInfo,
-      Statistics<? extends Serializable>[] chunkValueStatistics,
-      Statistics<? extends Serializable>[] pageValueStatistics,
-      MergeSortAlignedTVListIterator timeValuePairIterator) {
-    // update value statistics
-    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-      PageColumnAccessInfo pageAccessInfo = columnAccessInfo[columnIndex];
-      switch (dataTypes.get(columnIndex)) {
-        case BOOLEAN:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getBoolean());
-              chunkValueStatistics[columnIndex].update(time[index], value.getBoolean());
-            }
-          }
-          break;
-        case INT32:
-        case DATE:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getInt());
-              chunkValueStatistics[columnIndex].update(time[index], value.getInt());
-            }
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getLong());
-              chunkValueStatistics[columnIndex].update(time[index], value.getLong());
-            }
-          }
-          break;
-        case FLOAT:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getFloat());
-              chunkValueStatistics[columnIndex].update(time[index], value.getFloat());
-            }
-          }
-          break;
-        case DOUBLE:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getDouble());
-              chunkValueStatistics[columnIndex].update(time[index], value.getDouble());
-            }
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          for (int index = 0; index < pageAccessInfo.count(); index++) {
-            int[] accessInfo = pageAccessInfo.get(index);
-            TsPrimitiveType value =
-                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
-            if (value != null) {
-              checkValueStatistics(
-                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
-              pageValueStatistics[columnIndex].update(time[index], value.getBinary());
-              chunkValueStatistics[columnIndex].update(time[index], value.getBinary());
-            }
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes.get(columnIndex)));
       }
     }
   }
@@ -290,12 +162,14 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       long timestamp = timeValuePairIterator.getTime();
+      // ignore deleted row
       if (timeColumnDeletion != null
           && isPointDeleted(timestamp, timeColumnDeletion, timeDeleteCursor)) {
         timeValuePairIterator.step();
         continue;
       }
 
+      // ignore all-null row
       BitMap bitMap = timeValuePairIterator.getBitmap();
       if (valueColumnsDeletionList != null) {
         for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
@@ -312,9 +186,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         continue;
       }
 
-      // Split pages
+      // create pageTimeStatistics and pageValueStatistics for new page
       if (pointsInPage == 0) {
-        // Add new pageTimeStatistics array and pageValueStatistics into list
         Statistics<? extends Serializable> pageTimeStatistics =
             Statistics.getStatsByType(TSDataType.VECTOR);
         timeStatisticsList.add(pageTimeStatistics);
@@ -326,10 +199,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
 
       // prepare column access info for current page
-      int[][] accessInfo = timeValuePairIterator.getColumnAccessInfo();
+      int[][] columnAccessInfo = timeValuePairIterator.getColumnAccessInfo();
       for (int i = 0; i < dataTypes.size(); i++) {
         time[pointsInPage] = timeValuePairIterator.getTime();
-        pageColumnAccessInfo[i].add(accessInfo[i]);
+        pageColumnAccessInfo[i].add(columnAccessInfo[i]);
       }
       timeValuePairIterator.step();
       pointsInPage++;
@@ -351,8 +224,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             timeValuePairIterator);
 
         // reset
-        for (PageColumnAccessInfo columnAccessInfo : pageColumnAccessInfo) {
-          columnAccessInfo.reset();
+        for (PageColumnAccessInfo p : pageColumnAccessInfo) {
+          p.reset();
         }
         chunkTimeStatistics.setEmpty(false);
         pointsInPage = 0;
@@ -566,5 +439,133 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   public MergeSortAlignedTVListIterator getMergeSortAlignedTVListIterator() {
     return timeValuePairIterator;
+  }
+
+  private void updateTimeStatistics(
+      long[] time,
+      int count,
+      Statistics<? extends Serializable> chunkTimeStatistics,
+      Statistics<? extends Serializable> pageTimeStatistics) {
+    for (int index = 0; index < count; index++) {
+      chunkTimeStatistics.update(time[index]);
+      pageTimeStatistics.update(time[index]);
+    }
+    pageTimeStatistics.setEmpty(count == 0);
+  }
+
+  private void createValueStatisticsIfNotExists(
+      Statistics<? extends Serializable>[] chunkValueStatistics,
+      Statistics<? extends Serializable>[] pageValueStatistics,
+      List<TSDataType> dataTypes,
+      int columnIndex) {
+    if (pageValueStatistics[columnIndex] == null) {
+      Statistics<? extends Serializable> valueStatistics =
+          Statistics.getStatsByType(dataTypes.get(columnIndex));
+      pageValueStatistics[columnIndex] = valueStatistics;
+    }
+    if (chunkValueStatistics[columnIndex] == null) {
+      Statistics<? extends Serializable> chunkValueStats =
+          Statistics.getStatsByType(dataTypes.get(columnIndex));
+      chunkValueStatistics[columnIndex] = chunkValueStats;
+    }
+  }
+
+  private void updateValueStatistics(
+      long[] time,
+      PageColumnAccessInfo[] columnAccessInfo,
+      Statistics<? extends Serializable>[] chunkValueStatistics,
+      Statistics<? extends Serializable>[] pageValueStatistics,
+      MergeSortAlignedTVListIterator timeValuePairIterator) {
+    // update value statistics
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      PageColumnAccessInfo pageAccessInfo = columnAccessInfo[columnIndex];
+      switch (dataTypes.get(columnIndex)) {
+        case BOOLEAN:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getBoolean());
+              chunkValueStatistics[columnIndex].update(time[index], value.getBoolean());
+            }
+          }
+          break;
+        case INT32:
+        case DATE:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getInt());
+              chunkValueStatistics[columnIndex].update(time[index], value.getInt());
+            }
+          }
+          break;
+        case INT64:
+        case TIMESTAMP:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getLong());
+              chunkValueStatistics[columnIndex].update(time[index], value.getLong());
+            }
+          }
+          break;
+        case FLOAT:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getFloat());
+              chunkValueStatistics[columnIndex].update(time[index], value.getFloat());
+            }
+          }
+          break;
+        case DOUBLE:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getDouble());
+              chunkValueStatistics[columnIndex].update(time[index], value.getDouble());
+            }
+          }
+          break;
+        case TEXT:
+        case BLOB:
+        case STRING:
+          for (int index = 0; index < pageAccessInfo.count(); index++) {
+            int[] accessInfo = pageAccessInfo.get(index);
+            TsPrimitiveType value =
+                timeValuePairIterator.getPrimitiveObject(accessInfo, columnIndex);
+            if (value != null) {
+              createValueStatisticsIfNotExists(
+                  pageValueStatistics, chunkValueStatistics, dataTypes, columnIndex);
+              pageValueStatistics[columnIndex].update(time[index], value.getBinary());
+              chunkValueStatistics[columnIndex].update(time[index], value.getBinary());
+            }
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataTypes.get(columnIndex)));
+      }
+    }
   }
 }

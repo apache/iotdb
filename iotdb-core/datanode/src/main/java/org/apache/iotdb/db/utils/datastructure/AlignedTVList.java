@@ -1483,7 +1483,10 @@ public abstract class AlignedTVList extends TVList {
     private Integer floatPrecision;
     private TSEncoding[] encodingArray;
 
-    private int[] validRowIndex;
+    // remember the selected index of last not-null value for each column during prepareNext phase.
+    // It is already transferred by getValueIndex method, so it can be directly used in
+    // getPrimitiveObject method.
+    private int[] selectedIndex;
 
     public AlignedTVListIterator() {
       super();
@@ -1504,7 +1507,7 @@ public abstract class AlignedTVList extends TVList {
       this.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
       this.floatPrecision = floatPrecision;
       this.encodingArray = encodingList == null ? null : encodingList.toArray(new TSEncoding[0]);
-      this.validRowIndex = new int[dataTypeList.size()];
+      this.selectedIndex = new int[dataTypeList.size()];
     }
 
     private void prepareNext() {
@@ -1525,7 +1528,7 @@ public abstract class AlignedTVList extends TVList {
           probeNext = true;
           return;
         }
-        Arrays.fill(validRowIndex, rowIndex);
+        Arrays.fill(selectedIndex, rowIndex);
         findValidRow = true;
       }
 
@@ -1538,7 +1541,7 @@ public abstract class AlignedTVList extends TVList {
           for (int columnIndex = 0; columnIndex < dataTypeArray.length; columnIndex++) {
             // update currTvPair if the column is not null
             if (!isNull(rowIndex, columnIndex)) {
-              validRowIndex[columnIndex] = rowIndex;
+              selectedIndex[columnIndex] = rowIndex;
             }
           }
         }
@@ -1567,7 +1570,7 @@ public abstract class AlignedTVList extends TVList {
 
       TsPrimitiveType[] vector = new TsPrimitiveType[dataTypeArray.length];
       for (int columnIndex = 0; columnIndex < dataTypeArray.length; columnIndex++) {
-        vector[columnIndex] = getPrimitiveObject(validRowIndex[columnIndex], columnIndex);
+        vector[columnIndex] = getPrimitiveObject(selectedIndex[columnIndex], columnIndex);
       }
       TimeValuePair tvPair =
           new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
@@ -1583,7 +1586,7 @@ public abstract class AlignedTVList extends TVList {
       }
       TsPrimitiveType[] vector = new TsPrimitiveType[dataTypeArray.length];
       for (int columnIndex = 0; columnIndex < dataTypeArray.length; columnIndex++) {
-        vector[columnIndex] = getPrimitiveObject(validRowIndex[columnIndex], columnIndex);
+        vector[columnIndex] = getPrimitiveObject(selectedIndex[columnIndex], columnIndex);
       }
       return new TimeValuePair(currentTime, TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
     }
@@ -1650,8 +1653,8 @@ public abstract class AlignedTVList extends TVList {
       }
     }
 
-    public int getValidRowIndex(int columnIndex) {
-      return validRowIndex[columnIndex];
+    public int getSelectedIndex(int columnIndex) {
+      return selectedIndex[columnIndex];
     }
 
     @Override
@@ -1663,7 +1666,7 @@ public abstract class AlignedTVList extends TVList {
       iterator.allValueColDeletedMap = allValueColDeletedMap;
       iterator.floatPrecision = floatPrecision;
       iterator.encodingArray = this.encodingArray;
-      iterator.validRowIndex = new int[dataTypeArray.length];
+      iterator.selectedIndex = new int[dataTypeArray.length];
       iterator.reset();
       return iterator;
     }
