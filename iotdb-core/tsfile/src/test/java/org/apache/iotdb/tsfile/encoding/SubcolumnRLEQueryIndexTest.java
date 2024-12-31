@@ -13,7 +13,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnNewQueryIndexTest {
+public class SubcolumnRLEQueryIndexTest {
     // SubcolumnByteRLETest Query Index
 
     public static void Query(byte[] encoded_result, int lower_bound, int upper_bound) {
@@ -240,7 +240,7 @@ public class SubcolumnNewQueryIndexTest {
         queryRange.put("Bird-migration", new int[] { 2500000, 2600000 });
         queryRange.put("Bitcoin-price", new int[] { 160000000, 170000000 });
         queryRange.put("Blockchain-tr", new int[] { 100000, 300000 });
-        queryRange.put("City-temp", new int[] { 500, 700 });
+        queryRange.put("City-temp", new int[] { 480, 700 });
         queryRange.put("Dewpoint-temp", new int[] { 9500, 9600 });
         queryRange.put("IR-bio-temp", new int[] { -300, -200 });
         queryRange.put("PM10-dust", new int[] { 1000, 2000 });

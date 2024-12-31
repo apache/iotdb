@@ -13,7 +13,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnNewQueryMaxTest {
+public class SubcolumnRLEQueryMaxTest {
     // SubcolumnByteRLETest Query Max
 
     public static void Query(byte[] encoded_result) {
@@ -112,22 +112,23 @@ public class SubcolumnNewQueryMaxTest {
 
                     if (subcolumnList[i][index] > maxPart) {
                         maxPart = subcolumnList[i][index];
-                        // new_length = 0;
-                        // candidate_indices[new_length] = index;
-                        // new_length++;
-                        // } else if (bpListList[i][index] == maxPart) {
-                        // candidate_indices[new_length] = index;
-                        // new_length++;
-                    }
-                }
 
-                for (int j = 0; j < candidate_length; j++) {
-                    int index = candidate_indices[j];
-                    if (subcolumnList[i][index] == maxPart) {
+                        new_length = 0;
+                        candidate_indices[new_length] = index;
+                        new_length++;
+                        } else if (subcolumnList[i][index] == maxPart) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
                 }
+
+                // for (int j = 0; j < candidate_length; j++) {
+                //     int index = candidate_indices[j];
+                //     if (subcolumnList[i][index] == maxPart) {
+                //         candidate_indices[new_length] = index;
+                //         new_length++;
+                //     }
+                // }
 
                 candidate_length = new_length;
 
@@ -165,34 +166,30 @@ public class SubcolumnNewQueryMaxTest {
                     if (rleIndex < index) {
                         if (rle_values[rleIndex] > maxPart) {
                             maxPart = rle_values[rleIndex];
-                            // new_length = 0;
-                            // } else if (bpListList[i][index_candidate] == maxPart) {
-                            // candidate_indices[new_length] = index_candidate;
-                            // new_length++;
-                        }
-                    }
-                }
 
-                for (int j = 0; j < candidate_length; j++) {
-                    int index_candidate = candidate_indices[j];
-
-                    while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
-                        currentPos += run_length[rleIndex];
-                        rleIndex++;
-                    }
-
-                    if (rleIndex < index) {
-                        if (rle_values[rleIndex] == maxPart) {
+                            new_length = 0;
+                            } else if (rle_values[rleIndex] == maxPart) {
                             candidate_indices[new_length] = index_candidate;
                             new_length++;
                         }
                     }
-
-                    // if (subcolumnList[i][index_candidate] == maxPart) {
-                    // candidate_indices[new_length] = index_candidate;
-                    // new_length++;
-                    // }
                 }
+
+                // for (int j = 0; j < candidate_length; j++) {
+                //     int index_candidate = candidate_indices[j];
+
+                //     while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
+                //         currentPos += run_length[rleIndex];
+                //         rleIndex++;
+                //     }
+
+                //     if (rleIndex < index) {
+                //         if (rle_values[rleIndex] == maxPart) {
+                //             candidate_indices[new_length] = index_candidate;
+                //             new_length++;
+                //         }
+                //     }
+                // }
 
                 candidate_length = new_length;
             }
@@ -241,7 +238,7 @@ public class SubcolumnNewQueryMaxTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_max_new.csv";
+        String outputPath = output_parent_dir + "test01.csv";
 
         // int block_size = 1024;
         int block_size = 512;

@@ -13,7 +13,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnNewQuerySumTest {
+public class SubcolumnRLEQuerySumTest {
     // SubcolumnByteRLETest Query Sum
 
     public static void Query(byte[] encoded_result) {
