@@ -40,55 +40,70 @@ public class InformationSchemaContentSupplierFactory {
   public static Iterator<TsBlock> getSupplier(
       final String tableName, final List<TSDataType> dataTypes) {
     if (tableName.equals(InformationSchema.QUERIES)) {
-      return new Iterator<TsBlock>() {
-        private final TsBlockBuilder resultBuilder = new TsBlockBuilder(dataTypes);
-        private final ColumnBuilder[] columnBuilders = resultBuilder.getValueColumnBuilders();
+      return new TsBlockSupplier(
+          dataTypes, Coordinator.getInstance().getAllQueryExecutions().size()) {
 
+        private final long currTime = System.currentTimeMillis();
         private final List<IQueryExecution> queryExecutions =
             Coordinator.getInstance().getAllQueryExecutions();
 
-        private final long currTime = System.currentTimeMillis();
-
-        private final int totalSize = queryExecutions.size();
-        private int nextConsumedIndex;
-
         @Override
-        public boolean hasNext() {
-          return nextConsumedIndex < totalSize;
-        }
+        protected void constructLine() {
+          IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
-        @Override
-        public TsBlock next() {
-          while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
+          if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+            String[] splits = queryExecution.getQueryId().split("_");
+            int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
-            IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
-
-            if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
-              String[] splits = queryExecution.getQueryId().split("_");
-              int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
-
-              columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
-              columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
-              columnBuilders[2].writeInt(dataNodeId);
-              columnBuilders[3].writeFloat(
-                  (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
-              columnBuilders[4].writeBinary(
-                  BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
-              resultBuilder.declarePosition();
-            }
-            nextConsumedIndex++;
+            columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
+            columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
+            columnBuilders[2].writeInt(dataNodeId);
+            columnBuilders[3].writeFloat(
+                (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
+            columnBuilders[4].writeBinary(
+                BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+            resultBuilder.declarePosition();
           }
-          TsBlock result =
-              resultBuilder.build(
-                  new RunLengthEncodedColumn(
-                      TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
-          resultBuilder.reset();
-          return result;
         }
       };
 
     } else {
       throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
+  }
+
+  private abstract static class TsBlockSupplier implements Iterator<TsBlock> {
+
+    protected final TsBlockBuilder resultBuilder;
+    protected final ColumnBuilder[] columnBuilders;
+    private final int totalSize;
+    protected int nextConsumedIndex;
+
+    private TsBlockSupplier(final List<TSDataType> dataTypes, final int totalSize) {
+      this.resultBuilder = new TsBlockBuilder(dataTypes);
+      this.columnBuilders = resultBuilder.getValueColumnBuilders();
+      this.totalSize = totalSize;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < totalSize;
+    }
+
+    @Override
+    public TsBlock next() {
+      while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
+        constructLine();
+        nextConsumedIndex++;
+      }
+      TsBlock result =
+          resultBuilder.build(
+              new RunLengthEncodedColumn(
+                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+      resultBuilder.reset();
+      return result;
+    }
+
+    protected abstract void constructLine();
   }
 }
