@@ -225,7 +225,7 @@ public class IoTDBConfig {
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
-  /** Blocking queue capacity of each page cache deletion buffer */
+  /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */

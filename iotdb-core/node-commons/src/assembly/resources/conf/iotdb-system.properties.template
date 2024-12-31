@@ -1892,7 +1892,7 @@ iot_consensus_v2_pipeline_size=5
 # Datatype: string
 iot_consensus_v2_mode=batch
 
-# Blocking queue capacity of each deletion ahead log buffer queue for iot consensus v2,
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
 # restricts maximum number of entry in the blocking queue.
 # effectiveMode: restart
 # Datatype: int
