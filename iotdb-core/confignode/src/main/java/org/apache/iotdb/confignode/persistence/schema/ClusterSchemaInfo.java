@@ -414,9 +414,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         databaseSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
-      LOGGER.error(ERROR_NAME, e);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+    } catch (final MetadataException e) {
+      LOGGER.info(
+          "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans",
+          e.getMessage());
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
