@@ -285,7 +285,7 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
     // Legality check: Multiple parentheses around subquery, this behaves the same as Trino
     tableAssertTestFail(
         "select s1 from table1 where device_id = 'd01' and s1 not in ((select s1 from table3 where device_id = 'd01'))",
-        "301: Scalar sub-query has returned multiple rows.",
+        "701: Scalar sub-query has returned multiple rows.",
         DATABASE_NAME);
 
     // Legality check: Join key type mismatch.(left key is int and right key is double)
