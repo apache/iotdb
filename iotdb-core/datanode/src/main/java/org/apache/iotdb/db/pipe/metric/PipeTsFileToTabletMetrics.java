@@ -70,7 +70,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tsFileSizeMap.put(
         pipeID,
         metricService.getOrCreateRate(
-            Metric.PIPE_TSFILETOTABLET_TSFILE_SIZE.toString(),
+            Metric.PIPE_TSFILE_TO_TABLET_TSFILE_SIZE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             pipeID.getPipeName(),
@@ -81,7 +81,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tabletCountMap.put(
         pipeID,
         metricService.getOrCreateRate(
-            Metric.PIPE_TSFILETOTABLET_TABLET_COUNT.toString(),
+            Metric.PIPE_TSFILE_TO_TABLET_TABLET_COUNT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             pipeID.getPipeName(),
@@ -110,7 +110,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tsFileSizeMap.remove(pipeID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_TSFILETOTABLET_TSFILE_SIZE.toString(),
+        Metric.PIPE_TSFILE_TO_TABLET_TSFILE_SIZE.toString(),
         Tag.NAME.toString(),
         pipeID.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -120,7 +120,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     tabletCountMap.remove(pipeID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_TSFILETOTABLET_TABLET_COUNT.toString(),
+        Metric.PIPE_TSFILE_TO_TABLET_TABLET_COUNT.toString(),
         Tag.NAME.toString(),
         pipeID.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -198,11 +198,13 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     private final String pipeName;
     private final String creationTime;
     private final String callerName;
+    private final String pipeFullName;
 
     public PipeID(String pipeName, String creationTime, String callerName) {
       this.pipeName = pipeName;
       this.creationTime = creationTime;
       this.callerName = callerName;
+      this.pipeFullName = callerName + "_" + creationTime;
     }
 
     public static PipeID getPipeID(final String pipeName, final long creationTime) {
@@ -231,7 +233,7 @@ public class PipeTsFileToTabletMetrics implements IMetricSet {
     }
 
     public String getPipeFullName() {
-      return pipeName + "_" + creationTime;
+      return pipeFullName;
     }
 
     @Override

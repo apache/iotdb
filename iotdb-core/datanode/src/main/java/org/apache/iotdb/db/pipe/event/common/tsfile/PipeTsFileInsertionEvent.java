@@ -493,9 +493,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       waitForResourceEnough4Parsing(timeoutMs);
       Iterable<TabletInsertionEvent> events = initEventParser().toTabletInsertionEvents();
       if (pipeName != null) {
-        events = new TabletInsertionEventIterable(events, this);
         final PipeTsFileToTabletMetrics.PipeID pipeID =
             PipeTsFileToTabletMetrics.PipeID.getPipeID(pipeName, creationTime);
+        events = new TabletInsertionEventIterable(events, pipeID);
+
         PipeTsFileToTabletMetrics.getInstance().register(pipeID);
         PipeTsFileToTabletMetrics.getInstance().markTsFileSize(pipeID, tsFile.length());
       }
