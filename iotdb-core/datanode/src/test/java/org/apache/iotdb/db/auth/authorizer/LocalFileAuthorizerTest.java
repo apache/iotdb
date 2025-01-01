@@ -181,6 +181,9 @@ public class LocalFileAuthorizerTest {
     assertTrue(
         authorizer.checkUserPrivileges(
             userName, new PrivilegeUnion(database, table, PrivilegeType.DELETE)));
+    assertTrue(
+        authorizer.checkUserPrivileges(
+            userName, new PrivilegeUnion(database, table, PrivilegeType.INSERT, true)));
   }
 
   @Test

@@ -777,6 +777,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
     PrivilegeModelType reqType = PrivilegeModelType.values()[req.getReqtype()];
     PrivilegeType permission;
+    // permission = -1. check object's visible.
     if (req.getPermission() == -1) {
       permission = null;
     } else {

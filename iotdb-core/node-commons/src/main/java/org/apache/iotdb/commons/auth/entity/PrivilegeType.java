@@ -46,9 +46,7 @@ public enum PrivilegeType {
   INSERT(PrivilegeModelType.RELATIONAL),
   DELETE(PrivilegeModelType.RELATIONAL);
 
-  private static final int PRIVILEGE_COUNT = values().length - 1;
-
-  private PrivilegeModelType modelType;
+  private final PrivilegeModelType modelType;
 
   PrivilegeType(PrivilegeModelType modelType) {
     this.modelType = modelType;
@@ -86,10 +84,6 @@ public enum PrivilegeType {
     return size;
   }
 
-  public static int getPrivilegeCount() {
-    return PRIVILEGE_COUNT;
-  }
-
   public static Set<PrivilegeType> toPriType(Set<Integer> priSet) {
     Set<PrivilegeType> typeSet = new HashSet<>();
     for (Integer pri : priSet) {
@@ -99,9 +93,6 @@ public enum PrivilegeType {
   }
 
   public boolean forRelationalSys() {
-    if (this == MAINTAIN || this == MANAGE_USER || this == MANAGE_ROLE) {
-      return true;
-    }
-    return false;
+    return this == MAINTAIN || this == MANAGE_USER || this == MANAGE_ROLE;
   }
 }

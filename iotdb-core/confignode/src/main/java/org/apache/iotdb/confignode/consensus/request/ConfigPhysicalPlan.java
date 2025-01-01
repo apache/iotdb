@@ -288,15 +288,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateUserWithRawPassword:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
-        case RCreateRole:
         case RCreateUser:
+        case RCreateRole:
+        case RUpdateUser:
         case RDropRole:
         case RDropUser:
         case RGrantUserRole:
         case RRevokeUserRole:
         case RGrantRoleAny:
         case RGrantUserAny:
-        case RUpdateUser:
         case RGrantUserDBPriv:
         case RGrantUserTBPriv:
         case RGrantRoleDBPriv:

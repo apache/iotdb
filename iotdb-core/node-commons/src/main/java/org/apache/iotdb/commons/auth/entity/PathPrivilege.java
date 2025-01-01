@@ -81,7 +81,6 @@ public class PathPrivilege {
     this.path = path;
   }
 
-  // can refine.
   public void setAllPrivileges(int privs) {
     for (int i = 0; i < PRI_SIZE; i++) {
       if (((1 << i) & privs) != 0) {

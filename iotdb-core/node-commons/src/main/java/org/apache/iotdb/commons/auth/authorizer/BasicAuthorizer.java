@@ -293,48 +293,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return false;
   }
 
-  @Override
-  public boolean checkUserPrivilegeGrantOption(String username, PrivilegeUnion union)
-      throws AuthException {
-    if (isAdmin(username)) {
-      return true;
-    }
-    User user = userManager.getEntry(username);
-    if (user == null) {
-      throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
-    }
-    if (checkEntryPrivilegeGrantOption(user, union)) {
-      return true;
-    }
-
-    for (String roleName : user.getRoleSet()) {
-      Role role = roleManager.getEntry(roleName);
-      if (checkEntryPrivilegeGrantOption(role, union)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean checkEntryPrivilegeGrantOption(Role role, PrivilegeUnion union) {
-    switch (union.getModelType()) {
-      case TREE:
-        return role.checkPathPrivilegeGrantOpt(union.getPath(), union.getPrivilegeType());
-      case RELATIONAL:
-        if (union.getTbName() == null) {
-          return role.checkDatabasePrivilegeGrantOption(
-              union.getDBName(), union.getPrivilegeType());
-        } else {
-          return role.checkTablePrivilegeGrantOption(
-              union.getDBName(), union.getTbName(), union.getPrivilegeType());
-        }
-      case SYSTEM:
-        return role.checkSysPriGrantOpt(union.getPrivilegeType());
-    }
-    return false;
-  }
-
   private boolean checkEntryPrivileges(Role role, PrivilegeUnion union) {
     switch (union.getModelType()) {
       case TREE:

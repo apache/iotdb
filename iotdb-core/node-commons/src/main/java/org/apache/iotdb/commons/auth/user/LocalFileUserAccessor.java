@@ -139,7 +139,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
    */
   @Override
   public User loadEntry(String entryName) throws IOException {
-    File entryFile = checkFileAvaliable(entryName, "");
+    File entryFile = checkFileAvailable(entryName, "");
     if (entryFile == null) {
       return null;
     }
@@ -166,7 +166,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         }
         user.setPrivilegeList(pathPrivilegeList);
 
-        File roleOfUser = checkFileAvaliable(entryName, "_role");
+        File roleOfUser = checkFileAvailable(entryName, "_role");
 
         Set<String> roleList = new HashSet<>();
         if (roleOfUser != null && roleOfUser.exists()) {
@@ -189,7 +189,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
       user.setSysPrivilegesWithMask(dataInputStream.readInt());
       loadPrivileges(dataInputStream, user);
 
-      File roleOfUser = checkFileAvaliable(entryName, "_role");
+      File roleOfUser = checkFileAvailable(entryName, "_role");
       Set<String> roleSet = new HashSet<>();
       if (roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
@@ -243,7 +243,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         || (backProfile.exists() && !backProfile.delete())) {
       throw new IOException(String.format("Catch error when delete %s 's role", username));
     }
-    return false;
+    return true;
   }
 
   @Override
@@ -255,17 +255,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
                 (name.endsWith(IoTDBConstant.PROFILE_SUFFIX)
                         && !name.endsWith(ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX))
                     || (name.endsWith(TEMP_SUFFIX) && !name.endsWith(ROLE_SUFFIX + TEMP_SUFFIX)));
-    List<String> retList = new ArrayList<>();
-    if (names != null) {
-      // in very rare situations, normal file and backup file may exist at the same time
-      // so a set is used to deduplicate
-      Set<String> set = new HashSet<>();
-      for (String fileName : names) {
-        set.add(fileName.replace(IoTDBConstant.PROFILE_SUFFIX, "").replace(TEMP_SUFFIX, ""));
-      }
-      retList.addAll(set);
-    }
-    return retList;
+    return getEntryStrings(names);
   }
 
   @Override
@@ -301,7 +291,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      // for IOTDB 1.2, the username's length will be stored as a negative number.
+      // for IoTDB 1.3, the username's length will be stored as a negative number.
       byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
       IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
       outputStream.write(strBuffer);

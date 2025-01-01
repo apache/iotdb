@@ -85,6 +85,6 @@ public class AllowAllAccessControl implements AccessControl {
 
   @Override
   public void checkUserCanRunAuthorStatement(String userName, RelationalAuthorStatement statement) {
-    //
+    // allow anything
   }
 }

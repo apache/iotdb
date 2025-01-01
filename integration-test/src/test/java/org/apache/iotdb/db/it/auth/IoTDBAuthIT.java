@@ -447,7 +447,7 @@ public class IoTDBAuthIT {
 
     try {
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
-      String ans = String.format("root,\n");
+      String ans = "root,\n";
       try {
         validateResultSet(resultSet, ans);
 
@@ -548,7 +548,7 @@ public class IoTDBAuthIT {
       // user1 : role1; MANAGE_ROLE,MANAGE_USER
       // user2 : role1, role2;
       ResultSet resultSet;
-      String ans = "";
+      String ans;
       Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
       Statement userStmt = userCon.createStatement();
       try {
@@ -965,7 +965,7 @@ public class IoTDBAuthIT {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1";
-      adminStmt.execute(String.format(sql, item.toString()));
+      adminStmt.execute(String.format(sql, item));
     }
     // 3.admin lists privileges of user1
     ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
@@ -992,7 +992,7 @@ public class IoTDBAuthIT {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user2 with grant option";
-      adminStmt.execute(String.format(sql, item.toString()));
+      adminStmt.execute(String.format(sql, item));
     }
     resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user2");
     ans =

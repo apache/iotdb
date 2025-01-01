@@ -1185,6 +1185,27 @@ public final class SqlFormatter {
         case GRANT_ROLE_TB:
           builder.append("GRANT ROLE PRIVILEGES");
           break;
+        case REVOKE_ROLE_ANY:
+        case REVOKE_ROLE_DB:
+        case REVOKE_ROLE_SYS:
+        case REVOKE_ROLE_TB:
+          builder.append("REVOKE ROLE PRIVILEGES");
+          break;
+        case REVOKE_USER_ANY:
+        case REVOKE_USER_DB:
+        case REVOKE_USER_SYS:
+        case REVOKE_USER_TB:
+          builder.append("REVOKE USER PRIVILEGES");
+          break;
+        case REVOKE_USER_ROLE:
+          builder.append("REVOKE USER ROLE");
+          break;
+        case UPDATE_USER:
+          builder.append("UPDATE USER");
+          break;
+        case CREATE_USER:
+          builder.append("CREATE USER");
+          break;
         case GRANT_USER_ROLE:
           builder.append("GRANT USER ROLE");
           break;
@@ -1199,6 +1220,12 @@ public final class SqlFormatter {
           break;
         case LIST_USER_PRIV:
           builder.append("LIST USER PRIVILEGES");
+          break;
+        case DROP_ROLE:
+          builder.append("DROP ROLE");
+          break;
+        case DROP_USER:
+          builder.append("DROP USER");
           break;
       }
       return null;

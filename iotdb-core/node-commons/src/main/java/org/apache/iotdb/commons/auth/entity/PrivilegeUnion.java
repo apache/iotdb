@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import java.util.List;
 
 public class PrivilegeUnion {
-  private String dbname;
-  private String tbname;
+  private String databaseName;
+  private String tableName;
   private PartialPath path;
 
   private List<? extends PartialPath> paths;
@@ -36,30 +36,31 @@ public class PrivilegeUnion {
 
   private final PrivilegeModelType modelType;
 
-  public PrivilegeUnion(String dbname, PrivilegeType type, boolean grantOption) {
-    this.dbname = dbname;
+  public PrivilegeUnion(String databaseName, PrivilegeType type, boolean grantOption) {
+    this.databaseName = databaseName;
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.RELATIONAL;
     this.grantOption = grantOption;
   }
 
-  public PrivilegeUnion(String dbname, PrivilegeType type) {
-    this.dbname = dbname;
+  public PrivilegeUnion(String databaseName, PrivilegeType type) {
+    this.databaseName = databaseName;
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.RELATIONAL;
   }
 
-  public PrivilegeUnion(String dbname, String tbname, PrivilegeType type, boolean grantOption) {
-    this.dbname = dbname;
-    this.tbname = tbname;
+  public PrivilegeUnion(
+      String databaseName, String tableName, PrivilegeType type, boolean grantOption) {
+    this.databaseName = databaseName;
+    this.tableName = tableName;
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.RELATIONAL;
     this.grantOption = grantOption;
   }
 
-  public PrivilegeUnion(String dbname, String tbname, PrivilegeType type) {
-    this.dbname = dbname;
-    this.tbname = tbname;
+  public PrivilegeUnion(String databaseName, String tableName, PrivilegeType type) {
+    this.databaseName = databaseName;
+    this.tableName = tableName;
     this.privilegeType = type;
     this.modelType = PrivilegeModelType.RELATIONAL;
   }
@@ -121,11 +122,11 @@ public class PrivilegeUnion {
   }
 
   public String getDBName() {
-    return this.dbname;
+    return this.databaseName;
   }
 
   public String getTbName() {
-    return this.tbname;
+    return this.tableName;
   }
 
   public PartialPath getPath() {
@@ -146,9 +147,5 @@ public class PrivilegeUnion {
 
   public boolean isForAny() {
     return this.forAny;
-  }
-
-  public String toString() {
-    return "type :" + this.modelType;
   }
 }

@@ -92,7 +92,7 @@ public class User extends Role {
 
   public TUserResp getUserInfo(ModelType modelType) {
     TUserResp resp = new TUserResp();
-    resp.setBasicInfo(getRoleInfo(modelType));
+    resp.setPermissionInfo(getRoleInfo(modelType));
     resp.setPassword(password);
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);

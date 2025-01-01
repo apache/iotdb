@@ -58,9 +58,9 @@ public class RoleTest {
     Role admin = new Role("root");
     PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
     PathPrivilege pathPri = new PathPrivilege(rootPath);
-    DatabasePrivilege databasePrivilege = new DatabasePrivilege("testdb");
-    TablePrivilege tablePrivilege = new TablePrivilege("testtb");
-    databasePrivilege.getTablePrivilegeMap().put("testtb", tablePrivilege);
+    DatabasePrivilege databasePrivilege = new DatabasePrivilege("testDB");
+    TablePrivilege tablePrivilege = new TablePrivilege("testTable");
+    databasePrivilege.getTablePrivilegeMap().put("testTable", tablePrivilege);
     for (PrivilegeType item : PrivilegeType.values()) {
       if (item.isSystemPrivilege()) {
         admin.getSysPrivilege().add(item);
@@ -70,10 +70,10 @@ public class RoleTest {
       } else if (item.isRelationalPrivilege()) {
         databasePrivilege.grantDBPrivilege(item);
         databasePrivilege.grantDBGrantOption(item);
-        databasePrivilege.grantTablePrivilege("testtb", item);
+        databasePrivilege.grantTablePrivilege("testTable", item);
       }
     }
-    admin.getObjectPrivilegeMap().put("testdb", databasePrivilege);
+    admin.getObjectPrivilegeMap().put("testDB", databasePrivilege);
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
         "Role{name='root', pathPrivilegeList=[root.** : "
@@ -84,10 +84,10 @@ public class RoleTest {
             + "USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_grant_option ,"
             + " MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option ,"
             + " EXTEND_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ],"
-            + " AnyScopePrivilegeMap=[], objectPrivilegeSet={testdb=Database(testdb):"
+            + " AnyScopePrivilegeMap=[], objectPrivilegeSet={testDB=Database(testDB):"
             + "{CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option,"
             + "SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,;"
-            + " Tables: [ testtb(CREATE,DROP,ALTER,SELECT,INSERT,DELETE,)]}}}",
+            + " Tables: [ testTable(CREATE,DROP,ALTER,SELECT,INSERT,DELETE,)]}}}",
         admin.toString());
   }
 }

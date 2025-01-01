@@ -302,11 +302,11 @@ public class ConfigPlanExecutor {
       case ListRole:
       case RListRole:
         return authorInfo.executeListRoles((AuthorPlan) req);
-      case RListUserPrivilege:
       case ListUserPrivilege:
+      case RListUserPrivilege:
         return authorInfo.executeListUserPrivileges((AuthorPlan) req);
-      case RListRolePrivilege:
       case ListRolePrivilege:
+      case RListRolePrivilege:
         return authorInfo.executeListRolePrivileges((AuthorPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);

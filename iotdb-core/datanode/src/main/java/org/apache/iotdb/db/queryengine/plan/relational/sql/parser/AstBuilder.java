@@ -1436,29 +1436,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
     boolean toUser;
-    String username;
+    String name;
     toUser = ctx.holderType().getText().equalsIgnoreCase("user");
-    username = ctx.holderName.getText();
+    name = ctx.holderName.getText();
     boolean grantOption = ctx.grantOpt() != null;
-    boolean toTable = false;
+    boolean toTable;
     // SYSTEM PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
       String privilegeText = ctx.privilegeObjectScope().systemPrivilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       if (!priv.isSystemPrivilege() || !priv.forRelationalSys()) {
-        throw new SemanticException(priv.toString() + " is not System privilege");
+        throw new SemanticException(priv + " is not System privilege");
       }
       return new RelationalAuthorStatement(
           toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
           priv,
-          toUser ? username : "",
-          toUser ? "" : username,
+          toUser ? name : "",
+          toUser ? "" : name,
           grantOption);
     } else {
       String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       if (!priv.isRelationalPrivilege()) {
-        throw new SemanticException(priv.toString() + "is not Relational privilege");
+        throw new SemanticException(priv + "is not Relational privilege");
       }
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
@@ -1475,42 +1475,45 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser
                 ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
                 : toTable ? AuthorRType.GRANT_ROLE_TB : AuthorRType.GRANT_ROLE_DB,
+            toUser ? name : "",
+            toUser ? "" : name,
             toTable ? databaseName.toLowerCase() : obj.toLowerCase(),
             toTable ? obj.toLowerCase() : "",
             priv,
-            toUser ? username : "",
-            toUser ? "" : username,
-            grantOption);
+            grantOption,
+            "");
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_ROLE_TB,
+            toUser ? name : "",
+            toUser ? "" : name,
             db,
             tb,
             priv,
-            toUser ? username : "",
-            toUser ? "" : username,
-            grantOption);
+            grantOption,
+            "");
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_ANY : AuthorRType.GRANT_ROLE_ANY,
             priv,
-            toUser ? username : "",
-            toUser ? "" : username,
+            toUser ? name : "",
+            toUser ? "" : name,
             grantOption);
       }
     }
-    return new RelationalAuthorStatement(AuthorRType.INVALID);
+    // will not get here.
+    throw new SemanticException("author statement parser error");
   }
 
   public Node visitRevokeStatement(RelationalSqlParser.RevokeStatementContext ctx) {
     boolean fromUser;
-    String username;
+    String name;
     fromUser = ctx.holderType().getText().equalsIgnoreCase("user");
-    username = ctx.holderName.getText();
+    name = ctx.holderName.getText();
     boolean grantOption = ctx.revokeGrantOpt() != null;
-    boolean fromTable = false;
+    boolean fromTable;
 
     // SYSTEM PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
@@ -1519,8 +1522,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       return new RelationalAuthorStatement(
           fromUser ? AuthorRType.REVOKE_USER_SYS : AuthorRType.REVOKE_ROLE_SYS,
           priv,
-          fromUser ? username : "",
-          fromUser ? "" : username,
+          fromUser ? name : "",
+          fromUser ? "" : name,
           grantOption);
     } else {
       String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
@@ -1540,33 +1543,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromUser
                 ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
                 : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
+            fromUser ? name : "",
+            fromUser ? "" : name,
             fromTable ? databaseName.toLowerCase() : obj.toLowerCase(),
             fromTable ? obj.toLowerCase() : "",
             priv,
-            fromUser ? username : "",
-            fromUser ? "" : username,
-            grantOption);
+            grantOption,
+            "");
       } else if (!ctx.privilegeObjectScope().objectScope().isEmpty()) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_ROLE_TB,
+            fromUser ? name : "",
+            fromUser ? "" : name,
             db,
             tb,
             priv,
-            fromUser ? username : "",
-            fromUser ? "" : username,
-            grantOption);
+            grantOption,
+            "");
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_ANY : AuthorRType.REVOKE_ROLE_ANY,
             priv,
-            fromUser ? username : "",
-            fromUser ? "" : username,
+            fromUser ? name : "",
+            fromUser ? "" : name,
             grantOption);
       }
     }
-    return new RelationalAuthorStatement(AuthorRType.INVALID);
+    // will not get here.
+    throw new SemanticException("author statement parser error");
   }
 
   // ********************** query expressions ********************

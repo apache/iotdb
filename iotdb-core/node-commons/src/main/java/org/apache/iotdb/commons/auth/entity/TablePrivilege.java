@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+// This class contain table's privileges.
 public class TablePrivilege {
   private String tableName;
   private Set<PrivilegeType> privileges;

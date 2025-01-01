@@ -46,10 +46,8 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
@@ -95,7 +93,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void permissionTest() throws TException, AuthException, IllegalPathException {
+  public void permissionTest() throws AuthException, IllegalPathException {
 
     TSStatus status;
 
@@ -118,12 +116,6 @@ public class AuthorInfoTest {
 
     Set<Integer> revokePrivilege = new HashSet<>();
     revokePrivilege.add(PrivilegeType.READ_DATA.ordinal());
-
-    List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : MANAGE_USER");
-
-    List<PartialPath> paths = new ArrayList<>();
-    paths.add(new PartialPath("root.ln"));
 
     cleanUserAndRole();
 
@@ -427,7 +419,7 @@ public class AuthorInfoTest {
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
-  private void cleanUserAndRole() throws TException, AuthException {
+  private void cleanUserAndRole() throws AuthException {
     TSStatus status;
 
     // clean user
@@ -539,7 +531,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void testMultPathsPermission() throws TException, AuthException, IllegalPathException {
+  public void testMultiPathsPermission() throws AuthException, IllegalPathException {
     TSStatus status;
 
     AuthorPlan authorPlan;
@@ -547,22 +539,6 @@ public class AuthorInfoTest {
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
     privilegeList.add(PrivilegeType.READ_DATA.ordinal());
-
-    Map<String, List<String>> permissionInfo;
-    List<String> userPrivilege = new ArrayList<>();
-    userPrivilege.add("root.sg.** : READ_DATA WRITE_DATA");
-    userPrivilege.add("root.ln.** : READ_DATA WRITE_DATA");
-    Collections.sort(userPrivilege);
-
-    List<String> rolePrivilege = new ArrayList<>();
-    rolePrivilege.add("root.abc.** : READ_DATA WRITE_DATA");
-    rolePrivilege.add("root.role_1.** : READ_DATA WRITE_DATA");
-    Collections.sort(rolePrivilege);
-
-    List<String> allPrivilege = new ArrayList<>();
-    allPrivilege.addAll(userPrivilege);
-    allPrivilege.addAll(rolePrivilege);
-    Collections.sort(allPrivilege);
 
     List<PartialPath> userPaths = new ArrayList<>();
     userPaths.add(new PartialPath("root.ln.**"));
@@ -671,7 +647,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void createUserWithRawPassword() throws AuthException {
+  public void createUserWithRawPassword() {
     TSStatus status;
     AuthorPlan authorPlan;
     authorPlan =
@@ -697,7 +673,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void relationalPermissionTest() throws TException, AuthException {
+  public void relationalPermissionTest() throws AuthException {
     cleanUserAndRole();
     TSStatus status;
 
@@ -733,6 +709,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(plan);
     status = permissionInfoResp.getStatus();
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     assertEquals(1, permissionInfoResp.getMemberList().size()); // Only root
 
     // create role

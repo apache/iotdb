@@ -52,19 +52,19 @@ import java.util.UUID;
 
 /**
  * This class store role info in a separate sequential file and every role will have one role file.
- * Role file schema: rolename-length int32| rolename-bytes-utf8| system-perivileges int32|
+ * Role file schema: roleName-length int32| roleName-bytes-utf8| system-privileges int32|
  * path[1]-length int32| path[1]-bytes-utf8 | privilege-int32| path[2]-length int32|
  * path[2]-bytes-utf8 | privilege-int32| path[3]-length int32| path[3]-bytes-utf8 | privilege-int32|
  * .....
  *
  * <p>system-privileges is an int32 mask code. Low 16 bits for privileges and high 16 bits mark that
- * whether the corresponding position 's privilege has grant option.So we can use a int32 to mark 16
- * kinds of privileges. Here are the permissions corresponding to the bit location identifier：
+ * whether the corresponding position 's privilege has grant option.So we can use an int32 to mark
+ * 16 kinds of privileges. Here are the permissions corresponding to the bit location identifier：
  * Manage_database : 0 MANAGE_USER : 1 MANAGE_ROLE : 2 USE_TRIGGER : 3 USE_UDF : 4 USE_CQ : 5
- * USE_PIPE : 6 EXTEDN_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
+ * USE_PIPE : 6 EXTEND_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
  * means this role has Manage_database's privilege and be able to grant it to others.
  *
- * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is a int32 mask
+ * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is an int32 mask
  * code which has the same structure as system-privileges. For path privilege, the low 16 bits stand
  * for four privileges, they are: READ_DATA : 0 WRITE_DATA : 1 READ_SCHEMA : 2 WRITE_SCHEMA : 3 And
  * the high 16 bits stand for grant option.
@@ -81,6 +81,9 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   protected static final String TEMP_SUFFIX = ".temp";
   protected static final String STRING_ENCODING = "utf-8";
   protected final String entryDirPath;
+
+  // It might be a good idea to use a Version number to control upgrade compatibility.
+  // Now it's version 1
   protected static final int VERSION = 1;
 
   /**
@@ -104,9 +107,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   }
 
   protected void saveEntryName(BufferedOutputStream outputStream, Role role) throws IOException {
-    byte[] strBuffer = role.getName().getBytes(STRING_ENCODING);
-    IOUtils.writeInt(outputStream, strBuffer.length, encodingBufferLocal);
-    outputStream.write(strBuffer);
+    IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
   }
 
   protected void savePrivileges(BufferedOutputStream outputStream, Role role) throws IOException {
@@ -117,7 +118,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
       PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
       IOUtils.writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
     }
-    IOUtils.writeInt(outputStream, role.getPathPrivilegeList().size(), encodingBufferLocal);
+    IOUtils.writeInt(outputStream, role.getAnyScopePrivileges(), encodingBufferLocal);
     privilegeNum = role.getObjectPrivilegeMap().size();
     IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
     for (Map.Entry<String, DatabasePrivilege> objectPrivilegeMap :
@@ -141,17 +142,18 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
     num = ReadWriteIOUtils.readInt(dataInputStream);
     for (int i = 0; i < num; i++) {
       DatabasePrivilege databasePrivilege =
-          IOUtils.readObjectPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal);
+          IOUtils.readRelationalPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal);
       objectPrivilegeMap.put(databasePrivilege.getDatabaseName(), databasePrivilege);
     }
     role.setObjectPrivilegeMap(objectPrivilegeMap);
   }
 
   protected void saveRoles(Role role) throws IOException {
+    // Just used in LocalFileUserAccessor.java.
     // Do nothing.
   }
 
-  protected File checkFileAvaliable(String entryName, String suffix) {
+  protected File checkFileAvailable(String entryName, String suffix) {
     File userProfile =
         SystemFileFactory.INSTANCE.getFile(
             entryDirPath + File.separator + entryName + suffix + IoTDBConstant.PROFILE_SUFFIX);
@@ -179,7 +181,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
 
   @Override
   public Role loadEntry(String entryName) throws IOException {
-    File entryFile = checkFileAvaliable(entryName, "");
+    File entryFile = checkFileAvailable(entryName, "");
     if (entryFile == null) {
       return null;
     }
@@ -188,6 +190,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int version = dataInputStream.readInt();
+      assert version == VERSION;
       entryName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       Role role = new Role(entryName);
       role.setSysPrivilegesWithMask(dataInputStream.readInt());
@@ -260,6 +263,10 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
         roleDir.list(
             (dir, name) ->
                 name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
+    return getEntryStrings(names);
+  }
+
+  public static List<String> getEntryStrings(String[] names) {
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time
@@ -281,7 +288,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
     File roleTmpSnapshotDir =
         systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    boolean result = true;
+    boolean result;
     try {
       result = FileUtils.copyDir(roleFolder, roleTmpSnapshotDir);
       result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);

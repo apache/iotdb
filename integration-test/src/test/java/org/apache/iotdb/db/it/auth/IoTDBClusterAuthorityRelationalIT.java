@@ -159,13 +159,16 @@ public class IoTDBClusterAuthorityRelationalIT {
     assertEquals(resp.status.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertTrue(
         toUser
-            ? resp.getUserInfo().getBasicInfo().getSysPriSet().contains(sysPriv.ordinal())
+            ? resp.getUserInfo().getPermissionInfo().getSysPriSet().contains(sysPriv.ordinal())
             : resp.getRoleInfo().containsKey(roleName)
                 && resp.getRoleInfo().get(roleName).getSysPriSet().contains(sysPriv.ordinal()));
     if (grantOpt) {
       assertTrue(
           toUser
-              ? resp.getUserInfo().getBasicInfo().getSysPriSetGrantOpt().contains(sysPriv.ordinal())
+              ? resp.getUserInfo()
+                  .getPermissionInfo()
+                  .getSysPriSetGrantOpt()
+                  .contains(sysPriv.ordinal())
               : resp.getRoleInfo().containsKey(roleName)
                   && resp.getRoleInfo()
                       .get(roleName)
@@ -225,33 +228,33 @@ public class IoTDBClusterAuthorityRelationalIT {
       if (union.isForAny()) {
         assertTrue(
             userInfo
-                .getBasicInfo()
+                .getPermissionInfo()
                 .getAnyScopeGrantSet()
                 .contains(union.getPrivilegeType().ordinal()));
       } else if (union.getTbName() == null) {
-        assertTrue(userInfo.getBasicInfo().getDbPrivilegeMap().containsKey(union.getDBName()));
+        assertTrue(userInfo.getPermissionInfo().getDbPrivilegeMap().containsKey(union.getDBName()));
         assertTrue(
             userInfo
-                .getBasicInfo()
+                .getPermissionInfo()
                 .getDbPrivilegeMap()
                 .get(union.getDBName())
                 .getPrivileges()
                 .contains(union.getPrivilegeType().ordinal()));
       } else {
-        assertTrue(userInfo.getBasicInfo().getDbPrivilegeMap().containsKey(union.getDBName()));
+        assertTrue(userInfo.getPermissionInfo().getDbPrivilegeMap().containsKey(union.getDBName()));
         assertTrue(
             userInfo
-                .getBasicInfo()
+                .getPermissionInfo()
                 .getDbPrivilegeMap()
                 .get(union.getDBName())
-                .getTableinfo()
+                .getTablePrivilegeMap()
                 .containsKey(union.getTbName()));
         assertTrue(
             userInfo
-                .getBasicInfo()
+                .getPermissionInfo()
                 .getDbPrivilegeMap()
                 .get(union.getDBName())
-                .getTableinfo()
+                .getTablePrivilegeMap()
                 .get(union.getTbName())
                 .getPrivileges()
                 .contains(union.getPrivilegeType().ordinal()));
@@ -276,13 +279,13 @@ public class IoTDBClusterAuthorityRelationalIT {
             roleResp
                 .getDbPrivilegeMap()
                 .get(union.getDBName())
-                .getTableinfo()
+                .getTablePrivilegeMap()
                 .containsKey(union.getTbName()));
         assertTrue(
             roleResp
                 .getDbPrivilegeMap()
                 .get(union.getDBName())
-                .getTableinfo()
+                .getTablePrivilegeMap()
                 .get(union.getTbName())
                 .getPrivileges()
                 .contains(union.getPrivilegeType().ordinal()));

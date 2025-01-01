@@ -358,7 +358,7 @@ struct TAuthorizerResp {
 }
 
 struct TUserResp {
-  1: required TRoleResp basicInfo
+  1: required TRoleResp permissionInfo
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
@@ -381,16 +381,16 @@ struct TPathPrivilege {
 }
 
 struct TTablePrivilege {
-    1: required string tablename
+    1: required string tableName
     2: required set<i32> privileges
     3: required set<i32> grantOption
 }
 
 struct TDBPrivilege {
-    1: required string databasename
+    1: required string databaseName
     2: required set<i32> privileges
     3: required set<i32> grantOpt
-    4: required map<string, TTablePrivilege> tableinfo
+    4: required map<string, TTablePrivilege> tablePrivilegeMap
 }
 
 struct TPermissionInfoResp {
@@ -412,6 +412,14 @@ struct TLoginReq {
   1: required string userrname
   2: required string password
 }
+
+// reqtype : tree, relational, system
+// to check tree privilege, paths is required
+// to check relational privilege, database or table is required
+// to check system privilege, just spec permission
+
+// if grant opt is ture, check grant option of spec permission.
+// if permission is -1, means check visible.
 
 struct TCheckUserPrivilegesReq {
   1: required string username
