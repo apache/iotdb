@@ -503,44 +503,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
-      throws AuthException {
-    User user = authorizer.getUser(username);
-    TPermissionInfoResp resp = new TPermissionInfoResp();
-    boolean status = false;
-    if (user == null) {
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
-      return resp;
-    }
-    switch (union.getModelType()) {
-      case TREE:
-        for (PartialPath path : union.getPaths()) {
-          if (!authorizer.checkUserPrivilegeGrantOption(
-              username, new PrivilegeUnion(path, union.getPrivilegeType()))) {
-            status = false;
-            break;
-          }
-        }
-        break;
-      case RELATIONAL:
-      case SYSTEM:
-        status = authorizer.checkUserPrivilegeGrantOption(username, union);
-    }
-
-    try {
-      // Bring this user's permission information back to the datanode for caching
-      resp = getUserPermissionInfo(username, ModelType.ALL);
-      if (status) {
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      } else {
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
-      }
-    } catch (AuthException e) {
-      resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-    }
-    return resp;
-  }
-
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
       throws AuthException {
     TPermissionInfoResp result;

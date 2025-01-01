@@ -940,7 +940,7 @@ public class AuthorInfoTest {
 
     assertEquals(
         authorInfo
-            .checkUserPrivilegeGrantOpt(
+            .checkUserPrivileges(
                 "user", new PrivilegeUnion("testdb", "table2", PrivilegeType.DELETE, true))
             .getStatus()
             .getCode(),
@@ -948,7 +948,7 @@ public class AuthorInfoTest {
 
     assertEquals(
         authorInfo
-            .checkUserPrivilegeGrantOpt(
+            .checkUserPrivileges(
                 "user", new PrivilegeUnion("database", "table", PrivilegeType.ALTER, true))
             .getStatus()
             .getCode(),

@@ -112,6 +112,10 @@ public class PrivilegeUnion {
     this.grantOption = false;
   }
 
+  public void setGrantOption(boolean grantOption) {
+    this.grantOption = grantOption;
+  }
+
   public PrivilegeModelType getModelType() {
     return this.modelType;
   }
