@@ -27,8 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalWritePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreeWritePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -286,7 +286,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
         case CreateUserWithRawPassword:
-          plan = new AuthorTreeWritePlan(configPhysicalPlanType);
+          plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
         case RCreateRole:
         case RCreateUser:
@@ -311,7 +311,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RGrantRoleSysPri:
         case RRevokeUserSysPri:
         case RRevokeRoleSysPri:
-          plan = new AuthorRelationalWritePlan(configPhysicalPlanType);
+          plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
           plan = new ApplyConfigNodePlan();
