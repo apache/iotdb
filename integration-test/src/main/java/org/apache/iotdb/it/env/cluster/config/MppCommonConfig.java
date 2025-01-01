@@ -167,8 +167,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    setProperty("avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    setProperty("target_chunk_point_num", String.valueOf(targetChunkPointNum));
     return this;
   }
 
@@ -200,6 +200,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     setProperty("data_region_consensus_protocol_class", dataRegionConsensusProtocolClass);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
     return this;
   }
 
@@ -499,6 +505,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
         "pipe_connector_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 

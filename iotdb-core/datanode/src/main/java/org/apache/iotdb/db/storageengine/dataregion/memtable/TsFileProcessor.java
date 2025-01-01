@@ -104,6 +104,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -751,8 +752,7 @@ public class TsFileProcessor {
         // Skip failed Measurements
         if (dataTypes[i] == null
             || measurements[i] == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -812,7 +812,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
           increasingMemTableInfo
@@ -836,7 +836,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
 
@@ -875,7 +875,7 @@ public class TsFileProcessor {
         if (dataTypes[i] == null
             || measurements[i] == null
             || (insertRowNode.getColumnCategories() != null
-                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
         // TEXT data mem size
@@ -1015,7 +1015,7 @@ public class TsFileProcessor {
       measurementColumnNum = dataTypes.length;
     } else {
       for (TsTableColumnCategory columnCategory : columnCategories) {
-        if (columnCategory == TsTableColumnCategory.MEASUREMENT) {
+        if (columnCategory == TsTableColumnCategory.FIELD) {
           measurementColumnNum++;
         }
       }
@@ -1049,8 +1049,7 @@ public class TsFileProcessor {
         if (dataType == null
             || column == null
             || measurement == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -1089,8 +1088,7 @@ public class TsFileProcessor {
       if (dataType == null
           || column == null
           || measurement == null
-          || (columnCategories != null
-              && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+          || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
         continue;
       }
 
@@ -1198,45 +1196,28 @@ public class TsFileProcessor {
       WritingMetrics.getInstance().recordMemControlFlushMemTableCount(1);
       return true;
     }
-    if (workMemTable.reachChunkSizeOrPointNumThreshold()) {
-      WritingMetrics.getInstance().recordSeriesFullFlushMemTableCount(1);
-      return true;
-    }
     return false;
   }
 
-  public void syncClose() {
+  @TestOnly
+  public void syncClose() throws ExecutionException {
     logger.info(
         "Sync close file: {}, will firstly async close it",
         tsFileResource.getTsFile().getAbsolutePath());
     if (shouldClose) {
       return;
     }
-    synchronized (flushingMemTables) {
-      try {
-        asyncClose();
-        logger.info("Start to wait until file {} is closed", tsFileResource);
-        long startTime = System.currentTimeMillis();
-        while (!flushingMemTables.isEmpty()) {
-          flushingMemTables.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000 && !flushingMemTables.isEmpty()) {
-            logger.warn(
-                "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
-                this.tsFileResource.getTsFile().getAbsolutePath(),
-                (System.currentTimeMillis() - startTime) / 1000,
-                flushingMemTables.size(),
-                flushingMemTables.getFirst(),
-                FlushManager.getInstance());
-          }
-        }
-      } catch (InterruptedException e) {
-        logger.error(
-            "{}: {} wait close interrupted",
-            dataRegionName,
-            tsFileResource.getTsFile().getName(),
-            e);
-        Thread.currentThread().interrupt();
+    try {
+      asyncClose().get();
+      logger.info("Start to wait until file {} is closed", tsFileResource);
+      // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
+      // but the TsFileProcessor may be not closed. Therefore, we need to check whether the writer
+      // is null.
+      while (writer != null) {
+        TimeUnit.MILLISECONDS.sleep(10);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
     logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }

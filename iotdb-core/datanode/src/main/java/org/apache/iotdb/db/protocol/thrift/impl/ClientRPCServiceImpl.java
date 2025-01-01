@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
@@ -59,7 +60,6 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -218,6 +218,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
+import static org.apache.iotdb.db.utils.CommonUtils.getContentOfTSFastLastDataQueryForOneDeviceReq;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -229,6 +230,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+
+  private static final Logger SAMPLED_QUERIES_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -340,10 +346,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 statement,
                 partitionFetcher,
                 schemaFetcher,
-                req.getTimeout());
+                req.getTimeout(),
+                true);
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            relationSqlParser.createStatement(statement, clientSession.getZoneId());
+            relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -370,7 +377,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 SESSION_MANAGER.getSessionInfo(clientSession),
                 statement,
                 metadata,
-                req.getTimeout());
+                req.getTimeout(),
+                true);
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -477,7 +485,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -567,7 +576,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -656,7 +666,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -789,7 +800,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               Collections.singletonList(aggregator),
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
@@ -805,7 +816,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               Collections.singletonList(aggregator),
-              initTimeRangeIterator(groupByTimeParameter, true, true),
+              initTimeRangeIterator(groupByTimeParameter, true, true, sessionInfo.getZoneId()),
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
@@ -903,6 +914,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setQueryResult(Collections.emptyList());
         finished = true;
         resp.setMoreData(false);
+        sampleForCacheHitFastLastDataQueryForOneDevice(req);
         return resp;
       }
 
@@ -966,6 +978,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
           finished = true;
           resp.setMoreData(false);
+          sampleForCacheHitFastLastDataQueryForOneDevice(req);
           return resp;
         }
       }
@@ -994,7 +1007,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1068,6 +1082,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     tsLastDataQueryReq.setLegalPathNodes(req.legalPathNodes);
     tsLastDataQueryReq.setTimeout(req.timeout);
     return tsLastDataQueryReq;
+  }
+
+  private static void sampleForCacheHitFastLastDataQueryForOneDevice(
+      TSFastLastDataQueryForOneDeviceReq req) {
+    // only sample successful query
+    if (COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+      String queryRequest = getContentOfTSFastLastDataQueryForOneDeviceReq(req);
+      if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+        if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+          SAMPLED_QUERIES_LOGGER.info(queryRequest);
+        }
+      } else {
+        // no limit, always sampled
+        SAMPLED_QUERIES_LOGGER.info(queryRequest);
+      }
+    }
   }
 
   @Override
@@ -1668,11 +1698,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     statement,
                     partitionFetcher,
                     schemaFetcher,
-                    config.getQueryTimeoutThreshold());
+                    config.getQueryTimeoutThreshold(),
+                    false);
           } else {
 
             org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-                relationSqlParser.createStatement(statement, clientSession.getZoneId());
+                relationSqlParser.createStatement(
+                    statement, clientSession.getZoneId(), clientSession);
 
             if (s instanceof Use) {
               useDatabase = true;
@@ -1698,7 +1730,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     SESSION_MANAGER.getSessionInfo(clientSession),
                     statement,
                     metadata,
-                    config.getQueryTimeoutThreshold());
+                    config.getQueryTimeoutThreshold(),
+                    false);
           }
 
           results.add(result.status);
@@ -2596,7 +2629,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               null,
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              true);
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

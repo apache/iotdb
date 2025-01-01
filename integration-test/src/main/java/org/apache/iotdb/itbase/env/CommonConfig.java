@@ -62,7 +62,7 @@ public interface CommonConfig {
 
   CommonConfig setPrimitiveArraySize(int primitiveArraySize);
 
-  CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold);
+  CommonConfig setTargetChunkPointNum(int targetChunkPointNum);
 
   CommonConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber);
 
@@ -71,6 +71,8 @@ public interface CommonConfig {
   CommonConfig setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass);
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
+
+  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
@@ -159,4 +161,10 @@ public interface CommonConfig {
 
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
+
+  CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    return this;
+  }
 }

@@ -31,58 +31,58 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 
 public interface IWritableMemChunk extends WALEntryValue {
   int TVLIST_SORT_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
   int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-
-  long MAX_SERIES_POINT_NUMBER =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   long TARGET_CHUNK_SIZE = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  long MAX_NUMBER_OF_POINTS_IN_CHUNK =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
-  boolean putLongWithFlushCheck(long t, long v);
+  void putLong(long t, long v);
 
-  boolean putIntWithFlushCheck(long t, int v);
+  void putInt(long t, int v);
 
-  boolean putFloatWithFlushCheck(long t, float v);
+  void putFloat(long t, float v);
 
-  boolean putDoubleWithFlushCheck(long t, double v);
+  void putDouble(long t, double v);
 
-  boolean putBinaryWithFlushCheck(long t, Binary v);
+  void putBinary(long t, Binary v);
 
-  boolean putBooleanWithFlushCheck(long t, boolean v);
+  void putBoolean(long t, boolean v);
 
-  boolean putAlignedValueWithFlushCheck(long t, Object[] v);
+  void putAlignedRow(long t, Object[] v);
 
-  boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end);
+  void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
-  boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end);
+  void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
 
-  boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end);
+  void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
 
-  boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end);
+  void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
 
-  boolean putBinariesWithFlushCheck(long[] t, Binary[] v, BitMap bitMap, int start, int end);
+  void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
-  boolean putBooleansWithFlushCheck(long[] t, boolean[] v, BitMap bitMap, int start, int end);
+  void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
-  boolean putAlignedValuesWithFlushCheck(
+  void putAlignedTablet(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
-  boolean writeWithFlushCheck(long insertTime, Object objectValue);
+  void writeNonAlignedPoint(long insertTime, Object objectValue);
 
-  boolean writeAlignedValueWithFlushCheck(
+  void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
-  boolean writeWithFlushCheck(
+  void writeNonAlignedTablet(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
 
-  boolean writeAlignedValuesWithFlushCheck(
+  void writeAlignedTablet(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -155,7 +155,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IChunkWriter createIChunkWriter();
 
-  void encode(IChunkWriter chunkWriter);
+  void encode(BlockingQueue<Object> ioTaskQueue);
 
   void release();
 

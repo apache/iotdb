@@ -27,8 +27,6 @@ import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,10 +54,10 @@ public class TableModelSessionExample {
 
       // or use full qualified table name
       session.executeNonQueryStatement(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
 
       session.executeNonQueryStatement(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
@@ -79,31 +77,26 @@ public class TableModelSessionExample {
       }
 
       // insert table data by tablet
-      List<IMeasurementSchema> measurementSchemaList =
-          new ArrayList<>(
-              Arrays.asList(
-                  new MeasurementSchema("region_id", TSDataType.STRING),
-                  new MeasurementSchema("plant_id", TSDataType.STRING),
-                  new MeasurementSchema("device_id", TSDataType.STRING),
-                  new MeasurementSchema("model", TSDataType.STRING),
-                  new MeasurementSchema("temperature", TSDataType.FLOAT),
-                  new MeasurementSchema("humidity", TSDataType.DOUBLE)));
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "model", "temperature", "humidity");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE);
       List<Tablet.ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
                   Tablet.ColumnCategory.ATTRIBUTE,
-                  Tablet.ColumnCategory.MEASUREMENT,
-                  Tablet.ColumnCategory.MEASUREMENT));
-      Tablet tablet =
-          new Tablet(
-              "test1",
-              IMeasurementSchema.getMeasurementNameList(measurementSchemaList),
-              IMeasurementSchema.getDataTypeList(measurementSchemaList),
-              columnTypeList,
-              100);
+                  Tablet.ColumnCategory.FIELD,
+                  Tablet.ColumnCategory.FIELD));
+      Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);

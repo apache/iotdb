@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -188,7 +188,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // fake table schema
     final TsTable testTable1 = new TsTable("table1");
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+        new FieldColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1);
     DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1");
     // generate crashed .tsfile

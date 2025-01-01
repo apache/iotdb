@@ -42,10 +42,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
@@ -322,6 +322,8 @@ public class DataRegion implements IDataRegionForQuery {
       PerformanceOverviewMetrics.getInstance();
   private final ExecutorService upgradeModFileThreadPool;
 
+  private final DataRegionMetrics metrics;
+
   /**
    * Construct a database processor.
    *
@@ -385,7 +387,8 @@ public class DataRegion implements IDataRegionForQuery {
       recover();
     }
 
-    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
+    this.metrics = new DataRegionMetrics(this);
+    MetricService.getInstance().addMetricSet(metrics);
   }
 
   @TestOnly
@@ -396,6 +399,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
+    this.metrics = new DataRegionMetrics(this);
   }
 
   @Override
@@ -691,11 +695,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void initCompactionSchedule() {
-    if (!config.isEnableSeqSpaceCompaction()
-        && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
-      return;
-    }
     RepairUnsortedFileCompactionTask.recoverAllocatedFileTimestamp(
         tsFileManager.getMaxFileTimestampOfUnSequenceFile());
     CompactionScheduleTaskManager.getInstance().registerDataRegion(this);
@@ -2207,6 +2206,9 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
+      if (deleted) {
+        return;
+      }
       TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2257,6 +2259,9 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("delete");
     boolean hasReleasedLock = false;
     try {
+      if (deleted) {
+        return;
+      }
       TableDeviceSchemaCache.getInstance()
           .invalidateLastCache(getDatabaseName(), modEntries.get(0).getTableName());
       List<WALFlushListener> walListeners = logDeletionInWAL(node);
@@ -2319,6 +2324,9 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
+      if (deleted) {
+        return;
+      }
       TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2424,12 +2432,20 @@ public class DataRegion implements IDataRegionForQuery {
    * request</a> for details.
    */
   public void insertSeparatorToWAL() {
-    getWALNode()
-        .ifPresent(
-            walNode ->
-                walNode.log(
-                    TsFileProcessor.MEMTABLE_NOT_EXIST,
-                    new ContinuousSameSearchIndexSeparatorNode()));
+    writeLock("insertSeparatorToWAL");
+    try {
+      if (deleted) {
+        return;
+      }
+      getWALNode()
+          .ifPresent(
+              walNode ->
+                  walNode.log(
+                      TsFileProcessor.MEMTABLE_NOT_EXIST,
+                      new ContinuousSameSearchIndexSeparatorNode()));
+    } finally {
+      writeUnlock();
+    }
   }
 
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
@@ -3674,6 +3690,10 @@ public class DataRegion implements IDataRegionForQuery {
     return insertWriteLockHolder;
   }
 
+  public boolean isDeleted() {
+    return deleted;
+  }
+
   /** This method could only be used in iot consensus */
   public Optional<IWALNode> getWALNode() {
     if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
@@ -3692,7 +3712,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
@@ -3707,6 +3726,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
+      MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {
       writeUnlock();

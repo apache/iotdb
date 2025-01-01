@@ -120,7 +120,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
     return this;
   }
 
@@ -142,6 +142,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
     return this;
   }
 
@@ -358,6 +363,11 @@ public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }
 }

@@ -98,7 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 public interface IConfigTaskExecutor {
 
@@ -284,7 +284,7 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      ShowDB showDB, Function<String, Boolean> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeenDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
@@ -293,6 +293,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
 
   SettableFuture<ConfigTaskResult> createDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists);
+
+  SettableFuture<ConfigTaskResult> alterDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> createTable(

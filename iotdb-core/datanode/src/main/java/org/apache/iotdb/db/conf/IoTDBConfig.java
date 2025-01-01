@@ -178,6 +178,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of memtable memory for WAL queue */
+  private double walBufferQueueProportion = 0.1;
+
   /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
 
@@ -222,8 +225,8 @@ public class IoTDBConfig {
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
-  /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 500;
+  /** Blocking queue capacity of each page cache deletion buffer */
+  private int pageCacheDeletionBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
@@ -497,10 +500,10 @@ public class IoTDBConfig {
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
 
-  /** The target chunk size in compaction. */
-  private long targetChunkSize = 1048576L;
+  /** The target chunk size in compaction and flushing. */
+  private long targetChunkSize = 1600000L;
 
-  /** The target chunk point num in compaction. */
+  /** The target chunk point num in compaction and flushing. */
   private long targetChunkPointNum = 100000L;
 
   /**
@@ -1172,10 +1175,14 @@ public class IoTDBConfig {
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
 
+  private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
+
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
+
+  private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
@@ -1990,12 +1997,12 @@ public class IoTDBConfig {
     this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
   }
 
-  public int getWalBufferQueueCapacity() {
-    return walBufferQueueCapacity;
+  public int getPageCacheDeletionBufferQueueCapacity() {
+    return pageCacheDeletionBufferQueueCapacity;
   }
 
-  void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
-    this.walBufferQueueCapacity = walBufferQueueCapacity;
+  void setPageCacheDeletionBufferQueueCapacity(int pageCacheDeletionBufferQueueCapacity) {
+    this.pageCacheDeletionBufferQueueCapacity = pageCacheDeletionBufferQueueCapacity;
   }
 
   public long getWalFileSizeThresholdInByte() {
@@ -2153,13 +2160,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
-  }
-
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
   }
 
   public boolean isEnablePartialInsert() {
@@ -2323,14 +2323,6 @@ public class IoTDBConfig {
     this.tvListSortThreshold = tvListSortThreshold;
   }
 
-  public int getAvgSeriesPointNumberThreshold() {
-    return avgSeriesPointNumberThreshold;
-  }
-
-  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
@@ -2487,7 +2479,19 @@ public class IoTDBConfig {
     return defaultStorageGroupLevel;
   }
 
-  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
+    if (defaultStorageGroupLevel < 1) {
+      if (startUp) {
+        logger.warn(
+            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
+            defaultStorageGroupLevel);
+        defaultStorageGroupLevel = 1;
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+      }
+    }
     this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
@@ -3585,6 +3589,14 @@ public class IoTDBConfig {
     return compactionProportion;
   }
 
+  public double getWalBufferQueueProportion() {
+    return walBufferQueueProportion;
+  }
+
+  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
+    this.walBufferQueueProportion = walBufferQueueProportion;
+  }
+
   public double getDevicePathCacheProportion() {
     return devicePathCacheProportion;
   }
@@ -4094,6 +4106,14 @@ public class IoTDBConfig {
         loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
 
+  public long getLoadChunkMetadataMemorySizeInBytes() {
+    return loadChunkMetadataMemorySizeInBytes;
+  }
+
+  public void setLoadChunkMetadataMemorySizeInBytes(long loadChunkMetadataMemorySizeInBytes) {
+    this.loadChunkMetadataMemorySizeInBytes = loadChunkMetadataMemorySizeInBytes;
+  }
+
   public long getLoadMemoryAllocateRetryIntervalMs() {
     return loadMemoryAllocateRetryIntervalMs;
   }
@@ -4117,6 +4137,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public int getLoadTsFileRetryCountOnRegionChange() {
+    return loadTsFileRetryCountOnRegionChange;
+  }
+
+  public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
+    this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
   }
 
   public double getLoadWriteThroughputBytesPerSecond() {

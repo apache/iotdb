@@ -48,9 +48,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStat
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -186,8 +187,9 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -202,7 +204,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
@@ -224,12 +225,6 @@ public class StatementAnalyzer {
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
-
-  public static final String ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN =
-      "Only support time column equi-join in current version";
-
-  public static final String ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE =
-      "Only support time column as the parameter in JOIN USING";
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -334,6 +329,11 @@ public class StatementAnalyzer {
     }
 
     @Override
+    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
+      throw new SemanticException("Alter Database statement is not supported yet.");
+    }
+
+    @Override
     protected Scope visitDropDB(DropDB node, Optional<Scope> context) {
       throw new SemanticException("Drop Database statement is not supported yet.");
     }
@@ -409,6 +409,7 @@ public class StatementAnalyzer {
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
+      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       node.parseRawExpression(
@@ -457,6 +458,7 @@ public class StatementAnalyzer {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
       node.parseTable(sessionContext);
+      InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
@@ -496,7 +498,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException("Insert statement is not supported yet.");
+      throw new SemanticException(
+          "This kind of insert statement is not supported yet, please check your grammar.");
     }
 
     @Override
@@ -583,7 +586,7 @@ public class StatementAnalyzer {
           // If database is not specified, use the database from current session.
           // If still not specified, throw an exception.
           if (!queryContext.getDatabaseName().isPresent()) {
-            throw new SemanticException("Database is not specified");
+            throw new SemanticException(DATABASE_NOT_SPECIFIED);
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
@@ -1032,6 +1035,10 @@ public class StatementAnalyzer {
         }
       }
       analysis.setSelectExpressions(node, selectExpressionBuilder.build());
+
+      if (node.getSelect().isDistinct()) {
+        analysis.setContainsSelectDistinct();
+      }
 
       return outputExpressionBuilder.build();
     }
@@ -1573,7 +1580,7 @@ public class StatementAnalyzer {
               Field.newUnqualified(
                   field.map(Identifier::getValue),
                   analysis.getType(expression),
-                  TsTableColumnCategory.MEASUREMENT,
+                  TsTableColumnCategory.FIELD,
                   originTable,
                   originColumn,
                   column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use
@@ -1968,7 +1975,7 @@ public class StatementAnalyzer {
               .map(
                   valueType ->
                       Field.newUnqualified(
-                          Optional.empty(), valueType, TsTableColumnCategory.MEASUREMENT))
+                          Optional.empty(), valueType, TsTableColumnCategory.FIELD))
               .collect(toImmutableList());
 
       return createAndAssignScope(node, scope, fields);
@@ -2038,12 +2045,12 @@ public class StatementAnalyzer {
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == Join.Type.CROSS || node.getType() == LEFT || node.getType() == RIGHT) {
+      if (node.getType() == LEFT || node.getType() == RIGHT) {
         throw new SemanticException(
             String.format(
                 "%s JOIN is not supported, only support INNER JOIN in current version.",
                 node.getType()));
-      } else if (node.getType() == Join.Type.IMPLICIT) {
+      } else if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
       if (criteria instanceof JoinOn) {
@@ -2089,40 +2096,6 @@ public class StatementAnalyzer {
     private void joinConditionCheck(JoinCriteria criteria) {
       if (criteria instanceof NaturalJoin) {
         throw new SemanticException("Natural join not supported");
-      }
-
-      if (criteria instanceof JoinOn) {
-        JoinOn joinOn = (JoinOn) criteria;
-        Expression expression = joinOn.getExpression();
-        if (!(expression instanceof ComparisonExpression)) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
-        if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        checkArgument(
-            comparisonExpression.getLeft() instanceof DereferenceExpression,
-            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        checkArgument(
-            comparisonExpression.getRight() instanceof DereferenceExpression,
-            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        DereferenceExpression left = (DereferenceExpression) comparisonExpression.getLeft();
-        if (!left.getField().isPresent()
-            || !left.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-        DereferenceExpression right = (DereferenceExpression) comparisonExpression.getLeft();
-        if (!right.getField().isPresent()
-            || !right.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
-        }
-      } else if (criteria instanceof JoinUsing) {
-        List<Identifier> identifiers = ((JoinUsing) criteria).getColumns();
-        if (identifiers.size() != 1
-            || !identifiers.get(0).equals(new Identifier(TIME_COLUMN_NAME))) {
-          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
-        }
       }
     }
 
@@ -3003,15 +2976,7 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(
-                    originalSchema.getTableName(),
-                    originalSchema.getColumns().stream()
-                        .filter(
-                            columnSchema ->
-                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                    || columnSchema.getColumnCategory()
-                                        == TsTableColumnCategory.ATTRIBUTE)
-                        .collect(Collectors.toList()))));
+                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =

@@ -207,7 +207,9 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     new SubscriptionPushConsumer(null).open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(
+      expected =
+          SubscriptionConnectionException.class) // connect to TEndPoint(ip:localhost, port:6667)
   public void testCreateConsumer_empty() {
     new SubscriptionPushConsumer(new Properties()).open();
   }
@@ -217,7 +219,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     new SubscriptionPushConsumer.Builder().buildPushConsumer().open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testSubscribe_null() {
     consumer.subscribe((String) null);
   }
@@ -247,7 +249,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.close();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testUnSubscribe_null() {
     consumer.unsubscribe((String) null);
   }

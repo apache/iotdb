@@ -33,7 +33,8 @@ import org.junit.runner.RunWith;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.relational.it.db.it.IoTDBMultiIDsWithAttributesTableIT.buildHeaders;
+import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.buildHeaders;
+import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.repeatTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -43,7 +44,7 @@ public class IoTDBTableAggregationIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE table1(province STRING ID, city STRING ID, region STRING ID, device_id STRING ID, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT, s7 STRING MEASUREMENT, s8 BLOB MEASUREMENT, s9 TIMESTAMP MEASUREMENT, s10 DATE MEASUREMENT)",
+        "CREATE TABLE table1(province STRING TAG, city STRING TAG, region STRING TAG, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',30,30.0,'shanghai_huangpu_red_A_d01_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',35000,35.0,35.0,'shanghai_huangpu_red_A_d01_35','shanghai_huangpu_red_A_d01_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',40,40.0,true,'shanghai_huangpu_red_A_d01_40',2024-09-24T06:15:40.000+00:00)",
@@ -125,6 +126,9 @@ public class IoTDBTableAggregationIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // ==================================================================
+  // ==================== Normal Aggregation Test =====================
+  // ==================================================================
   @Test
   public void countTest() {
     String[] expectedHeader = new String[] {"_col0"};
@@ -2298,22 +2302,24 @@ public class IoTDBTableAggregationIT {
         new String[] {
           "2024-09-24T06:15:50.000Z,50000,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select last_by(time,s2),last(s2) from table1 where device_id = 'd01'",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
 
     expectedHeader = new String[] {"_col0", "_col1"};
     retArray =
         new String[] {
           "null,2024-09-24T06:15:55.000Z,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select last_by(s2, time),last(time) from table1 where device_id = 'd01'",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
 
     expectedHeader = new String[] {"_col0", "device_id", "_col2", "_col3"};
     retArray =
@@ -2324,11 +2330,12 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:50.000Z,d01,null,null,",
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55.0,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select date_bin(5s, time), device_id, last_by(time, s4), last(s4) from table1 where device_id = 'd01' group by 1,2",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
 
     expectedHeader =
         new String[] {"province", "city", "region", "device_id", "_col4", "_col5", "_col6"};
@@ -2425,11 +2432,12 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,pudong,d07,2024-09-24T06:15:41.000Z,0xcafebabe41,",
           "shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,0xcafebabe55,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select province,city,region,device_id,last_by(time,s8),last(s8) from table1 group by 1,2,3,4 order by 1,2,3,4",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
 
     expectedHeader = new String[] {"city", "region", "device_id", "_col3"};
     retArray =
@@ -2451,11 +2459,12 @@ public class IoTDBTableAggregationIT {
           "shanghai,pudong,d07,null,",
           "shanghai,pudong,d08,null,",
         };
-    tableResultSetEqualTest(
-        "select city,region,device_id,last_by(s5,time,time) from table1 group by city,region,device_id order by 1,2,3",
+    repeatTest(
+        "select city,region,device_id,last_by(s5,time) from table1 group by city,region,device_id order by 1,2,3",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
   }
 
   @Test
@@ -3713,9 +3722,8 @@ public class IoTDBTableAggregationIT {
   public void exceptionTest() {
     tableAssertTestFail(
         "select s1 from table1 where s2 in (select s2 from table1)",
-        "701: Only TableSubquery is supported now",
+        "Only TableSubquery is supported now",
         DATABASE_NAME);
-
     tableAssertTestFail(
         "select avg() from table1",
         "701: Aggregate functions [avg] should only have one argument",
@@ -3743,6 +3751,132 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select last_by() from table1",
         "701: Aggregate functions [last_by] should only have three arguments",
+        DATABASE_NAME);
+  }
+
+  // ==================================================================
+  // ===================== Select Distinct Test =======================
+  // ==================================================================
+
+  // Select distinct is a special kind of aggregate query in actual, so we put ITs here to reuse the
+  // test data.
+
+  @Test
+  public void simpleTest() {
+    String[] expectedHeader = new String[] {"s1"};
+    String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 order by s1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"region", "s1"};
+    retArray =
+        new String[] {
+          "chaoyang,30,",
+          "chaoyang,36,",
+          "chaoyang,40,",
+          "chaoyang,41,",
+          "chaoyang,55,",
+          "chaoyang,null,",
+          "haidian,30,",
+          "haidian,36,",
+          "haidian,40,",
+          "haidian,41,",
+          "haidian,55,",
+          "haidian,null,",
+          "huangpu,30,",
+          "huangpu,36,",
+          "huangpu,40,",
+          "huangpu,41,",
+          "huangpu,55,",
+          "huangpu,null,",
+          "pudong,30,",
+          "pudong,36,",
+          "pudong,40,",
+          "pudong,41,",
+          "pudong,55,",
+          "pudong,null,"
+        };
+    tableResultSetEqualTest(
+        "select distinct region, s1 from table1 order by region, s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // show all devices
+    expectedHeader = new String[] {"province", "city", "region", "device_id"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,",
+          "beijing,beijing,chaoyang,d10,",
+          "beijing,beijing,chaoyang,d11,",
+          "beijing,beijing,chaoyang,d12,",
+          "beijing,beijing,haidian,d13,",
+          "beijing,beijing,haidian,d14,",
+          "beijing,beijing,haidian,d15,",
+          "beijing,beijing,haidian,d16,",
+          "shanghai,shanghai,huangpu,d01,",
+          "shanghai,shanghai,huangpu,d02,",
+          "shanghai,shanghai,huangpu,d03,",
+          "shanghai,shanghai,huangpu,d04,",
+          "shanghai,shanghai,pudong,d05,",
+          "shanghai,shanghai,pudong,d06,",
+          "shanghai,shanghai,pudong,d07,",
+          "shanghai,shanghai,pudong,d08,",
+        };
+    tableResultSetEqualTest(
+        "select distinct province,city,region,device_id from table1 order by province,city,region,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void withGroupByTest() {
+    String[] expectedHeader = new String[] {"s1"};
+    String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 group by s1 order by s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select distinct s1 from table1 group by s1,s2 order by s1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"30.0,", "36.0,", "40.0,", "41.0,", "55.0,", "null,"};
+    tableResultSetEqualTest(
+        "select distinct avg(s1) from table1 group by s1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select distinct avg(s1) from table1 group by s1,s2 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray = new String[] {"4,", "8,", "32,"};
+    tableResultSetEqualTest(
+        "select distinct count(*) from table1 group by s1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    retArray = new String[] {"4,", "8,"};
+    tableResultSetEqualTest(
+        "select distinct count(*) from table1 group by s1, s2 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void exceptionTest1() {
+    tableAssertTestFail(
+        "select distinct s1 from table1 order by s2",
+        "701: For SELECT DISTINCT, ORDER BY expressions must appear in select list",
         DATABASE_NAME);
   }
 }

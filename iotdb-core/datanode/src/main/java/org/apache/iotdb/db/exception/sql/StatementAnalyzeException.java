@@ -28,4 +28,8 @@ public class StatementAnalyzeException extends RuntimeException {
   public StatementAnalyzeException(Exception cause) {
     super(cause);
   }
+
+  public StatementAnalyzeException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

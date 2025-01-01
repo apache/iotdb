@@ -33,11 +33,9 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class LeaderPriorityBalancerTest {
 
@@ -69,25 +67,19 @@ public class LeaderPriorityBalancerTest {
     }
     nodeCacheMap.values().forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(false));
 
-    // Get the loadScoreMap
-    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) ->
-            loadScoreMap.put(dataNodeId, heartbeatCache.getLoadScore()));
-
     // Build TRegionReplicaSet
     TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
     TRegionReplicaSet regionReplicaSet1 =
         new TRegionReplicaSet(
             groupId1,
             Arrays.asList(
-                dataNodeLocations.get(2), dataNodeLocations.get(1), dataNodeLocations.get(0)));
+                dataNodeLocations.get(0), dataNodeLocations.get(1), dataNodeLocations.get(2)));
     TConsensusGroupId groupId2 = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
     TRegionReplicaSet regionReplicaSet2 =
         new TRegionReplicaSet(
             groupId2,
             Arrays.asList(
-                dataNodeLocations.get(5), dataNodeLocations.get(4), dataNodeLocations.get(3)));
+                dataNodeLocations.get(3), dataNodeLocations.get(4), dataNodeLocations.get(5)));
     List<TRegionReplicaSet> regionReplicaSets = Arrays.asList(regionReplicaSet1, regionReplicaSet2);
 
     // Build leaderMap
@@ -97,67 +89,16 @@ public class LeaderPriorityBalancerTest {
 
     // Check result
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderPriorityBalancer()
-            .generateOptimalRoutePriority(regionReplicaSets, leaderMap, loadScoreMap);
+        new LeaderPriorityBalancer().generateOptimalRoutePriority(regionReplicaSets, leaderMap);
     TRegionReplicaSet result1 = result.get(groupId1);
     // Leader first
     Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
-    // The others will be sorted by loadScore
     Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(1));
     Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(2));
     TRegionReplicaSet result2 = result.get(groupId2);
     // Leader first
     Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(0));
-    // The others will be sorted by loadScore
     Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
     Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(2));
-  }
-
-  @Test
-  public void testLeaderUnavailable() {
-    // Build TDataNodeLocations
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      dataNodeLocations.add(
-          new TDataNodeLocation(
-              i,
-              new TEndPoint("0.0.0.0", 6667 + i),
-              new TEndPoint("0.0.0.0", 10730 + i),
-              new TEndPoint("0.0.0.0", 10740 + i),
-              new TEndPoint("0.0.0.0", 10760 + i),
-              new TEndPoint("0.0.0.0", 10750 + i)));
-    }
-
-    // Build TRegionReplicaSet
-    TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
-    TRegionReplicaSet regionReplicaSet1 =
-        new TRegionReplicaSet(
-            groupId1,
-            Arrays.asList(
-                dataNodeLocations.get(2), dataNodeLocations.get(1), dataNodeLocations.get(0)));
-
-    // Build leaderMap
-    Map<TConsensusGroupId, Integer> leaderMap = new HashMap<>();
-    leaderMap.put(groupId1, 1);
-
-    // Build loadScoreMap
-    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
-    loadScoreMap.put(0, 10L);
-    loadScoreMap.put(2, 20L);
-    // The leader is DataNode-1, but it's unavailable
-    loadScoreMap.put(1, Long.MAX_VALUE);
-
-    // Check result
-    Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderPriorityBalancer()
-            .generateOptimalRoutePriority(
-                Collections.singletonList(regionReplicaSet1), leaderMap, loadScoreMap);
-    // Only sorted by loadScore since the leader is unavailable
-    Assert.assertEquals(
-        dataNodeLocations.get(0), result.get(groupId1).getDataNodeLocations().get(0));
-    Assert.assertEquals(
-        dataNodeLocations.get(2), result.get(groupId1).getDataNodeLocations().get(1));
-    Assert.assertEquals(
-        dataNodeLocations.get(1), result.get(groupId1).getDataNodeLocations().get(2));
   }
 }

@@ -39,7 +39,7 @@ public class SetSpaceQuotaPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.setSpaceQuota);
   }
 
-  public SetSpaceQuotaPlan(List<String> prefixPathList, TSpaceQuota spaceLimit) {
+  public SetSpaceQuotaPlan(final List<String> prefixPathList, final TSpaceQuota spaceLimit) {
     super(ConfigPhysicalPlanType.setSpaceQuota);
     this.prefixPathList = prefixPathList;
     this.spaceLimit = spaceLimit;

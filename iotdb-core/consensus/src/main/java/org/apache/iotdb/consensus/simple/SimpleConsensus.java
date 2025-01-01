@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -212,6 +211,12 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerListBeforeStarting(
+      Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("SimpleConsensus will do nothing when calling recordCorrectPeerListBeforeStarting");
+  }
+
+  @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support leader transfer");
   }
@@ -252,11 +257,6 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
-  }
-
-  @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    return IoTConsensus.getConsensusGroupIdsFromDir(storageDir, logger);
   }
 
   @Override

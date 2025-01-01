@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -36,10 +37,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
 import java.util.List;
@@ -108,9 +107,18 @@ public class ShowRegionTask implements IConfigTask {
         builder
             .getColumnBuilder(11)
             .writeBinary(
-                new Binary(
-                    DateTimeUtils.convertLongToDate(regionInfo.getCreateTime()),
-                    TSFileConfig.STRING_CHARSET));
+                BytesUtils.valueOf(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
+        // region size
+        String regionSizeStr = "";
+        if (regionInfo.getConsensusGroupId().getType().ordinal()
+            == TConsensusGroupType.DataRegion.ordinal()) {
+          if (regionInfo.getTsFileSize() != -1) {
+            regionSizeStr = FileUtils.humanReadableByteCountSI(regionInfo.getTsFileSize());
+          } else {
+            regionSizeStr = "Unknown";
+          }
+        }
+        builder.getColumnBuilder(12).writeBinary(BytesUtils.valueOf(regionSizeStr));
         builder.declarePosition();
       }
     }

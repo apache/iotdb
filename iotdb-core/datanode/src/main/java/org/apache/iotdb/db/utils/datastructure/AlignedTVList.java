@@ -81,6 +81,8 @@ public abstract class AlignedTVList extends TVList {
   // constructed after deletion
   BitMap timeColDeletedMap;
 
+  protected int timeDeletedCnt = 0;
+
   AlignedTVList(List<TSDataType> types) {
     super();
     dataTypes = types;
@@ -134,6 +136,7 @@ public abstract class AlignedTVList extends TVList {
     // for table model, we won't discard any row even if all value columns are null
     alignedTvList.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
     alignedTvList.timeColDeletedMap = this.timeColDeletedMap;
+    alignedTvList.timeDeletedCnt = this.timeDeletedCnt;
 
     return alignedTvList;
   }
@@ -142,6 +145,7 @@ public abstract class AlignedTVList extends TVList {
   public AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
+    cloneList.timeDeletedCnt = this.timeDeletedCnt;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
     for (int[] indicesArray : indices) {
@@ -533,12 +537,11 @@ public abstract class AlignedTVList extends TVList {
 
   public int deleteTime(long lowerBound, long upperBound) {
     delete(lowerBound, upperBound);
-    int deletedNumber = 0;
+    int prevDeletedCnt = this.timeDeletedCnt;
     for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
         markRowNull(i);
-        deletedNumber++;
       }
     }
     boolean needUpdateMaxTime = lowerBound <= maxTime && maxTime <= upperBound;
@@ -549,7 +552,7 @@ public abstract class AlignedTVList extends TVList {
     if (needUpdateMinTime) {
       updateMinTime();
     }
-    return deletedNumber;
+    return timeDeletedCnt - prevDeletedCnt;
   }
 
   private void updateMaxTime() {
@@ -702,7 +705,10 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  private void markRowNull(int i) {
+  /**
+   * @return true if the row is marked, false if it is already marked
+   */
+  private boolean markRowNull(int i) {
     if (timeColDeletedMap == null) {
       timeColDeletedMap = new BitMap(rowCount);
     } else if (timeColDeletedMap.getSize() < rowCount) {
@@ -712,7 +718,13 @@ public abstract class AlignedTVList extends TVList {
       timeColDeletedMap = new BitMap(rowCount, newBytes);
     }
     // use value index so that sorts will not change the nullability
-    timeColDeletedMap.mark(getValueIndex(i));
+    if (timeColDeletedMap.isMarked(i)) {
+      return false;
+    } else {
+      timeColDeletedMap.mark(getValueIndex(i));
+      timeDeletedCnt++;
+      return true;
+    }
   }
 
   /**
@@ -909,8 +921,7 @@ public abstract class AlignedTVList extends TVList {
     for (int i = 0; i < types.length; i++) {
       TSDataType type = types[i];
       if (type != null
-          && (columnCategories == null
-              || columnCategories[i] == TsTableColumnCategory.MEASUREMENT)) {
+          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
         size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
         measurementColumnNum++;
       }
@@ -1057,7 +1068,7 @@ public abstract class AlignedTVList extends TVList {
         // Value: 1,2,null,null
         // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
         // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2==pair.left:2, write(T:2,V:2)
         // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
         if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
@@ -1460,8 +1471,50 @@ public abstract class AlignedTVList extends TVList {
     return new BitMap(rowCount, rowBitsArr);
   }
 
+  public int getAvgPointSizeOfLargestColumn() {
+    int largestPrimitivePointSize = 8; // TimeColumn or int64,double ValueColumn
+    long largestBinaryChunkSize = 0;
+    int largestBinaryColumnIndex = 0;
+    for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
+      if (memoryBinaryChunkSize[i] > largestBinaryChunkSize) {
+        largestBinaryChunkSize = memoryBinaryChunkSize[i];
+        largestBinaryColumnIndex = i;
+      }
+    }
+    if (largestBinaryChunkSize == 0) {
+      return largestPrimitivePointSize;
+    }
+    int avgPointSizeOfLargestBinaryColumn =
+        (int) largestBinaryChunkSize / getColumnValueCnt(largestBinaryColumnIndex);
+    return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
+  }
+
+  public int getColumnValueCnt(int columnIndex) {
+    int pointNum = 0;
+    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
+      pointNum = rowCount;
+    } else {
+      for (int i = 0; i < rowCount; i++) {
+        int arrayIndex = i / ARRAY_SIZE;
+        if (bitMaps.get(columnIndex).get(arrayIndex) == null) {
+          pointNum++;
+        } else {
+          int elementIndex = i % ARRAY_SIZE;
+          if (!bitMaps.get(columnIndex).get(arrayIndex).isMarked(elementIndex)) {
+            pointNum++;
+          }
+        }
+      }
+    }
+    return pointNum;
+  }
+
   public List<List<BitMap>> getBitMaps() {
     return bitMaps;
+  }
+
+  public boolean isAllDeleted() {
+    return timeDeletedCnt == rowCount;
   }
 
   public AlignedTVListIterator iterator(

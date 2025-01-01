@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -269,6 +270,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isUserQuery() {
+    return context.isUserQuery();
+  }
+
+  @Override
   public String getQueryId() {
     return context.getQueryId().getId();
   }
@@ -296,5 +302,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getStatementType() {
     return statementType == null ? null : statementType.name();
+  }
+
+  @Override
+  public IClientSession.SqlDialect getSQLDialect() {
+    return context.getSession().getSqlDialect();
   }
 }

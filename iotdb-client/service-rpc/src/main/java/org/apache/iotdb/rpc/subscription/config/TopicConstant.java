@@ -26,10 +26,10 @@ public class TopicConstant {
   public static final String PATTERN_KEY = "pattern";
   public static final String PATTERN_DEFAULT_VALUE = "root";
 
-  public static final String DATABASE_NAME_KEY = "database-name";
-  public static final String TABLE_NAME_KEY = "table-name";
-  public static final String DATABASE_NAME_DEFAULT_VALUE = ".*";
-  public static final String TABLE_NAME_DEFAULT_VALUE = ".*";
+  public static final String DATABASE_KEY = "database";
+  public static final String TABLE_KEY = "table";
+  public static final String DATABASE_DEFAULT_VALUE = ".*";
+  public static final String TABLE_DEFAULT_VALUE = ".*";
 
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";

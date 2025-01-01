@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -30,13 +32,17 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
@@ -63,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
@@ -80,26 +87,31 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -119,6 +131,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
@@ -130,11 +143,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -152,6 +168,8 @@ import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
+import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
@@ -160,13 +178,11 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
-  private static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+  public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
 
   private final IClientSession clientSession;
 
@@ -191,6 +207,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
+    return visitDatabaseStatement(node, context);
+  }
+
+  private IConfigTask visitDatabaseStatement(
+      final DatabaseStatement node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final TDatabaseSchema schema = new TDatabaseSchema();
@@ -201,16 +227,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     accessControl.checkCanCreateDatabase(context.getSession().getUserName(), dbName);
 
-    schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
+    schema.setName(dbName);
 
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
-          case TTL_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
+            break;
+          case TTL_KEY:
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
+            }
             break;
           default:
             throw new SemanticException("Unsupported database property key: " + key);
@@ -227,6 +257,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             if (!strValue.get().equalsIgnoreCase(TTL_INFINITE)) {
               throw new SemanticException(
                   "ttl value must be 'INF' or a long literal, but now is: " + value);
+            }
+            if (node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER) {
+              schema.setTTL(Long.MAX_VALUE);
             }
             break;
           }
@@ -246,7 +279,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new SemanticException("Unsupported database property key: " + key);
       }
     }
-    return new CreateDBTask(schema, node.isSetIfNotExists());
+    return node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
+        ? new CreateDBTask(schema, node.exists())
+        : new AlterDBTask(schema, node.exists());
   }
 
   @Override
@@ -260,6 +295,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    InformationSchemaUtils.checkDBNameInWrite(node.getDbName().getValue());
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue());
     return new DropDBTask(node);
@@ -275,7 +311,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             accessControl.checkCanShowOrUseDatabase(
                 context.getSession().getUserName(), databaseName);
             return true;
-          } catch (AccessControlException e) {
+          } catch (final AccessControlException e) {
             return false;
           }
         });
@@ -342,7 +378,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
 
     final TsTable table = new TsTable(databaseTablePair.getRight());
 
@@ -389,7 +425,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
 
     final String oldName = databaseTablePair.getRight();
     final String newName = node.getTarget().getValue();
@@ -408,7 +444,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
 
     final ColumnDefinition definition = node.getColumn();
     return new AlterTableAddColumnTask(
@@ -427,7 +463,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
 
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();
@@ -448,7 +484,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
 
     return new AlterTableDropColumnTask(
         databaseTablePair.getLeft(),
@@ -463,7 +499,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetProperties(
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
 
     return new AlterTableSetPropertiesTask(
         databaseTablePair.getLeft(),
@@ -474,8 +510,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
+    InformationSchemaUtils.checkDBNameInWrite(dbName);
     // Check database length here
-    // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
         || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
         || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
@@ -488,13 +524,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
+  public Pair<String, String> splitQualifiedName(final QualifiedName name, final boolean isWrite) {
     String database = clientSession.getDatabaseName();
     if (name.getPrefix().isPresent()) {
       database = name.getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    if (isWrite) {
+      InformationSchemaUtils.checkDBNameInWrite(database);
     }
     return new Pair<>(database, name.getSuffix());
   }
@@ -539,7 +578,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
     return new DropTableTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),
@@ -555,6 +594,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             new StatementAnalyzerFactory(metadata, null, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
+            StatementRewrite.NOOP,
             WarningCollector.NOOP)
         .analyze(node);
     return new DeleteDeviceTask(node, context.getQueryId().getId(), context.getSession());
@@ -577,21 +617,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDescribeTable(
       final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    String database = clientSession.getDatabaseName();
-    if (node.getTable().getPrefix().isPresent()) {
-      database = node.getTable().getPrefix().get().toString();
-    }
-    if (database == null) {
-      throw new SemanticException(DATABASE_NOT_SPECIFIED);
-    }
-    final String tableName = node.getTable().getSuffix();
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), false);
     return node.isDetails()
-        ? new DescribeTableDetailsTask(database, tableName)
-        : new DescribeTableTask(database, tableName);
+        ? new DescribeTableDetailsTask(databaseTablePair.getLeft(), databaseTablePair.getRight())
+        : new DescribeTableTask(databaseTablePair.getLeft(), databaseTablePair.getRight());
   }
 
   @Override
-  protected IConfigTask visitFlush(Flush node, MPPQueryContext context) {
+  protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
@@ -717,7 +750,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    return new CreatePipePluginTask(node);
+    if (node.getUriString() != null && isUriTrusted(node.getUriString())) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreatePipePluginTask(node);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString()));
+    }
   }
 
   @Override
@@ -806,5 +846,36 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
+  }
+
+  @Override
+  protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new KillQueryTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
+      // 1. user specified uri and that uri is trusted
+      // 2. user doesn't specify uri
+      return new CreateFunctionTask(node);
+    } else {
+      // user specified uri and that uri is not trusted
+      throw new SemanticException(getUnTrustedUriErrorMsg(node.getUriString().get()));
+    }
+  }
+
+  @Override
+  protected IConfigTask visitShowFunctions(ShowFunctions node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowFunctionsTask(Model.TABLE);
+  }
+
+  @Override
+  protected IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 }
