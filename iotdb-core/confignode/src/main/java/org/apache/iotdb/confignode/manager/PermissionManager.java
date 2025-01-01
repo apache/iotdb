@@ -120,7 +120,8 @@ public class PermissionManager {
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
       throws AuthException {
-    return authorInfo.checkUserPrivilegeGrantOpt(username, union);
+    union.setGrantOption(true);
+    return authorInfo.checkUserPrivileges(username, union);
   }
 
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)

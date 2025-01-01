@@ -329,8 +329,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                       PrivilegeType.values()[permission].isPathPrivilege()
                           ? new PrivilegeUnion(
                               ((AuthorTreePlan) plan).getNodeNameList(),
-                              PrivilegeType.values()[permission])
-                          : new PrivilegeUnion(PrivilegeType.values()[permission]))
+                              PrivilegeType.values()[permission],
+                              true)
+                          : new PrivilegeUnion(PrivilegeType.values()[permission], true))
                   .getStatus();
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
