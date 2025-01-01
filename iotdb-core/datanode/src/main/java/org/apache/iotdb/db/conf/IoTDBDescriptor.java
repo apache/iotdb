@@ -1198,6 +1198,14 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "iot_consensus_v2_mode",
             ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
+    int deletionAheadLogBufferQueueCapacity =
+        Integer.parseInt(
+            properties.getProperty(
+                "deletion_ahead_log_buffer_queue_capacity",
+                Integer.toString(conf.getDeletionAheadLogBufferQueueCapacity())));
+    if (deletionAheadLogBufferQueueCapacity > 0) {
+      conf.setDeletionAheadLogBufferQueueCapacity(deletionAheadLogBufferQueueCapacity);
+    }
   }
 
   private void loadAuthorCache(TrimProperties properties) {
@@ -1229,15 +1237,6 @@ public class IoTDBDescriptor {
                 "wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize())));
     if (walBufferSize > 0) {
       conf.setWalBufferSize(walBufferSize);
-    }
-
-    int pageCacheDeletionBufferQueueCapacity =
-        Integer.parseInt(
-            properties.getProperty(
-                "page_cache_deletion_buffer_queue_capacity",
-                Integer.toString(conf.getPageCacheDeletionBufferQueueCapacity())));
-    if (pageCacheDeletionBufferQueueCapacity > 0) {
-      conf.setPageCacheDeletionBufferQueueCapacity(pageCacheDeletionBufferQueueCapacity);
     }
 
     boolean WALInsertNodeCacheShrinkClearEnabled =

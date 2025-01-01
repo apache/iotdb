@@ -62,20 +62,27 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   private Collection<TRegionReplicaSet> replicaSets;
 
+  private String databaseName;
+
   public RelationalDeleteDataNode(final PlanNodeId id, final Delete delete) {
     super(id);
     this.modEntries = delete.getTableDeletionEntries();
     this.replicaSets = delete.getReplicaSets();
+    this.databaseName = delete.getDatabaseName();
   }
 
-  public RelationalDeleteDataNode(final PlanNodeId id, final TableDeletionEntry entry) {
+  public RelationalDeleteDataNode(
+      final PlanNodeId id, final TableDeletionEntry entry, final String databaseName) {
     super(id);
     this.modEntries = Collections.singletonList(entry);
+    this.databaseName = databaseName;
   }
 
-  public RelationalDeleteDataNode(final PlanNodeId id, final List<TableDeletionEntry> entries) {
+  public RelationalDeleteDataNode(
+      final PlanNodeId id, final List<TableDeletionEntry> entries, final String databaseName) {
     super(id);
     this.modEntries = entries;
+    this.databaseName = databaseName;
   }
 
   public RelationalDeleteDataNode(
@@ -93,14 +100,18 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   public RelationalDeleteDataNode(
       final PlanNodeId id,
       final TableDeletionEntry delete,
-      final TRegionReplicaSet regionReplicaSet) {
-    this(id, delete);
+      final TRegionReplicaSet regionReplicaSet,
+      final String databaseName) {
+    this(id, delete, databaseName);
     this.regionReplicaSet = regionReplicaSet;
   }
 
   public RelationalDeleteDataNode(
-      PlanNodeId id, List<TableDeletionEntry> deletes, TRegionReplicaSet regionReplicaSet) {
-    this(id, deletes);
+      PlanNodeId id,
+      List<TableDeletionEntry> deletes,
+      TRegionReplicaSet regionReplicaSet,
+      String databaseName) {
+    this(id, deletes, databaseName);
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -113,9 +124,10 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (int i = 0; i < entryNum; i++) {
       modEntries.add((TableDeletionEntry) ModEntry.createFrom(stream));
     }
+    String databaseName = ReadWriteIOUtils.readVarIntString(stream);
 
     RelationalDeleteDataNode deleteDataNode =
-        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries);
+        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
     deleteDataNode.setSearchIndex(searchIndex);
     return deleteDataNode;
   }
@@ -127,9 +139,10 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (int i = 0; i < entryNum; i++) {
       modEntries.add((TableDeletionEntry) ModEntry.createFrom(buffer));
     }
+    String databaseName = ReadWriteIOUtils.readVarIntString(buffer);
 
     RelationalDeleteDataNode deleteDataNode =
-        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries);
+        new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
     deleteDataNode.setSearchIndex(searchIndex);
     return deleteDataNode;
   }
@@ -140,12 +153,15 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (int i = 0; i < entryNum; i++) {
       modEntries.add((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
     }
+    String databaseName = ReadWriteIOUtils.readVarIntString(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new RelationalDeleteDataNode(planNodeId, modEntries);
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(planNodeId, modEntries, databaseName);
+    return relationalDeleteDataNode;
   }
 
   public static RelationalDeleteDataNode deserializeFromDAL(ByteBuffer byteBuffer) {
@@ -156,6 +172,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (int i = 0; i < entryNum; i++) {
       modEntries.add((TableDeletionEntry) ModEntry.createFrom(byteBuffer));
     }
+    String databaseName = ReadWriteIOUtils.readVarIntString(byteBuffer);
 
     ProgressIndex deserializedIndex = ProgressIndexType.deserializeFrom(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
@@ -163,7 +180,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
     RelationalDeleteDataNode relationalDeleteDataNode =
-        new RelationalDeleteDataNode(planNodeId, modEntries);
+        new RelationalDeleteDataNode(planNodeId, modEntries, databaseName);
     relationalDeleteDataNode.setProgressIndex(deserializedIndex);
     return relationalDeleteDataNode;
   }
@@ -192,7 +209,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   @SuppressWarnings({"java:S2975", "java:S1182"})
   @Override
   public PlanNode clone() {
-    return new RelationalDeleteDataNode(getPlanNodeId(), modEntries);
+    return new RelationalDeleteDataNode(getPlanNodeId(), modEntries, databaseName);
   }
 
   @Override
@@ -223,6 +240,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     PlanNodeType.RELATIONAL_DELETE_DATA.serialize(byteBuffer);
     ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), byteBuffer);
     modEntries.forEach(entry -> entry.serialize(byteBuffer));
+    ReadWriteIOUtils.writeVar(databaseName, byteBuffer);
   }
 
   @Override
@@ -232,6 +250,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (TableDeletionEntry modEntry : modEntries) {
       modEntry.serialize(stream);
     }
+    ReadWriteIOUtils.writeVar(databaseName, stream);
   }
 
   @Override
@@ -278,11 +297,15 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     return replicaSets.stream()
-        .map(r -> new RelationalDeleteDataNode(getPlanNodeId(), modEntries, r))
+        .map(r -> new RelationalDeleteDataNode(getPlanNodeId(), modEntries, r, databaseName))
         .collect(Collectors.toList());
   }
 
   public List<TableDeletionEntry> getModEntries() {
     return modEntries;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
   }
 }

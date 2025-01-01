@@ -261,7 +261,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -1648,60 +1647,39 @@ public class ConfigManager implements IManager {
         return tsStatus;
       }
     }
+    if (currentNodeId == req.getNodeId() || req.getNodeId() < 0) {
+      URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
+      TrimProperties properties = new TrimProperties();
+      properties.putAll(req.getConfigs());
 
-    if (currentNodeId == req.getNodeId()) {
-      return setConfigLocally(req, null);
-    } else if (req.getNodeId() < 0) {
-      // re-config CN in memory -> re-config DN in memory -> re-config DN in file -> re-config CN in
-      // file
-      TSStatus finalTsStatus = tsStatus;
-      return setConfigLocally(req, () -> broadcastSetConfig(finalTsStatus, req));
-    } else {
-      // not for this node, ignore it
-      return broadcastSetConfig(tsStatus, req);
+      if (configurationFileFound) {
+        File file = new File(url.getFile());
+        try {
+          ConfigurationFileUtils.updateConfiguration(
+              file,
+              properties,
+              mergedProps -> {
+                ConfigNodeDescriptor.getInstance().loadHotModifiedProps(mergedProps);
+              });
+        } catch (Exception e) {
+          tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        }
+      } else {
+        String msg =
+            "Unable to find the configuration file. Some modifications are made only in memory.";
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
+        LOGGER.warn(msg);
+      }
+      if (currentNodeId == req.getNodeId()) {
+        return tsStatus;
+      }
     }
-  }
-
-  private TSStatus broadcastSetConfig(TSStatus thisNodeResult, TSetConfigurationReq req) {
     List<TSStatus> statusListOfOtherNodes = nodeManager.setConfiguration(req);
     List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
-    statusList.add(thisNodeResult);
+    statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
-  }
-
-  private TSStatus setConfigLocally(
-      TSetConfigurationReq req, Supplier<TSStatus> beforeWriteFileAction) {
-    // re-config this node only
-    TSStatus tsStatus;
-    URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
-    boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
-    TrimProperties newProperties = new TrimProperties();
-    newProperties.putAll(req.getConfigs());
-
-    if (configurationFileFound) {
-      File file = new File(url.getFile());
-      try {
-        tsStatus =
-            ConfigurationFileUtils.updateConfiguration(
-                file,
-                newProperties,
-                mergedProps -> {
-                  ConfigNodeDescriptor.getInstance().loadHotModifiedProps(mergedProps);
-                  return beforeWriteFileAction != null
-                      ? beforeWriteFileAction.get()
-                      : StatusUtils.OK;
-                });
-      } catch (Exception e) {
-        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
-    } else {
-      String msg =
-          "Unable to find the configuration file. Some modifications are made only in memory.";
-      tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
-      LOGGER.warn(msg);
-    }
-    return tsStatus;
   }
 
   @Override

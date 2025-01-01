@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.COUNT_ALL;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 
@@ -93,6 +94,11 @@ public class AccumulatorFactory {
             : new FirstByDescAccumulator(
                 inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
+    } else if (LAST.getFunctionName().equals(functionName)) {
+      boolean isTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
+      return ascending
+          ? new LastAccumulator(inputDataTypes.get(0), isTimeColumn)
+          : new LastDescAccumulator(inputDataTypes.get(0), isTimeColumn);
     } else {
       return createBuiltinAccumulator(
           aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
@@ -210,8 +216,8 @@ public class AccumulatorFactory {
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return ascending
-            ? new LastAccumulator(inputDataTypes.get(0))
-            : new LastDescAccumulator(inputDataTypes.get(0));
+            ? new LastAccumulator(inputDataTypes.get(0), false)
+            : new LastDescAccumulator(inputDataTypes.get(0), false);
       case FIRST:
         return ascending
             ? new FirstAccumulator(inputDataTypes.get(0))
