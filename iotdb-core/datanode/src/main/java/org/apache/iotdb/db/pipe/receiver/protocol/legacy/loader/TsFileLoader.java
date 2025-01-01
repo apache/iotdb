@@ -56,6 +56,7 @@ public class TsFileLoader implements ILoader {
     try {
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
+      statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);

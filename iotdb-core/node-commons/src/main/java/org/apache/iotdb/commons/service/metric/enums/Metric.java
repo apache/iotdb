@@ -186,6 +186,8 @@ public enum Metric {
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
   BINARY_ALLOCATOR("binary_allocator"),
+  // memory related
+  THRESHOLD_MEMORY_SIZE("threshold_memory_size"),
   ;
 
   final String value;

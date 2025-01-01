@@ -175,11 +175,11 @@ public class StatementConstructionHandler {
     insertStatement.setAligned(false);
     insertStatement.setWriteToTable(true);
     TsTableColumnCategory[] columnCategories =
-        new TsTableColumnCategory[insertTabletReq.getColumnTypes().size()];
+        new TsTableColumnCategory[insertTabletReq.getColumnCatogories().size()];
     for (int i = 0; i < columnCategories.length; i++) {
       columnCategories[i] =
           TsTableColumnCategory.fromTsFileColumnType(
-              Tablet.ColumnCategory.valueOf(insertTabletReq.getColumnTypes().get(i)));
+              Tablet.ColumnCategory.valueOf(insertTabletReq.getColumnCatogories().get(i)));
     }
     insertStatement.setColumnCategories(columnCategories);
 

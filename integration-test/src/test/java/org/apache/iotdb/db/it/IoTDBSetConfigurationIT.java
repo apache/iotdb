@@ -50,7 +50,6 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSetConfigurationIT {
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -71,8 +70,6 @@ public class IoTDBSetConfigurationIT {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
-    // set configuration "enable_seq_space_compaction"="false"
-    // set configuration "enable_unseq_space_compaction"="false" on 0
     Assert.assertTrue(
         EnvFactory.getEnv().getConfigNodeWrapperList().stream()
             .allMatch(
@@ -81,17 +78,14 @@ public class IoTDBSetConfigurationIT {
                         nodeWrapper,
                         "enable_seq_space_compaction=false",
                         "enable_unseq_space_compaction=false")));
-    // set configuration "enable_seq_space_compaction"="false"
     Assert.assertTrue(
         EnvFactory.getEnv().getDataNodeWrapperList().stream()
             .allMatch(
                 nodeWrapper ->
-                    checkConfigFileContains(nodeWrapper, "enable_seq_space_compaction=false")));
-    // set configuration "enable_cross_space_compaction"="false" on 1
-    assertTrue(
-        checkConfigFileContains(
-            EnvFactory.getEnv().getDataNodeWrapperList().get(0),
-            "enable_cross_space_compaction=false"));
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_seq_space_compaction=false",
+                        "enable_cross_space_compaction=false")));
   }
 
   @Test
@@ -186,9 +180,6 @@ public class IoTDBSetConfigurationIT {
       assertFalse(
           checkConfigFileContains(
               EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=-1"));
-      assertFalse(
-          checkConfigFileContains(
-              EnvFactory.getEnv().getConfigNodeWrapper(0), "default_storage_group_level=-1"));
       assertTrue(
           checkConfigFileContains(
               EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=3"));

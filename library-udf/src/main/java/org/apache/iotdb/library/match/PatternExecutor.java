@@ -390,7 +390,7 @@ public class PatternExecutor {
       boolean partialQuery) {
     PatternCalculationResult pointsMatchRes =
         calculatePointsMatch(querySections, matchedSections, partialQuery);
-    if (pointsMatchRes == null) {
+    if (pointsMatchRes == null || pointsMatchRes.getMatchedPoints().isEmpty()) {
       return null;
     }
     if (pointsMatchRes.getMatch() > queryCtx.getThreshold()) {
