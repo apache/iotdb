@@ -262,7 +262,7 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
     // Legality check: subquery returns multiple rows (should fail)
     tableAssertTestFail(
         "select s1 from table1 where s1 = (select s1 from table1)",
-        "301: Scalar sub-query has returned multiple rows.",
+        "701: Scalar sub-query has returned multiple rows.",
         DATABASE_NAME);
 
     // Legality check: subquery can not be parsed
