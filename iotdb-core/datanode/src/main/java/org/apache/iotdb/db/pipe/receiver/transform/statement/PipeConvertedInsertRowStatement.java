@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +49,16 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     measurementSchemas = insertRowStatement.getMeasurementSchemas();
     measurements = insertRowStatement.getMeasurements();
     dataTypes = insertRowStatement.getDataTypes();
+    columnCategories = insertRowStatement.getColumnCategories();
+    idColumnIndices = insertRowStatement.getIdColumnIndices();
+    attrColumnIndices = insertRowStatement.getAttrColumnIndices();
+    writeToTable = insertRowStatement.isWriteToTable();
+    databaseName = insertRowStatement.getDatabaseName().orElse(null);
     // InsertRowStatement
     time = insertRowStatement.getTime();
     values = insertRowStatement.getValues();
     isNeedInferType = insertRowStatement.isNeedInferType();
+    deviceID = insertRowStatement.getRawTableDeviceID();
   }
 
   @Override
@@ -109,5 +116,11 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     }
 
     isNeedInferType = false;
+  }
+
+  @TableModel
+  @Override
+  public boolean isForceTypeConversion() {
+    return true;
   }
 }

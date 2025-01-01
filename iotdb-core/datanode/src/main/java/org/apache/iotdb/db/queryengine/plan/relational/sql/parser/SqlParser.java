@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -54,6 +56,10 @@ import java.util.function.Function;
 import static java.util.Objects.requireNonNull;
 
 public class SqlParser {
+
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   private static final ANTLRErrorListener LEXER_ERROR_LISTENER =
       new BaseErrorListener() {
         @Override
@@ -94,35 +100,41 @@ public class SqlParser {
     this.initializer = requireNonNull(initializer, "initializer is null");
   }
 
-  public Statement createStatement(String sql, ZoneId zoneId) {
-    return (Statement) invokeParser("statement", sql, RelationalSqlParser::singleStatement, zoneId);
+  public Statement createStatement(String sql, ZoneId zoneId, IClientSession clientSession) {
+    return (Statement)
+        invokeParser("statement", sql, RelationalSqlParser::singleStatement, zoneId, clientSession);
   }
 
-  public Statement createStatement(String sql, NodeLocation location, ZoneId zoneId) {
+  public Statement createStatement(
+      String sql, NodeLocation location, ZoneId zoneId, IClientSession clientSession) {
     return (Statement)
         invokeParser(
             "statement",
             sql,
             Optional.ofNullable(location),
             RelationalSqlParser::singleStatement,
-            zoneId);
+            zoneId,
+            clientSession);
   }
 
   public Expression createExpression(String expression, ZoneId zoneId) {
     return (Expression)
-        invokeParser("expression", expression, RelationalSqlParser::standaloneExpression, zoneId);
+        invokeParser(
+            "expression", expression, RelationalSqlParser::standaloneExpression, zoneId, null);
   }
 
   public DataType createType(String expression, ZoneId zoneId) {
-    return (DataType) invokeParser("type", expression, RelationalSqlParser::standaloneType, zoneId);
+    return (DataType)
+        invokeParser("type", expression, RelationalSqlParser::standaloneType, zoneId, null);
   }
 
   private Node invokeParser(
       String name,
       String sql,
       Function<RelationalSqlParser, ParserRuleContext> parseFunction,
-      ZoneId zoneId) {
-    return invokeParser(name, sql, Optional.empty(), parseFunction, zoneId);
+      ZoneId zoneId,
+      IClientSession clientSession) {
+    return invokeParser(name, sql, Optional.empty(), parseFunction, zoneId, clientSession);
   }
 
   private Node invokeParser(
@@ -130,7 +142,9 @@ public class SqlParser {
       String sql,
       Optional<NodeLocation> location,
       Function<RelationalSqlParser, ParserRuleContext> parseFunction,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      IClientSession clientSession) {
+    long startTime = System.nanoTime();
     try {
       RelationalSqlLexer lexer =
           new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
@@ -187,9 +201,11 @@ public class SqlParser {
         throw e;
       }
 
-      return new AstBuilder(location.orElse(null), zoneId).visit(tree);
+      return new AstBuilder(location.orElse(null), zoneId, clientSession).visit(tree);
     } catch (StackOverflowError e) {
       throw new ParsingException(name + " is too large (stack overflow while parsing)");
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     }
   }
 

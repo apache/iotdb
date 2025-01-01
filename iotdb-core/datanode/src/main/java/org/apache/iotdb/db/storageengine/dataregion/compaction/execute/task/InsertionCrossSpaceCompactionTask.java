@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -153,6 +152,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       logger.logSourceFile(unseqFileToInsert);
       logger.logTargetFile(targetFile);
       logger.force();
+      CompactionUtils.prepareCompactionModFiles(
+          Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
 
       prepareTargetFiles();
 
@@ -224,11 +225,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     Files.createLink(
         new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
         new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-    if (unseqFileToInsert.getModFile().exists()) {
-      Files.createLink(
-          new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
-          new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
-    }
+
+    unseqFileToInsert.linkModFile(targetFile);
+
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
@@ -293,8 +292,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
-            && unseqFileToInsert.modFileExists()
-            && !targetFile.modFileExists())
+            && unseqFileToInsert.anyModFileExists()
+            && !targetFile.anyModFileExists())
         || failToPassValidation;
   }
 

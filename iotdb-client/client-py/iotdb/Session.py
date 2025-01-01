@@ -69,7 +69,7 @@ class Session(object):
     SUCCESS_STATUS = 200
     MULTIPLE_ERROR = 302
     REDIRECTION_RECOMMEND = 400
-    DEFAULT_FETCH_SIZE = 10000
+    DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
@@ -85,8 +85,6 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=SQL_DIALECT,
-        database=None,
     ):
         self.__host = host
         self.__port = port
@@ -107,8 +105,8 @@ class Session(object):
         self.__enable_redirection = enable_redirection
         self.__device_id_to_endpoint = None
         self.__endpoint_to_connection = None
-        self.__sql_dialect = sql_dialect
-        self.__database = database
+        self.sql_dialect = self.SQL_DIALECT
+        self.database = None
 
     @classmethod
     def init_from_node_urls(
@@ -119,8 +117,6 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=SQL_DIALECT,
-        database=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -132,8 +128,6 @@ class Session(object):
             fetch_size,
             zone_id,
             enable_redirection,
-            sql_dialect=sql_dialect,
-            database=database,
         )
         session.__hosts = []
         session.__ports = []
@@ -196,9 +190,9 @@ class Session(object):
         else:
             client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
-        configuration = {"version": "V_1_0", "sql_dialect": self.__sql_dialect}
-        if self.__database is not None:
-            configuration["db"] = self.__database
+        configuration = {"version": "V_1_0", "sql_dialect": self.sql_dialect}
+        if self.database is not None:
+            configuration["db"] = self.database
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
             username=self.__user,
@@ -516,6 +510,15 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
+        if self.__has_none_value(string_values):
+            filtered_measurements, filtered_values = zip(
+                *[(m, v) for m, v in zip(measurements, string_values) if v is not None]
+            )
+            measurements = list(filtered_measurements)
+            values = list(filtered_values)
+            if len(measurements) == 0 or len(values) == 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_str_record_req(
             device_id, timestamp, measurements, string_values
         )
@@ -547,6 +550,15 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
+        if self.__has_none_value(string_values):
+            filtered_measurements, filtered_values = zip(
+                *[(m, v) for m, v in zip(measurements, string_values) if v is not None]
+            )
+            measurements = list(filtered_measurements)
+            values = list(filtered_values)
+            if len(measurements) == 0 or len(values) == 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_str_record_req(
             device_id, timestamp, measurements, string_values, True
         )
@@ -582,6 +594,20 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
+        if self.__has_none_value(values):
+            filtered_measurements, filtered_data_types, filtered_values = zip(
+                *[
+                    (m, d, v)
+                    for m, d, v in zip(measurements, data_types, values)
+                    if v is not None
+                ]
+            )
+            measurements = list(filtered_measurements)
+            data_types = list(filtered_data_types)
+            values = list(filtered_values)
+            if len(measurements) == 0 or len(data_types) == 0 or len(values) == 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -615,6 +641,19 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
+        if self.__has_none_value(values_lst):
+            (
+                device_ids,
+                times,
+                measurements_lst,
+                types_lst,
+                values_lst,
+            ) = self.__filter_lists_by_values(
+                device_ids, times, measurements_lst, types_lst, values_lst
+            )
+            if len(device_ids) == 0:
+                logger.info("All inserting values are none!")
+                return
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -684,6 +723,20 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
+        if self.__has_none_value(values):
+            filtered_measurements, filtered_data_types, filtered_values = zip(
+                *[
+                    (m, d, v)
+                    for m, d, v in zip(measurements, data_types, values)
+                    if v is not None
+                ]
+            )
+            measurements = list(filtered_measurements)
+            data_types = list(filtered_data_types)
+            values = list(filtered_values)
+            if len(measurements) == 0 or len(data_types) == 0 or len(values) == 0:
+                logger.info("All inserting values are none!")
+                return
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
@@ -717,6 +770,19 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
+        if self.__has_none_value(values_lst):
+            (
+                device_ids,
+                times,
+                measurements_lst,
+                types_lst,
+                values_lst,
+            ) = self.__filter_lists_by_values(
+                device_ids, times, measurements_lst, types_lst, values_lst
+            )
+            if len(device_ids) == 0:
+                logger.info("All inserting values are none!")
+                return
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -1431,10 +1497,10 @@ class Session(object):
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
-        previous_db = self.__database
+        previous_db = self.database
         if resp.database is not None:
-            self.__database = resp.database
-        if previous_db != self.__database and self.__endpoint_to_connection is not None:
+            self.database = resp.database
+        if previous_db != self.database and self.__endpoint_to_connection is not None:
             iterator = iter(self.__endpoint_to_connection.items())
             for entry in list(iterator):
                 endpoint, connection = entry
@@ -1604,7 +1670,7 @@ class Session(object):
         ):
             return 0
 
-        raise RuntimeError(str(status.code) + ": " + status.message)
+        raise RuntimeError(f"{status.code}: {status.message}")
 
     @staticmethod
     def verify_success_by_list(status_list: list):
@@ -1612,14 +1678,15 @@ class Session(object):
         verify success of operation
         :param status_list: execution result status
         """
-        message = str(Session.MULTIPLE_ERROR) + ": "
-        for status in status_list:
-            if (
-                status.code != Session.SUCCESS_STATUS
-                and status.code != Session.REDIRECTION_RECOMMEND
-            ):
-                message += status.message + "; "
-        raise RuntimeError(message)
+        error_messages = [
+            status.message
+            for status in status_list
+            if status.code
+            not in {Session.SUCCESS_STATUS, Session.REDIRECTION_RECOMMEND}
+        ]
+        if error_messages:
+            message = f"{Session.MULTIPLE_ERROR}: {'; '.join(error_messages)}"
+            raise RuntimeError(message)
 
     @staticmethod
     def verify_success_with_redirection(status: TSStatus):
@@ -1919,6 +1986,49 @@ class Session(object):
             is_aligned,
         )
         return request
+
+    def __has_none_value(self, values_list) -> bool:
+        for item in values_list:
+            if isinstance(item, list):
+                if self.__has_none_value(item):
+                    return True
+            elif item is None:
+                return True
+        return False
+
+    @staticmethod
+    def __filter_lists_by_values(
+        device_lst, time_lst, measurements_lst, types_lst, values_lst
+    ):
+        filtered_devices = []
+        filtered_times = []
+        filtered_measurements = []
+        filtered_types = []
+        filtered_values = []
+
+        for device, time_, measurements, types, values in zip(
+            device_lst, time_lst, measurements_lst, types_lst, values_lst
+        ):
+            filtered_row = [
+                (m, t, v)
+                for m, t, v in zip(measurements, types, values)
+                if v is not None
+            ]
+            if filtered_row:
+                f_measurements, f_types, f_values = zip(*filtered_row)
+                filtered_measurements.append(list(f_measurements))
+                filtered_types.append(list(f_types))
+                filtered_values.append(list(f_values))
+                filtered_devices.append(device)
+                filtered_times.append(time_)
+
+        return (
+            filtered_devices,
+            filtered_times,
+            filtered_measurements,
+            filtered_types,
+            filtered_values,
+        )
 
     def create_schema_template(self, template: Template):
         warnings.warn(

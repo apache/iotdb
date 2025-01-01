@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInferenceWindow;
@@ -228,6 +228,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
@@ -878,19 +879,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
-          false);
+          Optional.empty());
     } else {
       String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
-          true,
-          uriString);
+          Optional.of(uriString));
     }
   }
 
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
+    if (StringUtils.isEmpty(uriString)) {
+      throw new SemanticException("URI is empty, please specify the URI.");
+    }
     try {
       new URI(uriString);
     } catch (URISyntaxException e) {
@@ -1333,7 +1336,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
     createModelStatement.setModelName(parseIdentifier(modelName));
-    createModelStatement.setUri(ctx.modelUri.getText());
+    createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
   }
 
@@ -1487,7 +1490,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
         }
         if (canPushDownLimitOffsetToGroupByTime(queryStatement)) {
-          pushDownLimitOffsetToTimeParameter(queryStatement);
+          pushDownLimitOffsetToTimeParameter(queryStatement, zoneId);
         }
       }
     }
@@ -2589,10 +2592,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Create database
   @Override
-  public Statement visitCreateDatabase(IoTDBSqlParser.CreateDatabaseContext ctx) {
-    DatabaseSchemaStatement databaseSchemaStatement =
+  public Statement visitCreateDatabase(final IoTDBSqlParser.CreateDatabaseContext ctx) {
+    final DatabaseSchemaStatement databaseSchemaStatement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    final PartialPath path = parsePrefixPath(ctx.prefixPath());
     databaseSchemaStatement.setDatabasePath(path);
     if (ctx.databaseAttributesClause() != null) {
       parseDatabaseAttributesClause(databaseSchemaStatement, ctx.databaseAttributesClause());
@@ -2611,27 +2614,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private void parseDatabaseAttributesClause(
-      DatabaseSchemaStatement databaseSchemaStatement,
-      IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
-    for (IoTDBSqlParser.DatabaseAttributeClauseContext attribute : ctx.databaseAttributeClause()) {
-      IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
+      final DatabaseSchemaStatement databaseSchemaStatement,
+      final IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
+    for (final IoTDBSqlParser.DatabaseAttributeClauseContext attribute :
+        ctx.databaseAttributeClause()) {
+      final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
+          attribute.databaseAttributeKey();
       if (attributeKey.TTL() != null) {
-        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTtl(ttl);
-      } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
-        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-      } else if (attributeKey.DATA_REPLICATION_FACTOR() != null) {
-        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setDataReplicationFactor(dataReplicationFactor);
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
-        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
       } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
-        int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
       } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
-        int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
       }
     }
@@ -3330,20 +3329,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Flush
 
   @Override
-  public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Statement visitFlush(final IoTDBSqlParser.FlushContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
-      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-        storageGroups.add(parsePrefixPath(prefixPathContext));
+      for (final IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext).getFullPath());
       }
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return flushStatement;
   }
 

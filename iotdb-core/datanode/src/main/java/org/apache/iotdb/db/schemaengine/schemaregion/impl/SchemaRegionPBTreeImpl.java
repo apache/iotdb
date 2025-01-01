@@ -182,7 +182,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionPBTreeImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
@@ -190,9 +190,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
-    this.metric =
-        new SchemaRegionCachedMetric(
-            regionStatistics, schemaRegionParams.getDatabase().getFullPath());
+    this.metric = new SchemaRegionCachedMetric(regionStatistics, schemaRegionParams.getDatabase());
     init();
   }
 
@@ -858,13 +856,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+  public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
     if (!mtree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
     }
+  }
+
+  @Override
+  public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override

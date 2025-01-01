@@ -93,16 +93,16 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0; i < tsCount; i++) {
         tablet.addValue(
-            schemaList.get(i).getMeasurementId(), rowIndex, (row + 1) * 20 + i * 1000 + row);
+            schemaList.get(i).getMeasurementName(), rowIndex, (row + 1) * 20 + i * 1000 + row);
       }
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   /***

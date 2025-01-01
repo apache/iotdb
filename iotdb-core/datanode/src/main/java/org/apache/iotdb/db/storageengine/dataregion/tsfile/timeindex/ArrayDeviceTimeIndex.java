@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -163,6 +163,18 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
+  }
+
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
   }
 
   /**

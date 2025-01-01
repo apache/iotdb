@@ -21,8 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,6 +86,7 @@ public class WALInfoEntry extends WALEntry {
       case INSERT_ROW_NODE:
       case INSERT_ROWS_NODE:
       case DELETE_DATA_NODE:
+      case RELATIONAL_DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
         value.serializeToWAL(buffer);
@@ -99,6 +104,14 @@ public class WALInfoEntry extends WALEntry {
 
     public TabletInfo(List<int[]> tabletRangeList) {
       this.tabletRangeList = new ArrayList<>(tabletRangeList);
+    }
+
+    public int getRangeRowCount() {
+      int count = 0;
+      for (int[] range : tabletRangeList) {
+        count += range[1] - range[0];
+      }
+      return count;
     }
 
     @Override
@@ -134,6 +147,28 @@ public class WALInfoEntry extends WALEntry {
   @Override
   public boolean isSignal() {
     return false;
+  }
+
+  @Override
+  public long getMemorySize() {
+    switch (type) {
+      case INSERT_TABLET_NODE:
+        return ((InsertNode) value).getMemorySize()
+            / ((InsertTabletNode) value).getRowCount()
+            * tabletInfo.getRangeRowCount();
+      case INSERT_ROW_NODE:
+      case INSERT_ROWS_NODE:
+        return ((InsertNode) value).getMemorySize();
+      case MEMORY_TABLE_SNAPSHOT:
+        return ((IMemTable) value).getTVListsRamCost();
+      case DELETE_DATA_NODE:
+      case RELATIONAL_DELETE_DATA_NODE:
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+      case MEMORY_TABLE_CHECKPOINT:
+        return RamUsageEstimator.sizeOfObject(value);
+      default:
+        throw new RuntimeException("Unsupported wal entry type " + type);
+    }
   }
 
   @Override

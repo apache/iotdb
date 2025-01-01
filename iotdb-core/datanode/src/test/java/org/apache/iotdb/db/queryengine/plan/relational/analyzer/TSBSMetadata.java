@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
@@ -141,13 +146,13 @@ public class TSBSMetadata implements Metadata {
     columnSchemas.add(
         ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build());
     columnSchemas.add(
-        ColumnSchema.builder(NAME_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(NAME_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(FLEET_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(FLEET_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(DRIVER_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(DRIVER_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
-        ColumnSchema.builder(MODEL_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+        ColumnSchema.builder(MODEL_CM).setColumnCategory(TsTableColumnCategory.TAG).build());
     columnSchemas.add(
         ColumnSchema.builder(DEVICE_VERSION_CM)
             .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
@@ -168,45 +173,35 @@ public class TSBSMetadata implements Metadata {
     if (name.getObjectName().equalsIgnoreCase(TABLE_DIAGNOSTICS)) {
       columnSchemas.add(
           ColumnSchema.builder(FUEL_STATE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
           ColumnSchema.builder(CURRENT_LOAD_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
-          ColumnSchema.builder(STATUS_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(STATUS_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       return Optional.of(new TableSchema(TABLE_DIAGNOSTICS, columnSchemas));
     } else if (name.getObjectName().equalsIgnoreCase(TABLE_READINGS)) {
       columnSchemas.add(
-          ColumnSchema.builder(LATITUDE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(LATITUDE_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
           ColumnSchema.builder(LONGITUDE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
           ColumnSchema.builder(ELEVATION_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       columnSchemas.add(
-          ColumnSchema.builder(VELOCITY_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(VELOCITY_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
-          ColumnSchema.builder(HEADING_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(HEADING_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
-          ColumnSchema.builder(GRADE_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-              .build());
+          ColumnSchema.builder(GRADE_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
       columnSchemas.add(
           ColumnSchema.builder(FUEL_CONSUMPTION_CM)
-              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .setColumnCategory(TsTableColumnCategory.FIELD)
               .build());
       return Optional.of(new TableSchema(TABLE_READINGS, columnSchemas));
     } else {
@@ -335,7 +330,11 @@ public class TSBSMetadata implements Metadata {
 
   @Override
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      String database,
+      TableSchema tableSchema,
+      MPPQueryContext context,
+      boolean allowCreateTable,
+      boolean isStrictIdColumn) {
     throw new UnsupportedOperationException();
   }
 
@@ -440,11 +439,6 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
         return SCHEMA_PARTITION;
       }
     };

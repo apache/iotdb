@@ -21,6 +21,7 @@ package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -52,7 +53,7 @@ public abstract class AbstractTsFileTool {
 
   protected static Options options;
   protected static Options helpOptions;
-
+  protected static Session session;
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username = "root";

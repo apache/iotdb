@@ -69,6 +69,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
@@ -76,12 +77,12 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
@@ -138,6 +139,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -160,10 +162,15 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -259,7 +266,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
@@ -275,6 +282,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -560,10 +568,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
+      final String database = req.getFullPath();
       // req.getFullPath() is a database path
-      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
+      ClusterTemplateManager.getInstance().invalid(database);
       // clear table related cache
-      final String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
       tableDeviceSchemaCache.invalidate(database);
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
@@ -1112,7 +1120,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           PipeDataNodeAgent.task()
               .handlePipeMetaChanges(
                   req.getPipeMetas().stream()
-                      .map(PipeMeta::deserialize)
+                      .map(PipeMeta::deserialize4TaskAgent)
                       .collect(Collectors.toList()));
 
       return exceptionMessages.isEmpty()
@@ -1135,7 +1143,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (req.isSetPipeNameToDrop()) {
         exceptionMessage = PipeDataNodeAgent.task().handleDropPipe(req.getPipeNameToDrop());
       } else if (req.isSetPipeMeta()) {
-        final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
+        final PipeMeta pipeMeta =
+            PipeMeta.deserialize4TaskAgent(ByteBuffer.wrap(req.getPipeMeta()));
         exceptionMessage = PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       } else {
         throw new Exception("Invalid TPushSinglePipeMetaReq");
@@ -1172,7 +1181,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
       } else if (req.isSetPipeMetas()) {
         for (ByteBuffer byteBuffer : req.getPipeMetas()) {
-          final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+          final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
           TPushPipeMetaRespExceptionMessage message =
               PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
           exceptionMessages.add(message);
@@ -1465,7 +1474,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               executedSQL,
               partitionFetcher,
               schemaFetcher,
-              req.getTimeout());
+              req.getTimeout(),
+              false);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -1525,8 +1535,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
+    final String database;
+    final int size;
     switch (TsTableInternalRPCType.getType(req.type)) {
-      case PRE_CREATE_OR_ADD_COLUMN:
+      case PRE_UPDATE_TABLE:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         try {
           Pair<String, TsTable> pair =
@@ -1537,13 +1549,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
         }
         break;
-      case ROLLBACK_CREATE_OR_ADD_COLUMN:
+      case ROLLBACK_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .rollbackUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case COMMIT_CREATE_OR_ADD_COLUMN:
+      case COMMIT_UPDATE_TABLE:
         DataNodeTableCache.getInstance()
             .commitUpdateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
@@ -1560,7 +1572,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     try {
-      TableDeviceSchemaCache.getInstance().invalidate(req.getDatabase(), req.getTableName());
+      TableDeviceSchemaCache.getInstance()
+          .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
@@ -1571,10 +1584,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deleteDataForDropTable(final TDeleteDataOrDevicesForDropTableReq req) {
     return executeInternalSchemaTask(
         req.getRegionIdList(),
-        consensusGroupId -> {
-          // TODO
-          return StatusUtils.OK;
-        });
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    new RelationalDeleteDataNode(
+                        new PlanNodeId(""),
+                        new TableDeletionEntry(
+                            new DeletionPredicate(req.getTableName()),
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                        // the request is only sent to associated region
+                        null))
+                .getStatus());
   }
 
   @Override
@@ -1595,7 +1616,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final AtomicLong preDeletedNum = new AtomicLong(0);
     final TSStatus executionResult =
         executeSchemaBlackListTask(
-            req.getRegionIdList(),
+            req.getSchemaRegionIdList(),
             consensusGroupId -> {
               final TSStatus status =
                   new RegionWriteExecutor()
@@ -1617,15 +1638,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceDeletionWithPatternReq req) {
+  public TSStatus rollbackTableDeviceBlackList(final TTableDeviceDeletionWithPatternOrModReq req) {
     return executeInternalSchemaTask(
-        req.getSchemaRegionIdList(),
+        req.getRegionIdList(),
         consensusGroupId ->
             new RegionWriteExecutor()
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new RollbackTableDevicesBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
   }
 
@@ -1646,25 +1667,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternAndFilterReq req) {
+  public TSStatus deleteDataForTableDevice(final TTableDeviceDeletionWithPatternOrModReq req) {
+    if (req.getPatternOrModInfo().length == 0) {
+      // TODO: Not supported by DeletionEntry, fetch blacklist from schema region
+      return StatusUtils.OK;
+    }
     return executeInternalSchemaTask(
         req.getRegionIdList(),
-        consensusGroupId -> {
-          // TODO
-          return StatusUtils.OK;
-        });
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    new RelationalDeleteDataNode(
+                        new PlanNodeId(""),
+                        DeleteDevice.constructModEntries(req.getPatternOrModInfo()),
+                        // the request is only sent to associated region
+                        null))
+                .getStatus());
   }
 
   @Override
-  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceDeletionWithPatternReq req) {
+  public TSStatus deleteTableDeviceInBlackList(final TTableDeviceDeletionWithPatternOrModReq req) {
     return executeInternalSchemaTask(
-        req.getSchemaRegionIdList(),
+        req.getRegionIdList(),
         consensusGroupId ->
             new RegionWriteExecutor()
                 .execute(
                     new SchemaRegionId(consensusGroupId.getId()),
                     new DeleteTableDevicesInBlackListNode(
-                        new PlanNodeId(""), req.getTableName(), req.getPatternInfo()))
+                        new PlanNodeId(""), req.getTableName(), req.getPatternOrModInfo()))
                 .getStatus());
   }
 
@@ -1686,7 +1717,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteColumnData(final TDeleteColumnDataReq req) {
-    // TODO: Execute on data region
     return executeInternalSchemaTask(
         req.getRegionIdList(),
         consensusGroupId ->
@@ -1697,7 +1727,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         new TableAttributeColumnDropNode(
                             new PlanNodeId(""), req.getTableName(), req.getColumnName()))
                     .getStatus()
-                : StatusUtils.OK);
+                : new RegionWriteExecutor()
+                    .execute(
+                        new DataRegionId(consensusGroupId.getId()),
+                        new RelationalDeleteDataNode(
+                            new PlanNodeId(""),
+                            new TableDeletionEntry(
+                                new DeletionPredicate(
+                                    req.getTableName(),
+                                    new IDPredicate.NOP(),
+                                    Collections.singletonList(req.getColumnName())),
+                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                            // the request is only sent to associated region
+                            null))
+                    .getStatus());
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
@@ -1835,6 +1878,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       sampleDiskLoad(loadSample);
 
       resp.setLoadSample(loadSample);
+
+      resp.setRegionDisk(FileMetrics.getInstance().getRegionSizeMap());
     }
     AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
@@ -2028,11 +2073,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (!storageEngine.isReadyForNonReadWriteFunctions()) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
     }
-    IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-    if (!iotdbConfig.isEnableSeqSpaceCompaction() || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+    if (!CompactionTaskManager.getInstance().isInit()) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
-          "cannot start repair task because inner space compaction is not enabled");
+          "cannot start repair task because compaction is not enabled");
     }
     try {
       if (storageEngine.repairData()) {
@@ -2144,9 +2188,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus setSystemStatus(String status) throws TException {
     try {
       commonConfig.setNodeStatus(NodeStatus.parse(status));
-      if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
-        PipeDataNodeAgent.runtime().stop();
-      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
@@ -2220,6 +2261,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (consensusGroupId instanceof DataRegionId) {
       try {
         DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
+        Optional.ofNullable(
+                DeletionResourceManager.getInstance(String.valueOf(tconsensusGroupId.getId())))
+            .ifPresent(DeletionResourceManager::close);
       } catch (ConsensusException e) {
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
@@ -2414,7 +2458,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropFunction(TDropFunctionInstanceReq req) {
     try {
-      UDFManagementService.getInstance().deregister(req.getFunctionName(), req.isNeedToDeleteJar());
+      UDFManagementService.getInstance()
+          .deregister(req.model, req.getFunctionName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_UDF_ON_DATANODE_ERROR.getStatusCode())

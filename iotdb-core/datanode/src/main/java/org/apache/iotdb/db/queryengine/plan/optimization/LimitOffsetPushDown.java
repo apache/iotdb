@@ -46,9 +46,11 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -270,7 +272,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
   }
 
   private static void pushDownLimitOffsetToTimeParameterContainingMonth(
-      QueryStatement queryStatement) {
+      QueryStatement queryStatement, ZoneId zoneId) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
@@ -283,9 +285,11 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long totalStep = slidingStep.getMinTotalDuration(TimeUnit.MILLISECONDS);
     long size = (endTime - startTime + totalStep - 1) / totalStep;
     if (size > offsetSize) {
+      TimeZone timeZone = TimeZone.getTimeZone(zoneId);
       // ordering in group by month must be ascending
       long newStartTime =
-          DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep.multiple(offsetSize));
+          DateTimeUtils.calcPositiveIntervalByMonth(
+              startTime, slidingStep.multiple(offsetSize), zoneId);
 
       if (limitSize != 0) {
         endTime =
@@ -293,7 +297,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
                 endTime,
                 DateTimeUtils.calcPositiveIntervalByMonth(
                     startTime,
-                    calculateEndTimeDuration(slidingStep, interval, limitSize, offsetSize)));
+                    calculateEndTimeDuration(slidingStep, interval, limitSize, offsetSize),
+                    zoneId));
       }
       groupByTimeComponent.setEndTime(endTime);
       groupByTimeComponent.setStartTime(newStartTime);
@@ -316,12 +321,13 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     return new TimeDuration(monthDuration, nonMonthDuration);
   }
 
-  public static void pushDownLimitOffsetToTimeParameter(QueryStatement queryStatement) {
+  public static void pushDownLimitOffsetToTimeParameter(
+      QueryStatement queryStatement, ZoneId zoneId) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     // if group by time contains month, we use another push down limit/offset
     if (groupByTimeComponent.getInterval().containsMonth()
         || groupByTimeComponent.getSlidingStep().containsMonth()) {
-      pushDownLimitOffsetToTimeParameterContainingMonth(queryStatement);
+      pushDownLimitOffsetToTimeParameterContainingMonth(queryStatement, zoneId);
       return;
     }
     long startTime = groupByTimeComponent.getStartTime();
@@ -371,7 +377,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
   }
 
   public static List<PartialPath> pushDownLimitOffsetInGroupByTimeForDevice(
-      List<PartialPath> deviceNames, QueryStatement queryStatement) {
+      List<PartialPath> deviceNames, QueryStatement queryStatement, ZoneId zoneId) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     if (groupByTimeComponent.getInterval().containsMonth()
         || groupByTimeComponent.getSlidingStep().containsMonth()) {
@@ -408,7 +414,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     if (startDeviceIndex == endDeviceIndex) {
       optimizedDeviceNames.add(deviceNames.get(startDeviceIndex));
       if (hasLimitOffset(queryStatement) && queryStatement.isOrderByTimeInDevices()) {
-        pushDownLimitOffsetToTimeParameter(queryStatement);
+        pushDownLimitOffsetToTimeParameter(queryStatement, zoneId);
       }
     } else {
       while (index <= endDeviceIndex && index < deviceNames.size()) {

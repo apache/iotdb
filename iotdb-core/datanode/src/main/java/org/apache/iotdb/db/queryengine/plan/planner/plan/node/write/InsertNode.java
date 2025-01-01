@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -84,6 +85,8 @@ public abstract class InsertNode extends SearchNode {
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
+
+  protected long memorySize;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -156,15 +159,13 @@ public abstract class InsertNode extends SearchNode {
       return measurements.length;
     }
     return (int)
-        Arrays.stream(columnCategories)
-            .filter(col -> col == TsTableColumnCategory.MEASUREMENT)
-            .count();
+        Arrays.stream(columnCategories).filter(col -> col == TsTableColumnCategory.FIELD).count();
   }
 
   public boolean isValidMeasurement(int i) {
     return measurementSchemas != null
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT);
+        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
   }
 
   public void setMeasurements(String[] measurements) {
@@ -272,7 +273,7 @@ public abstract class InsertNode extends SearchNode {
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
       measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      measurements[i] = measurementSchemas[i].getMeasurementName();
       dataTypes[i] = measurementSchemas[i].getType();
     }
   }
@@ -280,7 +281,7 @@ public abstract class InsertNode extends SearchNode {
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
     for (int i = 0; i < measurements.length; i++) {
       measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      measurements[i] = measurementSchemas[i].getMeasurementName();
     }
   }
 
@@ -377,7 +378,7 @@ public abstract class InsertNode extends SearchNode {
     if (columnCategories != null) {
       idColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
           idColumnIndices.add(i);
         }
       }
@@ -400,7 +401,7 @@ public abstract class InsertNode extends SearchNode {
     for (int i = 0; i < measurements.length; i++) {
       if (measurementSchemas[i] != null) {
         // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
       } else {
         rawMeasurements[i] = measurements[i];
       }
@@ -417,5 +418,12 @@ public abstract class InsertNode extends SearchNode {
       throws IllegalPathException, IOException {
     return DataNodeDevicePathCache.getInstance()
         .getPartialPath(ReadWriteIOUtils.readString(stream));
+  }
+
+  public long getMemorySize() {
+    if (memorySize == 0) {
+      memorySize = InsertNodeMemoryEstimator.sizeOf(this);
+    }
+    return memorySize;
   }
 }

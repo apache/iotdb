@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -77,7 +77,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
         .filter(
             columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
                     || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
         .map(
             columnSchema ->

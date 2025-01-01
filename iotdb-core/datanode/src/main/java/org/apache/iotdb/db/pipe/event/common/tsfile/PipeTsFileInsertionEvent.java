@@ -40,7 +40,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -76,6 +75,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
+  private File sharedModFile;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -144,9 +144,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    this.isWithMod = isWithMod && resource.anyModFileExists();
+    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    // TODO: process the shared mod file
+    this.sharedModFile =
+        resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -231,6 +233,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public File getModFile() {
     return modFile;
+  }
+
+  public File getSharedModFile() {
+    return sharedModFile;
   }
 
   public boolean isWithMod() {
@@ -489,7 +495,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-
       waitForResourceEnough4Parsing(timeoutMs);
       Iterable<TabletInsertionEvent> events = initEventParser().toTabletInsertionEvents();
       if (pipeName != null) {
@@ -501,13 +506,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         PipeTsFileToTabletMetrics.getInstance().markTsFileSize(pipeID, tsFile.length());
       }
       return events;
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
+    }  catch (final Exception e) {
       close();
 
+      // close() should be called before re-interrupting the thread
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+
       final String errorMsg =
-          String.format(
-              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
+          e instanceof InterruptedException
+              ? String.format(
+                  "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
+              : String.format(
+                  "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
@@ -545,7 +557,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
-        throw new InterruptedException(
+        throw new PipeException(
             String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
       }
     }
@@ -648,7 +660,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeTsFileInsertionEventResource(
-        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+        this.isReleased,
+        this.referenceCount,
+        this.tsFile,
+        this.isWithMod,
+        this.modFile,
+        this.sharedModFile);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -656,17 +673,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final File sharedModFile;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final File tsFile,
         final boolean isWithMod,
-        final File modFile) {
+        final File modFile,
+        File sharedModFile) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.sharedModFile = sharedModFile;
     }
 
     @Override

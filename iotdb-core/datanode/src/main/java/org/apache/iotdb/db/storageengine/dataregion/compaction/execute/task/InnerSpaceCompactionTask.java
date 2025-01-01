@@ -40,7 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -198,6 +197,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected void prepare() throws IOException, DiskSpaceInsufficientException {
     calculateSourceFilesAndTargetFiles();
+    CompactionUtils.prepareCompactionModFiles(
+        filesView.targetFilesInPerformer, filesView.sourceFilesInLog);
     isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
     Arrays.fill(isHoldingWriteLock, false);
     String dataDirectory =
@@ -219,10 +220,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    if ((filesView.sequence
-            && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
-        || (!filesView.sequence
-            && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction())) {
+    if ((this.getCompactionTaskType() != CompactionTaskType.REPAIR)
+        && ((filesView.sequence
+                && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
+            || (!filesView.sequence
+                && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction()))) {
       return true;
     }
     if (this.compactionConfigVersion
@@ -443,15 +445,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (int i = 0; i < filesView.renamedTargetFiles.size(); i++) {
       TsFileResource oldFile = filesView.skippedSourceFiles.get(i);
       TsFileResource newFile = filesView.renamedTargetFiles.get(i);
-      Files.createLink(newFile.getTsFile().toPath(), oldFile.getTsFile().toPath());
-      Files.createLink(
-          new File(newFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-          new File(oldFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (oldFile.modFileExists()) {
-        Files.createLink(
-            new File(newFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath(),
-            new File(oldFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath());
-      }
+
+      oldFile.link(newFile);
+
       newFile.deserialize();
     }
     CompactionUtils.moveTargetFile(
@@ -601,6 +597,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   public double getAvgCompactionCount() {
     return (double) filesView.sumOfCompactionCount
         / filesView.sourceFilesInCompactionPerformer.size();
+  }
+
+  public double getAvgFileSize() {
+    return (double) filesView.selectedFileSize / filesView.sourceFilesInCompactionPerformer.size();
   }
 
   @TestOnly

@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -38,7 +36,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
-import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,7 +44,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
+import javax.annotation.Nonnull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -57,21 +56,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
+import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CHECK_TABLE_EXISTENCE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DATA;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.DELETE_DEVICE_SCHEMA;
-import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
+import static org.apache.iotdb.rpc.TSStatusCode.TABLE_NOT_EXISTS;
 
 public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<DeleteDevicesState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDevicesProcedure.class);
   private byte[] patternBytes;
   private byte[] filterBytes;
-
-  // Transient
-  private PathPatternTree patternTree;
+  private byte[] modBytes;
 
   // Transient, will not be returned if once recovers
   private long deletedDevicesNum;
@@ -84,11 +80,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String database,
       final String tableName,
       final String queryId,
-      final byte[] patternBytes,
-      final byte[] filterBytes) {
+      final @Nonnull byte[] patternBytes,
+      final @Nonnull byte[] filterBytes,
+      final @Nonnull byte[] modBytes) {
     super(database, tableName, queryId);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
+    this.modBytes = modBytes;
   }
 
   @Override
@@ -98,7 +96,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          LOGGER.info("Check the existence of table {}.{}", database, tableName);
           checkTableExistence(env);
           break;
         case CONSTRUCT_BLACK_LIST:
@@ -128,44 +126,32 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       }
       return Flow.HAS_MORE_STATE;
     } finally {
-      LOGGER.info(
-          "DeleteTimeSeries-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info("DeleteDevices-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
-    if (env.getConfigManager()
-        .getClusterSchemaManager()
-        .getTableIfExists(database, table.getTableName())
-        .isPresent()) {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(
-                  String.format(
-                      "Table '%s.%s' already exists.",
-                      database.substring(ROOT.length() + 1), table.getTableName()),
-                  TABLE_ALREADY_EXISTS.getStatusCode())));
-    } else {
-      setNextState(CONSTRUCT_BLACK_LIST);
+    try {
+      if (!env.getConfigManager()
+          .getClusterSchemaManager()
+          .getTableIfExists(database, tableName)
+          .isPresent()) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format("Table '%s.%s' not exists.", database, tableName),
+                    TABLE_NOT_EXISTS.getStatusCode())));
+      } else {
+        setNextState(CONSTRUCT_BLACK_LIST);
+      }
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
   }
 
   private void constructBlackList(final ConfigNodeProcedureEnv env) {
-    patternTree = new PathPatternTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    final PartialPath path;
-    try {
-      path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
-      patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
-    }
-
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       deletedDevicesNum = 0;
@@ -265,14 +251,11 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "delete data for table device",
             env,
-            env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedDataRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceDeletionWithPatternAndFilterReq(
-                    consensusGroupIdList,
-                    tableName,
-                    ByteBuffer.wrap(patternBytes),
-                    ByteBuffer.wrap(filterBytes)))
+                new TTableDeviceDeletionWithPatternOrModReq(
+                    consensusGroupIdList, tableName, ByteBuffer.wrap(modBytes)))
         .execute();
     setNextState(DELETE_DEVICE_SCHEMA);
   }
@@ -281,10 +264,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "roll back table device black list",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TTableDeviceDeletionWithPatternReq(
+                new TTableDeviceDeletionWithPatternOrModReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
         .execute();
   }
@@ -297,10 +280,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       new TableRegionTaskExecutor<>(
               "roll back table device black list",
               env,
-              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+              env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
-                  new TTableDeviceDeletionWithPatternReq(
+                  new TTableDeviceDeletionWithPatternOrModReq(
                       consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
           .execute();
     }
@@ -322,7 +305,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   protected DeleteDevicesState getInitialState() {
-    return CONSTRUCT_BLACK_LIST;
+    return CHECK_TABLE_EXISTENCE;
   }
 
   @Override
@@ -340,6 +323,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     stream.write(patternBytes);
     ReadWriteIOUtils.write(filterBytes.length, stream);
     stream.write(filterBytes);
+    ReadWriteIOUtils.write(modBytes.length, stream);
+    stream.write(modBytes);
   }
 
   @Override
@@ -350,18 +335,24 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     byteBuffer.get(patternBytes);
     filterBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
     byteBuffer.get(filterBytes);
+    modBytes = new byte[ReadWriteIOUtils.readInt(byteBuffer)];
+    byteBuffer.get(modBytes);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
         && Arrays.equals(this.patternBytes, ((DeleteDevicesProcedure) o).patternBytes)
-        && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes);
+        && Arrays.equals(this.filterBytes, ((DeleteDevicesProcedure) o).filterBytes)
+        && Arrays.equals(this.modBytes, ((DeleteDevicesProcedure) o).modBytes);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), Arrays.hashCode(patternBytes), Arrays.hashCode(filterBytes));
+        super.hashCode(),
+        Arrays.hashCode(patternBytes),
+        Arrays.hashCode(filterBytes),
+        Arrays.hashCode(modBytes));
   }
 }

@@ -213,9 +213,11 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<Tablet.ColumnType> tsfileColumnCategories =
+    List<Tablet.ColumnCategory> tsfileColumnCategories =
         Arrays.asList(
-            Tablet.ColumnType.ID, Tablet.ColumnType.ATTRIBUTE, Tablet.ColumnType.MEASUREMENT);
+            Tablet.ColumnCategory.TAG,
+            Tablet.ColumnCategory.ATTRIBUTE,
+            Tablet.ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
             .map(TsTableColumnCategory::fromTsFileColumnType)
@@ -249,7 +251,7 @@ public class StatementGeneratorTest {
 
     ColumnSchema columnSchema =
         new ColumnSchema(
-            "s1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID);
+            "s1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG);
     insertTabletStatement.insertColumn(insertPos, columnSchema);
     assertEquals(4, insertTabletStatement.getMeasurements().length);
     assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);
@@ -285,10 +287,7 @@ public class StatementGeneratorTest {
     insertPos = 5;
     columnSchema =
         new ColumnSchema(
-            "s3",
-            TypeFactory.getType(TSDataType.BOOLEAN),
-            false,
-            TsTableColumnCategory.MEASUREMENT);
+            "s3", TypeFactory.getType(TSDataType.BOOLEAN), false, TsTableColumnCategory.FIELD);
     insertTabletStatement.insertColumn(insertPos, columnSchema);
     assertEquals(6, insertTabletStatement.getMeasurements().length);
     assertEquals(columnSchema.getName(), insertTabletStatement.getMeasurements()[insertPos]);

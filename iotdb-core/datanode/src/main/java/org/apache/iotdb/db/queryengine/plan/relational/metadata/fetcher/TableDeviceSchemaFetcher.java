@@ -20,18 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -68,7 +66,6 @@ import java.util.stream.Collectors;
 public class TableDeviceSchemaFetcher {
 
   private final SqlParser relationSqlParser = new SqlParser();
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
@@ -115,7 +112,8 @@ public class TableDeviceSchemaFetcher {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               "Fetch Device for insert",
               LocalExecutionPlanner.getInstance().metadata,
-              config.getQueryTimeoutThreshold());
+              context.getTimeOut(),
+              false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
@@ -393,7 +391,8 @@ public class TableDeviceSchemaFetcher {
                   "fetch device for query %s : %s",
                   mppQueryContext.getQueryId(), mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,
-              config.getQueryTimeoutThreshold());
+              mppQueryContext.getTimeOut(),
+              false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
@@ -466,7 +465,7 @@ public class TableDeviceSchemaFetcher {
       if (columnSchema == null) {
         continue;
       }
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (columns[j].isNull(rowIndex)) {
           nodes[currentIndex] = null;
         } else {

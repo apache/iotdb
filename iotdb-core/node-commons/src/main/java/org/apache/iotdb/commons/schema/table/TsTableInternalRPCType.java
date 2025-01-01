@@ -26,13 +26,13 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableInternalRPCType {
-  PRE_CREATE_OR_ADD_COLUMN((byte) 0),
-  ROLLBACK_CREATE_OR_ADD_COLUMN((byte) 1),
-  COMMIT_CREATE_OR_ADD_COLUMN((byte) 2);
+  PRE_UPDATE_TABLE((byte) 0),
+  ROLLBACK_UPDATE_TABLE((byte) 1),
+  COMMIT_UPDATE_TABLE((byte) 2);
 
   private final byte operationType;
 
-  private TsTableInternalRPCType(final byte operationType) {
+  TsTableInternalRPCType(final byte operationType) {
     this.operationType = operationType;
   }
 
@@ -45,18 +45,18 @@ public enum TsTableInternalRPCType {
   }
 
   public static TsTableInternalRPCType deserialize(final ByteBuffer buffer) {
-    byte type = ReadWriteIOUtils.readByte(buffer);
+    final byte type = ReadWriteIOUtils.readByte(buffer);
     return getType(type);
   }
 
   public static TsTableInternalRPCType getType(final byte type) {
     switch (type) {
       case 0:
-        return PRE_CREATE_OR_ADD_COLUMN;
+        return PRE_UPDATE_TABLE;
       case 1:
-        return ROLLBACK_CREATE_OR_ADD_COLUMN;
+        return ROLLBACK_UPDATE_TABLE;
       case 2:
-        return COMMIT_CREATE_OR_ADD_COLUMN;
+        return COMMIT_UPDATE_TABLE;
       default:
         throw new IllegalArgumentException("Unknown table update operation type" + type);
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.read.ReadProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -46,7 +47,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final long endTime;
 
   private final List<IMeasurementSchema> columnSchemas;
-  private final List<Tablet.ColumnType> columnTypes;
+  private final List<Tablet.ColumnCategory> columnTypes;
   private final List<String> columnNames;
   private final TsBlockReader tsBlockReader;
 
@@ -66,10 +67,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     try {
       for (int i = 0, size = tableSchema.getColumnSchemas().size(); i < size; i++) {
         final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
-        if (schema.getMeasurementId() != null && !schema.getMeasurementId().isEmpty()) {
+        if (schema.getMeasurementName() != null && !schema.getMeasurementName().isEmpty()) {
           columnSchemas.add(schema);
           columnTypes.add(tableSchema.getColumnTypes().get(i));
-          columnNames.add(schema.getMeasurementId());
+          columnNames.add(schema.getMeasurementName());
         }
       }
 
@@ -101,8 +102,16 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private Tablet buildNextTablet() throws IOException {
     final TsBlock tsBlock = tsBlockReader.next();
 
+    List<String> measurementList = new ArrayList<>(columnSchemas.size());
+    List<TSDataType> dataTypeList = new ArrayList<>(columnSchemas.size());
+    columnSchemas.forEach(
+        columnSchema -> {
+          measurementList.add(columnSchema.getMeasurementName());
+          dataTypeList.add(columnSchema.getType());
+        });
     final Tablet tablet =
-        new Tablet(tableName, columnSchemas, columnTypes, tsBlock.getPositionCount());
+        new Tablet(
+            tableName, measurementList, dataTypeList, columnTypes, tsBlock.getPositionCount());
     tablet.initBitMaps();
 
     boolean isAllNull = true;
@@ -116,7 +125,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         continue;
       }
 
-      final int rowIndex = tablet.rowSize;
+      final int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       for (int i = 0, fieldSize = row.length - 1; i < fieldSize; i++) {
         final Object value =
@@ -124,15 +133,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 ? row[i]
                 : DateUtils.parseIntToLocalDate((Integer) row[i]);
         tablet.addValue(columnNames.get(i), rowIndex, value);
-        if (value != null && columnTypes.get(i) == Tablet.ColumnType.MEASUREMENT) {
+        if (value != null && columnTypes.get(i) == Tablet.ColumnCategory.FIELD) {
           isAllNull = false;
         }
       }
-      tablet.rowSize++;
     }
 
     if (isAllNull) {
-      tablet.rowSize = 0;
+      tablet.setRowSize(0);
     }
 
     return tablet;

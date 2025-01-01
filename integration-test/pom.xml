@@ -67,6 +67,20 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+        <pipeConsensusBatchMode.configNodeConsensus>Ratis</pipeConsensusBatchMode.configNodeConsensus>
+        <pipeConsensusBatchMode.configNodeNumber>1</pipeConsensusBatchMode.configNodeNumber>
+        <pipeConsensusBatchMode.dataNodeNumber>3</pipeConsensusBatchMode.dataNodeNumber>
+        <pipeConsensusBatchMode.dataRegionConsensus>IoTV2</pipeConsensusBatchMode.dataRegionConsensus>
+        <pipeConsensusBatchMode.dataRegionReplicaNumber>2</pipeConsensusBatchMode.dataRegionReplicaNumber>
+        <pipeConsensusBatchMode.schemaRegionConsensus>Ratis</pipeConsensusBatchMode.schemaRegionConsensus>
+        <pipeConsensusBatchMode.schemaRegionReplicaNumber>3</pipeConsensusBatchMode.schemaRegionReplicaNumber>
+        <pipeConsensusStreamMode.configNodeConsensus>Ratis</pipeConsensusStreamMode.configNodeConsensus>
+        <pipeConsensusStreamMode.configNodeNumber>1</pipeConsensusStreamMode.configNodeNumber>
+        <pipeConsensusStreamMode.dataNodeNumber>3</pipeConsensusStreamMode.dataNodeNumber>
+        <pipeConsensusStreamMode.dataRegionConsensus>IoTV2</pipeConsensusStreamMode.dataRegionConsensus>
+        <pipeConsensusStreamMode.dataRegionReplicaNumber>2</pipeConsensusStreamMode.dataRegionReplicaNumber>
+        <pipeConsensusStreamMode.schemaRegionConsensus>Ratis</pipeConsensusStreamMode.schemaRegionConsensus>
+        <pipeConsensusStreamMode.schemaRegionReplicaNumber>3</pipeConsensusStreamMode.schemaRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -314,6 +328,20 @@
                                 <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
                                 <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
                                 <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
+                                <pipeConsensusBatchMode.configNodeNumber>${pipeConsensusBatchMode.configNodeNumber}</pipeConsensusBatchMode.configNodeNumber>
+                                <pipeConsensusBatchMode.dataNodeNumber>${pipeConsensusBatchMode.dataNodeNumber}</pipeConsensusBatchMode.dataNodeNumber>
+                                <pipeConsensusBatchMode.configNodeConsensus>${pipeConsensusBatchMode.configNodeConsensus}</pipeConsensusBatchMode.configNodeConsensus>
+                                <pipeConsensusBatchMode.schemaRegionConsensus>${pipeConsensusBatchMode.schemaRegionConsensus}</pipeConsensusBatchMode.schemaRegionConsensus>
+                                <pipeConsensusBatchMode.dataRegionConsensus>${pipeConsensusBatchMode.dataRegionConsensus}</pipeConsensusBatchMode.dataRegionConsensus>
+                                <pipeConsensusBatchMode.schemaRegionReplicaNumber>${pipeConsensusBatchMode.schemaRegionReplicaNumber}</pipeConsensusBatchMode.schemaRegionReplicaNumber>
+                                <pipeConsensusBatchMode.dataRegionReplicaNumber>${pipeConsensusBatchMode.dataRegionReplicaNumber}</pipeConsensusBatchMode.dataRegionReplicaNumber>
+                                <pipeConsensusStreamMode.configNodeNumber>${pipeConsensusStreamMode.configNodeNumber}</pipeConsensusStreamMode.configNodeNumber>
+                                <pipeConsensusStreamMode.dataNodeNumber>${pipeConsensusStreamMode.dataNodeNumber}</pipeConsensusStreamMode.dataNodeNumber>
+                                <pipeConsensusStreamMode.configNodeConsensus>${pipeConsensusStreamMode.configNodeConsensus}</pipeConsensusStreamMode.configNodeConsensus>
+                                <pipeConsensusStreamMode.schemaRegionConsensus>${pipeConsensusStreamMode.schemaRegionConsensus}</pipeConsensusStreamMode.schemaRegionConsensus>
+                                <pipeConsensusStreamMode.dataRegionConsensus>${pipeConsensusStreamMode.dataRegionConsensus}</pipeConsensusStreamMode.dataRegionConsensus>
+                                <pipeConsensusStreamMode.schemaRegionReplicaNumber>${pipeConsensusStreamMode.schemaRegionReplicaNumber}</pipeConsensusStreamMode.schemaRegionReplicaNumber>
+                                <pipeConsensusStreamMode.dataRegionReplicaNumber>${pipeConsensusStreamMode.dataRegionReplicaNumber}</pipeConsensusStreamMode.dataRegionReplicaNumber>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>
@@ -388,7 +416,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
@@ -403,7 +431,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
                 <integrationTest.testEnv>Remote</integrationTest.testEnv>
             </properties>
@@ -414,8 +442,8 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3,org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -428,7 +456,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -442,7 +470,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -456,8 +484,22 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2TableModel</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -470,7 +512,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -484,7 +526,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -498,7 +540,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -512,7 +554,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -526,7 +568,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -540,7 +582,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.AIClusterIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
@@ -568,7 +610,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.TableLocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
@@ -582,12 +624,26 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.TableClusterIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
                 <integrationTest.testEnv>TABLE_CLUSTER1</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
+            <id>ManualIT</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
             </properties>
         </profile>
     </profiles>

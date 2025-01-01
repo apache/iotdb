@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -40,8 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -88,7 +86,7 @@ public class FastCompactionPerformer
   private List<TsFileResource> targetFiles;
 
   // tsFile name -> modifications
-  private Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  private Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
@@ -143,18 +141,15 @@ public class FastCompactionPerformer
             x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
         if (ttl != Long.MAX_VALUE) {
-          Deletion ttlDeletion =
-              new Deletion(
-                  new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  deviceIterator.getTimeLowerBoundForCurrentDevice());
+          ModEntry ttlDeletion =
+              CompactionUtils.convertTtlToDeletion(
+                  device, deviceIterator.getTimeLowerBoundForCurrentDevice());
           for (TsFileResource sourceFile : sortedSourceFiles) {
             modificationCache
                 .computeIfAbsent(
                     sourceFile.getTsFile().getName(),
                     k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.getPath(), ttlDeletion);
+                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
           }
         }
 
@@ -291,6 +286,21 @@ public class FastCompactionPerformer
           throw (StopReadTsFileByInterruptException) cause;
         }
         throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
+      } catch (InterruptedException e) {
+        abortAllSubTasks(futures);
+        throw e;
+      }
+    }
+  }
+
+  private void abortAllSubTasks(List<Future<Void>> futures) {
+    for (Future<Void> future : futures) {
+      future.cancel(true);
+    }
+    for (Future<Void> future : futures) {
+      try {
+        future.get();
+      } catch (Exception ignored) {
       }
     }
   }
@@ -343,14 +353,14 @@ public class FastCompactionPerformer
 
   private void readModification(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
-      if (resource.getModFile() == null || !resource.getModFile().exists()) {
+      if (resource.getTotalModSizeInByte() == 0) {
         continue;
       }
       // read mods
-      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
           PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : resource.getModFile().getModificationsIter()) {
-        modifications.append(modification.getPath(), modification);
+      for (ModEntry modification : resource.getAllModEntries()) {
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
       modificationCache.put(resource.getTsFile().getName(), modifications);
     }

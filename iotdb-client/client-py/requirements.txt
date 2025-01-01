@@ -21,5 +21,5 @@ pandas>=1.0.0
 numpy>=1.0.0
 thrift>=0.14.1
 # SQLAlchemy Dialect
-sqlalchemy<1.5,>=1.4
+sqlalchemy>=1.4
 sqlalchemy-utils>=0.37.8

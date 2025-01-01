@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inne
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -356,7 +356,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       }
       resource
           .getCompactionModFile()
-          .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+          .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
       resource.getCompactionModFile().close();
       seqResources.add(resource);
     }
@@ -378,9 +378,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     for (int i = 0; i < filesAfterCompaction.size(); i++) {
       TsFileResource resource = filesAfterCompaction.get(i);
       if (i == 8) {
-        Assert.assertTrue(resource.modFileExists());
+        Assert.assertTrue(resource.anyModFileExists());
       } else {
-        Assert.assertFalse(resource.modFileExists());
+        Assert.assertFalse(resource.anyModFileExists());
       }
       Assert.assertFalse(resource.compactionModFileExists());
     }
@@ -392,17 +392,19 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource1.getModFile().close();
+        .getModFileForWrite()
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
             "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     resource2
-        .getModFile()
-        .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource2.getModFile().close();
+        .getModFileForWrite()
+        .write(
+            new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MIN_VALUE, Long.MAX_VALUE));
+    resource2.getModFileForWrite().close();
     seqResources.add(resource2);
 
     NewSizeTieredCompactionSelector selector =
@@ -426,9 +428,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
-        .getModFile()
-        .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource1.getModFile().close();
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
+    resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
@@ -438,9 +440,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "3-3-0-0.tsfile", new TimeRange[] {new TimeRange(500, 600)}, true, "d1", "d3");
     resource3
-        .getModFile()
-        .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource3.getModFile().close();
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
+    resource3.getModFileForWrite().close();
     seqResources.add(resource3);
     TsFileResource resource4 =
         generateSingleNonAlignedSeriesFile(
@@ -450,9 +452,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         generateSingleNonAlignedSeriesFile(
             "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     resource5
-        .getModFile()
-        .write(new Deletion(new MeasurementPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
-    resource5.getModFile().close();
+        .getModFileForWrite()
+        .write(new TreeDeletionEntry(new MeasurementPath("root.**"), Long.MAX_VALUE));
+    resource5.getModFileForWrite().close();
     seqResources.add(resource5);
 
     IoTDBDescriptor.getInstance()
@@ -713,6 +715,36 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     // select file4 - file9
     Assert.assertEquals(6, task2.getSelectedTsFileResourceList().size());
     Assert.assertEquals(6, task2.getAllSourceTsFiles().size());
+  }
+
+  @Test
+  public void testSelectLastSkippedFilesWithTotalFileNumLimit() throws IOException {
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTotalFileNumThreshold(10);
+    // TsFiles: [d0], [d1], [d2], [d3], [d3], [d3], [d3], [d3], [d3], [d3], [d3]
+    for (int i = 0; i < 11; i++) {
+      String device;
+      if (i >= 4) {
+        device = "d3";
+      } else {
+        device = "d" + i;
+      }
+      TsFileResource resource =
+          generateSingleNonAlignedSeriesFile(
+              String.format("%d-%d-%d-0.tsfile", i, i, 0),
+              new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
+              true,
+              device);
+      seqResources.add(resource);
+    }
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(
+        10, innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size());
   }
 
   private TsFileResource generateSingleNonAlignedSeriesFile(

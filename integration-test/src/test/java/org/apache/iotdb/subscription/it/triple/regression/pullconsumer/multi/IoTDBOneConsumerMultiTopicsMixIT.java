@@ -107,14 +107,14 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row + 2.45f);
       tablet.addValue("s_1", rowIndex, "rowIndex" + rowIndex);
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -131,7 +131,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
             + device
             + "(time,s_0,s_1)values(1710288000000,313,'2024-03-13 08:00:00+08:00');"); // 2024-03-13
     // 08:00:00+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     // Subscribe
     consumer = create_pull_consumer("multi_1consumer_mix", "tsfile_dataset", false, null);
     System.out.println("###### Before Subscription Query:");
@@ -231,7 +231,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                           final Tablet tablet = it.next();
                           try {
                             session_dest.insertTablet(tablet);
-                            System.out.println(FORMAT.format(new Date()) + " " + tablet.rowSize);
+                            System.out.println(
+                                FORMAT.format(new Date()) + " " + tablet.getRowSize());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -290,7 +291,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
             + device
             + "(time,s_0,s_1)values(1703980800000,3.45,'2023-12-31 08:00:00+08:00');"); // 2023-12-31 08:00:00+08:00
     insert_data(System.currentTimeMillis());
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     System.out.println(
         FORMAT.format(new Date())
             + " Unsubscribe after writing data src:"

@@ -23,16 +23,16 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -89,7 +89,7 @@ public class LoadTsFileTableSchemaCache {
   // tableName -> Pair<device column count, device column mapping>
   private Map<String, Pair<Integer, Map<Integer, Integer>>> tableIdColumnMapper = new HashMap<>();
 
-  private Collection<Modification> currentModifications;
+  private Collection<ModEntry> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchTable2DevicesMemoryUsageSizeInBytes = 0;
@@ -256,7 +256,7 @@ public class LoadTsFileTableSchemaCache {
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
       throws VerifyMetadataException {
     final TableSchema realSchema =
-        metadata.validateTableHeaderSchema(database, fileSchema, context, true).orElse(null);
+        metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new VerifyMetadataException(
           String.format(
@@ -277,7 +277,7 @@ public class LoadTsFileTableSchemaCache {
     int idColumnIndex = 0;
     for (int i = 0; i < fileSchema.getColumns().size(); i++) {
       final ColumnSchema fileColumn = fileSchema.getColumns().get(i);
-      if (fileColumn.getColumnCategory() == TsTableColumnCategory.ID) {
+      if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
         final int realIndex = realSchema.getIndexAmongIdColumns(fileColumn.getName());
         if (realIndex != -1) {
           idColumnMapping.put(idColumnIndex++, realIndex);
@@ -287,11 +287,11 @@ public class LoadTsFileTableSchemaCache {
                   "Id column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
         }
-      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.MEASUREMENT) {
+      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         final ColumnSchema realColumn =
             realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
         if (!fileColumn.getType().equals(realColumn.getType())) {
-          throw new VerifyMetadataException(
+          throw new VerifyMetadataTypeMismatchException(
               String.format(
                   "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
                   realColumn.getName(),
@@ -320,9 +320,9 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = resource.getModFile().getModifications();
-    for (final Modification modification : currentModifications) {
-      currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+    currentModifications = resource.getAllModEntries();
+    for (final ModEntry modification : currentModifications) {
+      currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
     }
 
     // If there are too many modifications, a larger memory block is needed to avoid frequent

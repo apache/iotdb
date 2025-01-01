@@ -41,8 +41,9 @@ public class LoadTsFile extends Statement {
   private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean deleteAfterLoad;
-  private boolean autoCreateDatabase;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -58,6 +59,7 @@ public class LoadTsFile extends Statement {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -85,12 +87,16 @@ public class LoadTsFile extends Statement {
     this.autoCreateDatabase = autoCreateDatabase;
   }
 
+  public boolean isAutoCreateDatabase() {
+    return autoCreateDatabase;
+  }
+
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
   }
 
-  public boolean isAutoCreateDatabase() {
-    return autoCreateDatabase;
+  public boolean isConvertOnTypeMismatch() {
+    return convertOnTypeMismatch;
   }
 
   public int getDatabaseLevel() {
@@ -133,6 +139,8 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.convertOnTypeMismatch =
+        LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);

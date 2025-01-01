@@ -74,13 +74,11 @@ public class IoTDBFilterTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE testNaN(device STRING ID, n1 DOUBLE MEASUREMENT, n2 DOUBLE MEASUREMENT)");
+          "CREATE TABLE testNaN(device STRING TAG, n1 DOUBLE FIELD, n2 DOUBLE FIELD)");
       statement.execute(
-          "CREATE TABLE testTimeSeries(device STRING ID, s1 BOOLEAN MEASUREMENT, s2 BOOLEAN MEASUREMENT)");
-      statement.execute(
-          "CREATE TABLE testUDTF(device STRING ID, s1 TEXT MEASUREMENT, s2 DOUBLE MEASUREMENT)");
-      statement.execute(
-          "CREATE TABLE sg1(device STRING ID, s1 DOUBLE MEASUREMENT, s2 TEXT MEASUREMENT)");
+          "CREATE TABLE testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD)");
+      statement.execute("CREATE TABLE testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD)");
+      statement.execute("CREATE TABLE sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -236,5 +234,29 @@ public class IoTDBFilterTableIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testCompareWithNull() {
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 from sg1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+  }
+
+  @Test
+  public void testCalculateWithNull() {
+    tableResultSetEqualTest(
+        "select s1 + null from sg1",
+        new String[] {"_col0"},
+        new String[] {"null,", "null,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 - null from sg1",
+        new String[] {"_col0"},
+        new String[] {"null,", "null,"},
+        DATABASE_NAME);
   }
 }

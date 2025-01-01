@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.executor;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -33,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
@@ -80,7 +82,9 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
@@ -341,9 +345,11 @@ public class ConfigPlanExecutor {
       case SHOW_CQ:
         return cqInfo.showCQ();
       case GetFunctionTable:
-        return udfInfo.getUDFTable();
+        return udfInfo.getUDFTable((GetFunctionTablePlan) req);
       case GetFunctionJar:
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
+      case GetAllFunctionTable:
+        return udfInfo.getAllUDFTable();
       case ShowModel:
         return modelInfo.showModel((ShowModelPlan) req);
       case GetModelInfo:
@@ -470,8 +476,14 @@ public class ConfigPlanExecutor {
         return clusterInfo.updateClusterId((UpdateClusterIdPlan) physicalPlan);
       case CreateFunction:
         return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
-      case DropFunction:
-        return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
+      case UpdateFunction:
+        return udfInfo.updateFunction((UpdateFunctionPlan) physicalPlan);
+      case DropTreeModelFunction:
+        return udfInfo.dropFunction(
+            Model.TREE, ((DropTreeModelFunctionPlan) physicalPlan).getFunctionName());
+      case DropTableModelFunction:
+        return udfInfo.dropFunction(
+            Model.TABLE, ((DropTableModelFunctionPlan) physicalPlan).getFunctionName());
       case AddTriggerInTable:
         return triggerInfo.addTriggerInTable((AddTriggerInTablePlan) physicalPlan);
       case DeleteTriggerInTable:
@@ -649,7 +661,7 @@ public class ConfigPlanExecutor {
                 x.getClass().getName(),
                 System.currentTimeMillis() - startTime);
           } catch (TException | IOException e) {
-            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            LOGGER.error("Take snapshot error", e);
             takeSnapshotResult = false;
           } finally {
             // If any snapshot fails, the whole fails
@@ -665,7 +677,7 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
@@ -673,12 +685,12 @@ public class ConfigPlanExecutor {
       return;
     }
 
-    AtomicBoolean result = new AtomicBoolean(true);
+    final AtomicBoolean result = new AtomicBoolean(true);
     snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {
-                long startTime = System.currentTimeMillis();
+                final long startTime = System.currentTimeMillis();
                 LOGGER.info(
                     "[ConfigNodeSnapshot] Start to load snapshot for {} from {}",
                     x.getClass().getName(),
@@ -688,9 +700,9 @@ public class ConfigPlanExecutor {
                     "[ConfigNodeSnapshot] Load snapshot for {} cost {} ms",
                     x.getClass().getName(),
                     System.currentTimeMillis() - startTime);
-              } catch (TException | IOException e) {
+              } catch (final TException | IOException e) {
                 result.set(false);
-                LOGGER.error("Load snapshot error: {}", e.getMessage());
+                LOGGER.error("Load snapshot error", e);
               }
             });
     if (result.get()) {
@@ -753,13 +765,13 @@ public class ConfigPlanExecutor {
     return schemaNodeManagementResp;
   }
 
-  private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
+  private DataSet getRegionInfoList(final ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
-    TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
+    final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
       final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
+          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups, false).values().stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

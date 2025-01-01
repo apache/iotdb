@@ -68,7 +68,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       final TSInsertTabletReq request = new TSInsertTabletReq();
 
       for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToMeasurements(measurementSchema.getMeasurementName());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
 
@@ -76,7 +76,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
+      request.setSize(tablet.getRowSize());
 
       // Tree model
       if (Objects.isNull(dataBaseName)) {

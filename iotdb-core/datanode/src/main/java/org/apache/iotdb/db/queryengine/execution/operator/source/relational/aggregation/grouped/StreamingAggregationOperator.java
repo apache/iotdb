@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
 public class StreamingAggregationOperator extends AbstractOperator {
@@ -70,7 +69,10 @@ public class StreamingAggregationOperator extends AbstractOperator {
   private SortKey currentGroup;
   private final Comparator<SortKey> groupKeyComparator;
 
-  // more than one group in input block
+  // We limit the size of output block, but the process of one input block may produce more than one
+  // output because:
+  // Input columns can be reused by multiple aggregations, so size of each row maybe larger than
+  // input.
   private final Deque<TsBlock> outputs = new LinkedList<>();
 
   public StreamingAggregationOperator(
@@ -127,10 +129,6 @@ public class StreamingAggregationOperator extends AbstractOperator {
       }
 
       processInput(block);
-
-      if (outputs.isEmpty()) {
-        return null;
-      }
     } else {
       // last evaluate
       if (currentGroup != null) {
@@ -139,7 +137,10 @@ public class StreamingAggregationOperator extends AbstractOperator {
       }
       finished = true;
     }
-    checkState(!outputs.isEmpty(), "outputs should always not be empty here");
+
+    if (outputs.isEmpty()) {
+      return null;
+    }
 
     resultTsBlock = outputs.removeFirst();
     return checkTsBlockSizeAndGetResult();
@@ -233,6 +234,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
   @Override
   public void close() throws Exception {
     child.close();
+    aggregators.forEach(TableAggregator::close);
   }
 
   @Override

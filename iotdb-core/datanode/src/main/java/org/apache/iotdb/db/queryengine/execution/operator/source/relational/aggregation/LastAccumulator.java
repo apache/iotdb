@@ -43,10 +43,28 @@ public class LastAccumulator implements TableAccumulator {
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
   protected boolean initResult = false;
+  protected boolean isTimeColumn = false;
 
-  public LastAccumulator(TSDataType seriesDataType) {
+  public LastAccumulator(TSDataType seriesDataType, boolean isTimeColumn) {
     this.seriesDataType = seriesDataType;
+    this.isTimeColumn = isTimeColumn;
     lastValue = TsPrimitiveType.getByType(seriesDataType);
+  }
+
+  public boolean hasInitResult() {
+    return this.initResult;
+  }
+
+  public boolean isTimeColumn() {
+    return this.isTimeColumn;
+  }
+
+  public long getMaxTime() {
+    return this.maxTime;
+  }
+
+  public TsPrimitiveType getLastValue() {
+    return this.lastValue;
   }
 
   @Override
@@ -56,7 +74,7 @@ public class LastAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new LastAccumulator(seriesDataType);
+    return new LastAccumulator(seriesDataType, isTimeColumn);
   }
 
   @Override
@@ -243,8 +261,7 @@ public class LastAccumulator implements TableAccumulator {
     this.lastValue.reset();
   }
 
-  private void addIntInput(Column valueColumn, Column timeColumn) {
-    // TODO can add last position optimization if last position is null ?
+  protected void addIntInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateIntLastValue(valueColumn.getInt(i), timeColumn.getLong(i));
@@ -260,7 +277,7 @@ public class LastAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column valueColumn, Column timeColumn) {
+  protected void addLongInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateLongLastValue(valueColumn.getLong(i), timeColumn.getLong(i));
@@ -276,7 +293,7 @@ public class LastAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column valueColumn, Column timeColumn) {
+  protected void addFloatInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
@@ -292,7 +309,7 @@ public class LastAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column valueColumn, Column timeColumn) {
+  protected void addDoubleInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
@@ -308,7 +325,7 @@ public class LastAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBinaryInput(Column valueColumn, Column timeColumn) {
+  protected void addBinaryInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
@@ -324,7 +341,7 @@ public class LastAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column valueColumn, Column timeColumn) {
+  protected void addBooleanInput(Column valueColumn, Column timeColumn) {
     for (int i = 0; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));

@@ -123,14 +123,14 @@ public class IoTDBDevicePatternTsfilePushConsumerIT extends AbstractSubscription
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, (1 + row) * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
