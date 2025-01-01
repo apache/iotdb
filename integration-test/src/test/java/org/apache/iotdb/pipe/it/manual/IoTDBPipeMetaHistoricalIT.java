@@ -235,7 +235,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "list privileges of role `admin`",
           ColumnHeaderConstant.ROLE
               + ","
-              + ColumnHeaderConstant.PATH
+              + ColumnHeaderConstant.SCOPE
               + ","
               + ColumnHeaderConstant.PRIVILEGES
               + ","

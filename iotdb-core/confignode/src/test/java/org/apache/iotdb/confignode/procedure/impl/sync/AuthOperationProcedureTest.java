@@ -26,8 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.PublicBAOS;

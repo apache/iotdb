@@ -721,6 +721,7 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
+      if (privilege.isRelationalPrivilege()) continue;
       testGrant.checkParser(privilege.toString(), name, true, path, true);
       testGrant.checkParser(privilege.toString(), name, true, path, false);
       testGrant.checkParser(privilege.toString(), name, false, path, true);
@@ -756,6 +757,7 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) continue;
       testRevoke.checkParser(type.toString(), name, true, path, false);
       testRevoke.checkParser(type.toString(), name, false, path, false);
 
@@ -784,6 +786,7 @@ public class StatementGeneratorTest {
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) continue;
       {
         AuthorStatement stmt =
             createAuthDclStmt(

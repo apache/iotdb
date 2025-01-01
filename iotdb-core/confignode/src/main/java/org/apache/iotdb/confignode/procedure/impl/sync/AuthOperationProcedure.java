@@ -28,11 +28,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorRelationalPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorTreePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalWritePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreeWritePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -205,14 +201,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item, stream);
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
-    if (plan instanceof AuthorTreePlan) {
-      ReadWriteIOUtils.write(
-          new AuthorTreeWritePlan((AuthorTreePlan) plan).serializeToByteBuffer(), stream);
-    } else {
-      ReadWriteIOUtils.write(
-          new AuthorRelationalWritePlan((AuthorRelationalPlan) plan).serializeToByteBuffer(),
-          stream);
-    }
+    ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
     ReadWriteIOUtils.write(dataNodesToInvalid.size(), stream);
     for (Pair<TDataNodeConfiguration, Long> item : dataNodesToInvalid) {
       ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.left, stream);

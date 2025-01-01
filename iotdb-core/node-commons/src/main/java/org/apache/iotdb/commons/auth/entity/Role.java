@@ -33,6 +33,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -595,7 +596,10 @@ public class Role {
 
   public Set<String> priSetToString(Set<PrivilegeType> privs, Set<PrivilegeType> grantOpt) {
     Set<String> priSet = new HashSet<>();
-    for (PrivilegeType priv : privs) {
+    ArrayList<PrivilegeType> privBak = new ArrayList<>(privs);
+    Collections.sort(privBak);
+
+    for (PrivilegeType priv : privBak) {
       StringBuilder str = new StringBuilder(String.valueOf(priv));
       if (grantOpt.contains(priv)) {
         str.append("_with_grant_option ");

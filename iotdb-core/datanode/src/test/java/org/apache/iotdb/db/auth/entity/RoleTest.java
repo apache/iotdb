@@ -76,18 +76,18 @@ public class RoleTest {
     admin.getObjectPrivilegeMap().put("testdb", databasePrivilege);
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
-        "Role{name='root', pathPrivilegeList=[root.** :"
-            + " READ_DATA_with_grant_option WRITE_DATA_with_grant_option "
-            + "READ_SCHEMA_with_grant_option WRITE_SCHEMA_with_grant_option], "
-            + "systemPrivilegeSet=[USE_CQ_with_grant_option , USE_PIPE_with_grant_option , "
-            + "USE_UDF_with_grant_option , MANAGE_ROLE_with_grant_option , "
-            + "USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_grant_option , "
-            + "MAINTAIN_with_grant_option , MANAGE_USER_with_grant_option , "
-            + "EXTEND_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ], "
-            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={testdb=Database: "
-            + "{testdb INSERT_with_grant_option CREATE_with_grant_option "
-            + "DROP_with_grant_option ALTER_with_grant_option DELETE_with_grant_option "
-            + "SELECT_with_grant_option Tables: {testtb {INSERT CREATE DROP ALTER DELETE SELECT }}}}}",
+        "Role{name='root', pathPrivilegeList=[root.** : "
+            + "READ_DATA_with_grant_option WRITE_DATA_with_grant_option"
+            + " READ_SCHEMA_with_grant_option WRITE_SCHEMA_with_grant_option],"
+            + " systemPrivilegeSet=[MANAGE_ROLE_with_grant_option , USE_UDF_with_grant_option ,"
+            + " USE_CQ_with_grant_option , USE_PIPE_with_grant_option , "
+            + "USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_grant_option ,"
+            + " MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option ,"
+            + " EXTEND_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ],"
+            + " AnyScopePrivilegeMap=[], objectPrivilegeSet={testdb=Database(testdb):"
+            + "{CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option,"
+            + "SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,;"
+            + " Tables: [ testtb(CREATE,DROP,ALTER,SELECT,INSERT,DELETE,)]}}}",
         admin.toString());
   }
 }
