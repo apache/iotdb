@@ -191,7 +191,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                               username,
                               PrivilegeModelType.TREE.ordinal(),
                               permission.ordinal(),
-                              false)
+                              true)
                           .setPaths(AuthUtils.serializePartialPathList(paths)))
                   .getStatus();
             }
@@ -275,15 +275,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserAnyScopePrivilegeGrantOption(
-      String username, PrivilegeType permisssion) {
+  public TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission) {
     checkCacheAvailable();
     return checkPrivilege(
         username,
-        new PrivilegeUnion(permisssion, false, true),
+        new PrivilegeUnion(permission, false, true),
         (role, union) -> role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.RELATIONAL.ordinal(), permisssion.ordinal(), true));
+            username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true));
   }
 
   /** -- check database/table visible -- * */
@@ -592,16 +591,17 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
     List<TPathPrivilege> privilegeList =
-        tPermissionInfoResp.getUserInfo().getBasicInfo().getPrivilegeList();
-    user.setName(tPermissionInfoResp.getUserInfo().getBasicInfo().getName());
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getPrivilegeList();
+    user.setName(tPermissionInfoResp.getUserInfo().getPermissionInfo().getName());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    user.loadRelationalPrivileInfo(
-        tPermissionInfoResp.getUserInfo().getBasicInfo().getDbPrivilegeMap());
+    user.loadRelationalPrivilegeInfo(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getDbPrivilegeMap());
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setRoleSet(tPermissionInfoResp.getUserInfo().getRoleSet());
-    user.setSysPrivilegeSetInt(tPermissionInfoResp.getUserInfo().getBasicInfo().getSysPriSet());
+    user.setSysPrivilegeSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSet());
     user.setSysPriGrantOptInt(
-        tPermissionInfoResp.getUserInfo().getBasicInfo().getSysPriSetGrantOpt());
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSetGrantOpt());
     try {
       user.loadPathPrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
@@ -620,7 +620,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TRoleResp resp = tPermissionInfoResp.getRoleInfo().get(roleName);
     Role role = new Role(resp.getName());
 
-    role.loadRelationalPrivileInfo(resp.getDbPrivilegeMap());
+    role.loadRelationalPrivilegeInfo(resp.getDbPrivilegeMap());
     role.setSysPriGrantOptInt(
         tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
     role.setSysPrivilegeSetInt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());

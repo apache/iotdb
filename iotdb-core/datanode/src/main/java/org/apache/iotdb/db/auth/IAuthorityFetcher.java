@@ -36,7 +36,7 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUser(String username, String password);
 
-  boolean checkRole(String username, String rolename);
+  boolean checkRole(String username, String roleName);
 
   List<Integer> checkUserPathPrivileges(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
@@ -44,22 +44,22 @@ public interface IAuthorityFetcher {
   TSStatus checkUserPathPrivilegesGrantOpt(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivileges(String username, PrivilegeType permisssion);
+  TSStatus checkUserSysPrivileges(String username, PrivilegeType permission);
 
-  TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permisssion);
+  TSStatus checkUserDBPrivileges(String username, String database, PrivilegeType permission);
 
   TSStatus checkUserTBPrivileges(
-      String username, String database, String table, PrivilegeType permisssion);
+      String username, String database, String table, PrivilegeType permission);
 
-  TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permisssion);
+  TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permission);
 
   TSStatus checkUserDBPrivilegesGrantOpt(
-      String username, String database, PrivilegeType permisssion);
+      String username, String database, PrivilegeType permission);
 
   TSStatus checkUserTBPrivilegesGrantOpt(
-      String username, String database, String table, PrivilegeType permisssion);
+      String username, String database, String table, PrivilegeType permission);
 
-  TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permisssion);
+  TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission);
 
   TSStatus checkDBVisible(String username, String database);
 

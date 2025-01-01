@@ -121,7 +121,7 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
-    boolean status = true;
+    boolean status;
     TPermissionInfoResp result = new TPermissionInfoResp();
     List<Integer> failedList = new ArrayList<>();
     try {
@@ -137,6 +137,7 @@ public class AuthorInfo implements SnapshotProcessor {
           pos++;
         }
         if (union.isGrantOption()) {
+          // all path should have grant option.
           status = failedList.isEmpty();
         } else {
           status = failedList.size() != list.size();
@@ -297,6 +298,9 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RDropUser:
           authorizer.deleteUser(userName);
+          break;
+        case RUpdateUser:
+          authorizer.updateUserPassword(userName, authorPlan.getPassword());
           break;
         case RGrantUserRole:
           authorizer.grantRoleToUser(roleName, userName);

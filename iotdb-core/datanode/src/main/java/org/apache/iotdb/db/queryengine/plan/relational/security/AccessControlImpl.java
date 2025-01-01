@@ -232,7 +232,7 @@ public class AccessControlImpl implements AccessControl {
         }
         authChecker.checkDatabasePrivilegeGrantOption(
             userName,
-            statement.getDatabase().toLowerCase(),
+            statement.getDatabase(),
             TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
         return;
       case GRANT_USER_TB:
@@ -250,8 +250,7 @@ public class AccessControlImpl implements AccessControl {
         }
         authChecker.checkTablePrivilegeGrantOption(
             userName,
-            new QualifiedObjectName(
-                statement.getDatabase().toLowerCase(), statement.getTableName().toLowerCase()),
+            new QualifiedObjectName(statement.getDatabase(), statement.getTableName()),
             TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
         return;
 
@@ -272,7 +271,7 @@ public class AccessControlImpl implements AccessControl {
             userName, TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
         return;
       default:
-        return;
+        //
     }
   }
 }

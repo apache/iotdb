@@ -56,7 +56,7 @@ public class LocalFileUserManagerTest {
   }
 
   @Test
-  public void testIllegalInput() throws AuthException {
+  public void testIllegalInput() {
     // Password contains space
     try {
       manager.createEntry("username1", "password_ ", true);

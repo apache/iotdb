@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -63,17 +62,6 @@ public class AuthUtils {
   }
 
   /**
-   * This filed only for pre version. When we do a major version upgrade, it can be removed
-   * directly.
-   */
-  // FOR PRE VERSION BEGIN -----
-  private static final int MAX_LENGTH_PRE = 64;
-
-  private static final String REX_PATTERN_PRE = "^[-\\w]*$";
-
-  // FOR PRE VERSION DONE ---
-
-  /**
    * Validate password
    *
    * @param password user password
@@ -109,11 +97,11 @@ public class AuthUtils {
   /**
    * Validate role name
    *
-   * @param rolename role name
-   * @throws AuthException contains message why rolename is invalid
+   * @param roleName role name
+   * @throws AuthException contains message why roleName is invalid
    */
-  public static void validateRolename(String rolename) throws AuthException {
-    validateNameOrPassword(rolename);
+  public static void validateRolename(String roleName) throws AuthException {
+    validateNameOrPassword(roleName);
   }
 
   public static void validateNameOrPassword(String str) throws AuthException {
@@ -171,20 +159,6 @@ public class AuthUtils {
                 path));
       }
     }
-  }
-
-  public static PartialPath convertPatternPath(PartialPath path) throws IllegalPathException {
-    String pathStr = new String();
-    int i = 0;
-    for (; i < path.getNodeLength(); i++) {
-      if (!PathPatternUtil.hasWildcard(path.getNodes()[i])) {
-        pathStr = pathStr.concat(path.getNodes()[i] + ".");
-      } else {
-        break;
-      }
-    }
-    pathStr = pathStr.concat("**");
-    return new PartialPath(pathStr);
   }
 
   /**
@@ -248,7 +222,6 @@ public class AuthUtils {
    * Get privileges
    *
    * @param path The seriesPath on which the privileges take effect.
-   * @exception AuthException throw if path is invalid or path in privilege is invalid
    * @return The privileges granted to the role
    */
   public static Set<PrivilegeType> getPrivileges(
@@ -280,17 +253,6 @@ public class AuthUtils {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path.matchFullPath(pathPrivilege.getPath())
           && pathPrivilege.getPrivileges().contains(priv)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public static boolean hasPrivilege(
-      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
-    for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.getPath().equals(path)
-          && pathPrivilege.getPrivilegeIntSet().contains(privilegeId)) {
         return true;
       }
     }
@@ -347,6 +309,22 @@ public class AuthUtils {
     }
   }
 
+  /**
+   * Remove privilege grant option
+   *
+   * @param path series path
+   * @param priv privilege type
+   * @param privilegeList privileges in List structure of user or role
+   */
+  public static void removePrivilegeGrantOption(
+      PartialPath path, PrivilegeType priv, List<PathPrivilege> privilegeList) {
+    for (PathPrivilege pathPri : privilegeList) {
+      if (path.matchFullPath(pathPri.getPath())) {
+        pathPri.revokeGrantOpt(priv);
+      }
+    }
+  }
+
   /** Generate empty permission response when failed */
   public static TPermissionInfoResp generateEmptyPermissionInfoResp() {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
@@ -382,7 +360,7 @@ public class AuthUtils {
    * Transform permission from name to privilegeId
    *
    * @param authorizationList the list of privilege name
-   * @return the list of privilege Ids
+   * @return the set of privilege type
    * @throws AuthException throws if there are no privilege matched
    */
   public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
@@ -432,6 +410,7 @@ public class AuthUtils {
     return paths;
   }
 
+  // deserialize privilege type from an int mask.
   public static PrivilegeType posToSysPri(int pos) {
     switch (pos) {
       case 0:
@@ -461,7 +440,7 @@ public class AuthUtils {
     }
   }
 
-  public static int sysPriTopos(PrivilegeType priv) {
+  public static int sysPriToPos(PrivilegeType priv) {
     switch (priv) {
       case MANAGE_DATABASE:
         return 0;
@@ -514,7 +493,7 @@ public class AuthUtils {
       case WRITE_SCHEMA:
         return 3;
       default:
-        return -1;
+        throw new RuntimeException("Not support PrivilegeType " + pri);
     }
   }
 
@@ -552,7 +531,7 @@ public class AuthUtils {
       case DELETE:
         return 5;
       default:
-        return -1;
+        throw new RuntimeException("Not support position");
     }
   }
 }

@@ -51,7 +51,6 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_PRIVILEGES_Column_HEADERS;
 
 // Authority checker is SingleTon working at datanode.
-// It checks permission in local. DCL statement will send to confignode.
+// It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
 
   public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
@@ -87,8 +86,8 @@ public class AuthorityChecker {
     return authorityFetcher.get();
   }
 
-  public static boolean invalidateCache(String username, String rolename) {
-    return authorityFetcher.get().getAuthorCache().invalidateCache(username, rolename);
+  public static boolean invalidateCache(String username, String roleName) {
+    return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
   public static TSStatus checkUser(String userName, String password) {
@@ -133,7 +132,7 @@ public class AuthorityChecker {
     }
   }
 
-  public static TSStatus getOptTSStatus(boolean hasGrantOpt, PrivilegeType privilegeType) {
+  public static TSStatus getGrantOptTSStatus(boolean hasGrantOpt, PrivilegeType privilegeType) {
     return hasGrantOpt
         ? SUCCEED
         : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())
@@ -308,18 +307,15 @@ public class AuthorityChecker {
 
   public static boolean checkPathPermissionGrantOption(
       String userName, PrivilegeType privilegeType, List<PartialPath> nodeNameList) {
-    if (authorityFetcher
+    return authorityFetcher
             .get()
             .checkUserPathPrivilegesGrantOpt(userName, nodeNameList, privilegeType)
             .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return false;
-    }
-    return true;
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  public static boolean checkRole(String username, String rolename) {
-    return authorityFetcher.get().checkRole(username, rolename);
+  public static boolean checkRole(String username, String roleName) {
+    return authorityFetcher.get().checkRole(username, roleName);
   }
 
   public static void buildTSBlock(
@@ -349,12 +345,11 @@ public class AuthorityChecker {
       builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
-        appendEntryInfo("", user.getBasicInfo(), builder);
+        appendEntryInfo("", user.getPermissionInfo(), builder);
       }
-      Iterator<Map.Entry<String, TRoleResp>> it =
-          authResp.getPermissionInfo().getRoleInfo().entrySet().iterator();
-      while (it.hasNext()) {
-        TRoleResp role = it.next().getValue();
+      for (Map.Entry<String, TRoleResp> stringTRoleRespEntry :
+          authResp.getPermissionInfo().getRoleInfo().entrySet()) {
+        TRoleResp role = stringTRoleRespEntry.getValue();
         appendEntryInfo(role.getName(), role, builder);
       }
     }
@@ -390,7 +385,7 @@ public class AuthorityChecker {
       TDBPrivilege priv = entry.getValue();
       appendPriBuilder(
           name, entry.getKey() + ".*", priv.getPrivileges(), priv.getGrantOpt(), builder);
-      for (Map.Entry<String, TTablePrivilege> tbEntry : priv.getTableinfo().entrySet()) {
+      for (Map.Entry<String, TTablePrivilege> tbEntry : priv.getTablePrivilegeMap().entrySet()) {
         TTablePrivilege tb = tbEntry.getValue();
         appendPriBuilder(
             name,

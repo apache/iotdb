@@ -29,7 +29,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Objects;
 
 public class PathPrivilegeTest {
 
@@ -91,6 +90,6 @@ public class PathPrivilegeTest {
 
     PathPrivilege pathPrivilege2 = new PathPrivilege(new PartialPath("root.ln"));
     pathPrivilege2.setAllPrivileges((0b11 << (2 + 16)) | (0b1101));
-    Assert.assertTrue(Objects.equals(pathPrivilege, pathPrivilege2));
+    Assert.assertEquals(pathPrivilege, pathPrivilege2);
   }
 }

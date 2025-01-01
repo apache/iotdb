@@ -23,14 +23,14 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import java.io.IOException;
 import java.util.List;
 
-/** This interface manages the serialization/deserialization of the user objects. */
+/** This interface manages the serialization/deserialization of the entry objects. */
 public interface IEntryAccessor extends SnapshotProcessor {
 
   /**
-   * Deserialize a user from lower storage.
+   * Deserialize an entry from lower storage.
    *
    * @param entryName The name of the user/role to be deserialized.
-   * @return The user object or null if no such user.
+   * @return The user object or null if no such entry.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
   Role loadEntry(String entryName) throws IOException;

@@ -44,20 +44,22 @@ public class RelationalAuthorStatement extends Statement {
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
+      String username,
+      String roleName,
       String database,
       String table,
       PrivilegeType type,
-      String username,
-      String rolename,
-      boolean grantOption) {
+      boolean grantOption,
+      String password) {
     super(null);
     this.authorType = authorType;
     this.database = database;
     this.tableName = table;
     this.privilegeType = type;
-    this.roleName = rolename;
+    this.roleName = roleName;
     this.userName = username;
     this.grantOption = grantOption;
+    this.password = password;
   }
 
   public RelationalAuthorStatement(AuthorRType statementType) {
@@ -79,6 +81,7 @@ public class RelationalAuthorStatement extends Statement {
     this.grantOption = grantOption;
     this.tableName = null;
     this.database = null;
+    this.password = null;
   }
 
   public AuthorRType getAuthorType() {
@@ -192,7 +195,7 @@ public class RelationalAuthorStatement extends Statement {
       case LIST_USER_PRIV:
         return QueryType.READ;
       default:
-        throw new IllegalArgumentException("Unknow authorType:" + this.authorType);
+        throw new IllegalArgumentException("Unknown authorType:" + this.authorType);
     }
   }
 
@@ -210,7 +213,7 @@ public class RelationalAuthorStatement extends Statement {
         + roleName
         + ", privileges:"
         + privilegeType
-        + ", grantoption:"
+        + ", grantOption:"
         + grantOption;
   }
 }

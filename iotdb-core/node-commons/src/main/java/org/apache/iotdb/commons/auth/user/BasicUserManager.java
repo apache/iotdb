@@ -41,7 +41,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicUserManager.class);
 
   @Override
-  protected TSStatusCode getNotExistErrorCode() {
+  protected TSStatusCode getEntryNotExistErrorCode() {
     return TSStatusCode.USER_NOT_EXIST;
   }
 
@@ -141,7 +141,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       User user = getEntry(username);
       if (user == null) {
         throw new AuthException(
-            getNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
       }
       user.setPassword(AuthUtils.encryptPassword(newPassword));
       return true;
@@ -156,7 +156,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       User user = getEntry(username);
       if (user == null) {
         throw new AuthException(
-            getNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
       }
       if (user.hasRole(roleName)) {
         return false;
@@ -174,7 +174,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       User user = getEntry(username);
       if (user == null) {
         throw new AuthException(
-            getNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
       }
       if (!user.hasRole(roleName)) {
         return false;

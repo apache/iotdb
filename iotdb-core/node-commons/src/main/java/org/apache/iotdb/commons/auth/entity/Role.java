@@ -105,7 +105,7 @@ public class Role {
     return sysPriGrantOpt;
   }
 
-  public Set<PrivilegeType> getAnyScopePrivileGrantOpt() {
+  public Set<PrivilegeType> getAnyScopePrivilegeGrantOpt() {
     return anyScopePrivileGrantOptSet;
   }
 
@@ -117,10 +117,6 @@ public class Role {
     return objectPrivilegeMap;
   }
 
-  public boolean checkObjectPrivilege(String objectName) {
-    return this.objectPrivilegeMap.containsKey(objectName);
-  }
-
   public DatabasePrivilege getObjectPrivilege(String objectName) {
     return this.objectPrivilegeMap.computeIfAbsent(
         objectName, k -> new DatabasePrivilege(objectName));
@@ -129,17 +125,18 @@ public class Role {
   public List<TPathPrivilege> getPathPrivilegeInfo() {
     List<TPathPrivilege> privilegeList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : pathPrivilegeList) {
-      TPathPrivilege tpathPriv = new TPathPrivilege();
-      tpathPriv.setPath(pathPrivilege.getPath().getFullPath());
-      tpathPriv.setPriSet(pathPrivilege.getPrivilegeIntSet());
-      tpathPriv.setPriGrantOpt(pathPrivilege.getGrantOptIntSet());
-      privilegeList.add(tpathPriv);
+      TPathPrivilege pathPriv = new TPathPrivilege();
+      pathPriv.setPath(pathPrivilege.getPath().getFullPath());
+      pathPriv.setPriSet(pathPrivilege.getPrivilegeIntSet());
+      pathPriv.setPriGrantOpt(pathPrivilege.getGrantOptIntSet());
+      privilegeList.add(pathPriv);
     }
     return privilegeList;
   }
 
-  public void loadPathPrivilegeInfo(List<TPathPrivilege> pathinfo) throws MetadataException {
-    for (TPathPrivilege tPathPrivilege : pathinfo) {
+  public void loadPathPrivilegeInfo(List<TPathPrivilege> pathPrivilegeInfo)
+      throws MetadataException {
+    for (TPathPrivilege tPathPrivilege : pathPrivilegeInfo) {
       PathPrivilege pathPri = new PathPrivilege();
       pathPri.setPath(new PartialPath(tPathPrivilege.getPath()));
       pathPri.setPrivilegesInt(tPathPrivilege.getPriSet());
@@ -152,47 +149,47 @@ public class Role {
     Set<TDBPrivilege> privileges = new HashSet<>();
     for (DatabasePrivilege databasePrivilege : objectPrivilegeMap.values()) {
       TDBPrivilege tdbPrivilege = new TDBPrivilege();
-      tdbPrivilege.setDatabasename(databasePrivilege.getDatabaseName());
+      tdbPrivilege.setDatabaseName(databasePrivilege.getDatabaseName());
       tdbPrivilege.setPrivileges(databasePrivilege.getPrivilegeSet());
       tdbPrivilege.setGrantOpt(databasePrivilege.getPrivilegeGrantOptSet());
       if (!databasePrivilege.getTablePrivilegeMap().isEmpty()) {
         for (TablePrivilege tablePrivilege : databasePrivilege.getTablePrivilegeMap().values()) {
           TTablePrivilege tTablePrivilege = new TTablePrivilege();
-          tTablePrivilege.setTablename(tablePrivilege.getTableName());
+          tTablePrivilege.setTableName(tablePrivilege.getTableName());
           tTablePrivilege.setPrivileges(tablePrivilege.getPrivilegesIntSet());
           tTablePrivilege.setGrantOption(tablePrivilege.getGrantOptionIntSet());
-          tdbPrivilege.putToTableinfo(tablePrivilege.getTableName(), tTablePrivilege);
+          tdbPrivilege.putToTablePrivilegeMap(tablePrivilege.getTableName(), tTablePrivilege);
         }
       } else {
-        tdbPrivilege.setTableinfo(new HashMap<>());
+        tdbPrivilege.setTablePrivilegeMap(new HashMap<>());
       }
       privileges.add(tdbPrivilege);
     }
     return privileges;
   }
 
-  public void loadRelationalPrivileInfo(Map<String, TDBPrivilege> info) {
+  public void loadRelationalPrivilegeInfo(Map<String, TDBPrivilege> info) {
     for (TDBPrivilege tdbPrivilege : info.values()) {
-      DatabasePrivilege databasePrivilege = new DatabasePrivilege(tdbPrivilege.getDatabasename());
+      DatabasePrivilege databasePrivilege = new DatabasePrivilege(tdbPrivilege.getDatabaseName());
       for (Integer privId : tdbPrivilege.getPrivileges()) {
         databasePrivilege.grantDBPrivilege(PrivilegeType.values()[privId]);
       }
       for (Integer privId : tdbPrivilege.getGrantOpt()) {
         databasePrivilege.grantDBGrantOption(PrivilegeType.values()[privId]);
       }
-      if (tdbPrivilege.getTableinfoSize() != 0) {
-        for (TTablePrivilege tablePrivilege : tdbPrivilege.getTableinfo().values()) {
+      if (tdbPrivilege.getTablePrivilegeMapSize() != 0) {
+        for (TTablePrivilege tablePrivilege : tdbPrivilege.getTablePrivilegeMap().values()) {
           for (Integer privId : tablePrivilege.getPrivileges()) {
             databasePrivilege.grantTablePrivilege(
-                tablePrivilege.getTablename(), PrivilegeType.values()[privId]);
+                tablePrivilege.getTableName(), PrivilegeType.values()[privId]);
           }
           for (Integer privId : tablePrivilege.getGrantOption()) {
             databasePrivilege.grantTableGrantOption(
-                tablePrivilege.getTablename(), PrivilegeType.values()[privId]);
+                tablePrivilege.getTableName(), PrivilegeType.values()[privId]);
           }
         }
       }
-      this.objectPrivilegeMap.put(tdbPrivilege.getDatabasename(), databasePrivilege);
+      this.objectPrivilegeMap.put(tdbPrivilege.getDatabaseName(), databasePrivilege);
     }
   }
 
@@ -208,20 +205,20 @@ public class Role {
           }
         }
         roleResp.setSysPriSet(privs);
-        Set<Integer> privGrantopt = new HashSet<>();
+        Set<Integer> privGrantOpt = new HashSet<>();
         for (PrivilegeType priv : sysPriGrantOpt) {
           if (priv.forRelationalSys()) {
-            privGrantopt.add(priv.ordinal());
+            privGrantOpt.add(priv.ordinal());
           }
         }
-        roleResp.setSysPriSetGrantOpt(privGrantopt);
+        roleResp.setSysPriSetGrantOpt(privGrantOpt);
         roleResp.setAnyScopeSet(getPrivilegeIntSet(anyScopePrivilegeSet));
         roleResp.setAnyScopeGrantSet(getPrivilegeIntSet(anyScopePrivileGrantOptSet));
         roleResp.setPrivilegeList(new ArrayList<>());
         Set<TDBPrivilege> tdbPrivileges = getRelationalPrivilegeInfo();
         roleResp.setDbPrivilegeMap(new HashMap<>());
         for (TDBPrivilege tdbPrivilege : tdbPrivileges) {
-          roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabasename(), tdbPrivilege);
+          roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabaseName(), tdbPrivilege);
         }
         break;
       case TREE:
@@ -241,7 +238,7 @@ public class Role {
         Set<TDBPrivilege> tdbPrivileges1 = getRelationalPrivilegeInfo();
         roleResp.setDbPrivilegeMap(new HashMap<>());
         for (TDBPrivilege tdbPrivilege : tdbPrivileges1) {
-          roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabasename(), tdbPrivilege);
+          roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabaseName(), tdbPrivilege);
         }
         break;
     }
@@ -274,6 +271,10 @@ public class Role {
   }
 
   public void revokePathPrivilege(PartialPath path, PrivilegeType priv) {
+    AuthUtils.removePrivilege(path, priv, pathPrivilegeList);
+  }
+
+  public void revokePathPrivilegeGrantOption(PartialPath path, PrivilegeType priv) {
     AuthUtils.removePrivilege(path, priv, pathPrivilegeList);
   }
 
@@ -344,6 +345,10 @@ public class Role {
     anyScopePrivileGrantOptSet.remove(priv);
   }
 
+  public void revokeAnyScopePrivilegeGrantOption(PrivilegeType priv) {
+    anyScopePrivileGrantOptSet.remove(priv);
+  }
+
   public void grantDBPrivilege(String dbName, PrivilegeType priv, boolean grantOption) {
     DatabasePrivilege databasePrivilege = getObjectPrivilege(dbName);
     databasePrivilege.grantDBPrivilege(priv);
@@ -365,15 +370,40 @@ public class Role {
     DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
     databasePrivilege.revokeDBPrivilege(priv);
     databasePrivilege.revokeDBGrantOption(priv);
+    if (databasePrivilege.getTablePrivilegeMap().isEmpty()
+        && databasePrivilege.getPrivilegeSet().isEmpty()) {
+      objectPrivilegeMap.remove(dbName);
+    }
+  }
+
+  public void revokeDBPrivilegeGrantOption(String dbName, PrivilegeType priv) {
+    if (!objectPrivilegeMap.containsKey(dbName)) {
+      return;
+    }
+    DatabasePrivilege databasePrivilege = objectPrivilegeMap.get(dbName);
+    databasePrivilege.revokeDBGrantOption(priv);
   }
 
   public void revokeTBPrivilege(String dbName, String tbName, PrivilegeType priv) {
     DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
     databasePrivilege.revokeTableGrantOption(tbName, priv);
     databasePrivilege.revokeTablePrivilege(tbName, priv);
-    if (databasePrivilege.getTablePrivilegeMap().isEmpty()) {
+    if (databasePrivilege.getTablePrivilegeMap().isEmpty()
+        && databasePrivilege.getPrivilegeSet().isEmpty()) {
       this.objectPrivilegeMap.remove(dbName);
     }
+  }
+
+  public void revokeTBPrivilegeGrantOption(String dbName, String tbName, PrivilegeType priv) {
+    if (!objectPrivilegeMap.containsKey(dbName)) {
+      return;
+    }
+    DatabasePrivilege databasePrivilege = objectPrivilegeMap.get(dbName);
+    if (!databasePrivilege.getTablePrivilegeMap().containsKey(tbName)) {
+      return;
+    }
+    TablePrivilege tablePrivilege = databasePrivilege.getTablePrivilegeMap().get(tbName);
+    tablePrivilege.revokeGrantOption(priv);
   }
 
   public void grantSysPrivilegeGrantOption(PrivilegeType priv) {
@@ -394,12 +424,13 @@ public class Role {
   }
 
   public boolean hasPrivilegeToRevoke(String dbname, PrivilegeType priv) {
-    return checkDatabasePrivilege(dbname, priv);
+    return this.objectPrivilegeMap.containsKey(dbname)
+        && this.objectPrivilegeMap.get(dbname).checkDBPrivilege(priv);
   }
 
-  public boolean hasPrivilegeToRevoke(String dbname, String tbname, PrivilegeType priv) {
+  public boolean hasPrivilegeToRevoke(String dbname, String tbName, PrivilegeType priv) {
     return this.objectPrivilegeMap.containsKey(dbname)
-        && this.objectPrivilegeMap.get(dbname).checkTablePrivilege(tbname, priv);
+        && this.objectPrivilegeMap.get(dbname).checkTablePrivilege(tbName, priv);
   }
 
   public boolean checkAnyScopePrivilege(PrivilegeType priv) {
@@ -472,10 +503,10 @@ public class Role {
   public int getAllSysPrivileges() {
     int privs = 0;
     for (PrivilegeType sysPri : sysPrivilegeSet) {
-      privs |= 1 << AuthUtils.sysPriTopos(sysPri);
+      privs |= 1 << AuthUtils.sysPriToPos(sysPri);
     }
     for (PrivilegeType sysGrantOpt : sysPriGrantOpt) {
-      privs |= 1 << (AuthUtils.sysPriTopos(sysGrantOpt) + 16);
+      privs |= 1 << (AuthUtils.sysPriToPos(sysGrantOpt) + 16);
     }
     return privs;
   }
@@ -513,7 +544,7 @@ public class Role {
     return Objects.hash(name, pathPrivilegeList, sysPrivilegeSet);
   }
 
-  private void serializePrivileSet(DataOutputStream outputStream, Set<PrivilegeType> set)
+  private void serializePrivilegeSet(DataOutputStream outputStream, Set<PrivilegeType> set)
       throws IOException {
     outputStream.writeInt(set.size());
     for (PrivilegeType priv : set) {
@@ -528,14 +559,14 @@ public class Role {
     SerializeUtils.serialize(name, dataOutputStream);
 
     try {
-      serializePrivileSet(dataOutputStream, sysPrivilegeSet);
-      serializePrivileSet(dataOutputStream, sysPriGrantOpt);
+      serializePrivilegeSet(dataOutputStream, sysPrivilegeSet);
+      serializePrivilegeSet(dataOutputStream, sysPriGrantOpt);
       dataOutputStream.writeInt(pathPrivilegeList.size());
       for (PathPrivilege pathPrivilege : pathPrivilegeList) {
         dataOutputStream.write(pathPrivilege.serialize().array());
       }
-      serializePrivileSet(dataOutputStream, anyScopePrivilegeSet);
-      serializePrivileSet(dataOutputStream, anyScopePrivileGrantOptSet);
+      serializePrivilegeSet(dataOutputStream, anyScopePrivilegeSet);
+      serializePrivilegeSet(dataOutputStream, anyScopePrivileGrantOptSet);
       dataOutputStream.writeInt(objectPrivilegeMap.size());
       for (Map.Entry<String, DatabasePrivilege> item : objectPrivilegeMap.entrySet()) {
         SerializeUtils.serialize(item.getKey(), dataOutputStream);

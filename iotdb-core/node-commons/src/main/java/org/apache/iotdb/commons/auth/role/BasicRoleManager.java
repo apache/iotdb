@@ -43,7 +43,7 @@ import java.util.Map;
  * information from filesystem. Access filesystem only happens at starting、taking snapshot、 loading
  * snapshot.
  */
-public abstract class BasicRoleManager implements SnapshotProcessor {
+public abstract class BasicRoleManager implements IEntryManager, SnapshotProcessor {
 
   protected Map<String, Role> entryMap;
   protected IEntryAccessor accessor;
@@ -51,7 +51,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
   protected HashLock lock;
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicRoleManager.class);
 
-  protected TSStatusCode getNotExistErrorCode() {
+  protected TSStatusCode getEntryNotExistErrorCode() {
     return TSStatusCode.ROLE_NOT_EXIST;
   }
 
@@ -79,7 +79,6 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
   }
 
   public boolean createEntry(String entryName) {
-
     Role role = getEntry(entryName);
     if (role != null) {
       return false;
@@ -105,7 +104,7 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
       Role role = getEntry(entryName);
       if (role == null) {
         throw new AuthException(
-            getNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
+            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
       }
 
       switch (privilegeUnion.getModelType()) {
@@ -150,39 +149,57 @@ public abstract class BasicRoleManager implements SnapshotProcessor {
   public boolean revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
       throws AuthException {
     lock.writeLock(entryName);
+    PrivilegeType privilegeType = privilegeUnion.getPrivilegeType();
+    boolean isGrantOption = privilegeUnion.isGrantOption();
+    boolean isAnyScope = privilegeUnion.isForAny();
+    String dbName = privilegeUnion.getDBName();
+    String tbName = privilegeUnion.getTbName();
     try {
       Role role = getEntry(entryName);
       if (role == null) {
         throw new AuthException(
-            getNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
+            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
       }
       switch (privilegeUnion.getModelType()) {
         case TREE:
-          if (!role.hasPrivilegeToRevoke(
-              privilegeUnion.getPath(), privilegeUnion.getPrivilegeType())) {
+          if (isGrantOption) {
+            role.revokePathPrivilegeGrantOption(privilegeUnion.getPath(), privilegeType);
+            return true;
+          }
+          if (!role.hasPrivilegeToRevoke(privilegeUnion.getPath(), privilegeType)) {
             return false;
           }
-          role.revokePathPrivilege(privilegeUnion.getPath(), privilegeUnion.getPrivilegeType());
+          role.revokePathPrivilege(privilegeUnion.getPath(), privilegeType);
           break;
         case RELATIONAL:
-          if (privilegeUnion.isForAny()) {
-            role.revokeAnyScopePrivilege(privilegeUnion.getPrivilegeType());
+          if (isAnyScope) {
+            if (isGrantOption) {
+              role.revokeAnyScopePrivilegeGrantOption(privilegeType);
+              return true;
+            }
+            role.revokeAnyScopePrivilege(privilegeType);
             break;
           }
-          if (privilegeUnion.getTbName() != null
-              && role.hasPrivilegeToRevoke(
-                  privilegeUnion.getDBName(),
-                  privilegeUnion.getTbName(),
-                  privilegeUnion.getPrivilegeType())) {
-            role.revokeTBPrivilege(
-                privilegeUnion.getDBName(),
-                privilegeUnion.getTbName(),
-                privilegeUnion.getPrivilegeType());
-          } else if (role.hasPrivilegeToRevoke(
-              privilegeUnion.getDBName(), privilegeUnion.getPrivilegeType())) {
-            role.revokeDBPrivilege(privilegeUnion.getDBName(), privilegeUnion.getPrivilegeType());
+          // for tb
+          if (privilegeUnion.getTbName() != null) {
+            if (isGrantOption) {
+              role.revokeTBPrivilegeGrantOption(dbName, tbName, privilegeType);
+              return true;
+            }
+            if (role.hasPrivilegeToRevoke(dbName, tbName, privilegeType)) {
+              role.revokeTBPrivilege(dbName, tbName, privilegeType);
+              return true;
+            }
+            // for db
           } else {
-            return false;
+            if (isGrantOption) {
+              role.revokeDBPrivilegeGrantOption(dbName, privilegeType);
+              return true;
+            }
+            if (role.hasPrivilegeToRevoke(dbName, privilegeType)) {
+              role.revokeDBPrivilege(dbName, privilegeType);
+            }
+            return true;
           }
           break;
         case SYSTEM:

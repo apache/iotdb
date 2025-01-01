@@ -373,10 +373,11 @@ public class IoTDBClusterAuthorityIT {
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       assertEquals(ColumnHeaderConstant.PRIVILEGES, authorizerResp.getTag());
       assertEquals(
-          "tempuser0", authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getName());
+          "tempuser0",
+          authorizerResp.getPermissionInfo().getUserInfo().getPermissionInfo().getName());
       assertEquals(
           new ArrayList<>(),
-          authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getPrivilegeList());
+          authorizerResp.getPermissionInfo().getUserInfo().getPermissionInfo().getPrivilegeList());
       assertEquals(1, authorizerResp.getPermissionInfo().getUserInfo().getRoleSet().size());
 
       // list privileges role
@@ -456,20 +457,25 @@ public class IoTDBClusterAuthorityIT {
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
-              .getBasicInfo()
+              .getPermissionInfo()
               .getPrivilegeList()
               .get(0)
               .priSet
               .size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
-          authorizerResp.getPermissionInfo().getUserInfo().getBasicInfo().getSysPriSet().size());
+          authorizerResp
+              .getPermissionInfo()
+              .getUserInfo()
+              .getPermissionInfo()
+              .getSysPriSet()
+              .size());
       assertEquals(
           PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
-              .getBasicInfo()
+              .getPermissionInfo()
               .getSysPriSetGrantOptSize());
 
       authorizerReq =

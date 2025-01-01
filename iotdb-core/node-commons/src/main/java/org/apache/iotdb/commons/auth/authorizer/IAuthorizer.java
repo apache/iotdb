@@ -58,7 +58,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    *
    * @param username the username of the user.
    * @throws AuthException When attempting to delete the default administrator or the user does not
-   *     exists.
+   *     exist.
    */
   void deleteUser(String username) throws AuthException;
 
@@ -92,7 +92,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * Delete a role.
    *
    * @param roleName the name of the role tobe deleted.
-   * @throws AuthException if exception raised when deleting the role or the role does not exists.
+   * @throws AuthException if exception raised when deleting the role or the role does not exist.
    */
   void deleteRole(String roleName) throws AuthException;
 
@@ -110,7 +110,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    *
    * @param roleName The name of the role from which the privilege is removed.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
-   *     or the privilege does not exists.
+   *     or the privilege does not exist.
    */
   void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException;
 
@@ -148,23 +148,19 @@ public interface IAuthorizer extends SnapshotProcessor {
    *
    * @param username The user whose password is to be modified.
    * @param newPassword The new password.
-   * @throws AuthException If the user does not exists or the new password is illegal.
+   * @throws AuthException If the user does not exist or the new password is illegal.
    */
   void updateUserPassword(String username, String newPassword) throws AuthException;
 
   /**
-   * Check if the user have the privilege on the seriesPath.
+   * Check if the user have the privilege or grant option on the target.
    *
    * @param username The name of the user whose privileges are checked.
-   * @param path The seriesPath on which the privilege takes effect. If the privilege is system
-   *     privilege, path should be null.
-   * @param privilegeId An integer that represents a privilege.
+   * @param union privilege union to check.
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
   boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException;
-
-  boolean checkUserPrivilegeGrantOption(String username, PrivilegeUnion union) throws AuthException;
 
   /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;
