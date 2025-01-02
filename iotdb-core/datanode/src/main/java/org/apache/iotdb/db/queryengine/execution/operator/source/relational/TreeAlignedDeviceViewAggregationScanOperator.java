@@ -21,14 +21,22 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(AbstractTableScanOperatorParameter parameter) {
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+public class TreeAlignedDeviceViewAggregationScanOperator
+    extends AbstractDefaultAggTableScanOperator {
+
+  private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
+
+  public TreeAlignedDeviceViewAggregationScanOperator(
+      AbstractAggTableScanOperatorParameter parameter,
+      IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
     super(parameter);
+    this.extractor = extractor;
   }
 
   @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+    return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 }
