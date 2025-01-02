@@ -419,7 +419,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,INF,null,null,null,null,null,",
                   "test,INF,1,1,604800000,0,0,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from tables"),
+          statement.executeQuery("show devices from tables where status = 'USING'"),
           "database,table_name,ttl(ms),status,",
           new HashSet<>(
               Arrays.asList(
