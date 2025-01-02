@@ -270,7 +270,6 @@ public class IoTDBStatement implements Statement {
   @Override
   public boolean execute(String sql) throws SQLException {
     logger.info("execute:: sql:{}", sql);
-
     checkConnection("execute");
     isClosed = false;
     try {

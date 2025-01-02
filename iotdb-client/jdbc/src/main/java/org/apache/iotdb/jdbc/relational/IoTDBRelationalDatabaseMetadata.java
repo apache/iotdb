@@ -31,7 +31,6 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -47,6 +46,7 @@ import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -63,8 +63,6 @@ import java.util.TreeMap;
 
 public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
 
-  private static final Logger logger =
-      org.slf4j.LoggerFactory.getLogger(IoTDBRelationalDatabaseMetadata.class);
   private IoTDBConnection connection;
   private IClientRPCService.Iface client;
   private static final Logger LOGGER =
@@ -82,7 +80,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   private static TsBlockSerde serde = new TsBlockSerde();
 
   private static final String SHOW_DATABASES_SQL = "SHOW DATABASES";
-  public static final String SHOW_TABLES_SQL = "SHOW TABLES";
+  public static final String SHOW_TABLES_SQL = "SHOW TABLES ";
+  public static final String SELECT_ALL_DATA_FROM_TABLE = "SELECT * FROM ";
 
   private static final String PRECISION = "PRECISION";
 
@@ -105,6 +104,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   private static final String REMARKS = "REMARKS";
 
   private static final String IS_NULLABLE = "IS_NULLABLE";
+
+  public static final String IS_AUTOINCREMENT = "IS_AUTOINCREMENT";
 
   private static final String COLUMN_NAME = "COLUMN_NAME";
 
@@ -156,6 +157,9 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   private static final String NULLABLE = "NULLABLE";
 
   private static final String CONVERT_ERROR_MSG = "convert tsBlock error: {}";
+  public static final String USE_DATABASE_ERROR_MSG = "use database error: {}";
+  public static final String SHOW_TABLES_ERROR_MSG = "show tables error: {}";
+  public static final String SELECT_DATA_ERROR_MSG = "select data error: {}";
 
   public IoTDBRelationalDatabaseMetadata(
       IoTDBConnection connection, IClientRPCService.Iface client, long sessionId, ZoneId zoneId) {
@@ -163,7 +167,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
     this.client = client;
     this.sessionId = sessionId;
     this.zoneId = zoneId;
-    logger.info("IoTDBRelationalDatabaseMetadata is created");
+    LOGGER.info("IoTDBRelationalDatabaseMetadata is created");
   }
 
   static {
@@ -1397,7 +1401,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getIdentifierQuoteString() {
-    return "\' or \"";
+    return "";
+    // return "\' or \"";
   }
 
   @Override
@@ -1923,6 +1928,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   // clause
   @Override
   public ResultSet getSchemas() throws SQLException {
+    LOGGER.info("get schemas");
+
     Statement stmt = this.connection.createStatement();
     ResultSet rs;
     try {
@@ -1952,6 +1959,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
         valueInRow.add(rs.getString(1));
       }
       valuesList.add(valueInRow);
+      LOGGER.info("get schemas:: valueInRow: {}", rs.getString(1));
     }
 
     ByteBuffer tsBlock = null;
@@ -2265,105 +2273,49 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
+
+    LOGGER.info(
+        "getColumns:: catalog:{}, schemaPattern:{}, tableNamePattern:{}, columnNamePattern:{}",
+        catalog,
+        schemaPattern,
+        tableNamePattern,
+        columnNamePattern);
+
     Statement stmt = this.connection.createStatement();
 
-    if (this.connection.getCatalog().equals(catalog)) {
-      catalog = null;
-    }
-
-    String sql = "SHOW TIMESERIES";
-    if (StringUtils.isNotEmpty(catalog)) {
-      if (catalog.contains("%")) {
-        catalog = catalog.replace("%", "*");
-      }
-      sql = sql + " " + catalog;
-    } else if (StringUtils.isNotEmpty(schemaPattern)) {
-      if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replace("%", "*");
-      }
-      sql = sql + " " + schemaPattern;
-    }
-    if ((StringUtils.isNotEmpty(catalog) || StringUtils.isNotEmpty(schemaPattern))
-        && StringUtils.isNotEmpty(tableNamePattern)) {
-      if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replace("%", "*");
-      }
-      sql = sql + "." + tableNamePattern;
-    }
-
-    if ((StringUtils.isNotEmpty(catalog) || StringUtils.isNotEmpty(schemaPattern))
-        && StringUtils.isNotEmpty(tableNamePattern)
-        && StringUtils.isNotEmpty(columnNamePattern)) {
-      if (columnNamePattern.contains("%")) {
-        columnNamePattern = columnNamePattern.replace("%", "*");
-      }
-      sql = sql + "." + columnNamePattern;
-    }
-
-    if (StringUtils.isEmpty(catalog)
-        && StringUtils.isEmpty(schemaPattern)
-        && StringUtils.isNotEmpty(tableNamePattern)) {
-      sql = sql + " " + tableNamePattern + ".*";
-    }
+    // Get Table Metadata
     ResultSet rs;
+    String sql = "DESC " + tableNamePattern;
     try {
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       stmt.close();
+      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
       throw e;
     }
-    Field[] fields = new Field[24];
-    fields[0] = new Field("", TABLE_CAT, "TEXT");
-    fields[1] = new Field("", TABLE_SCHEM, "TEXT");
-    fields[2] = new Field("", TABLE_NAME, "TEXT");
-    fields[3] = new Field("", COLUMN_NAME, "TEXT");
-    fields[4] = new Field("", DATA_TYPE, INT32);
-    fields[5] = new Field("", TYPE_NAME, "TEXT");
-    fields[6] = new Field("", COLUMN_SIZE, INT32);
-    fields[7] = new Field("", BUFFER_LENGTH, INT32);
-    fields[8] = new Field("", DECIMAL_DIGITS, INT32);
-    fields[9] = new Field("", NUM_PREC_RADIX, INT32);
-    fields[10] = new Field("", NULLABLE, INT32);
-    fields[11] = new Field("", REMARKS, "TEXT");
-    fields[12] = new Field("", "COLUMN_DEF", "TEXT");
-    fields[13] = new Field("", SQL_DATA_TYPE, INT32);
-    fields[14] = new Field("", SQL_DATETIME_SUB, INT32);
-    fields[15] = new Field("", CHAR_OCTET_LENGTH, INT32);
-    fields[16] = new Field("", ORDINAL_POSITION, INT32);
-    fields[17] = new Field("", IS_NULLABLE, "TEXT");
-    fields[18] = new Field("", "SCOPE_CATALOG", "TEXT");
-    fields[19] = new Field("", "SCOPE_SCHEMA", "TEXT");
-    fields[20] = new Field("", "SCOPE_TABLE", "TEXT");
-    fields[21] = new Field("", "SOURCE_DATA_TYPE", INT32);
-    fields[22] = new Field("", "IS_AUTOINCREMENT", "TEXT");
-    fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
+    //    ResultSetMetaData resMetaData = rs.getMetaData();
+    //    int columnCount = resMetaData.getColumnCount();
 
+    // Setup Fields
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", COLUMN_NAME, "TEXT");
+    fields[1] = new Field("", ORDINAL_POSITION, INT32);
+    fields[2] = new Field("", DATA_TYPE, INT32);
+    fields[3] = new Field("", REMARKS, "TEXT");
+    fields[4] = new Field("", TYPE_NAME, "TEXT");
+    fields[5] = new Field("", IS_AUTOINCREMENT, "TEXT");
+    fields[6] = new Field("", IS_NULLABLE, "TEXT");
+    fields[7] = new Field("", "NULLABLE", INT32);
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.INT32,
             TSDataType.INT32,
             TSDataType.INT32,
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
-            TSDataType.INT32,
-            TSDataType.TEXT,
-            TSDataType.TEXT);
+            TSDataType.INT32);
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
@@ -2373,64 +2325,53 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
+
+    // Extract Metadata
+    int count = 1;
     while (rs.next()) {
-      List<Object> valuesInRow = new ArrayList<>();
-      String res = rs.getString(1);
-      String[] splitRes = res.split("\\.");
+      String columnName = rs.getString(1);
+      String type = rs.getString(2);
+      List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        if (i <= 1) {
-          valuesInRow.add(" ");
+        if (i == 0) {
+          valueInRow.add(columnName);
+        } else if (i == 1) {
+          valueInRow.add(count++);
         } else if (i == 2) {
-          valuesInRow.add(
-              res.substring(0, res.length() - splitRes[splitRes.length - 1].length() - 1));
+          valueInRow.add(getSQLType(type));
         } else if (i == 3) {
-          // column name
-          valuesInRow.add(splitRes[splitRes.length - 1]);
+          valueInRow.add(rs.getString(3));
         } else if (i == 4) {
-          valuesInRow.add(getSQLType(rs.getString(4)));
-        } else if (i == 6) {
-          valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 7) {
-          valuesInRow.add(0);
-        } else if (i == 8) {
-          valuesInRow.add(getTypeScale(fields[i].getSqlType()));
-        } else if (i == 9) {
-          valuesInRow.add(10);
-        } else if (i == 10) {
-          valuesInRow.add(0);
-        } else if (i == 11) {
-          valuesInRow.add("");
-        } else if (i == 12) {
-          valuesInRow.add("");
-        } else if (i == 13) {
-          valuesInRow.add(0);
-        } else if (i == 14) {
-          valuesInRow.add(0);
-        } else if (i == 15) {
-          valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 16) {
-          valuesInRow.add(1);
-        } else if (i == 17) {
-          valuesInRow.add("NO");
-        } else if (i == 18) {
-          valuesInRow.add("");
-        } else if (i == 19) {
-          valuesInRow.add("");
-        } else if (i == 20) {
-          valuesInRow.add("");
-        } else if (i == 21) {
-          valuesInRow.add(0);
-        } else if (i == 22) {
-          valuesInRow.add("NO");
-        } else if (i == 23) {
-          valuesInRow.add("NO");
+          valueInRow.add(type);
+        } else if (i == 5) {
+          valueInRow.add("");
         } else {
-          valuesInRow.add("");
+          if (!columnName.equals("time")) {
+            valueInRow.add("YES");
+            valueInRow.add(ResultSetMetaData.columnNullableUnknown);
+          } else {
+            valueInRow.add("NO");
+            valueInRow.add(ResultSetMetaData.columnNoNulls);
+          }
+          break;
         }
       }
-      valuesList.add(valuesInRow);
+      valuesList.add(valueInRow);
+      LOGGER.info("getColumns:: valueInRow: {}", valueInRow);
     }
 
+    //    for (int i = 1; i <= columnCount; i++) {
+    //      List<Object> valueInRow = new ArrayList<>();
+    //      valueInRow.add(resMetaData.getColumnName(i));
+    //      valueInRow.add(i);
+    //      valueInRow.add(resMetaData.getColumnType(i));
+    //      valueInRow.add(resMetaData.getColumnTypeName(i));
+    //      valueInRow.add(resMetaData.isNullable(i));
+    //      valueInRow.add(resMetaData.isAutoIncrement(i) ? "YES" : "NO");
+    //      valuesList.add(valueInRow);
+    //    }
+
+    // Convert Values to ByteBuffer
     ByteBuffer tsBlock = null;
     try {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
@@ -2439,6 +2380,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
     } finally {
       close(rs, stmt);
     }
+
     return new IoTDBJDBCResultSet(
         stmt,
         columnNameList,
@@ -2505,6 +2447,14 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
         return Types.DOUBLE;
       case "TEXT":
         return Types.LONGVARCHAR;
+      case STRING:
+        return Types.VARCHAR;
+      case BLOB:
+        return Types.BLOB;
+      case TIMESTAMP:
+        return Types.TIMESTAMP;
+      case DATE:
+        return Types.DATE;
       default:
         break;
     }
@@ -2544,7 +2494,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
 
-    logger.info(
+    LOGGER.info(
         "getTables:: catalog:{}, schemaPattern:{}, tableNamePattern:{}, types:{}",
         catalog,
         schemaPattern,
@@ -2553,22 +2503,14 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
 
     Statement stmt = this.connection.createStatement();
 
-    // Use Database Before Further Processing
-    String sql = "use " + schemaPattern;
-    try {
-      boolean res = stmt.execute(sql);
-    } catch (SQLException e) {
-      stmt.close();
-      throw e;
-    }
-
     // Get Tables
     ResultSet rs;
-    sql = SHOW_TABLES_SQL;
+    String sql = SHOW_TABLES_SQL + "IN " + schemaPattern;
     try {
       rs = stmt.executeQuery(sql);
     } catch (SQLException e) {
       stmt.close();
+      LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
       throw e;
     }
 
@@ -2576,7 +2518,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
     Field[] fields = new Field[3];
     fields[0] = new Field("", TABLE_NAME, "TEXT");
     fields[1] = new Field("", TABLE_TYPE, "TEXT");
-    fields[2] = new Field("", "TTL(ms)", "TEXT");
+    fields[2] = new Field("", REMARKS, "TEXT");
     List<TSDataType> tsDataTypeList =
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
     List<String> columnNameList = new ArrayList<>();
@@ -2594,14 +2536,13 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
-          valueInRow.add(rs.getString(1));
+          valueInRow.add(schemaPattern + "." + rs.getString(1));
         } else if (i == 1) {
           valueInRow.add("TABLE");
         } else {
-          valueInRow.add(rs.getString(2));
+          valueInRow.add("TTL(ms): " + rs.getString(2));
         }
       }
-      logger.info("show tables:: valueInRow:{}", valueInRow);
       valuesList.add(valueInRow);
     }
 
@@ -2611,6 +2552,8 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
+    } finally {
+      close(rs, stmt);
     }
 
     return new IoTDBJDBCResultSet(
