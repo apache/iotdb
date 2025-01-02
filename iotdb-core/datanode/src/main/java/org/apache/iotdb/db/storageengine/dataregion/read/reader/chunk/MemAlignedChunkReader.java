@@ -290,8 +290,8 @@ public class MemAlignedChunkReader implements IChunkReader {
 
         // prepare column access info for current page
         int[][] accessInfo = timeValuePairIterator.getColumnAccessInfo();
+        time[pointsInPage] = timeValuePairIterator.getTime();
         for (int i = 0; i < tsDataTypes.size(); i++) {
-          time[pointsInPage] = timeValuePairIterator.getTime();
           pageColumnAccessInfo[i].add(accessInfo[i]);
         }
         timeValuePairIterator.step();

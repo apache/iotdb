@@ -200,8 +200,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
       // prepare column access info for current page
       int[][] columnAccessInfo = timeValuePairIterator.getColumnAccessInfo();
+      time[pointsInPage] = timeValuePairIterator.getTime();
       for (int i = 0; i < dataTypes.size(); i++) {
-        time[pointsInPage] = timeValuePairIterator.getTime();
         pageColumnAccessInfo[i].add(columnAccessInfo[i]);
       }
       timeValuePairIterator.step();
