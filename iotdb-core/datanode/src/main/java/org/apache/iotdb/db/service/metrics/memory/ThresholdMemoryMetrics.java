@@ -157,7 +157,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[1]);
     storageEngineMemorySize.set(storageEngineSize);
-    // The memory of storage engine divided into Write and Compaction 2 part
+    // The memory of storage engine divided into Write and Compaction
     long writeSize =
         (long)
             (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
@@ -188,7 +188,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[2]);
     compactionMemorySize.set(compactionSize);
-    // The write memory of storage engine divided into MemTable and TimePartitionInfo 2 parts
+    // The write memory of storage engine divided into MemTable and TimePartitionInfo
     long memtableSize =
         (long)
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
