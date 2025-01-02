@@ -205,7 +205,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     Column[] valueColumns = new Column[columnsIndexArray.length];
     for (int i = 0; i < columnsIndexArray.length; i++) {
       switch (columnSchemas.get(i).getColumnCategory()) {
-        case ID:
+        case TAG:
           String idColumnValue = getNthIdColumnValue(currentDeviceEntry, columnsIndexArray[i]);
 
           valueColumns[i] =
@@ -220,7 +220,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
               currentDeviceEntry.getAttributeColumnValues().get(columnsIndexArray[i]);
           valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
           break;
-        case MEASUREMENT:
+        case FIELD:
           valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
           break;
         case TIME:

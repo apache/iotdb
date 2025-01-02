@@ -142,13 +142,17 @@ public class TestMetadata implements Metadata {
                   ColumnSchema.builder(TIME_CM)
                       .setColumnCategory(TsTableColumnCategory.TIME)
                       .build(),
-                  ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-                  ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(TAG1_CM)
+                      .setColumnCategory(TsTableColumnCategory.TAG)
+                      .build(),
+                  ColumnSchema.builder(TAG2_CM)
+                      .setColumnCategory(TsTableColumnCategory.TAG)
+                      .build(),
                   ColumnSchema.builder(S1_CM)
-                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build(),
                   ColumnSchema.builder(S2_CM)
-                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
       Mockito.when(treeDeviceViewSchema.getTreePathPatternName()).thenReturn(TREE_DB1);
       Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
@@ -179,24 +183,18 @@ public class TestMetadata implements Metadata {
     final List<ColumnSchema> columnSchemas =
         Arrays.asList(
             ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
-            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
+            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.TAG).build(),
             ColumnSchema.builder(ATTR1_CM)
                 .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
                 .build(),
             ColumnSchema.builder(ATTR2_CM)
                 .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
                 .build(),
-            ColumnSchema.builder(S1_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S2_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S3_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build());
+            ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+            ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+            ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
     return Optional.of(new TableSchema(TABLE1, columnSchemas));
   }
@@ -283,16 +281,16 @@ public class TestMetadata implements Metadata {
             new AlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()),
             new NonAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_4), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
       }
 
       return ImmutableList.of(
           new AlignedDeviceEntry(
               IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
           new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()));
     }
 
     if (expressionList.size() == 2) {
@@ -432,13 +430,13 @@ public class TestMetadata implements Metadata {
   @Override
   public DataPartition getDataPartition(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

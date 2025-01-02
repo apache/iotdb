@@ -71,6 +71,8 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
         measurementColumnNameMap);
   }
 
+  public TreeNonAlignedDeviceViewScanNode() {}
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTreeNonAlignedDeviceViewScan(this, context);
@@ -110,8 +112,8 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
     TreeDeviceViewScanNode.serializeMemberVariables(this, stream);
   }
 
-  public static TreeAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
-    TreeAlignedDeviceViewScanNode node = new TreeAlignedDeviceViewScanNode();
+  public static TreeNonAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
+    TreeNonAlignedDeviceViewScanNode node = new TreeNonAlignedDeviceViewScanNode();
     TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node, true);
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));

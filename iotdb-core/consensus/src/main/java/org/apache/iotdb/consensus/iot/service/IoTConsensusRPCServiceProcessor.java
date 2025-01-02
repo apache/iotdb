@@ -97,8 +97,12 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TSyncLogEntriesRes(Collections.singletonList(status));
     }
     if (!impl.isActive()) {
+      String message =
+          String.format(
+              "Peer is inactive and not ready to receive sync log request, %s, DataNode Id: %s",
+              groupId, impl.getThisNode().getNodeId());
       TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
-      status.setMessage("peer is inactive and not ready to receive sync log request");
+      status.setMessage(message);
       return new TSyncLogEntriesRes(Collections.singletonList(status));
     }
     BatchIndexedConsensusRequest logEntriesInThisBatch =

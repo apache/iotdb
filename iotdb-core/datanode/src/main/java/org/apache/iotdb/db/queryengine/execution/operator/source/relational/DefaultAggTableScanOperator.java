@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-public class LoadEmptyFileException extends LoadFileException {
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-  public LoadEmptyFileException(final String fileName) {
-    super(fileName);
+public class DefaultAggTableScanOperator extends AbstractDefaultAggTableScanOperator {
+
+  public DefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+    super(parameter);
+  }
+
+  @Override
+  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
+    // +1 for skipping the table name segment
+    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
   }
 }

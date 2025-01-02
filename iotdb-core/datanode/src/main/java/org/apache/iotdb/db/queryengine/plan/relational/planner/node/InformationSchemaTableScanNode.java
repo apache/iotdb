@@ -122,4 +122,8 @@ public class InformationSchemaTableScanNode extends TableScanNode {
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;
   }
+
+  public String toString() {
+    return "InformationSchemaTableScanNode-" + this.getPlanNodeId();
+  }
 }

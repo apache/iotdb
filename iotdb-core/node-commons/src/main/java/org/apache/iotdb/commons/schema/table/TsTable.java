@@ -116,7 +116,7 @@ public class TsTable {
     try {
       final List<TsTableColumnSchema> idColumnSchemaList = new ArrayList<>();
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
-        if (TsTableColumnCategory.ID.equals(columnSchema.getColumnCategory())) {
+        if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
           idColumnSchemaList.add(columnSchema);
         }
       }
@@ -140,10 +140,10 @@ public class TsTable {
     readWriteLock.writeLock().lock();
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         idNums++;
         idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
-      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
         measurementNum++;
       }
     } finally {
@@ -199,9 +199,9 @@ public class TsTable {
       if (Objects.isNull(columnSchema)) {
         return;
       }
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         idNums--;
-      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.MEASUREMENT)) {
+      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
         measurementNum--;
       }
     } finally {

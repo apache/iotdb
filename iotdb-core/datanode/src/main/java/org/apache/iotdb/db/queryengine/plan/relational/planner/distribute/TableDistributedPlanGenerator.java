@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -96,6 +97,7 @@ import java.util.stream.IntStream;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -948,6 +950,8 @@ public class TableDistributedPlanGenerator
       return;
     }
 
+    Optional<IDeviceID.TreeDeviceIdColumnValueExtractor> extractor =
+        createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
       final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
@@ -956,9 +960,19 @@ public class TableDistributedPlanGenerator
         break;
       }
       if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
-          == TsTableColumnCategory.ID) {
-        // segments[0] is always tableName
-        orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
+          == TsTableColumnCategory.TAG) {
+
+        // segments[0] is always tableName for table model
+        Function<DeviceEntry, String> iDColumnFunction =
+            extractor
+                .<Function<DeviceEntry, String>>map(
+                    treeDeviceIdColumnValueExtractor ->
+                        deviceEntry ->
+                            (String)
+                                treeDeviceIdColumnValueExtractor.extract(
+                                    deviceEntry.getDeviceID(), idx))
+                .orElseGet(() -> deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
+        orderingRules.add(iDColumnFunction);
       } else {
         orderingRules.add(
             deviceEntry ->
@@ -1027,6 +1041,21 @@ public class TableDistributedPlanGenerator
       if (comparator != null) {
         scanNode.getDeviceEntries().sort(comparator);
       }
+    }
+  }
+
+  private Optional<IDeviceID.TreeDeviceIdColumnValueExtractor>
+      createTreeDeviceIdColumnValueExtractor(DeviceTableScanNode node) {
+    if (node instanceof TreeDeviceViewScanNode) {
+      return Optional.of(
+          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+              ((TreeDeviceViewScanNode) node).getTreeDBName()));
+    } else if (node instanceof AggregationTreeDeviceViewScanNode) {
+      return Optional.of(
+          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+              ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()));
+    } else {
+      return Optional.empty();
     }
   }
 

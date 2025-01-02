@@ -19,60 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-
-import java.util.List;
-import java.util.Set;
 
 public class TreeAlignedDeviceViewAggregationScanOperator
-    extends AbstractAggregationTableScanOperator {
+    extends AbstractDefaultAggTableScanOperator {
 
   private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
 
   public TreeAlignedDeviceViewAggregationScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext context,
-      List<ColumnSchema> aggColumnSchemas,
-      int[] aggColumnsIndexArray,
-      List<DeviceEntry> deviceEntries,
-      SeriesScanOptions seriesScanOptions,
-      List<String> measurementColumnNames,
-      Set<String> allSensors,
-      List<IMeasurementSchema> measurementSchemas,
-      List<TableAggregator> tableAggregators,
-      List<ColumnSchema> groupingKeySchemas,
-      int[] groupingKeyIndex,
-      ITableTimeRangeIterator tableTimeRangeIterator,
-      boolean ascending,
-      boolean canUseStatistics,
-      List<Integer> aggregatorInputChannels,
+      AbstractAggTableScanOperatorParameter parameter,
       IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
-    super(
-        sourceId,
-        context,
-        aggColumnSchemas,
-        aggColumnsIndexArray,
-        deviceEntries,
-        seriesScanOptions,
-        measurementColumnNames,
-        allSensors,
-        measurementSchemas,
-        tableAggregators,
-        groupingKeySchemas,
-        groupingKeyIndex,
-        tableTimeRangeIterator,
-        ascending,
-        canUseStatistics,
-        aggregatorInputChannels);
+    super(parameter);
     this.extractor = extractor;
   }
 

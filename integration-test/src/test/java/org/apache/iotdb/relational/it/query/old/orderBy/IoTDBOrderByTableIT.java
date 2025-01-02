@@ -62,8 +62,8 @@ public class IoTDBOrderByTableIT {
       new String[] {
         "CREATE DATABASE db",
         "USE db",
-        "CREATE TABLE table0 (device string id, attr1 string attribute, num int32 measurement, bigNum int64 measurement, "
-            + "floatNum double measurement, str TEXT measurement, bool BOOLEAN measurement)",
+        "CREATE TABLE table0 (device string tag, attr1 string attribute, num int32 field, bigNum int64 field, "
+            + "floatNum double field, str TEXT field, bool BOOLEAN field)",
         "insert into table0(device, attr1, time,num,bigNum,floatNum,str,bool) values('d1', 'high', 0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 20,2,2147483648,434.12,'pineapple',TRUE)",
         "insert into table0(device, time,num,bigNum,floatNum,str,bool) values('d1', 40,1,2247483648,12.123,'apricot',TRUE)",
@@ -1477,14 +1477,14 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
       final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.TAG,
               Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT);
-      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD);
+      List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
       List<Object[]> values =
@@ -1504,7 +1504,7 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d1", "a1", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d1", "a1", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d1", "a1", 15, 3147483648L, 235.213, "watermelon", true});
-      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
+      Tablet tablet = new Tablet("table0", fieldIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, TIMES.get(i));
@@ -1532,14 +1532,14 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
       final List<Tablet.ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.ID,
+              Tablet.ColumnCategory.TAG,
               Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT,
-              Tablet.ColumnCategory.MEASUREMENT);
-      List<String> measurementIds = IMeasurementSchema.getMeasurementNameList(schemaList);
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD,
+              Tablet.ColumnCategory.FIELD);
+      List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =
           Arrays.asList(
@@ -1558,7 +1558,7 @@ public class IoTDBOrderByTableIT {
               new Object[] {"d2", "a2", 14, 2907483648L, 231.34, "cherry", false},
               new Object[] {"d2", "a2", 13, 2107483648L, 54.12, "lychee", true},
               new Object[] {"d2", "a2", 15, 3147483648L, 235.213, "watermelon", true});
-      Tablet tablet = new Tablet("table0", measurementIds, dataTypes, columnTypes, TIMES.size());
+      Tablet tablet = new Tablet("table0", fieldIds, dataTypes, columnTypes, TIMES.size());
       for (int i = 0; i < TIMES.size(); i++) {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, TIMES.get(i));

@@ -4,7 +4,7 @@ on:
     branches:
       - master
       - "rc/*"
-      - 'TreeToTableView'
+      - 'force_ci/**'
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
@@ -18,7 +18,7 @@ on:
     branches:
       - master
       - "rc/*"
-      - 'TreeToTableView'
+      - 'force_ci/**'
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'

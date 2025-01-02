@@ -6,7 +6,7 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
-      - 'TreeToTableView'
+      - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -15,7 +15,6 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
-      - 'TreeToTableView'
     paths-ignore:
       - 'docs/**'
       - 'site/**'

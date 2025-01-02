@@ -201,7 +201,7 @@ public class TableSchema {
 
   public List<ColumnSchema> getIdColumns() {
     return columns.stream()
-        .filter(c -> c.getColumnCategory() == TsTableColumnCategory.ID)
+        .filter(c -> c.getColumnCategory() == TsTableColumnCategory.TAG)
         .collect(Collectors.toList());
   }
 }

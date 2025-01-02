@@ -93,6 +93,7 @@ public class TreeViewTest {
             project(
                 mergeSort(
                     exchange(),
+                    exchange(),
                     treeAlignedDeviceViewTableScan(
                         DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                         ImmutableList.of("tag1", "s1"),
@@ -105,6 +106,13 @@ public class TreeViewTest {
     assertPlan(
         planTester.getFragmentPlan(1),
         treeAlignedDeviceViewTableScan(
+            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+            ImmutableList.of("tag1", "s1"),
+            ImmutableSet.of("tag1", "s1")));
+
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        treeNonAlignedDeviceViewTableScan(
             DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
             ImmutableSet.of("tag1", "s1")));

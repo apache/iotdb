@@ -80,7 +80,7 @@ public final class PlanAssert {
                 "Plan does not match, expected [\n\n%s\n] but found [\n\n%s\n], matches:[%s]",
                 pattern, String.join("\n", actual.accept(new PlanGraphPrinter(), null)), matches));
       }
-      // TODO support print plan tree
+
       PlanNode resolvedPlan = resolveGroupReferences(actual, lookup);
       throw new AssertionError(
           format(

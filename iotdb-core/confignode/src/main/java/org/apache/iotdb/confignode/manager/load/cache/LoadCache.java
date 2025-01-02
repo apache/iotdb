@@ -554,22 +554,6 @@ public class LoadCache {
   }
 
   /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
-            result.put(dataNodeId, heartbeatCache.getLoadScore());
-          }
-        });
-    return result;
-  }
-
-  /**
    * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
