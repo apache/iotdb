@@ -351,5 +351,27 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
 
     // Show table pipe by table session
     Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+
+    // 3. Create pipe with capture.tree and capture.table set to false
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ("
+                  + "'capture.tree'='false',"
+                  + "'capture.table'='false')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              "p3", receiverDataNode.getIpAndPortString()));
+      fail();
+    } catch (final SQLException ignored) {
+    }
+
+    // Show tree pipe by tree session
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+
+    // Show table pipe by table session
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
   }
 }

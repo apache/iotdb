@@ -48,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -127,6 +128,34 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
+    // Validate whether the pipe needs to extract table model data or tree model data
+    final boolean isTreeDialect =
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final boolean isCaptureTree =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                isTreeDialect);
+    final boolean isCaptureTable =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                !isTreeDialect);
+    if (!isCaptureTree && !isCaptureTable) {
+      throw new PipeParameterNotValidException(
+          "capture.tree and capture.table can not both be specified as false");
+    }
+
     final boolean isDoubleLiving =
         validator
             .getParameters()
@@ -135,32 +164,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                     PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                     PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
                 PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-
-    // Validate whether the pipe needs to extract table model data or tree model data
-    final boolean isTreeDialect =
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-    final boolean isTreeModelDataAllowedToBeCaptured =
-        isDoubleLiving
-            || validator
-                .getParameters()
-                .getBooleanOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                        PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-                    isTreeDialect);
-    final boolean isTableModelDataAllowedToBeCaptured =
-        isDoubleLiving
-            || validator
-                .getParameters()
-                .getBooleanOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                        PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-                    !isTreeDialect);
+    final boolean isTreeModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTree;
+    final boolean isTableModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTable;
     if (!isTreeModelDataAllowedToBeCaptured
         && validator
             .getParameters()
