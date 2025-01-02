@@ -36,7 +36,7 @@ public class JoinKeyComparatorFactory {
     return comparators;
   }
 
-  private static JoinKeyComparator getComparator(Type type, boolean isAscending) {
+  public static JoinKeyComparator getComparator(Type type, boolean isAscending) {
     switch (type.getTypeEnum()) {
       case INT32:
       case DATE:
