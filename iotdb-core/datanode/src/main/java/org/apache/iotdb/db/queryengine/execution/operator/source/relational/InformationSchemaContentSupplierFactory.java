@@ -73,6 +73,8 @@ public class InformationSchemaContentSupplierFactory {
         return new DatabaseSupplier(dataTypes, userName);
       case InformationSchema.TABLES:
         return new TableSupplier(dataTypes, userName);
+      case InformationSchema.COLUMNS:
+        return new ColumnSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
