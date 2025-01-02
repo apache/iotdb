@@ -57,7 +57,10 @@ public class InformationSchemaUtils {
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
+      final Predicate<String> canSeenDB,
+      final TsBlockBuilder builder,
+      final boolean details,
+      final boolean withTime) {
     if (!canSeenDB.test(INFORMATION_DATABASE)) {
       return;
     }

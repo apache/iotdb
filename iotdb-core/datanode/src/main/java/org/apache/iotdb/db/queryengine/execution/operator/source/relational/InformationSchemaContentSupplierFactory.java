@@ -36,6 +36,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -122,6 +123,7 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
     private TDatabaseInfo currentDatabase;
     private final String userName;
+    private boolean hasShownInformationSchema;
 
     private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
@@ -140,6 +142,10 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
+      if (!hasShownInformationSchema) {
+        InformationSchemaUtils.buildDatabaseTsBlock(s -> true, resultBuilder, true, false);
+        return;
+      }
       columnBuilders[0].writeBinary(
           new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
 
@@ -161,19 +167,19 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public boolean hasNext() {
+      if (!hasShownInformationSchema) {
+        if (!canShowDB(userName, InformationSchema.INFORMATION_DATABASE)) {
+          hasShownInformationSchema = true;
+        } else {
+          return true;
+        }
+      }
       while (iterator.hasNext()) {
         final Map.Entry<String, TDatabaseInfo> result = iterator.next();
-        try {
-          Coordinator.getInstance()
-              .getAccessControl()
-              .checkCanShowOrUseDatabase(userName, result.getKey());
-          currentDatabase = result.getValue();
-        } catch (final AccessControlException e) {
-          // Do nothing
+        if (!canShowDB(userName, result.getKey())) {
+          continue;
         }
-        if (Objects.nonNull(currentDatabase)) {
-          break;
-        }
+        break;
       }
       return Objects.nonNull(currentDatabase);
     }
@@ -218,9 +224,7 @@ public class InformationSchemaContentSupplierFactory {
         }
         final Map.Entry<String, List<TTableInfo>> entry = dbIterator.next();
         dbName = entry.getKey();
-        try {
-          Coordinator.getInstance().getAccessControl().checkCanShowOrUseDatabase(userName, dbName);
-        } catch (final AccessControlException e) {
+        if (!canShowDB(userName, dbName)) {
           continue;
         }
         tableInfoIterator = entry.getValue().iterator();
@@ -293,11 +297,7 @@ public class InformationSchemaContentSupplierFactory {
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
           dbName = entry.getKey();
-          try {
-            Coordinator.getInstance()
-                .getAccessControl()
-                .checkCanShowOrUseDatabase(userName, dbName);
-          } catch (final AccessControlException e) {
+          if (!canShowDB(userName, dbName)) {
             continue;
           }
           tableInfoIterator = entry.getValue().entrySet().iterator();
@@ -310,6 +310,15 @@ public class InformationSchemaContentSupplierFactory {
       }
       return true;
     }
+  }
+
+  private static boolean canShowDB(final String userName, final String dbName) {
+    try {
+      Coordinator.getInstance().getAccessControl().checkCanShowOrUseDatabase(userName, dbName);
+    } catch (final AccessControlException e) {
+      return false;
+    }
+    return true;
   }
 
   private abstract static class TsBlockSupplier implements Iterator<TsBlock> {
