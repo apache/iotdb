@@ -211,8 +211,8 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT2SubscriptionArchVerification \
-              -ntp && return 0 >> ~/run-tests.log
-              test_output=$(cat ~/run-tests.log) 
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
