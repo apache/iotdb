@@ -54,7 +54,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   private final PartialPath pathPattern;
   private boolean isDetailed;
 
-  public ShowDatabaseStatement(PartialPath pathPattern) {
+  public ShowDatabaseStatement(final PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;
@@ -68,7 +68,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     return isDetailed;
   }
 
-  public void setDetailed(boolean detailed) {
+  public void setDetailed(final boolean detailed) {
     isDetailed = detailed;
   }
 
@@ -105,12 +105,6 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
         builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
         builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
-        builder
-            .getColumnBuilder(11)
-            .writeBinary(
-                new Binary(
-                    storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
-                    TSFileConfig.STRING_CHARSET));
       }
       builder.declarePosition();
     }
@@ -120,7 +114,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowStorageGroup(this, context);
   }
 

@@ -782,6 +782,11 @@ public class DateTimeUtils {
     return Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate();
   }
 
+  public static ZonedDateTime convertToZonedDateTime(long timestamp, ZoneId zoneId) {
+    timestamp = CAST_TIMESTAMP_TO_MS.apply(timestamp);
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
+  }
+
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
   }

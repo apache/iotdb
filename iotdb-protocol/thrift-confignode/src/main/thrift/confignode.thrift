@@ -134,7 +134,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -217,7 +217,6 @@ struct TDatabaseSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {
@@ -605,12 +604,12 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
-  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
+  3: optional bool isTableModel
 }
 
 struct TShowDatabaseResp {
@@ -623,6 +622,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {

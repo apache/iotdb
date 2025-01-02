@@ -27,31 +27,32 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class IdColumnSchema extends TsTableColumnSchema {
-  public IdColumnSchema(String columnName, TSDataType dataType) {
+public class TagColumnSchema extends TsTableColumnSchema {
+  public TagColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
   }
 
-  public IdColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  public TagColumnSchema(
+      final String columnName, final TSDataType dataType, final Map<String, String> props) {
     super(columnName, dataType, props);
   }
 
   @Override
   public TsTableColumnCategory getColumnCategory() {
-    return TsTableColumnCategory.ID;
+    return TsTableColumnCategory.TAG;
   }
 
-  static IdColumnSchema deserialize(InputStream stream) throws IOException {
+  static TagColumnSchema deserialize(final InputStream stream) throws IOException {
     String columnName = ReadWriteIOUtils.readString(stream);
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     Map<String, String> props = ReadWriteIOUtils.readMap(stream);
-    return new IdColumnSchema(columnName, dataType, props);
+    return new TagColumnSchema(columnName, dataType, props);
   }
 
-  static IdColumnSchema deserialize(ByteBuffer buffer) {
+  static TagColumnSchema deserialize(final ByteBuffer buffer) {
     String columnName = ReadWriteIOUtils.readString(buffer);
     TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
-    return new IdColumnSchema(columnName, dataType, props);
+    return new TagColumnSchema(columnName, dataType, props);
   }
 }

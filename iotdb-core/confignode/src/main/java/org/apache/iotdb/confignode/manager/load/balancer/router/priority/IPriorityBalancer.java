@@ -34,12 +34,9 @@ public interface IPriorityBalancer {
    *
    * @param replicaSets All RegionGroups
    * @param regionLeaderMap The current leader of each RegionGroup
-   * @param dataNodeLoadScoreMap The current load score of each DataNode
    * @return Map<TConsensusGroupId, TRegionReplicaSet>, The optimal route priority for each
    *     RegionGroup. The replica with higher sorting result have higher priority.
    */
   Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
-      List<TRegionReplicaSet> replicaSets,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Map<Integer, Long> dataNodeLoadScoreMap);
+      List<TRegionReplicaSet> replicaSets, Map<TConsensusGroupId, Integer> regionLeaderMap);
 }

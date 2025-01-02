@@ -21,10 +21,17 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
+import java.util.Locale;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.QUERY_ID_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.START_TIME_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEMENT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
@@ -33,6 +40,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.offset;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 
 public class ShowQueriesTest {
@@ -43,7 +51,16 @@ public class ShowQueriesTest {
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan("show queries");
     assertPlan(
         logicalQueryPlan,
-        output(infoSchemaTableScan("information_schema.queries", Optional.empty())));
+        output(
+            infoSchemaTableScan(
+                "information_schema.queries",
+                Optional.empty(),
+                ImmutableList.of(
+                    QUERY_ID_TABLE_MODEL,
+                    START_TIME_TABLE_MODEL,
+                    DATA_NODE_ID_TABLE_MODEL,
+                    ELAPSED_TIME_TABLE_MODEL,
+                    STATEMENT.toLowerCase(Locale.ENGLISH)))));
 
     //                  - Exchange
     // Output - Collect - Exchange
@@ -85,7 +102,7 @@ public class ShowQueriesTest {
   @Test
   public void testSort() {
     LogicalQueryPlan logicalQueryPlan =
-        planTester.createPlan("show queries order by time, query_id");
+        planTester.createPlan("show queries order by start_time, query_id");
     assertPlan(
         logicalQueryPlan,
         output(sort(infoSchemaTableScan("information_schema.queries", Optional.empty()))));
@@ -101,5 +118,25 @@ public class ShowQueriesTest {
     assertPlan(
         planTester.getFragmentPlan(2),
         sort(infoSchemaTableScan("information_schema.queries", Optional.of(2))));
+  }
+
+  @Test
+  public void testNonSelectAll() {
+    // Optimizer column-prune for InformationSchemaTableScanNode is not supported now.
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan("select query_id from information_schema.queries");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                infoSchemaTableScan(
+                    "information_schema.queries",
+                    Optional.empty(),
+                    ImmutableList.of(
+                        QUERY_ID_TABLE_MODEL,
+                        START_TIME_TABLE_MODEL,
+                        DATA_NODE_ID_TABLE_MODEL,
+                        ELAPSED_TIME_TABLE_MODEL,
+                        STATEMENT.toLowerCase(Locale.ENGLISH))))));
   }
 }

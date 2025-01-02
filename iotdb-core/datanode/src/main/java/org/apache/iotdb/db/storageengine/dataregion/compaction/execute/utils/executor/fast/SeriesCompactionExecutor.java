@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.stream.Collectors;
 
 public abstract class SeriesCompactionExecutor {
 
@@ -484,7 +485,14 @@ public abstract class SeriesCompactionExecutor {
     if (allModifications == null) {
       return Collections.emptyList();
     }
-    return ModificationUtils.sortAndMerge(allModifications.getOverlapped(path));
+    List<ModEntry> modEntries = allModifications.getOverlapped(path);
+    if (path.getIDeviceID().isTableModel()) {
+      modEntries =
+          modEntries.stream()
+              .filter(e -> e.affects(path.getIDeviceID()) && e.affects(path.getMeasurement()))
+              .collect(Collectors.toList());
+    }
+    return ModificationUtils.sortAndMerge(modEntries);
   }
 
   @SuppressWarnings("squid:S3776")

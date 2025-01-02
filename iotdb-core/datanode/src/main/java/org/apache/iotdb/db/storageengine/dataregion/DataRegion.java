@@ -42,10 +42,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
@@ -2207,6 +2207,9 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
+      if (deleted) {
+        return;
+      }
       TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2248,15 +2251,25 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
+    if (node.getDatabaseName() != null && !node.getDatabaseName().equals(databaseName)) {
+      // not targeted on this database, return
+      return;
+    }
+
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
 
+    logger.info("[Deletion] Executing table deletion {}", node);
+
     writeLock("delete");
     boolean hasReleasedLock = false;
     try {
+      if (deleted) {
+        return;
+      }
       TableDeviceSchemaCache.getInstance()
           .invalidateLastCache(getDatabaseName(), modEntries.get(0).getTableName());
       List<WALFlushListener> walListeners = logDeletionInWAL(node);
@@ -2277,7 +2290,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
+        logger.info("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+        logger.info("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
@@ -2319,6 +2334,9 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
+      if (deleted) {
+        return;
+      }
       TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2424,12 +2442,20 @@ public class DataRegion implements IDataRegionForQuery {
    * request</a> for details.
    */
   public void insertSeparatorToWAL() {
-    getWALNode()
-        .ifPresent(
-            walNode ->
-                walNode.log(
-                    TsFileProcessor.MEMTABLE_NOT_EXIST,
-                    new ContinuousSameSearchIndexSeparatorNode()));
+    writeLock("insertSeparatorToWAL");
+    try {
+      if (deleted) {
+        return;
+      }
+      getWALNode()
+          .ifPresent(
+              walNode ->
+                  walNode.log(
+                      TsFileProcessor.MEMTABLE_NOT_EXIST,
+                      new ContinuousSameSearchIndexSeparatorNode()));
+    } finally {
+      writeUnlock();
+    }
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -2442,6 +2468,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
+      logger.info(
+          "[Deletion] {} skipped {}, file time [{}, {}]",
+          deletion,
+          tsFileResource,
+          fileStartTime,
+          fileEndTime);
       return true;
     }
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
@@ -2460,6 +2492,7 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     }
+    logger.info("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
     return true;
   }
 
@@ -2483,7 +2516,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
           try {
-            tsFileResource.getProcessor().deleteDataInMemory(deletion);
+            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+              sealedTsFiles.add(tsFileResource);
+            } // else do nothing
           } finally {
             tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
           }
@@ -2504,6 +2539,11 @@ public class DataRegion implements IDataRegionForQuery {
         involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
       }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+    }
+
+    if (involvedModificationFiles.isEmpty()) {
+      logger.info("[Deletion] Deletion {} does not involve any file", deletion);
+      return;
     }
 
     List<Exception> exceptions =
@@ -2530,6 +2570,10 @@ public class DataRegion implements IDataRegionForQuery {
             "Multiple errors occurred while writing mod files, see logs for details.");
       }
     }
+    logger.info(
+        "[Deletion] Deletion {} is written into {} mod files",
+        deletion,
+        involvedModificationFiles.size());
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
@@ -2541,15 +2585,13 @@ public class DataRegion implements IDataRegionForQuery {
     // can be deleted by mods.
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     for (TsFileResource tsFileResource : deletedByMods) {
-      if (tsFileResource.isClosed()) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
         if (tsFileResource.isCompacting()) {
           involvedModificationFiles.add(tsFileResource.getCompactionModFile());
         }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
-      } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(modEntry);
-      }
+      } // else do nothing
     }
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
@@ -3676,6 +3718,10 @@ public class DataRegion implements IDataRegionForQuery {
     return insertWriteLockHolder;
   }
 
+  public boolean isDeleted() {
+    return deleted;
+  }
+
   /** This method could only be used in iot consensus */
   public Optional<IWALNode> getWALNode() {
     if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
@@ -3694,8 +3740,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
-      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
@@ -3710,6 +3754,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
+      MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {
       writeUnlock();

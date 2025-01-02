@@ -58,8 +58,7 @@ public interface AggregateFunction extends SQLFunction {
   State createState();
 
   /**
-   * Batch update state with data columns. You shall iterate columns and update state with raw
-   * values
+   * Update state with data columns.
    *
    * @param state state to be updated
    * @param input original input data row

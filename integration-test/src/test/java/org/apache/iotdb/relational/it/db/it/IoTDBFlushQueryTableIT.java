@@ -50,20 +50,20 @@ public class IoTDBFlushQueryTableIT {
       new String[] {
         "CREATE DATABASE test",
         "USE \"test\"",
-        "CREATE TABLE vehicle (id1 string id, s0 int32 measurement)",
-        "insert into vehicle(id1,time,s0) values('d0',1,101)",
-        "insert into vehicle(id1,time,s0) values('d0',2,198)",
-        "insert into vehicle(id1,time,s0) values('d0',100,99)",
-        "insert into vehicle(id1,time,s0) values('d0',101,99)",
-        "insert into vehicle(id1,time,s0) values('d0',102,80)",
-        "insert into vehicle(id1,time,s0) values('d0',103,99)",
-        "insert into vehicle(id1,time,s0) values('d0',104,90)",
-        "insert into vehicle(id1,time,s0) values('d0',105,99)",
-        "insert into vehicle(id1,time,s0) values('d0',106,99)",
+        "CREATE TABLE vehicle (tag1 string tag, s0 int32 field)",
+        "insert into vehicle(tag1,time,s0) values('d0',1,101)",
+        "insert into vehicle(tag1,time,s0) values('d0',2,198)",
+        "insert into vehicle(tag1,time,s0) values('d0',100,99)",
+        "insert into vehicle(tag1,time,s0) values('d0',101,99)",
+        "insert into vehicle(tag1,time,s0) values('d0',102,80)",
+        "insert into vehicle(tag1,time,s0) values('d0',103,99)",
+        "insert into vehicle(tag1,time,s0) values('d0',104,90)",
+        "insert into vehicle(tag1,time,s0) values('d0',105,99)",
+        "insert into vehicle(tag1,time,s0) values('d0',106,99)",
         "flush",
-        "insert into vehicle(id1,time,s0) values('d0',2,10000)",
-        "insert into vehicle(id1,time,s0) values('d0',50,10000)",
-        "insert into vehicle(id1,time,s0) values('d0',1000,22222)",
+        "insert into vehicle(tag1,time,s0) values('d0',2,10000)",
+        "insert into vehicle(tag1,time,s0) values('d0',50,10000)",
+        "insert into vehicle(tag1,time,s0) values('d0',1000,22222)",
       };
 
   @BeforeClass
@@ -109,7 +109,7 @@ public class IoTDBFlushQueryTableIT {
   @Test
   public void testFlushGivenGroup() {
     String insertTemplate =
-        "INSERT INTO vehicle(id1, time, s1, s2, s3) VALUES (%s, %d, %d, %f, %s)";
+        "INSERT INTO vehicle(tag1, time, s1, s2, s3) VALUES (%s, %d, %d, %f, %s)";
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
@@ -120,7 +120,7 @@ public class IoTDBFlushQueryTableIT {
       for (int i = 1; i <= 3; i++) {
         statement.execute(String.format("USE \"group%d\"", i));
         statement.execute(
-            "CREATE TABLE vehicle (id1 string id, s1 int32 measurement, s2 float measurement, s3 string measurement)");
+            "CREATE TABLE vehicle (tag1 string tag, s1 int32 field, s2 float field, s3 string field)");
         for (int j = 10; j < 20; j++) {
           statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
@@ -181,15 +181,15 @@ public class IoTDBFlushQueryTableIT {
   @Test
   @Ignore
   public void testFlushNotExistGroupNoData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.noexist.nodatagroup1");
       try {
         statement.execute(
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
-      } catch (SQLException sqe) {
+      } catch (final SQLException sqe) {
         String expectedMsg =
-            "322: 322: storageGroup root.notExistGroup1,root.notExistGroup2 does not exist";
+            "322: 322: Database root.notExistGroup1,root.notExistGroup2 does not exist";
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }

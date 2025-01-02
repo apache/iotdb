@@ -17,11 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.itbase.category;
 
-public class LoadEmptyFileException extends LoadFileException {
-
-  public LoadEmptyFileException(final String fileName) {
-    super(fileName);
-  }
-}
+public interface ManualIT {}

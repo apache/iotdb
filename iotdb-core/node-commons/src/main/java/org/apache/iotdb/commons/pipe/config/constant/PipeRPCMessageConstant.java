@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.pipe.config.constant;
 
-public class PartitionViolationException extends LoadFileException {
+public class PipeRPCMessageConstant {
+  // These two message are used in multi-modules such as pipe and IoTV2
+  public static final String PIPE_ALREADY_EXIST_MSG =
+      "the pipe with the same name has been created";
+  public static final String PIPE_NOT_EXIST_MSG = "the pipe does not exist";
 
-  public PartitionViolationException(String file) {
-    super(String.format("The data of file %s crosses partitions", file));
-  }
-
-  public PartitionViolationException() {
-    super("The data of file crosses partitions");
+  private PipeRPCMessageConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

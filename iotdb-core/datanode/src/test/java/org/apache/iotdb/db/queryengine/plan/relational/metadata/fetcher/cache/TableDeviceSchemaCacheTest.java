@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -87,27 +87,27 @@ public class TableDeviceSchemaCacheTest {
     columnHeaderList.forEach(
         columnHeader ->
             testTable1.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable1.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
     testTable1.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
     testTable1.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement1, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement2, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement3, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement4, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement5, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable1);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table1);
@@ -119,27 +119,27 @@ public class TableDeviceSchemaCacheTest {
     columnHeaderList.forEach(
         columnHeader ->
             testTable2.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable2.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
     testTable2.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
     testTable2.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement1, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement2, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement3, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement4, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement5, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);

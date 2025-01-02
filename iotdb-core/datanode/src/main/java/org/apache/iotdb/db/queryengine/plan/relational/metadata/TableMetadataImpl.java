@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.schema.table.InformationSchemaTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
@@ -65,12 +64,10 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
@@ -91,34 +88,28 @@ public class TableMetadataImpl implements Metadata {
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
 
   @Override
-  public boolean tableExists(QualifiedObjectName name) {
+  public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override
-  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    String databaseName = name.getDatabaseName();
-    String tableName = name.getObjectName();
-
-    // TODO Recover this line after put InformationSchema Table into cache
-    TsTable table =
-        databaseName.equals(INFORMATION_SCHEMA)
-            ? InformationSchemaTable.getTableFromStringValue(tableName)
-            : tableCache.getTable(databaseName, tableName);
-    if (table == null) {
-      return Optional.empty();
-    }
-    List<ColumnSchema> columnSchemaList =
-        table.getColumnList().stream()
-            .map(
-                o ->
-                    new ColumnSchema(
-                        o.getColumnName(),
-                        TypeFactory.getType(o.getDataType()),
-                        false,
-                        o.getColumnCategory()))
-            .collect(Collectors.toList());
-    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
+  public Optional<TableSchema> getTableSchema(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    return Objects.isNull(table)
+        ? Optional.empty()
+        : Optional.of(
+            new TableSchema(
+                table.getTableName(),
+                table.getColumnList().stream()
+                    .map(
+                        o ->
+                            new ColumnSchema(
+                                o.getColumnName(),
+                                TypeFactory.getType(o.getDataType()),
+                                false,
+                                o.getColumnCategory()))
+                    .collect(Collectors.toList())));
   }
 
   @Override
@@ -538,6 +529,14 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
       }
       return TIMESTAMP;
+    } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and first argument must be char type.");
+      }
+      return STRING;
     }
 
     // builtin aggregation function
@@ -741,25 +740,25 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
     return partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName) {
-    return partitionFetcher.getOrCreateSchemaPartition(
-        PATH_ROOT + PATH_SEPARATOR + database, deviceIDList, userName);
+      final String database, final List<IDeviceID> deviceIDList, final String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database, deviceIDList);
+  public SchemaPartition getSchemaPartition(
+      final String database, final List<IDeviceID> deviceIDList) {
+    return partitionFetcher.getSchemaPartition(database, deviceIDList);
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
-    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
+  public SchemaPartition getSchemaPartition(final String database) {
+    return partitionFetcher.getSchemaPartition(database, null);
   }
 
   @Override

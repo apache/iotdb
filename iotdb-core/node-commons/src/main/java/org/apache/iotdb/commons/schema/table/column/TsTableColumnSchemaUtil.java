@@ -48,14 +48,14 @@ public class TsTableColumnSchemaUtil {
   private static TsTableColumnSchema deserialize(TsTableColumnCategory category, InputStream stream)
       throws IOException {
     switch (category) {
-      case ID:
-        return IdColumnSchema.deserialize(stream);
+      case TAG:
+        return TagColumnSchema.deserialize(stream);
       case ATTRIBUTE:
         return AttributeColumnSchema.deserialize(stream);
       case TIME:
         return TimeColumnSchema.deserialize(stream);
-      case MEASUREMENT:
-        return MeasurementColumnSchema.deserialize(stream);
+      case FIELD:
+        return FieldColumnSchema.deserialize(stream);
       default:
         throw new IllegalArgumentException();
     }
@@ -68,14 +68,14 @@ public class TsTableColumnSchemaUtil {
   private static TsTableColumnSchema deserialize(
       TsTableColumnCategory category, ByteBuffer buffer) {
     switch (category) {
-      case ID:
-        return IdColumnSchema.deserialize(buffer);
+      case TAG:
+        return TagColumnSchema.deserialize(buffer);
       case ATTRIBUTE:
         return AttributeColumnSchema.deserialize(buffer);
       case TIME:
         return TimeColumnSchema.deserialize(buffer);
-      case MEASUREMENT:
-        return MeasurementColumnSchema.deserialize(buffer);
+      case FIELD:
+        return FieldColumnSchema.deserialize(buffer);
       default:
         throw new IllegalArgumentException();
     }
