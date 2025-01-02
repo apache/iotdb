@@ -430,13 +430,13 @@ public class TestMatadata implements Metadata {
   @Override
   public DataPartition getDataPartition(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =
