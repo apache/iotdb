@@ -2898,6 +2898,12 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+      node.parseTable(sessionContext);
+      final Optional<Query> query = node.getQuery4InformationSchema();
+      if (query.isPresent()) {
+        analysis.setStatement(query.get());
+        return visitQuery(query.get(), context);
+      }
       analyzeQueryDevice(node, context);
       // TODO: use real scope when parameter in offset and limit is supported
       if (Objects.nonNull(node.getOffset())) {
@@ -2911,6 +2917,12 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
+      node.parseTable(sessionContext);
+      final Optional<Query> query = node.getQuery4InformationSchema();
+      if (query.isPresent()) {
+        analysis.setStatement(query.get());
+        return visitQuery(query.get(), context);
+      }
       analyzeQueryDevice(node, context);
       return null;
     }
@@ -2943,8 +2955,6 @@ public class StatementAnalyzer {
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
-      node.parseTable(sessionContext);
-
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 

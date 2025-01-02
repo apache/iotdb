@@ -22,12 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.Collections;
+import java.util.Optional;
 
 public class CountDevice extends AbstractQueryDeviceWithCache {
 
@@ -37,6 +39,24 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   public CountDevice(
       final NodeLocation location, final Table table, final Expression rawExpression) {
     super(location, table, rawExpression);
+  }
+
+  @Override
+  public Query getQuery() {
+    return QueryUtil.simpleQuery(
+        new Select(
+            false,
+            Collections.singletonList(
+                new AllColumns(
+                    new FunctionCall(QualifiedName.of("count"), Collections.emptyList())))),
+        getTable(),
+        Optional.ofNullable(where),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override

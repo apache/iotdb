@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
@@ -55,6 +58,20 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   public Node getLimit() {
     return limit;
+  }
+
+  @Override
+  public Query getQuery() {
+    return QueryUtil.simpleQuery(
+        new Select(false, Collections.singletonList(new AllColumns())),
+        getTable(),
+        Optional.ofNullable(where),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.ofNullable(offset),
+        Optional.ofNullable(limit));
   }
 
   @Override
