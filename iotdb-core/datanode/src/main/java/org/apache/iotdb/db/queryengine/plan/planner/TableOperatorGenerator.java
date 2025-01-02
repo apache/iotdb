@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -76,8 +76,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
@@ -169,11 +169,11 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;

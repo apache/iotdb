@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -163,18 +164,18 @@ public class TsTable {
         }
         oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
         switch (schema.getColumnCategory()) {
-          case ID:
+          case TAG:
             columnSchemaMap.put(
-                newName, new IdColumnSchema(newName, schema.getDataType(), oldProps));
+                newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
             break;
-          case MEASUREMENT:
+          case FIELD:
             columnSchemaMap.put(
                 newName,
-                new MeasurementColumnSchema(
+                new FieldColumnSchema(
                     newName,
                     schema.getDataType(),
-                    ((MeasurementColumnSchema) schema).getEncoding(),
-                    ((MeasurementColumnSchema) schema).getCompressor(),
+                    ((FieldColumnSchema) schema).getEncoding(),
+                    ((FieldColumnSchema) schema).getCompressor(),
                     oldProps));
             break;
           case ATTRIBUTE:
