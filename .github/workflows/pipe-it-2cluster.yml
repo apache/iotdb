@@ -51,6 +51,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
@@ -146,6 +152,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
@@ -220,6 +232,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
@@ -294,6 +312,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
@@ -368,6 +392,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
@@ -441,6 +471,12 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
