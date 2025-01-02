@@ -52,13 +52,13 @@ def session_test(use_session_pool=False):
         session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
         session.execute_non_query_statement('USE "db1"')
         session.execute_non_query_statement(
-            "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
+            "CREATE TABLE table5 (tag1 string tag, attr1 string attribute, "
             + "m1 double "
-            + "measurement)"
+            + "field)"
         )
 
         column_names = [
-            "id1",
+            "tag1",
             "attr1",
             "m1",
         ]
@@ -67,12 +67,12 @@ def session_test(use_session_pool=False):
             TSDataType.STRING,
             TSDataType.DOUBLE,
         ]
-        column_types = [ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT]
+        column_types = [ColumnType.TAG, ColumnType.ATTRIBUTE, ColumnType.FIELD]
         timestamps = []
         values = []
         for row in range(15):
             timestamps.append(row)
-            values.append(["id:" + str(row), "attr:" + str(row), row * 1.0])
+            values.append(["tag:" + str(row), "attr:" + str(row), row * 1.0])
         tablet = Tablet(
             "table5", column_names, data_types, values, timestamps, column_types
         )
@@ -82,7 +82,7 @@ def session_test(use_session_pool=False):
 
         np_timestamps = np.arange(15, 30, dtype=np.dtype(">i8"))
         np_values = [
-            np.array(["id:{}".format(i) for i in range(15, 30)]),
+            np.array(["tag:{}".format(i) for i in range(15, 30)]),
             np.array(["attr:{}".format(i) for i in range(15, 30)]),
             np.linspace(15.0, 29.0, num=15, dtype=TSDataType.DOUBLE.np_dtype()),
         ]
@@ -105,7 +105,7 @@ def session_test(use_session_pool=False):
                 row_record = dataset.next()
                 timestamp = row_record.get_fields()[0].get_long_value()
                 assert (
-                    "id:" + str(timestamp)
+                    "tag:" + str(timestamp)
                     == row_record.get_fields()[1].get_string_value()
                 )
                 assert (

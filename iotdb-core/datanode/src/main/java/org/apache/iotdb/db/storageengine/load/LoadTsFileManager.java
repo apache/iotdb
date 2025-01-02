@@ -33,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -435,7 +435,6 @@ public class LoadTsFileManager {
         // writers for memory control
         for (final TsFileIOWriter existingWriter : dataPartition2Writer.values()) {
           existingWriter.setMaxMetadataSize(chunkMetadataMaxSizeForEachWriter);
-          existingWriter.checkMetadataSizeAndMayFlush();
         }
         dataPartition2Writer.put(partitionInfo, writer);
         dataPartition2Resource.put(partitionInfo, resource);

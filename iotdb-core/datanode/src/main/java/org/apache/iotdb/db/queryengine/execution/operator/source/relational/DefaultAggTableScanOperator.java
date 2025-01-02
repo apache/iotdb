@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -32,14 +32,15 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 import java.util.Set;
 
-public class TableAggregationTableScanOperator extends AbstractAggregationTableScanOperator {
+public class DefaultAggTableScanOperator extends AbstractAggTableScanOperator {
 
-  public TableAggregationTableScanOperator(
+  public DefaultAggTableScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       List<ColumnSchema> aggColumnSchemas,
       int[] aggColumnsIndexArray,
       List<DeviceEntry> deviceEntries,
+      int deviceCount,
       SeriesScanOptions seriesScanOptions,
       List<String> measurementColumnNames,
       Set<String> allSensors,
@@ -57,6 +58,7 @@ public class TableAggregationTableScanOperator extends AbstractAggregationTableS
         aggColumnSchemas,
         aggColumnsIndexArray,
         deviceEntries,
+        deviceCount,
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
@@ -71,8 +73,9 @@ public class TableAggregationTableScanOperator extends AbstractAggregationTableS
   }
 
   @Override
-  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+  protected void updateResultTsBlock() {
+    appendAggregationResult();
+    // after appendAggregationResult invoked, aggregators must be cleared
+    resetTableAggregators();
   }
 }

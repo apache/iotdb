@@ -148,10 +148,10 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void testInsertAlignedValues() {
     List<String> sqls =
         Arrays.asList(
-            "create table wf01 (id1 string id, status boolean measurement, temperature float measurement)",
-            "insert into wf01(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)",
-            "insert into wf01(id1, time, status, temperature) values ('wt01', 5000, true, 20.1)",
-            "insert into wf01(id1, time, status, temperature) values ('wt01', 6000, true, 22)");
+            "create table wf01 (tag1 string tag, status boolean field, temperature float field)",
+            "insert into wf01(tag1, time, status, temperature) values ('wt01', 4000, true, 17.1)",
+            "insert into wf01(tag1, time, status, temperature) values ('wt01', 5000, true, 20.1)",
+            "insert into wf01(tag1, time, status, temperature) values ('wt01', 6000, true, 22)");
     for (String sql : sqls) {
       nonQuery(sqlHandler("t1", sql));
     }
@@ -185,11 +185,11 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void testUpdatingAlignedValues() {
     List<String> sqls =
         Arrays.asList(
-            "create table wf03 (id1 string id, status boolean measurement, temperature float measurement)",
-            "insert into wf03(id1, time, status, temperature) values ('wt01', 4000, true, 17.1)",
-            "insert into wf03(id1, time, status) values ('wt01', 5000, true)",
-            "insert into wf03(id1, time, temperature)values ('wt01', 5000, 20.1)",
-            "insert into wf03(id1, time, temperature)values ('wt01', 6000, 22)");
+            "create table wf03 (tag1 string tag, status boolean field, temperature float field)",
+            "insert into wf03(tag1, time, status, temperature) values ('wt01', 4000, true, 17.1)",
+            "insert into wf03(tag1, time, status) values ('wt01', 5000, true)",
+            "insert into wf03(tag1, time, temperature)values ('wt01', 5000, 20.1)",
+            "insert into wf03(tag1, time, temperature)values ('wt01', 6000, 22)");
     for (String sql : sqls) {
       nonQuery(sqlHandler("t1", sql));
     }
@@ -227,9 +227,9 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void testInsertAlignedValuesWithSameTimestamp() {
     List<String> sqls =
         Arrays.asList(
-            "create table sg3 (id1 string id, s2 double measurement, s1 double measurement)",
-            "insert into sg3(id1,time,s2) values('d1',1,2)",
-            "insert into sg3(id1,time,s1) values('d1',1,2)");
+            "create table sg3 (tag1 string tag, s2 double field, s1 double field)",
+            "insert into sg3(tag1,time,s2) values('d1',1,2)",
+            "insert into sg3(tag1,time,s1) values('d1',1,2)");
     for (String sql : sqls) {
       nonQuery(sqlHandler("t1", sql));
     }
@@ -249,13 +249,12 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void testInsertWithWrongMeasurementNum1() {
     nonQuery(
         sqlHandler(
-            "t1",
-            "create table wf04 (id1 string id, status int32, temperature int32 measurement)"));
+            "t1", "create table wf04 (tag1 string tag, status int32, temperature int32 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into wf04(id1, time, status, temperature) values('wt01', 11000, 100)"));
+                "insert into wf04(tag1, time, status, temperature) values('wt01', 11000, 100)"));
     assertEquals(
         "701: Inconsistent numbers of non-time column names and values: 3-2",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -264,13 +263,12 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void testInsertWithWrongMeasurementNum2() {
     nonQuery(
         sqlHandler(
-            "t1",
-            "create table wf04 (id1 string id, status int32, temperature int32 measurement)"));
+            "t1", "create table wf04 (tag1 string tag, status int32, temperature int32 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into wf05(id1, time, status, temperature) values('wt01', 11000, 100, 300, 400)"));
+                "insert into wf05(tag1, time, status, temperature) values('wt01', 11000, 100, 300, 400)"));
     assertEquals(
         "701: Inconsistent numbers of non-time column names and values: 3-4",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -278,12 +276,12 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
 
   public void testInsertWithDuplicatedMeasurements() {
     nonQuery(
-        sqlHandler("t1", "create table wf07(id1 string id, s3 boolean measurement, status int32)"));
+        sqlHandler("t1", "create table wf07(tag1 string tag, s3 boolean field, status int32)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into wf07(id1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)"));
+                "insert into wf07(tag1, time, s3, status, status) values('wt01', 100, true, 20.1, 20.2)"));
     assertEquals(
         "701: Insertion contains duplicated measurement: status",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -291,13 +289,12 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
 
   public void testInsertMultiRows() {
     nonQuery(
-        sqlHandler(
-            "t1", "create table sg8 (id1 string id, s1 int32 measurement, s2 int32 measurement)"));
+        sqlHandler("t1", "create table sg8 (tag1 string tag, s1 int32 field, s2 int32 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into sg8(id1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)"));
+                "insert into sg8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)"));
     assertEquals(
         "507: Fail to insert measurements [s1, s2] caused by [data type is not consistent, input 12.11, registered INT32, data type is not consistent, input false, registered INT32]",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -305,16 +302,14 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
 
   public void testInsertLargeNumber() {
     nonQuery(
-        sqlHandler(
-            "t1",
-            "create table sg9 (id1 string id, s98 int64 measurement, s99 int64 measurement)"));
+        sqlHandler("t1", "create table sg9 (tag1 string tag, s98 int64 field, s99 int64 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into sg9(id1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)"));
+                "insert into sg9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)"));
     assertEquals(
-        "700: line 1:58: Invalid numeric literal: 271840880000000000000000",
+        "700: line 1:59: Invalid numeric literal: 271840880000000000000000",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
   }
 
@@ -322,15 +317,15 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
     List<String> sqls =
         Arrays.asList(
             "use t1",
-            "create table sg14 (id1 string id, s1 string measurement, s2 string measurement)",
-            "insert into sg14(id1,time,s1,s2) values('d1',1,'test','test')",
-            "insert into sg14(id1,time,s1,s2) values('d1',3,'test','test')",
-            "insert into sg14(id1,time,s1,s2) values('d1',3,'test','test')",
-            "insert into sg14(id1,time,s1,s2) values('d1',4,'test','test')",
-            "insert into sg14(id1,time,s1,s3) values('d1',5,'test','test')",
-            "insert into sg14(id1,time,s1,s2) values('d1',6,'test','test')",
+            "create table sg14 (tag1 string tag, s1 string field, s2 string field)",
+            "insert into sg14(tag1,time,s1,s2) values('d1',1,'test','test')",
+            "insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')",
+            "insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')",
+            "insert into sg14(tag1,time,s1,s2) values('d1',4,'test','test')",
+            "insert into sg14(tag1,time,s1,s3) values('d1',5,'test','test')",
+            "insert into sg14(tag1,time,s1,s2) values('d1',6,'test','test')",
             "flush",
-            "insert into sg14(id1,time,s1,s3) values('d1',7,'test','test')");
+            "insert into sg14(tag1,time,s1,s3) values('d1',7,'test','test')");
     try {
       for (String sql : sqls) {
         JsonObject jsonObject = new JsonObject();

@@ -1590,7 +1590,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
-                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1676,7 +1678,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
                         new PlanNodeId(""),
-                        DeleteDevice.constructModEntries(req.getPatternOrModInfo())))
+                        DeleteDevice.constructModEntries(req.getPatternOrModInfo()),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1731,7 +1735,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                     req.getTableName(),
                                     new IDPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
-                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                            // the request is only sent to associated region
+                            null))
                     .getStatus());
   }
 

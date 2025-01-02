@@ -54,10 +54,10 @@ public class TableModelSessionExample {
 
       // or use full qualified table name
       session.executeNonQueryStatement(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
 
       session.executeNonQueryStatement(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
@@ -90,12 +90,12 @@ public class TableModelSessionExample {
       List<Tablet.ColumnCategory> columnTypeList =
           new ArrayList<>(
               Arrays.asList(
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
-                  Tablet.ColumnCategory.ID,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
+                  Tablet.ColumnCategory.TAG,
                   Tablet.ColumnCategory.ATTRIBUTE,
-                  Tablet.ColumnCategory.MEASUREMENT,
-                  Tablet.ColumnCategory.MEASUREMENT));
+                  Tablet.ColumnCategory.FIELD,
+                  Tablet.ColumnCategory.FIELD));
       Tablet tablet = new Tablet("test1", columnNameList, dataTypeList, columnTypeList, 100);
       for (long timestamp = 0; timestamp < 100; timestamp++) {
         int rowIndex = tablet.getRowSize();
