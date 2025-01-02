@@ -30,8 +30,8 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DEVICE_VIEW_TEST_TABLE;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_VIEW_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.DEVICE_VIEW_TEST_TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -93,6 +93,7 @@ public class TreeViewTest {
             project(
                 mergeSort(
                     exchange(),
+                    exchange(),
                     treeAlignedDeviceViewTableScan(
                         DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                         ImmutableList.of("tag1", "s1"),
@@ -105,6 +106,13 @@ public class TreeViewTest {
     assertPlan(
         planTester.getFragmentPlan(1),
         treeAlignedDeviceViewTableScan(
+            DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+            ImmutableList.of("tag1", "s1"),
+            ImmutableSet.of("tag1", "s1")));
+
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        treeNonAlignedDeviceViewTableScan(
             DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
             ImmutableSet.of("tag1", "s1")));

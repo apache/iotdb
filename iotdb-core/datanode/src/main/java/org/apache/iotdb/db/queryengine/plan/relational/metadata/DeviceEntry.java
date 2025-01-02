@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Accountable;
@@ -36,6 +39,12 @@ import static org.apache.tsfile.utils.ReadWriteIOUtils.readBytes;
 import static org.apache.tsfile.utils.ReadWriteIOUtils.readInt;
 import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
 
+/**
+ * The {@link DeviceEntry} shall have {@code null} suffix in its {@link IDeviceID}, e.g. "a.b.null".
+ * However, in other places related to {@link TableDeviceSchemaCache} or {@link ISchemaRegion}, the
+ * {@code null}s are trimmed thus will not appear in the {@link IDeviceID}, and it will be like
+ * "a.b".
+ */
 public abstract class DeviceEntry implements Accountable {
 
   private static final long INSTANCE_SIZE =
@@ -44,7 +53,7 @@ public abstract class DeviceEntry implements Accountable {
   protected final IDeviceID deviceID;
   protected final List<Binary> attributeColumnValues;
 
-  protected DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
+  public DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
     this.deviceID = deviceID;
     this.attributeColumnValues = attributeColumnValues;
   }
@@ -136,7 +145,7 @@ public abstract class DeviceEntry implements Accountable {
       case ALIGNED:
         return new AlignedDeviceEntry(deviceID, attributeColumnValues);
       case NON_ALIGNED:
-        return new NonAlignedDeviceEntry(deviceID, attributeColumnValues);
+        return new NonAlignedAlignedDeviceEntry(deviceID, attributeColumnValues);
       default:
         throw new UnsupportedOperationException(
             "Unknown AlignedDeviceEntry Type: " + DeviceEntryType.values()[ordinal]);
@@ -165,6 +174,6 @@ public abstract class DeviceEntry implements Accountable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(deviceID);
+    return Objects.hash(deviceID, attributeColumnValues);
   }
 }

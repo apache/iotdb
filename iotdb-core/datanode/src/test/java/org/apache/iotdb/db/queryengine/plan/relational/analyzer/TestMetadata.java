@@ -37,7 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -93,7 +93,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class TestMetadata implements Metadata {
+public class TestMatadata implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
@@ -154,8 +154,8 @@ public class TestMetadata implements Metadata {
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
-      Mockito.when(treeDeviceViewSchema.getTreePathPatternName()).thenReturn(TREE_DB1);
-      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
+      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
+      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }
@@ -281,16 +281,16 @@ public class TestMetadata implements Metadata {
             new AlignedDeviceEntry(
                 IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
             new AlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()),
-            new NonAlignedDeviceEntry(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_4), ImmutableList.of()));
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()),
+            new NonAlignedAlignedDeviceEntry(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
       }
 
       return ImmutableList.of(
           new AlignedDeviceEntry(
               IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_3), ImmutableList.of()),
           new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_5), ImmutableList.of()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_6), ImmutableList.of()));
     }
 
     if (expressionList.size() == 2) {
@@ -430,13 +430,13 @@ public class TestMetadata implements Metadata {
   @Override
   public DataPartition getDataPartition(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
-    return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

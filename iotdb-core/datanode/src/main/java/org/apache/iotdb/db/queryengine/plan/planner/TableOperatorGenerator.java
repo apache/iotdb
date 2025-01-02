@@ -414,7 +414,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             "Device entries of index " + i + " in " + planNodeName + " is empty");
       }
       AlignedFullPath alignedPath =
-          AbstractTableScanOperator.constructAlignedPath(
+          constructAlignedPath(
               node.getDeviceEntries().get(i),
               measurementColumnNames,
               measurementSchemas,
@@ -2170,7 +2170,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
       if (!allHitCache) {
         AlignedFullPath alignedPath =
-            AbstractTableScanOperator.constructAlignedPath(
+            constructAlignedPath(
                 node.getDeviceEntries().get(i),
                 parameter.getMeasurementColumnNames(),
                 parameter.getMeasurementSchemas(),
