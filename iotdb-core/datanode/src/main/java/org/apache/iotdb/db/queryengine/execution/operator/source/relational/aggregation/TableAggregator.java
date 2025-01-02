@@ -107,6 +107,18 @@ public class TableAggregator {
     return this.inputChannels.length;
   }
 
+  public int[] getInputChannels() {
+    return this.inputChannels;
+  }
+
+  public TableAccumulator getAccumulator() {
+    return this.accumulator;
+  }
+
+  public AggregationNode.Step getStep() {
+    return this.step;
+  }
+
   public void close() {
     accumulator.close();
   }

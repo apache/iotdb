@@ -435,7 +435,6 @@ public class LoadTsFileManager {
         // writers for memory control
         for (final TsFileIOWriter existingWriter : dataPartition2Writer.values()) {
           existingWriter.setMaxMetadataSize(chunkMetadataMaxSizeForEachWriter);
-          existingWriter.checkMetadataSizeAndMayFlush();
         }
         dataPartition2Writer.put(partitionInfo, writer);
         dataPartition2Resource.put(partitionInfo, resource);

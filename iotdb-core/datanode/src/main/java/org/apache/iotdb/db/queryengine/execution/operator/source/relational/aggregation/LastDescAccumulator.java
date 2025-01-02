@@ -24,8 +24,13 @@ import org.apache.tsfile.enums.TSDataType;
 
 public class LastDescAccumulator extends LastAccumulator {
 
-  public LastDescAccumulator(TSDataType seriesDataType) {
-    super(seriesDataType);
+  public LastDescAccumulator(TSDataType seriesDataType, boolean isTimeColumn) {
+    super(seriesDataType, isTimeColumn);
+  }
+
+  @Override
+  public TableAccumulator copy() {
+    return new LastDescAccumulator(seriesDataType, isTimeColumn);
   }
 
   @Override

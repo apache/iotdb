@@ -540,9 +540,6 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
-      if (true) {
-        throw new SemanticException("Delete statement is not supported yet.");
-      }
       final Scope ret = Scope.create();
       AnalyzeUtils.analyzeDelete(node, queryContext);
       analysis.setScope(node, ret);
