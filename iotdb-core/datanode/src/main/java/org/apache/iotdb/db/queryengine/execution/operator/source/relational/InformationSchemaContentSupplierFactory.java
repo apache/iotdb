@@ -22,7 +22,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -42,6 +46,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Pair;
 
 import java.security.AccessControlException;
 import java.util.Arrays;
@@ -50,6 +55,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
@@ -156,6 +163,7 @@ public class InformationSchemaContentSupplierFactory {
   private static class TableSupplier extends TsBlockSupplier {
     private Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
     private Iterator<TTableInfo> tableInfoIterator = null;
+    private String dbName;
     private final String userName;
 
     private TableSupplier(final List<TSDataType> dataTypes, final String userName) {
@@ -176,7 +184,6 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      String dbName = null;
       // Get next table info iterator
       while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
         if (!dbIterator.hasNext()) {
@@ -204,7 +211,12 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ColumnSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
+    private Iterator<TsTableColumnSchema> columnSchemaIterator;
+    private String dbName;
+    private String tableName;
+    private Set<String> preDeletedColumns;
     private final String userName;
 
     private ColumnSupplier(final List<TSDataType> dataTypes, final String userName) {
@@ -212,12 +224,31 @@ public class InformationSchemaContentSupplierFactory {
       this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TShowDatabaseResp resp =
-            client.showDatabase(
-                new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
-                    .setIsTableModel(true));
-        totalSize = resp.getDatabaseInfoMapSize();
-        iterator = resp.getDatabaseInfoMap().entrySet().iterator();
+        final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
+        final Map<String, Map<String, Pair<TsTable, Set<String>>>> resultMap =
+            resp.getTableColumnInfoMap().entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry ->
+                            entry.getValue().entrySet().stream()
+                                .collect(
+                                    Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        tableEntry ->
+                                            new Pair<>(
+                                                TsTableInternalRPCUtil.deserializeSingleTsTable(
+                                                    tableEntry.getValue().getTableInfo()),
+                                                tableEntry.getValue().getPreDeletedColumns())))));
+        totalSize =
+            resultMap.values().stream()
+                .map(
+                    tableMap ->
+                        tableMap.values().stream()
+                            .map(columnInfo -> columnInfo.getLeft().getIdNums())
+                            .reduce(0, Integer::sum))
+                .reduce(0, Integer::sum);
+        dbIterator = resultMap.entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
       }
@@ -225,32 +256,44 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      if (!iterator.hasNext()) {
-        throw new NoSuchElementException();
-      }
-      final Map.Entry<String, TDatabaseInfo> info = iterator.next();
-      try {
-        Coordinator.getInstance()
-            .getAccessControl()
-            .checkCanShowOrUseDatabase(userName, info.getKey());
-      } catch (final AccessControlException e) {
-        return;
-      }
-      final TDatabaseInfo storageGroupInfo = info.getValue();
-      columnBuilders[0].writeBinary(new Binary(info.getKey(), TSFileConfig.STRING_CHARSET));
+      while (Objects.isNull(columnSchemaIterator) || !columnSchemaIterator.hasNext()) {
+        while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
+          if (!dbIterator.hasNext()) {
+            throw new NoSuchElementException();
+          }
+          final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
+              dbIterator.next();
+          dbName = entry.getKey();
+          try {
+            Coordinator.getInstance()
+                .getAccessControl()
+                .checkCanShowOrUseDatabase(userName, dbName);
+          } catch (final AccessControlException e) {
+            continue;
+          }
+          tableInfoIterator = entry.getValue().entrySet().iterator();
+        }
 
-      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
-        columnBuilders[1].writeBinary(
-            new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
-      } else {
-        columnBuilders[1].writeBinary(
-            new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+        final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
+        tableName = tableEntry.getKey();
+        preDeletedColumns = tableEntry.getValue().getRight();
+        columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
       }
-      columnBuilders[2].writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      columnBuilders[3].writeInt(storageGroupInfo.getDataReplicationFactor());
-      columnBuilders[4].writeLong(storageGroupInfo.getTimePartitionInterval());
-      columnBuilders[5].writeInt(storageGroupInfo.getSchemaRegionNum());
-      columnBuilders[6].writeInt(storageGroupInfo.getDataRegionNum());
+
+      final TsTableColumnSchema schema = columnSchemaIterator.next();
+
+      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(schema.getColumnName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(schema.getDataType().name(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeBinary(
+          new Binary(schema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[5].writeBinary(
+          new Binary(
+              preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
+              TSFileConfig.STRING_CHARSET));
       resultBuilder.declarePosition();
     }
   }
