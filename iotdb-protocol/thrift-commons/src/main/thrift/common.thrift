@@ -281,7 +281,8 @@ enum TAggregationType {
   FIRST_BY,
   LAST_BY,
   MIN,
-  MAX
+  MAX,
+  COUNT_ALL
 }
 
 struct TShowConfigurationTemplateResp {
