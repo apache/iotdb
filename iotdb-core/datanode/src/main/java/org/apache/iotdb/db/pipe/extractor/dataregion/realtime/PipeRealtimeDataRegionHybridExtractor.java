@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -41,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
@@ -222,42 +222,131 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted() {
-    return PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
+    if (PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName)) {
+      logByLogManager(
+          l -> l.info("{} can not use tablet anymore because it's currently restarted.", pipeName));
+      return true;
+    }
+    return false;
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage()
-        > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    final long walDiskUsage = WALManager.getInstance().getTotalDiskUsage();
+    final long walThrottleThreshold = WALManager.getInstance().getThrottleThreshold();
+    if (3 * walDiskUsage > walThrottleThreshold) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because the total WAL disk usage {} is larger than the 1/3 of the WAL throttle threshold {}.",
+                  pipeName,
+                  walDiskUsage,
+                  walThrottleThreshold));
+      return true;
+    }
+    return false;
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+    final int pinnedWalCount = PipeDataNodeResourceManager.wal().getPinnedWalCount();
+    final int pipeMaxAllowedPinnedMemTableCount =
+        PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+    if (pinnedWalCount >= pipeMaxAllowedPinnedMemTableCount) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because the pinned wal count {} is larger than the pipe max allowed pinned wal count {}.",
+                  pipeName,
+                  pinnedWalCount,
+                  pipeMaxAllowedPinnedMemTableCount));
+      return true;
+    }
+    return false;
   }
 
   private boolean isHistoricalTsFileEventCountExceededLimit() {
     final IoTDBDataRegionExtractor extractor =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
-    return Objects.nonNull(extractor)
-        && extractor.getHistoricalTsFileInsertionEventCount()
-            >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+    if (Objects.isNull(extractor)) {
+      return false;
+    }
+    final int historicalTsFileInsertionEventCount =
+        extractor.getHistoricalTsFileInsertionEventCount();
+    final int pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+    if (historicalTsFileInsertionEventCount >= pipeMaxAllowedHistoricalTsFilePerDataRegion) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because the historical tsFile event count {} is larger than the pipe max allowed historical tsFile count per data region {}.",
+                  pipeName,
+                  historicalTsFileInsertionEventCount,
+                  pipeMaxAllowedHistoricalTsFilePerDataRegion));
+      return true;
+    }
+    return false;
   }
 
   private boolean isRealtimeTsFileEventCountExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    final int tsFileInsertionEventCount = pendingQueue.getTsFileInsertionEventCount();
+    final int pipeMaxAllowedPendingTsFileEpochPerDataRegion =
+        PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    if (tsFileInsertionEventCount >= pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because the realtime tsFile event count {} is larger than the pipe max allowed pending tsfile epoch count {}.",
+                  pipeName,
+                  tsFileInsertionEventCount,
+                  pipeMaxAllowedPendingTsFileEpochPerDataRegion));
+      return true;
+    }
+    return false;
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+    final int linkedTsFileCount = PipeDataNodeResourceManager.tsfile().getLinkedTsFileCount();
+    final long pipeMaxAllowedLinkedTsFileCount =
+        PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+    if (linkedTsFileCount >= pipeMaxAllowedLinkedTsFileCount) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because the linked tsFile count {} is larger than the pipe max allowed linked tsfile count {}.",
+                  pipeName,
+                  linkedTsFileCount,
+                  pipeMaxAllowedLinkedTsFileCount));
+      return true;
+    }
+    return false;
   }
 
   private boolean mayInsertNodeMemoryReachDangerousThreshold() {
-    return 3
-            * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
-            * PipeDataNodeAgent.task().getPipeCount()
-        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    final long floatingMemoryUsage =
+        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
+    final int pipeCount = PipeDataNodeAgent.task().getPipeCount();
+    final long freeMemoryInBytes = PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    if (3 * floatingMemoryUsage * pipeCount >= 2 * freeMemoryInBytes) {
+      logByLogManager(
+          l ->
+              l.info(
+                  "{} can not use tablet anymore because pipeCount({}) * floatingMemoryUsage of this pipe ({}) is larger than 2/3 if the pipe max allowed free memory in bytes {}.",
+                  pipeName,
+                  pipeCount,
+                  floatingMemoryUsage,
+                  freeMemoryInBytes));
+      return true;
+    }
+    return false;
+  }
+
+  private void logByLogManager(final Consumer<Logger> infoFunction) {
+    PipeDataNodeResourceManager.log()
+        .schedule(
+            PipeRealtimeDataRegionHybridExtractor.class,
+            Integer.MAX_VALUE,
+            PipeConfig.getInstance().getPipeDegradeMaxLogIntervalRounds(),
+            1)
+        .ifPresent(infoFunction);
   }
 
   @Override

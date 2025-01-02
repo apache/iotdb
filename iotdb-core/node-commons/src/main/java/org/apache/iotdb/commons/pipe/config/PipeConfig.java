@@ -280,6 +280,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeWalPinMaxLogIntervalRounds();
   }
 
+  public int getPipeDegradeMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeDegradeMaxLogIntervalRounds();
+  }
+
   /////////////////////////////// Memory ///////////////////////////////
 
   public boolean getPipeMemoryManagementEnabled() {
@@ -454,6 +458,7 @@ public class PipeConfig {
     LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
     LOGGER.info("PipeWalPinMaxLogNumPerRound: {}", getPipeWalPinMaxLogNumPerRound());
     LOGGER.info("PipeWalPinMaxLogIntervalRounds: {}", getPipeWalPinMaxLogIntervalRounds());
+    LOGGER.info("PipeDegradeMaxLogIntervalRounds: {}", getPipeDegradeMaxLogIntervalRounds());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
