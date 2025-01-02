@@ -160,7 +160,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     while (iterator.hasNext()) {
       Map.Entry<String, TableSchema> entry = iterator.next();
       List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
-      if (columnTypes.contains(ColumnCategory.MEASUREMENT)) {
+      if (columnTypes.contains(ColumnCategory.FIELD)) {
         continue;
       }
       iterator.remove();

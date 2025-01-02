@@ -102,7 +102,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   private int nodeCount = 0;
 
-  public SRStatementGenerator(File mtreeFile, File tagFile, PartialPath databaseFullPath)
+  public SRStatementGenerator(
+      final File mtreeFile, final File tagFile, final PartialPath databaseFullPath)
       throws IOException {
 
     inputStream = Files.newInputStream(mtreeFile.toPath());
@@ -157,7 +158,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           lastExcept = ioe;
           try {
             inputStream.close();
-            tagFileChannel.close();
+            if (tagFileChannel != null) {
+              tagFileChannel.close();
+            }
 
           } catch (IOException e) {
             lastExcept = e;

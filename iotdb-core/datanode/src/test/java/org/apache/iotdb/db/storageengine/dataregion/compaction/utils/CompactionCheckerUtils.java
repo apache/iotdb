@@ -600,6 +600,14 @@ public class CompactionCheckerUtils {
     return true;
   }
 
+  public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
+      List<IFullPath> fullPaths,
+      List<TsFileResource> sequenceResources,
+      List<TsFileResource> unsequenceResources)
+      throws IllegalPathException, IOException {
+    return getDataByQuery(fullPaths, sequenceResources, unsequenceResources, false);
+  }
+
   /**
    * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
    *
@@ -612,15 +620,13 @@ public class CompactionCheckerUtils {
   public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
       List<IFullPath> fullPaths,
       List<TsFileResource> sequenceResources,
-      List<TsFileResource> unsequenceResources)
+      List<TsFileResource> unsequenceResources,
+      boolean clearCacheDuringQuery)
       throws IllegalPathException, IOException {
     Map<IFullPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    clearCache();
     for (int i = 0; i < fullPaths.size(); ++i) {
-      FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
-      BloomFilterCache.getInstance().clear();
-
       IFullPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new ArrayList<>();
 
@@ -645,12 +651,18 @@ public class CompactionCheckerUtils {
       }
       pathDataMap.put(fullPaths.get(i), dataList);
 
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
+      if (clearCacheDuringQuery) {
+        clearCache();
+      }
     }
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    return pathDataMap;
+  }
+
+  private static void clearCache() {
+    BloomFilterCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     ChunkCache.getInstance().clear();
-    return pathDataMap;
   }
 
   public static void validDataByValueList(

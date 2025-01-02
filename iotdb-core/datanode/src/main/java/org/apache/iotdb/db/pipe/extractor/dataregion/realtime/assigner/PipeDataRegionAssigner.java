@@ -95,10 +95,14 @@ public class PipeDataRegionAssigner implements Closeable {
       ((PipeHeartbeatEvent) innerEvent).onPublished();
     }
 
-    if (!disruptor.isClosed()) {
-      disruptor.publish(event);
-    } else {
-      onAssignedHook(event);
+    // use synchronized here for completely preventing reference count leaks under extreme thread
+    // scheduling when closing
+    synchronized (this) {
+      if (!disruptor.isClosed()) {
+        disruptor.publish(event);
+      } else {
+        onAssignedHook(event);
+      }
     }
   }
 
@@ -238,12 +242,14 @@ public class PipeDataRegionAssigner implements Closeable {
    * should not be used after calling this method.
    */
   @Override
-  public void close() {
+  // use synchronized here for completely preventing reference count leaks under extreme thread
+  // scheduling when closing
+  public synchronized void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-    matcher.clear();
 
     final long startTime = System.currentTimeMillis();
     disruptor.shutdown();
+    matcher.clear();
     LOGGER.info(
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,

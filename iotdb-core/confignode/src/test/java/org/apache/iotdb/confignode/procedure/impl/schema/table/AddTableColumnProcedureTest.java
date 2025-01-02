@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -38,10 +38,10 @@ public class AddTableColumnProcedureTest {
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final AddTableColumnProcedure addTableColumnProcedure =
         new AddTableColumnProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)));
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)));
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

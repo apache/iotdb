@@ -750,8 +750,7 @@ public class TsFileProcessor {
         // Skip failed Measurements
         if (dataTypes[i] == null
             || measurements[i] == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -810,7 +809,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
           increasingMemTableInfo
@@ -834,7 +833,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null
               || measurements[i] == null
               || (insertRowNode.getColumnCategories() != null
-                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                  && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
             continue;
           }
 
@@ -873,7 +872,7 @@ public class TsFileProcessor {
         if (dataTypes[i] == null
             || measurements[i] == null
             || (insertRowNode.getColumnCategories() != null
-                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.MEASUREMENT)) {
+                && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
         // TEXT data mem size
@@ -1013,7 +1012,7 @@ public class TsFileProcessor {
       measurementColumnNum = dataTypes.length;
     } else {
       for (TsTableColumnCategory columnCategory : columnCategories) {
-        if (columnCategory == TsTableColumnCategory.MEASUREMENT) {
+        if (columnCategory == TsTableColumnCategory.FIELD) {
           measurementColumnNum++;
         }
       }
@@ -1047,8 +1046,7 @@ public class TsFileProcessor {
         if (dataType == null
             || column == null
             || measurement == null
-            || (columnCategories != null
-                && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+            || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
           continue;
         }
 
@@ -1086,8 +1084,7 @@ public class TsFileProcessor {
       if (dataType == null
           || column == null
           || measurement == null
-          || (columnCategories != null
-              && columnCategories[i] != TsTableColumnCategory.MEASUREMENT)) {
+          || (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD)) {
         continue;
       }
 
@@ -1153,22 +1150,30 @@ public class TsFileProcessor {
    * <= 'timestamp' in the deletion. <br>
    *
    * <p>Delete data in both working MemTable and flushing MemTables.
+   *
+   * @return true if data in MemTable is successfully deleted, false otherwise
    */
-  public void deleteDataInMemory(ModEntry deletion) {
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+  public boolean deleteDataInMemory(ModEntry deletion) {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
+      boolean deleted = false;
       if (workMemTable != null) {
         long pointDeleted = workMemTable.delete(deletion);
         logger.info(
             "[Deletion] Deletion with {} in workMemTable, {} points deleted",
             deletion,
             pointDeleted);
+        deleted = true;
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
+        logger.info("[Deletion] Deletion with {} in flushingMemTable", deletion);
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
+        deleted = true;
       }
+      return deleted;
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();

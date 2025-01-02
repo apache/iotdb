@@ -750,7 +750,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
+      columnTypes.add(Tablet.ColumnCategory.FIELD);
       switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();
@@ -780,8 +780,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           break;
       }
     }
-    return new Tablet(
-        deviceId, measurementSchemas, columnTypes, timestamp, objects, bitMaps, generateDataSize);
+    return new Tablet(deviceId, measurementSchemas, timestamp, objects, bitMaps, generateDataSize);
   }
 
   private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemas() {

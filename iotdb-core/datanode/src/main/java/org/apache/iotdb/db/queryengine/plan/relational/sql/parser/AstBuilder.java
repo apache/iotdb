@@ -23,12 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -223,11 +223,10 @@ import java.util.function.Function;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
@@ -467,8 +466,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitInsertStatement(RelationalSqlParser.InsertStatementContext ctx) {
-    QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
+  public Node visitInsertStatement(final RelationalSqlParser.InsertStatementContext ctx) {
+    final QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
     String tableName = qualifiedName.getSuffix();
     String databaseName =
         qualifiedName
@@ -481,9 +480,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     tableName = tableName.toLowerCase();
     databaseName = databaseName.toLowerCase();
 
-    Query query = (Query) visit(ctx.query());
+    final Query query = (Query) visit(ctx.query());
     if (ctx.columnAliases() != null) {
-      List<Identifier> identifiers = visit(ctx.columnAliases().identifier(), Identifier.class);
+      final List<Identifier> identifiers =
+          visit(ctx.columnAliases().identifier(), Identifier.class);
       if (query.getQueryBody() instanceof Values) {
         return visitInsertValues(
             databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
@@ -492,7 +492,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     } else {
       if (query.getQueryBody() instanceof Values) {
-        TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+        final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
         if (table == null) {
           throw new SemanticException(new NoTableException(tableName));
         }
@@ -503,9 +503,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
   }
 
-  private Node visitInsertValues(String databaseName, TsTable table, Values queryBody) {
-    List<Expression> rows = queryBody.getRows();
-    List<InsertRowStatement> rowStatements =
+  private Node visitInsertValues(
+      final String databaseName, final TsTable table, final Values queryBody) {
+    final List<Expression> rows = queryBody.getRows();
+    final List<InsertRowStatement> rowStatements =
         rows.stream()
             .map(
                 r -> {
@@ -528,8 +529,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private Node visitInsertValues(
-      String databaseName, String tableName, List<Identifier> identifiers, Values queryBody) {
-    List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
+      final String databaseName,
+      final String tableName,
+      final List<Identifier> identifiers,
+      final Values queryBody) {
+    final List<String> columnNames =
+        identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
       if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
@@ -1115,26 +1120,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Node visitFlushStatement(final RelationalSqlParser.FlushStatementContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.booleanValue() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
     }
     flushStatement.setOnCluster(
         ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     if (ctx.identifier() != null) {
-      storageGroups = new ArrayList<>();
-      List<Identifier> identifiers = getIdentifiers(ctx.identifier());
-      for (Identifier identifier : identifiers) {
-        try {
-          storageGroups.add(new PartialPath(PathUtils.qualifyDatabaseName(identifier.getValue())));
-        } catch (IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      storageGroups =
+          getIdentifiers(ctx.identifier()).stream().map(Identifier::getValue).collect(toList());
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return new Flush(flushStatement, null);
   }
 
@@ -1231,7 +1229,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     return new ShowStatement(
         getLocation(ctx),
-        QUERIES.getSchemaTableName(),
+        InformationSchema.QUERIES,
         visitIfPresent(ctx.where, Expression.class),
         orderBy,
         offset,
@@ -1857,7 +1855,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInSubquery(RelationalSqlParser.InSubqueryContext ctx) {
-    Expression result =
+    throw new SemanticException("Only TableSubquery is supported now");
+    /*Expression result =
         new InPredicate(
             getLocation(ctx),
             (Expression) visit(ctx.value),
@@ -1867,7 +1866,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       result = new NotExpression(getLocation(ctx), result);
     }
 
-    return result;
+    return result;*/
   }
 
   @Override
@@ -2513,19 +2512,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static TsTableColumnCategory getColumnCategory(Token category) {
+  private static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
-      return MEASUREMENT;
+      return FIELD;
     }
     switch (category.getType()) {
-      case RelationalSqlLexer.ID:
-        return ID;
+      case RelationalSqlLexer.TAG:
+        return TAG;
       case RelationalSqlLexer.ATTRIBUTE:
         return ATTRIBUTE;
       case RelationalSqlLexer.TIME:
         return TIME;
-      case RelationalSqlLexer.MEASUREMENT:
-        return MEASUREMENT;
+      case RelationalSqlLexer.FIELD:
+        return FIELD;
       default:
         throw new UnsupportedOperationException(
             "Unsupported ColumnCategory: " + category.getText());

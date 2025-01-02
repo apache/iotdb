@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.udf.api.relational.access;
 
-import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.utils.Binary;
 
 import java.time.LocalDate;
 

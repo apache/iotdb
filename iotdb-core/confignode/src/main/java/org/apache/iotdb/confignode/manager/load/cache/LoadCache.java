@@ -83,6 +83,8 @@ public class LoadCache {
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
+  // Map<NodeId, Map<RegionGroupId, RegionSize>>
+  private final Map<Integer, Map<Integer, Long>> regionSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -92,11 +94,12 @@ public class LoadCache {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
+    this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
-  public void initHeartbeatCache(IManager configManager) {
+  public void initHeartbeatCache(final IManager configManager) {
     initNodeHeartbeatCache(
         configManager.getNodeManager().getRegisteredConfigNodes(),
         configManager.getNodeManager().getRegisteredDataNodes(),
@@ -551,22 +554,6 @@ public class LoadCache {
   }
 
   /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
-            result.put(dataNodeId, heartbeatCache.getLoadScore());
-          }
-        });
-    return result;
-  }
-
-  /**
    * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
@@ -763,5 +750,13 @@ public class LoadCache {
 
   public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
     return confirmedConfigNodeMap.get(dataNodeId);
+  }
+
+  public void updateRegionSizeMap(int dataNodeId, Map<Integer, Long> regionSizeMap) {
+    this.regionSizeMap.put(dataNodeId, regionSizeMap);
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
+    return regionSizeMap;
   }
 }
