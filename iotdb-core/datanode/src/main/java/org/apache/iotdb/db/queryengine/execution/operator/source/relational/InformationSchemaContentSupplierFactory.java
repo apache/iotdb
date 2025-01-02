@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -82,6 +81,9 @@ public class InformationSchemaContentSupplierFactory {
 
   private static class QueriesSupplier extends TsBlockSupplier {
     private final long currTime = System.currentTimeMillis();
+    // We initialize it later for the convenience of data preparation
+    protected int totalSize;
+    protected int nextConsumedIndex;
     private final List<IQueryExecution> queryExecutions =
         Coordinator.getInstance().getAllQueryExecutions();
 
@@ -107,11 +109,18 @@ public class InformationSchemaContentSupplierFactory {
             BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
         resultBuilder.declarePosition();
       }
+      nextConsumedIndex++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < totalSize;
     }
   }
 
   private static class DatabaseSupplier extends TsBlockSupplier {
     private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private TDatabaseInfo currentDatabase;
     private final String userName;
 
     private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
@@ -123,7 +132,6 @@ public class InformationSchemaContentSupplierFactory {
             client.showDatabase(
                 new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
                     .setIsTableModel(true));
-        totalSize = resp.getDatabaseInfoMapSize();
         iterator = resp.getDatabaseInfoMap().entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
@@ -135,30 +143,42 @@ public class InformationSchemaContentSupplierFactory {
       if (!iterator.hasNext()) {
         throw new NoSuchElementException();
       }
-      final Map.Entry<String, TDatabaseInfo> info = iterator.next();
-      try {
-        Coordinator.getInstance()
-            .getAccessControl()
-            .checkCanShowOrUseDatabase(userName, info.getKey());
-      } catch (final AccessControlException e) {
-        return;
-      }
-      final TDatabaseInfo storageGroupInfo = info.getValue();
-      columnBuilders[0].writeBinary(new Binary(info.getKey(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[0].writeBinary(
+          new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
 
-      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+      if (Long.MAX_VALUE == currentDatabase.getTTL()) {
         columnBuilders[1].writeBinary(
             new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
       } else {
         columnBuilders[1].writeBinary(
-            new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+            new Binary(String.valueOf(currentDatabase.getTTL()), TSFileConfig.STRING_CHARSET));
       }
-      columnBuilders[2].writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      columnBuilders[3].writeInt(storageGroupInfo.getDataReplicationFactor());
-      columnBuilders[4].writeLong(storageGroupInfo.getTimePartitionInterval());
-      columnBuilders[5].writeInt(storageGroupInfo.getSchemaRegionNum());
-      columnBuilders[6].writeInt(storageGroupInfo.getDataRegionNum());
+      columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
+      columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
+      columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
+      columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
+      columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
       resultBuilder.declarePosition();
+      currentDatabase = null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      while (iterator.hasNext()) {
+        final Map.Entry<String, TDatabaseInfo> result = iterator.next();
+        try {
+          Coordinator.getInstance()
+              .getAccessControl()
+              .checkCanShowOrUseDatabase(userName, result.getKey());
+          currentDatabase = result.getValue();
+        } catch (final AccessControlException e) {
+          // Do nothing
+        }
+        if (Objects.nonNull(currentDatabase)) {
+          break;
+        }
+      }
+      return Objects.nonNull(currentDatabase);
     }
   }
 
@@ -173,12 +193,8 @@ public class InformationSchemaContentSupplierFactory {
       this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TShowTable4InformationSchemaResp resp = client.showTables4InformationSchema();
-        totalSize =
-            resp.getDatabaseTableInfoMap().values().stream()
-                .map(List::size)
-                .reduce(0, Integer::sum);
-        dbIterator = resp.getDatabaseTableInfoMap().entrySet().iterator();
+        dbIterator =
+            client.showTables4InformationSchema().getDatabaseTableInfoMap().entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
       }
@@ -186,10 +202,22 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
+      final TTableInfo info = tableInfoIterator.next();
+      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(new Binary(info.getTableName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(new Binary(info.getTTL(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(
+              TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
       // Get next table info iterator
       while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
         if (!dbIterator.hasNext()) {
-          throw new NoSuchElementException();
+          return false;
         }
         final Map.Entry<String, List<TTableInfo>> entry = dbIterator.next();
         dbName = entry.getKey();
@@ -200,15 +228,7 @@ public class InformationSchemaContentSupplierFactory {
         }
         tableInfoIterator = entry.getValue().iterator();
       }
-
-      final TTableInfo info = tableInfoIterator.next();
-      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(new Binary(info.getTableName(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(new Binary(info.getTTL(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeBinary(
-          new Binary(
-              TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
-      resultBuilder.declarePosition();
+      return true;
     }
   }
 
@@ -242,14 +262,6 @@ public class InformationSchemaContentSupplierFactory {
                                                 TsTableInternalRPCUtil.deserializeSingleTsTable(
                                                     tableEntry.getValue().getTableInfo()),
                                                 tableEntry.getValue().getPreDeletedColumns())))));
-        totalSize =
-            resultMap.values().stream()
-                .map(
-                    tableMap ->
-                        tableMap.values().stream()
-                            .map(columnInfo -> columnInfo.getLeft().getIdNums())
-                            .reduce(0, Integer::sum))
-                .reduce(0, Integer::sum);
         dbIterator = resultMap.entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
@@ -258,10 +270,28 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
+      final TsTableColumnSchema schema = columnSchemaIterator.next();
+      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(schema.getColumnName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(schema.getDataType().name(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeBinary(
+          new Binary(schema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[5].writeBinary(
+          new Binary(
+              preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
+              TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
       while (Objects.isNull(columnSchemaIterator) || !columnSchemaIterator.hasNext()) {
         while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
           if (!dbIterator.hasNext()) {
-            throw new NoSuchElementException();
+            return false;
           }
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
@@ -281,22 +311,7 @@ public class InformationSchemaContentSupplierFactory {
         preDeletedColumns = tableEntry.getValue().getRight();
         columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
       }
-
-      final TsTableColumnSchema schema = columnSchemaIterator.next();
-
-      columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(
-          new Binary(schema.getColumnName(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeBinary(
-          new Binary(schema.getDataType().name(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[4].writeBinary(
-          new Binary(schema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[5].writeBinary(
-          new Binary(
-              preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
-              TSFileConfig.STRING_CHARSET));
-      resultBuilder.declarePosition();
+      return true;
     }
   }
 
@@ -304,10 +319,6 @@ public class InformationSchemaContentSupplierFactory {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
-
-    // We initialize it later for the convenience of data preparation
-    protected int totalSize;
-    protected int nextConsumedIndex;
     protected Exception lastException;
 
     private TsBlockSupplier(final List<TSDataType> dataTypes) {
@@ -316,23 +327,17 @@ public class InformationSchemaContentSupplierFactory {
     }
 
     @Override
-    public boolean hasNext() {
-      return nextConsumedIndex < totalSize;
-    }
-
-    @Override
     public TsBlock next() {
       if (Objects.nonNull(lastException)) {
         throw new NoSuchElementException(lastException.getMessage());
       }
-      if (nextConsumedIndex >= totalSize) {
+      if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      while (nextConsumedIndex < totalSize && !resultBuilder.isFull()) {
+      while (hasNext() && !resultBuilder.isFull()) {
         constructLine();
-        nextConsumedIndex++;
       }
-      TsBlock result =
+      final TsBlock result =
           resultBuilder.build(
               new RunLengthEncodedColumn(
                   TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
