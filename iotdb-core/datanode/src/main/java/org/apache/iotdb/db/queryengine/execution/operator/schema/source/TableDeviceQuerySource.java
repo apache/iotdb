@@ -290,7 +290,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (Objects.nonNull(columnSchema)
-          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (pathNodes.length <= resultIndex + beginIndex
             || pathNodes[resultIndex + beginIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
