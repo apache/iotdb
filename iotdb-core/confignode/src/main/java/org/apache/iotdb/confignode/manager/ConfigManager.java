@@ -2615,7 +2615,7 @@ public class ConfigManager implements IManager {
     TSStatus status;
     // May be concurrently deleted, now just ignore
     if (!clusterSchemaManager.isDatabaseExist(databaseName)) {
-      final TDatabaseSchema newSchema = new TDatabaseSchema(databaseName);
+      final TDatabaseSchema newSchema = new TDatabaseSchema(databaseName).setIsTableModel(true);
       status = ClusterSchemaManager.enrichDatabaseSchemaWithDefaultProperties(newSchema);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         return status;

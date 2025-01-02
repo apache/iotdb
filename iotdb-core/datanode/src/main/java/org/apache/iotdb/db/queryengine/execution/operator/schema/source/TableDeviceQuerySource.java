@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -201,7 +202,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           String.format("Table '%s.%s' does not exist.", database, tableName));
     }
     return DeviceFilterUtil.convertToDevicePattern(
-        PathUtils.isTableModelDatabase(database)
+        !TreeViewSchema.isTreeViewTable(table)
             ? new String[] {PATH_ROOT, database, tableName}
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table),
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
@@ -216,12 +217,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     if (!needAligned) {
       transformToTableDeviceTsBlockColumns(
           schemaInfo,
           builder,
-          database,
+          this.database,
           tableName,
           columnHeaderList,
           PathUtils.isTableModelDatabase(database)
@@ -231,7 +232,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       transformToTreeDeviceTsBlockColumns(
           schemaInfo,
           builder,
-          database,
+          this.database,
           tableName,
           columnHeaderList,
           DataNodeTreeViewSchemaUtils.getPatternNodes(table).length);
