@@ -202,6 +202,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
