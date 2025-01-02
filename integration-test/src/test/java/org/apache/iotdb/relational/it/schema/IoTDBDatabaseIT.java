@@ -417,7 +417,7 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "information_schema,INF,null,null,null,null,null,",
-                  "test,INF,1,1,604800000,1,4,")));
+                  "test,INF,1,1,604800000,0,0,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from tables"),
           "database,table_name,ttl(ms),status,",
