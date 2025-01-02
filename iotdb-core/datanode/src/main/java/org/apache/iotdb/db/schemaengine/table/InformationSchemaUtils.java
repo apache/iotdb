@@ -64,7 +64,9 @@ public class InformationSchemaUtils {
     if (!canSeenDB.test(INFORMATION_DATABASE)) {
       return;
     }
-    builder.getTimeColumnBuilder().writeLong(0L);
+    if (withTime) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+    }
     builder
         .getColumnBuilder(0)
         .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));
