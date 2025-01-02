@@ -102,10 +102,10 @@ public class TableMetadataImpl implements Metadata {
     if ("tree_view".equals(name.getDatabaseName())) {
       List<ColumnSchema> columns = new ArrayList<>();
       columns.add(new ColumnSchema("time", TIMESTAMP, false, TsTableColumnCategory.TIME));
-      columns.add(new ColumnSchema("tag_1", STRING, false, TsTableColumnCategory.ID));
-      columns.add(new ColumnSchema("tag_2", STRING, false, TsTableColumnCategory.ID));
-      columns.add(new ColumnSchema("s_1", DOUBLE, false, TsTableColumnCategory.MEASUREMENT));
-      columns.add(new ColumnSchema("s_2", DOUBLE, false, TsTableColumnCategory.MEASUREMENT));
+      columns.add(new ColumnSchema("tag_1", STRING, false, TsTableColumnCategory.TAG));
+      columns.add(new ColumnSchema("tag_2", STRING, false, TsTableColumnCategory.TAG));
+      columns.add(new ColumnSchema("s_1", DOUBLE, false, TsTableColumnCategory.FIELD));
+      columns.add(new ColumnSchema("s_2", DOUBLE, false, TsTableColumnCategory.FIELD));
 
       return Optional.of(new TreeDeviceViewSchema(name.getObjectName(), columns));
     }

@@ -142,13 +142,17 @@ public class TestMatadata implements Metadata {
                   ColumnSchema.builder(TIME_CM)
                       .setColumnCategory(TsTableColumnCategory.TIME)
                       .build(),
-                  ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-                  ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+                  ColumnSchema.builder(TAG1_CM)
+                      .setColumnCategory(TsTableColumnCategory.TAG)
+                      .build(),
+                  ColumnSchema.builder(TAG2_CM)
+                      .setColumnCategory(TsTableColumnCategory.TAG)
+                      .build(),
                   ColumnSchema.builder(S1_CM)
-                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build(),
                   ColumnSchema.builder(S2_CM)
-                      .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                      .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
       Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
       Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
