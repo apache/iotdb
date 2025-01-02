@@ -58,8 +58,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
@@ -196,8 +198,22 @@ public class InformationSchemaContentSupplierFactory {
       this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        dbIterator =
-            client.showTables4InformationSchema().getDatabaseTableInfoMap().entrySet().iterator();
+        final Map<String, List<TTableInfo>> databaseTableInfoMap =
+            client.showTables4InformationSchema().getDatabaseTableInfoMap();
+        databaseTableInfoMap.put(
+            InformationSchema.INFORMATION_DATABASE,
+            InformationSchema.getSchemaTables().values().stream()
+                .map(
+                    table -> {
+                      final TTableInfo info =
+                          new TTableInfo(
+                              table.getTableName(),
+                              table.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
+                      info.setState(TableNodeStatus.USING.ordinal());
+                      return info;
+                    })
+                .collect(Collectors.toList()));
+        dbIterator = databaseTableInfoMap.entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
       }
