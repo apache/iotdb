@@ -696,6 +696,12 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (TreeViewSchema.isTreeViewTable(tableNode.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support drop", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
     if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
