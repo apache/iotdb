@@ -183,6 +183,7 @@ public class InformationSchemaContentSupplierFactory {
         if (!canShowDB(userName, result.getKey())) {
           continue;
         }
+        currentDatabase = result.getValue();
         break;
       }
       return Objects.nonNull(currentDatabase);
