@@ -442,7 +442,7 @@ public class IoTDBDatabaseIT {
                   "test,test,time,TIMESTAMP,TIME,USING,",
                   "test,test,a,STRING,TAG,USING,",
                   "test,test,b,STRING,ATTRIBUTE,USING,",
-                  "test,test,c,INT32,MEASUREMENT,USING,")));
+                  "test,test,c,INT32,FIELD,USING,")));
     }
   }
 
