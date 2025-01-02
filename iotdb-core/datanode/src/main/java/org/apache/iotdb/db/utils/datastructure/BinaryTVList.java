@@ -101,32 +101,6 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound) {
-    int newSize = 0;
-    maxTime = Long.MIN_VALUE;
-    for (int i = 0; i < rowCount; i++) {
-      long time = getTime(i);
-      if (time < lowerBound || time > upperBound) {
-        set(i, newSize++);
-        maxTime = Math.max(maxTime, time);
-      }
-    }
-    int deletedNumber = rowCount - newSize;
-    rowCount = newSize;
-    // release primitive arrays that are empty
-    int newArrayNum = newSize / ARRAY_SIZE;
-    if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum++;
-    }
-    int oldArrayNum = timestamps.size();
-    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
-      releaseLastTimeArray();
-      releaseLastValueArray();
-    }
-    return deletedNumber;
-  }
-
-  @Override
   public Binary getBinary(int index) {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);

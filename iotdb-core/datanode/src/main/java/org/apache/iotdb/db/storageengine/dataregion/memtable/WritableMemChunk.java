@@ -459,6 +459,10 @@ public class WritableMemChunk implements IWritableMemChunk {
     long dataSizeInCurrentChunk = 0;
     int pointNumInCurrentChunk = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+      if (list.isNullValue(list.getValueIndex(sortedRowIndex))) {
+        continue;
+      }
+
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
