@@ -344,7 +344,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         .schedule(
             PipeRealtimeDataRegionHybridExtractor.class,
             Integer.MAX_VALUE,
-            PipeConfig.getInstance().getPipeDegradeMaxLogIntervalRounds(),
+            PipeConfig.getInstance().getPipeDegradeLogIntervalRounds(),
             1)
         .ifPresent(infoFunction);
   }
