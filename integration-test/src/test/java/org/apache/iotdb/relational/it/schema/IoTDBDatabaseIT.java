@@ -439,6 +439,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
                   "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
                   "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
+                  "test,test,time,TIMESTAMP,TIME,USING,",
                   "test,test,a,STRING,TAG,USING,",
                   "test,test,b,STRING,ATTRIBUTE,USING,",
                   "test,test,c,INT32,MEASUREMENT,USING,")));
