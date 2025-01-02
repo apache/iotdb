@@ -60,9 +60,10 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
@@ -72,16 +73,25 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
               -pl integration-test \
               -am -PMultiClusterIT2AutoCreateSchema \
-              -ntp && return 0
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
-              sleep $retry_sleep
-            else
-              echo "Test failed after $max_attempts attempts."
-              return 1
-            fi
-          
-            attempt=$((attempt + 1))
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  return 1
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
             done
           }
           retry
@@ -140,9 +150,10 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
@@ -152,16 +163,25 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT2ManualCreateSchema \
-              -ntp && return 0
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
-              sleep $retry_sleep
-            else
-              echo "Test failed after $max_attempts attempts."
-              return 1
-            fi
-          
-            attempt=$((attempt + 1))
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  return 1
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
             done
           }
           retry
@@ -199,7 +219,7 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
@@ -268,9 +288,10 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
@@ -280,16 +301,25 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT2SubscriptionRegressionConsumer \
-              -ntp && return 0
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
-              sleep $retry_sleep
-            else
-              echo "Test failed after $max_attempts attempts."
-              return 1
-            fi
-          
-            attempt=$((attempt + 1))
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  return 1
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
             done
           }
           retry
@@ -327,9 +357,10 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
@@ -339,16 +370,25 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT2SubscriptionRegressionMisc \
-              -ntp && return 0
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
-              sleep $retry_sleep
-            else
-              echo "Test failed after $max_attempts attempts."
-              return 1
-            fi
-          
-            attempt=$((attempt + 1))
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  return 1
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
             done
           }
           retry
@@ -385,9 +425,10 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           retry() {
-            local -i max_attempts=3
+            local -i max_attempts=20
             local -i attempt=1
             local -i retry_sleep=5
+            local test_output
 
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
@@ -397,16 +438,25 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
               -pl integration-test \
               -am -PMultiClusterIT2TableModel \
-              -ntp && return 0
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
-              sleep $retry_sleep
-            else
-              echo "Test failed after $max_attempts attempts."
-              return 1
-            fi
-          
-            attempt=$((attempt + 1))
+              -ntp && return 0 >> ~/run-tests-$attempt.log
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  return 1
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
             done
           }
           retry
