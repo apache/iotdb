@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
@@ -62,7 +61,6 @@ import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -97,19 +95,6 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public Optional<TableSchema> getTableSchema(
       final SessionInfo session, final QualifiedObjectName name) {
-
-    // TODO remove me
-    if ("tree_view".equals(name.getDatabaseName())) {
-      List<ColumnSchema> columns = new ArrayList<>();
-      columns.add(new ColumnSchema("time", TIMESTAMP, false, TsTableColumnCategory.TIME));
-      columns.add(new ColumnSchema("tag_1", STRING, false, TsTableColumnCategory.TAG));
-      columns.add(new ColumnSchema("tag_2", STRING, false, TsTableColumnCategory.TAG));
-      columns.add(new ColumnSchema("s_1", DOUBLE, false, TsTableColumnCategory.FIELD));
-      columns.add(new ColumnSchema("s_2", DOUBLE, false, TsTableColumnCategory.FIELD));
-
-      return Optional.of(new TreeDeviceViewSchema(name.getObjectName(), columns));
-    }
-
     final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
     return Objects.isNull(table)
         ? Optional.empty()

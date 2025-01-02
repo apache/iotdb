@@ -15,7 +15,6 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
-      - 'TreeToTableView'
     paths-ignore:
       - 'docs/**'
       - 'site/**'

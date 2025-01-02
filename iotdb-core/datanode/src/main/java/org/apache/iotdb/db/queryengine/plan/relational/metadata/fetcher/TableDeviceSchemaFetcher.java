@@ -54,7 +54,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -169,28 +168,6 @@ public class TableDeviceSchemaFetcher {
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
-
-    // TODO remove me
-    if ("tree_view".equals(database)) {
-      List<DeviceEntry> deviceEntries = new ArrayList<>(4);
-      deviceEntries.add(
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.tree.a_1.b_1"),
-              Collections.emptyList()));
-      deviceEntries.add(
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.tree.a_1.b_2"),
-              Collections.emptyList()));
-      deviceEntries.add(
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.tree.a_2"), Collections.emptyList()));
-      deviceEntries.add(
-          new AlignedDeviceEntry(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.tree.a_2.b_2"),
-              Collections.emptyList()));
-      return deviceEntries;
-    }
-
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
     final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
