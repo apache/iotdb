@@ -70,6 +70,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
   private long maxNumberOfPointsInChunk = CONFIG.getTargetChunkPointNum();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";

@@ -37,9 +37,6 @@ public interface IWritableMemChunk extends WALEntryValue {
   int TVLIST_SORT_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
   int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-  long TARGET_CHUNK_SIZE = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  long MAX_NUMBER_OF_POINTS_IN_CHUNK =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   void putLong(long t, long v);
 
