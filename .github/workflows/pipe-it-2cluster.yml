@@ -75,6 +75,12 @@ jobs:
               -am -PMultiClusterIT2AutoCreateSchema \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
+          
+              echo ""
+              echo "==================== ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "=================================================================="
+              echo ""
 
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
@@ -165,7 +171,13 @@ jobs:
               -am -PMultiClusterIT2ManualCreateSchema \
               -ntp >> ~/run-tests-$attempt.log && return 0
               test_output=$(cat ~/run-tests-$attempt.log) 
-
+          
+              echo ""
+              echo "==================== ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "=================================================================="
+              echo ""
+          
               if echo "$test_output" | grep -q "Could not transfer artifact"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
@@ -223,7 +235,13 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-
+          
+            echo ""
+            echo "==================== ~/run-tests-$attempt.log ===================="          
+            echo "$test_output"
+            echo "=================================================================="
+            echo ""
+                  
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -292,7 +310,13 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-
+          
+            echo ""
+            echo "==================== ~/run-tests-$attempt.log ===================="          
+            echo "$test_output"
+            echo "=================================================================="
+            echo ""
+          
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -361,7 +385,13 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-
+          
+            echo ""
+            echo "==================== ~/run-tests-$attempt.log ===================="          
+            echo "$test_output"
+            echo "=================================================================="
+            echo ""
+        
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
@@ -429,7 +459,13 @@ jobs:
             local -i attempt=1
             local -i retry_sleep=5
             local test_output
-
+          
+            echo ""
+            echo "==================== ~/run-tests-$attempt.log ===================="          
+            echo "$test_output"
+            echo "=================================================================="
+            echo ""          
+          
             while [ $attempt -le $max_attempts ]; do
               mvn clean verify \
               -P with-integration-tests \
