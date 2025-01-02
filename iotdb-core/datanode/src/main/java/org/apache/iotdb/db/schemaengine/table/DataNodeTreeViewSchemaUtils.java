@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -53,7 +54,9 @@ public class DataNodeTreeViewSchemaUtils {
   public static IDeviceID convertToIDeviceID(final TsTable table, final String[] idValues) {
     return IDeviceID.Factory.DEFAULT_FACTORY.create(
         StringArrayDeviceID.splitDeviceIdString(
-            Stream.concat(Arrays.stream(getPatternNodes(table)), Arrays.stream(idValues))
+            Stream.concat(
+                    Arrays.stream(getPatternNodes(table)),
+                    Arrays.stream((String[]) DeviceIDFactory.truncateTailingNull(idValues)))
                 .toArray(String[]::new)));
   }
 
