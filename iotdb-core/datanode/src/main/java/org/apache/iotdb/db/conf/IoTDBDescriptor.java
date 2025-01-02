@@ -386,6 +386,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
+    conf.setTVListSortThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "tvlist_sort_threshold", Integer.toString(conf.getTvListSortThreshold()))));
+
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
             properties.getProperty(

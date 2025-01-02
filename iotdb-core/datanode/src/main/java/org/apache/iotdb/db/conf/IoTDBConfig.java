@@ -433,6 +433,15 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
+  /**
+   * the threshold when working TVList is sorted and added into immutable TVList list in the
+   * writable memtable
+   */
+  private int tvListSortThreshold = 0;
+
+  /** When average series point number reaches this, flush the memtable to disk */
+  private int avgSeriesPointNumberThreshold = 100000;
+
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
@@ -2304,6 +2313,14 @@ public class IoTDBConfig {
 
   public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
+  }
+
+  public int getTvListSortThreshold() {
+    return tvListSortThreshold;
+  }
+
+  public void setTVListSortThreshold(int tvListSortThreshold) {
+    this.tvListSortThreshold = tvListSortThreshold;
   }
 
   public boolean isRpcThriftCompressionEnable() {
