@@ -253,9 +253,13 @@ public class TableDeviceSchemaFetcher {
         check = o -> true;
       } else {
         final SchemaFilter fuzzyFilter = compactedIdFuzzyPredicate.accept(visitor, context);
-        // Currently if a predicate cannot be converted to schema filter, we abandon cache
-        // and just fetch remote. Later cache will be a memory source and combine filter
-        check = Objects.nonNull(fuzzyFilter) ? o -> filterVisitor.process(fuzzyFilter, o) : null;
+        // Currently if a fuzzy predicate exists, if it cannot be converted to a schema filter, or
+        // this query is about tree device view, we abandon cache and just fetch remote. Later cache
+        // will be a memory source and combine filter
+        check =
+            Objects.nonNull(fuzzyFilter) && !TreeViewSchema.isTreeViewTable(tableInstance)
+                ? o -> filterVisitor.process(fuzzyFilter, o)
+                : null;
       }
 
       for (final int index : idSingleMatchIndexList) {
@@ -336,7 +340,7 @@ public class TableDeviceSchemaFetcher {
             fetchPaths,
             isDirectDeviceQuery,
             idValues)
-        : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, fetchPaths, idValues);
+        : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, check, fetchPaths, idValues);
   }
 
   private boolean tryGetTableDeviceInCache(
@@ -354,8 +358,6 @@ public class TableDeviceSchemaFetcher {
     // 1. AttributeMap == null means cache miss
     // 2. DeviceEntryList == null means that this is update statement, shall not get from cache and
     // shall reach the SchemaRegion to update
-    // 3. Check == null means that the fuzzyPredicate cannot be parsed into schema filter,
-    // and currently we shall push it to schema region
     if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList) || Objects.isNull(check)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
@@ -383,12 +385,13 @@ public class TableDeviceSchemaFetcher {
   private boolean tryGetTreeDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
       final TsTable tableInstance,
+      final Predicate<AlignedDeviceEntry> check,
       final List<IDeviceID> fetchPaths,
       final String[] idValues) {
     final IDeviceID deviceID =
         DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, idValues);
     final IDeviceSchema schema = TableDeviceSchemaCache.getInstance().getDeviceSchema(deviceID);
-    if (!(schema instanceof TreeDeviceNormalSchema)) {
+    if (!(schema instanceof TreeDeviceNormalSchema) || Objects.isNull(check)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
