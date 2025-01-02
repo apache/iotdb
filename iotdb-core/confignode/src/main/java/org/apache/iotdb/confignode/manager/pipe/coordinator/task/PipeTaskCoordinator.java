@@ -151,7 +151,7 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
-  public TSStatus startPipe(String pipeName) {
+  private TSStatus startPipe(String pipeName) {
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().startConsensusPipe(pipeName);
@@ -177,7 +177,7 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
-  public TSStatus stopPipe(String pipeName) {
+  private TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {

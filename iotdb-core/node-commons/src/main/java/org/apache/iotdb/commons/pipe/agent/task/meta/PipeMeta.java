@@ -66,7 +66,7 @@ public class PipeMeta {
   }
 
   public boolean matchSqlDialect(final boolean isTableModel) {
-    return matchSqlDialect(SystemConstant.fetchSqlDialectValue(isTableModel));
+    return matchSqlDialect(SystemConstant.getSqlDialectValue(isTableModel));
   }
 
   public boolean matchSqlDialect(final String sqlDialect) {
@@ -91,7 +91,7 @@ public class PipeMeta {
                     PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
                 PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
         ||
-        // 2. 'capture.tree' and 'capture.table' is set to true
+        // 2. 'capture.tree' and 'capture.table' are set to true
         (getStaticMeta()
                 .getExtractorParameters()
                 .getBooleanOrDefault(
