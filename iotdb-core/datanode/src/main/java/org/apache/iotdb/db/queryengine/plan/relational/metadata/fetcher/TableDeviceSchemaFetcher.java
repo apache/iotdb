@@ -312,7 +312,7 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery) {
-    String[] idValues = new String[tableInstance.getIdNums()];
+    final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
