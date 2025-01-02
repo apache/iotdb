@@ -157,7 +157,7 @@ public class SubcolumnRLEQuerySumTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_sum_0.csv";
+        String outputPath = output_parent_dir + "query_sum_512.csv";
 
         // int block_size = 1024;
         int block_size = 512;

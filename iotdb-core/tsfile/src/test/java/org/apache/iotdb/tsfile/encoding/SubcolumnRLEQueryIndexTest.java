@@ -230,7 +230,7 @@ public class SubcolumnRLEQueryIndexTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_index_new3.csv";
+        String outputPath = output_parent_dir + "query_index_512.csv";
 
         // int block_size = 1024;
         int block_size = 512;

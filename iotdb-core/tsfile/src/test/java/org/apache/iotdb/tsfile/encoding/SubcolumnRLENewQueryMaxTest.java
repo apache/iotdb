@@ -233,8 +233,8 @@ public class SubcolumnRLENewQueryMaxTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
+        String parent_dir = "D:/compress-subcolumn/dataset/";
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
@@ -245,7 +245,7 @@ public class SubcolumnRLENewQueryMaxTest {
 
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
+        repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 

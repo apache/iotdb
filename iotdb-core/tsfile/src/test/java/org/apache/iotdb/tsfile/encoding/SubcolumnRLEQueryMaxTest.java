@@ -238,7 +238,7 @@ public class SubcolumnRLEQueryMaxTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test01.csv";
+        String outputPath = output_parent_dir + "query_max.csv";
 
         // int block_size = 1024;
         int block_size = 512;
