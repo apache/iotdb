@@ -140,9 +140,6 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      if (!iterator.hasNext()) {
-        throw new NoSuchElementException();
-      }
       columnBuilders[0].writeBinary(
           new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
 
