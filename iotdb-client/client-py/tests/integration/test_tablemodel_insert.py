@@ -42,26 +42,26 @@ def test_insert_use_tablet():
         session.execute_non_query_statement("use test_insert_relational_tablet_tablet")
         session.execute_non_query_statement(
             "create table table_a("
-            '"地区" STRING ID, "厂号" STRING ID, "设备号" STRING ID, '
+            '"地区" STRING TAG, "厂号" STRING TAG, "设备号" STRING TAG, '
             '"日期" string attribute, "时间" string attribute, "负责人" string attribute,'
-            '"测点1" BOOLEAN MEASUREMENT, "测点2" INT32 MEASUREMENT, "测点3" INT64 MEASUREMENT, "测点4" FLOAT MEASUREMENT, "测点5" DOUBLE MEASUREMENT,'
-            '"测点6" TEXT MEASUREMENT, "测点7" TIMESTAMP MEASUREMENT, "测点8" DATE MEASUREMENT, "测点9" BLOB MEASUREMENT, "测点10" STRING MEASUREMENT)'
+            '"测点1" BOOLEAN FIELD, "测点2" INT32 FIELD, "测点3" INT64 FIELD, "测点4" FLOAT FIELD, "测点5" DOUBLE FIELD,'
+            '"测点6" TEXT FIELD, "测点7" TIMESTAMP FIELD, "测点8" DATE FIELD, "测点9" BLOB FIELD, "测点10" STRING FIELD)'
         )
         session.execute_non_query_statement(
             "create table table_b("
-            "id1 STRING ID, id2 STRING ID, id3 STRING ID, "
+            "tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG, "
             "attr1 string attribute, attr2 string attribute, attr3 string attribute,"
-            "BOOLEAN BOOLEAN MEASUREMENT, INT32 INT32 MEASUREMENT, INT64 INT64 MEASUREMENT, FLOAT FLOAT MEASUREMENT, DOUBLE DOUBLE MEASUREMENT,"
-            "TEXT TEXT MEASUREMENT, TIMESTAMP TIMESTAMP MEASUREMENT, DATE DATE MEASUREMENT, BLOB BLOB MEASUREMENT, STRING STRING MEASUREMENT)"
+            "BOOLEAN BOOLEAN FIELD, INT32 INT32 FIELD, INT64 INT64 FIELD, FLOAT FLOAT FIELD, DOUBLE DOUBLE FIELD,"
+            "TEXT TEXT FIELD, TIMESTAMP TIMESTAMP FIELD, DATE DATE FIELD, BLOB BLOB FIELD, STRING STRING FIELD)"
         )
 
         # 1、General scenario
         expect = 10
         table_name = "table_b"
         column_names = [
-            "id1",
-            "id2",
-            "id3",
+            "tag1",
+            "tag2",
+            "tag3",
             "attr1",
             "attr2",
             "attr3",
@@ -95,22 +95,22 @@ def test_insert_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         timestamps = []
         values = []
@@ -118,9 +118,9 @@ def test_insert_use_tablet():
             timestamps.append(row_b)
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -138,9 +138,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -158,9 +158,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -178,9 +178,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -198,9 +198,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -218,9 +218,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -240,9 +240,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -260,9 +260,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -280,9 +280,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -300,9 +300,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_b),
-                "id2：" + str(row_b),
-                "id3：" + str(row_b),
+                "tag1：" + str(row_b),
+                "tag2：" + str(row_b),
+                "tag3：" + str(row_b),
                 "attr1:" + str(row_b),
                 "attr2:" + str(row_b),
                 "attr3:" + str(row_b),
@@ -374,22 +374,22 @@ def test_insert_use_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         timestamps = []
         values = []
@@ -397,9 +397,9 @@ def test_insert_use_tablet():
             timestamps.append(row_a)
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -417,9 +417,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -437,9 +437,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -457,9 +457,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -477,9 +477,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -497,9 +497,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -519,9 +519,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -539,9 +539,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -559,9 +559,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -579,9 +579,9 @@ def test_insert_use_tablet():
         )
         values.append(
             [
-                "id1：" + str(row_a),
-                "id2：" + str(row_a),
-                "id3：" + str(row_a),
+                "tag1：" + str(row_a),
+                "tag2：" + str(row_a),
+                "tag3：" + str(row_a),
                 "attr1:" + str(row_a),
                 "attr2:" + str(row_a),
                 "attr3:" + str(row_a),
@@ -634,26 +634,26 @@ def test_insert_relational_tablet_use_numpy_tablet():
         )
         session.execute_non_query_statement(
             "create table table_b("
-            "id1 STRING ID, id2 STRING ID, id3 STRING ID, "
+            "tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG, "
             "attr1 string attribute, attr2 string attribute, attr3 string attribute,"
-            "BOOLEAN BOOLEAN MEASUREMENT, INT32 INT32 MEASUREMENT, INT64 INT64 MEASUREMENT, FLOAT FLOAT MEASUREMENT, DOUBLE DOUBLE MEASUREMENT,"
-            "TEXT TEXT MEASUREMENT, TIMESTAMP TIMESTAMP MEASUREMENT, DATE DATE MEASUREMENT, BLOB BLOB MEASUREMENT, STRING STRING MEASUREMENT)"
+            "BOOLEAN BOOLEAN FIELD, INT32 INT32 FIELD, INT64 INT64 FIELD, FLOAT FLOAT FIELD, DOUBLE DOUBLE FIELD,"
+            "TEXT TEXT FIELD, TIMESTAMP TIMESTAMP FIELD, DATE DATE FIELD, BLOB BLOB FIELD, STRING STRING FIELD)"
         )
         session.execute_non_query_statement(
             "create table table_d("
-            "id1 STRING ID, id2 STRING ID, id3 STRING ID, "
+            "tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG, "
             "attr1 string attribute, attr2 string attribute, attr3 string attribute,"
-            "BOOLEAN BOOLEAN MEASUREMENT, INT32 INT32 MEASUREMENT, INT64 INT64 MEASUREMENT, FLOAT FLOAT MEASUREMENT, DOUBLE DOUBLE MEASUREMENT,"
-            "TEXT TEXT MEASUREMENT, TIMESTAMP TIMESTAMP MEASUREMENT, DATE DATE MEASUREMENT, BLOB BLOB MEASUREMENT, STRING STRING MEASUREMENT)"
+            "BOOLEAN BOOLEAN FIELD, INT32 INT32 FIELD, INT64 INT64 FIELD, FLOAT FLOAT FIELD, DOUBLE DOUBLE FIELD,"
+            "TEXT TEXT FIELD, TIMESTAMP TIMESTAMP FIELD, DATE DATE FIELD, BLOB BLOB FIELD, STRING STRING FIELD)"
         )
 
         # 1、No null
         expect = 10
         table_name = "table_b"
         column_names = [
-            "id1",
-            "id2",
-            "id3",
+            "tag1",
+            "tag2",
+            "tag3",
             "attr1",
             "attr2",
             "attr3",
@@ -687,28 +687,28 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
         np_values = [
-            np.array(["id1:{}".format(i) for i in range(0, 10)]),
-            np.array(["id2:{}".format(i) for i in range(0, 10)]),
-            np.array(["id3:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag1:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag2:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag3:{}".format(i) for i in range(0, 10)]),
             np.array(["attr1:{}".format(i) for i in range(0, 10)]),
             np.array(["attr2:{}".format(i) for i in range(0, 10)]),
             np.array(["attr3:{}".format(i) for i in range(0, 10)]),
@@ -868,9 +868,9 @@ def test_insert_relational_tablet_use_numpy_tablet():
         expect = 10
         table_name = "table_d"
         column_names = [
-            "id1",
-            "id2",
-            "id3",
+            "tag1",
+            "tag2",
+            "tag3",
             "attr1",
             "attr2",
             "attr3",
@@ -904,28 +904,28 @@ def test_insert_relational_tablet_use_numpy_tablet():
             TSDataType.STRING,
         ]
         column_types = [
-            ColumnType.ID,
-            ColumnType.ID,
-            ColumnType.ID,
+            ColumnType.TAG,
+            ColumnType.TAG,
+            ColumnType.TAG,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
             ColumnType.ATTRIBUTE,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
-            ColumnType.MEASUREMENT,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
+            ColumnType.FIELD,
         ]
         np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
         np_values = [
-            np.array(["id1:{}".format(i) for i in range(0, 10)]),
-            np.array(["id2:{}".format(i) for i in range(0, 10)]),
-            np.array(["id3:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag1:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag2:{}".format(i) for i in range(0, 10)]),
+            np.array(["tag3:{}".format(i) for i in range(0, 10)]),
             np.array(["attr1:{}".format(i) for i in range(0, 10)]),
             np.array(["attr2:{}".format(i) for i in range(0, 10)]),
             np.array(["attr3:{}".format(i) for i in range(0, 10)]),
@@ -1119,9 +1119,9 @@ def test_insert_relational_tablet_auto_create():
         for i in range(1, 10):
             table_name = "t" + str(i)
             column_names = [
-                "id1",
-                "id2",
-                "id3",
+                "tag1",
+                "tag2",
+                "tag3",
                 "attr1",
                 "attr2",
                 "attr3",
@@ -1155,22 +1155,22 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.ID,
-                ColumnType.ID,
-                ColumnType.ID,
+                ColumnType.TAG,
+                ColumnType.TAG,
+                ColumnType.TAG,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
             ]
             timestamps = []
             values = []
@@ -1178,9 +1178,9 @@ def test_insert_relational_tablet_auto_create():
                 timestamps.append(row)
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1198,9 +1198,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1218,9 +1218,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1238,9 +1238,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1258,9 +1258,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1278,9 +1278,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1300,9 +1300,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1320,9 +1320,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1340,9 +1340,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1360,9 +1360,9 @@ def test_insert_relational_tablet_auto_create():
             )
             values.append(
                 [
-                    "id1：" + str(row),
-                    "id2：" + str(row),
-                    "id3：" + str(row),
+                    "tag1：" + str(row),
+                    "tag2：" + str(row),
+                    "tag3：" + str(row),
                     "attr1:" + str(row),
                     "attr2:" + str(row),
                     "attr3:" + str(row),
@@ -1387,9 +1387,9 @@ def test_insert_relational_tablet_auto_create():
         for i in range(1, 10):
             table_name = "t" + str(i)
             column_names = [
-                "id1",
-                "id2",
-                "id3",
+                "tag1",
+                "tag2",
+                "tag3",
                 "attr1",
                 "attr2",
                 "attr3",
@@ -1423,28 +1423,28 @@ def test_insert_relational_tablet_auto_create():
                 TSDataType.STRING,
             ]
             column_types = [
-                ColumnType.ID,
-                ColumnType.ID,
-                ColumnType.ID,
+                ColumnType.TAG,
+                ColumnType.TAG,
+                ColumnType.TAG,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
                 ColumnType.ATTRIBUTE,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
-                ColumnType.MEASUREMENT,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
+                ColumnType.FIELD,
             ]
             np_timestamps = np.arange(0, 10, dtype=np.dtype(">i8"))
             np_values = [
-                np.array(["id1:{}".format(i) for i in range(0, 10)]),
-                np.array(["id2:{}".format(i) for i in range(0, 10)]),
-                np.array(["id3:{}".format(i) for i in range(0, 10)]),
+                np.array(["tag1:{}".format(i) for i in range(0, 10)]),
+                np.array(["tag2:{}".format(i) for i in range(0, 10)]),
+                np.array(["tag3:{}".format(i) for i in range(0, 10)]),
                 np.array(["attr1:{}".format(i) for i in range(0, 10)]),
                 np.array(["attr2:{}".format(i) for i in range(0, 10)]),
                 np.array(["attr3:{}".format(i) for i in range(0, 10)]),

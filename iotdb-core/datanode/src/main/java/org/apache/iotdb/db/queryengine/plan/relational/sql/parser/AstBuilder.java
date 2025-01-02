@@ -225,8 +225,8 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
@@ -1855,7 +1855,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInSubquery(RelationalSqlParser.InSubqueryContext ctx) {
-    Expression result =
+    throw new SemanticException("Only TableSubquery is supported now");
+    /*Expression result =
         new InPredicate(
             getLocation(ctx),
             (Expression) visit(ctx.value),
@@ -1865,7 +1866,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       result = new NotExpression(getLocation(ctx), result);
     }
 
-    return result;
+    return result;*/
   }
 
   @Override
@@ -2511,19 +2512,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static TsTableColumnCategory getColumnCategory(Token category) {
+  private static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
-      return MEASUREMENT;
+      return FIELD;
     }
     switch (category.getType()) {
-      case RelationalSqlLexer.ID:
-        return ID;
+      case RelationalSqlLexer.TAG:
+        return TAG;
       case RelationalSqlLexer.ATTRIBUTE:
         return ATTRIBUTE;
       case RelationalSqlLexer.TIME:
         return TIME;
-      case RelationalSqlLexer.MEASUREMENT:
-        return MEASUREMENT;
+      case RelationalSqlLexer.FIELD:
+        return FIELD;
       default:
         throw new UnsupportedOperationException(
             "Unsupported ColumnCategory: " + category.getText());

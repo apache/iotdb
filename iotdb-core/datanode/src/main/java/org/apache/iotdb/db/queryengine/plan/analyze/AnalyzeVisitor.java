@@ -39,7 +39,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -249,9 +248,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private final IModelFetcher modelFetcher;
-
-  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
-      PerformanceOverviewMetrics.getInstance();
 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;

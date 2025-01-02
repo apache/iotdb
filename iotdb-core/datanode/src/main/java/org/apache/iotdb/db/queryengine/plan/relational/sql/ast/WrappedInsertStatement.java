@@ -171,7 +171,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
           new SemanticException(
               "Column " + incoming.getName() + " does not exists or fails to be " + "created",
               TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
-      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT
+      if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
           || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
@@ -181,20 +181,20 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         return;
       }
     }
-    if (incoming.getType() == null
-        || incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+    if (incoming.getType() == null || incoming.getColumnCategory() != TsTableColumnCategory.FIELD) {
       // sql insertion does not provide type
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
     } else if (!InternalTypeManager.getTSDataType(real.getType())
-        .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))) {
+            .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))
+        && !innerTreeStatement.isForceTypeConversion()) {
       SemanticException semanticException =
           new SemanticException(
               String.format(
                   "Incompatible data type of column %s: %s/%s",
                   incoming.getName(), incoming.getType(), real.getType()),
               TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
-      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT
+      if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
           || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;

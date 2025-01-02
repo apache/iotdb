@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadFileException extends IoTDBException {
+public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
 
-  public LoadFileException(String message) {
-    super(message, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-  }
-
-  public LoadFileException(Exception exception) {
-    super(exception, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  public VerifyMetadataTypeMismatchException(String message) {
+    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
   }
 }

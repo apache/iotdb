@@ -610,7 +610,7 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <!--                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>-->
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.TableLocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>

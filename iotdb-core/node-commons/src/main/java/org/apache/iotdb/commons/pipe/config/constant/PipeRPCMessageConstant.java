@@ -17,11 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.pipe.config.constant;
 
-public class LoadEmptyFileException extends LoadFileException {
+public class PipeRPCMessageConstant {
+  // These two message are used in multi-modules such as pipe and IoTV2
+  public static final String PIPE_ALREADY_EXIST_MSG =
+      "the pipe with the same name has been created";
+  public static final String PIPE_NOT_EXIST_MSG = "the pipe does not exist";
 
-  public LoadEmptyFileException(final String fileName) {
-    super(fileName);
+  private PipeRPCMessageConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }
