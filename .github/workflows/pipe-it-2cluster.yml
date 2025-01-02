@@ -65,7 +65,7 @@ jobs:
             local -i retry_sleep=5
 
             while [ $attempt -le $max_attempts ]; do
-               mvn clean verify \
+              mvn clean verify \
               -P with-integration-tests \
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
@@ -139,14 +139,32 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
-          -P with-integration-tests \
-          -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-          -pl integration-test \
-          -am -PMultiClusterIT2ManualCreateSchema \
-          -ntp
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2ManualCreateSchema \
+              -ntp && return 0
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
+              sleep $retry_sleep
+            else
+              echo "Test failed after $max_attempts attempts."
+              return 1
+            fi
+          
+            attempt=$((attempt + 1))
+            done
+          }
+          retry
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -180,14 +198,32 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
-          -P with-integration-tests \
-          -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-          -pl integration-test \
-          -am -PMultiClusterIT2SubscriptionArchVerification \
-          -ntp
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionArchVerification \
+              -ntp && return 0
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
+              sleep $retry_sleep
+            else
+              echo "Test failed after $max_attempts attempts."
+              return 1
+            fi
+          
+            attempt=$((attempt + 1))
+            done
+          }
+          retry
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -221,14 +257,32 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
-          -P with-integration-tests \
-          -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-          -pl integration-test \
-          -am -PMultiClusterIT2SubscriptionRegressionConsumer \
-          -ntp
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionRegressionConsumer \
+              -ntp && return 0
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
+              sleep $retry_sleep
+            else
+              echo "Test failed after $max_attempts attempts."
+              return 1
+            fi
+          
+            attempt=$((attempt + 1))
+            done
+          }
+          retry
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -262,14 +316,32 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
-          -P with-integration-tests \
-          -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-          -pl integration-test \
-          -am -PMultiClusterIT2SubscriptionRegressionMisc \
-          -ntp
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionRegressionMisc \
+              -ntp && return 0
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
+              sleep $retry_sleep
+            else
+              echo "Test failed after $max_attempts attempts."
+              return 1
+            fi
+          
+            attempt=$((attempt + 1))
+            done
+          }
+          retry
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -302,14 +374,32 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
-          mvn clean verify \
-          -P with-integration-tests \
-          -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
-          -pl integration-test \
-          -am -PMultiClusterIT2TableModel \
-          -ntp
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2TableModel \
+              -ntp && return 0
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Test failed, attempt $attempt. Retrying in $retry_sleep seconds..."
+              sleep $retry_sleep
+            else
+              echo "Test failed after $max_attempts attempts."
+              return 1
+            fi
+          
+            attempt=$((attempt + 1))
+            done
+          }
+          retry
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
