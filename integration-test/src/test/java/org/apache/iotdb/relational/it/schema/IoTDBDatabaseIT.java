@@ -429,6 +429,10 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries,INF,USING,",
                   "test,test,INF,USING,")));
       TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from tables where status = 'USING'"),
+          "count(devices),",
+          Collections.singleton("5,"));
+      TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
           "database,table_name,column_name,datatype,category,status,",

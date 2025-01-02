@@ -47,8 +47,11 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
         new Select(
             false,
             Collections.singletonList(
-                new AllColumns(
-                    new FunctionCall(QualifiedName.of("count"), Collections.emptyList())))),
+                new SingleColumn(
+                    new FunctionCall(
+                        QualifiedName.of(Collections.singletonList(new Identifier("count"))),
+                        Collections.emptyList()),
+                    new Identifier("count(devices)")))),
         getTable(),
         Optional.ofNullable(where),
         Optional.empty(),
