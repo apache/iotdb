@@ -147,6 +147,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       if (!hasShownInformationSchema) {
         InformationSchemaUtils.buildDatabaseTsBlock(s -> true, resultBuilder, true, false);
+        hasShownInformationSchema = true;
         return;
       }
       columnBuilders[0].writeBinary(
