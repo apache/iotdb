@@ -1540,7 +1540,7 @@ public class IoTDBSessionRelationalIT {
             "load_min_max",
             Arrays.asList("id1", "s1"),
             Arrays.asList(TSDataType.STRING, TSDataType.INT32),
-            Arrays.asList(ColumnCategory.ID, ColumnCategory.MEASUREMENT));
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
 
     try (ITsFileWriter writer =
         new TsFileWriterBuilder().file(file).tableSchema(tableSchema).build()) {
