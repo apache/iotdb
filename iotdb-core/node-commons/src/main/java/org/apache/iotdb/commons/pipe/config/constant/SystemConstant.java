@@ -52,12 +52,6 @@ public class SystemConstant {
     return new PipeParameters(attributes);
   }
 
-  public static String getSqlDialectValue(final boolean isTableModel) {
-    return isTableModel
-        ? SystemConstant.SQL_DIALECT_TABLE_VALUE
-        : SystemConstant.SQL_DIALECT_TREE_VALUE;
-  }
-
   /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {

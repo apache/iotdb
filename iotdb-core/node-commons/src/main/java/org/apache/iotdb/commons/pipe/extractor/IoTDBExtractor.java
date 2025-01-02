@@ -104,23 +104,21 @@ public abstract class IoTDBExtractor implements PipeExtractor {
     }
 
     // check 'capture.tree'
-    final Boolean isTreeModelDataAllowedToBeCaptured =
+    final Boolean isCaptureTree =
         parameters.getBooleanByKeys(
             PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
             PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
-    if (Objects.nonNull(isTreeModelDataAllowedToBeCaptured)
-        && !isTreeModelDataAllowedToBeCaptured) {
+    if (Objects.nonNull(isCaptureTree) && !isCaptureTree) {
       throw new PipeParameterNotValidException(
           "capture.tree can not be specified to false when double living is enabled");
     }
 
     // check 'capture.table'
-    final Boolean isTableModelDataAllowedToBeCaptured =
+    final Boolean isCaptureTable =
         parameters.getBooleanByKeys(
             PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
             PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
-    if (Objects.nonNull(isTableModelDataAllowedToBeCaptured)
-        && !isTableModelDataAllowedToBeCaptured) {
+    if (Objects.nonNull(isCaptureTable) && !isCaptureTable) {
       throw new PipeParameterNotValidException(
           "capture.table can not be specified to false when double living is enabled");
     }

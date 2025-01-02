@@ -36,7 +36,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -49,8 +48,8 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
 
   @Test
   public void testWritePipeIsolation() throws Exception {
-    final String treePipeName = "tree_a2b";
-    final String tablePipeName = "table_a2b";
+    final String treePipeName = "treePipe";
+    final String tablePipeName = "tablePipe";
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -196,12 +195,12 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
 
   @Test
   public void testReadPipeIsolation() {
-    final String treePipeName = "tree_a2b";
-    final String tablePipeName = "table_a2b";
+    final String treePipeName = "treePipe";
+    final String tablePipeName = "tablePipe";
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // Create tree pipe by tree session
+    // 1. Create tree pipe by tree session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -213,32 +212,12 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(0, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
-    // Create table pipe by table session
+    // 2. Create table pipe by table session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -250,30 +229,10 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
   }
 
   @Test
@@ -283,7 +242,7 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // Create tree pipe
+    // 1. Create tree pipe by tree session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -301,32 +260,12 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
-    // Create table pipe
+    // 2. Create table pipe by table session
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
@@ -344,34 +283,14 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
+    // 3. Drop pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      // Drop pipe
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client.dropPipeExtended(new TDropPipeReq(treePipeName).setIsTableModel(true)).getCode());
@@ -381,5 +300,56 @@ public class IoTDBPipeIsolationIT extends AbstractPipeTableModelTestIT {
               .dropPipeExtended(new TDropPipeReq(tablePipeName).setIsTableModel(false))
               .getCode());
     }
+  }
+
+  @Test
+  public void testCaptureCornerCases() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    // 1. Create tree pipe but capture table data
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ("
+                  + "'capture.tree'='false',"
+                  + "'capture.table'='true')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              "p1", receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Show tree pipe by tree session
+    Assert.assertEquals(0, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+
+    // Show table pipe by table session
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
+
+    // 2. Create table pipe but capture tree data
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe %s"
+                  + " with source ("
+                  + "'capture.tree'='true',"
+                  + "'capture.table'='false')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              "p2", receiverDataNode.getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Show tree pipe by tree session
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
+
+    // Show table pipe by table session
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
   }
 }

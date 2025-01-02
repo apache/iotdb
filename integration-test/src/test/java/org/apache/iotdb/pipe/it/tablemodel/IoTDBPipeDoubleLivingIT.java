@@ -36,7 +36,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
@@ -265,8 +264,8 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelTestIT {
 
   @Test
   public void testDoubleLivingIsolation() throws Exception {
-    final String treePipeName = "tree_a2b";
-    final String tablePipeName = "table_a2b";
+    final String treePipeName = "treePipe";
+    final String tablePipeName = "tablePipe";
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -287,30 +286,10 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(1, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(1, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
     // Create table pipe
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -329,30 +308,10 @@ public class IoTDBPipeDoubleLivingIT extends AbstractPipeTableModelTestIT {
     }
 
     // Show tree pipe by tree session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TREE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TREE_SQL_DIALECT));
 
     // Show table pipe by table session
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
-      int count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      Assert.assertEquals(2, count);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
+    Assert.assertEquals(2, TableModelUtils.showPipesCount(senderEnv, BaseEnv.TABLE_SQL_DIALECT));
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {

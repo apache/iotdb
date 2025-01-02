@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -65,47 +66,39 @@ public class PipeMeta {
     return temporaryMeta;
   }
 
-  public boolean matchSqlDialect(final boolean isTableModel) {
-    return matchSqlDialect(SystemConstant.getSqlDialectValue(isTableModel));
-  }
+  public boolean visibleUnder(final boolean isTableModel) {
+    final PipeParameters extractorParameters = getStaticMeta().getExtractorParameters();
 
-  public boolean matchSqlDialect(final String sqlDialect) {
-    if (Objects.isNull(sqlDialect)) {
+    // visible under all model when 'mode.double-living' is set to true
+    final boolean isDoubleLiving =
+        extractorParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (isDoubleLiving) {
       return true;
     }
-    return matchBoth()
-        || sqlDialect.equalsIgnoreCase(
-            getStaticMeta()
-                .getExtractorParameters()
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
-  }
 
-  private boolean matchBoth() {
-    return // 1. 'mode.double-living' is set to true
-    getStaticMeta()
-            .getExtractorParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
-        ||
-        // 2. 'capture.tree' and 'capture.table' are set to true
-        (getStaticMeta()
-                .getExtractorParameters()
-                .getBooleanOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                        PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-                    false)
-            && getStaticMeta()
-                .getExtractorParameters()
-                .getBooleanOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                        PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-                    false));
+    final boolean isTreeDialect =
+        extractorParameters
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final Boolean _isCaptureTree =
+        extractorParameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
+    final boolean isCaptureTree = Objects.nonNull(_isCaptureTree) ? _isCaptureTree : isTreeDialect;
+    final Boolean _isCaptureTable =
+        extractorParameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
+    final boolean isCaptureTable =
+        Objects.nonNull(_isCaptureTable) ? _isCaptureTable : !isTreeDialect;
+
+    // visible under specific tree or table model <-> actually capture tree or table data
+    return isTableModel ? isCaptureTable : isCaptureTree;
   }
 
   public ByteBuffer serialize() throws IOException {
