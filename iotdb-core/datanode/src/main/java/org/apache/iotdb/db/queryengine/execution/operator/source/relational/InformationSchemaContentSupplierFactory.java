@@ -50,6 +50,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.security.AccessControlException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -279,6 +280,13 @@ public class InformationSchemaContentSupplierFactory {
                                                 TsTableInternalRPCUtil.deserializeSingleTsTable(
                                                     tableEntry.getValue().getTableInfo()),
                                                 tableEntry.getValue().getPreDeletedColumns())))));
+        resultMap.put(
+            InformationSchema.INFORMATION_DATABASE,
+            InformationSchema.getSchemaTables().values().stream()
+                .collect(
+                    Collectors.toMap(
+                        TsTable::getTableName,
+                        table -> new Pair<>(table, Collections.emptySet()))));
         dbIterator = resultMap.entrySet().iterator();
       } catch (final Exception e) {
         lastException = e;
