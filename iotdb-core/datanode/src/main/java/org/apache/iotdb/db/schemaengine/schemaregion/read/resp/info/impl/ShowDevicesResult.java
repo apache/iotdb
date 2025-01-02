@@ -94,7 +94,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
                 ? Arrays.copyOfRange(
                     DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
                         .getNodes(),
-                    databaseSegmentNum,
+                    databaseSegmentNum - 1,
                     DataNodeTreeViewSchemaUtils.forceSeparateStringToPartialPath(deviceIdStr)
                         .getNodeLength())
                 : (String[]) entry.getDeviceID().getSegments());

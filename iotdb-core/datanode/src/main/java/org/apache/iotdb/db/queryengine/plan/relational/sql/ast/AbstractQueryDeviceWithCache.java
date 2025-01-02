@@ -73,7 +73,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                           attributeColumns,
                           TreeViewSchema.isTreeViewTable(tableInstance)
                               ? DataNodeTreeViewSchemaUtils.getOriginalPattern(tableInstance)
-                                  .getNodeLength()
+                                      .getNodeLength()
+                                  - 1
                               : 0))
               .collect(Collectors.toList());
     }
