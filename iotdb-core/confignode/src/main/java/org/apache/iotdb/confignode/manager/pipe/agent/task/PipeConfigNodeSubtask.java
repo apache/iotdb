@@ -189,6 +189,10 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       decreaseReferenceCountAndReleaseLastEvent(event, true);
 
     } catch (final PipeException e) {
+      if (Thread.interrupted()) {
+        LOGGER.warn(
+            "The thread was interrupted, and the confignode subtask being executed has timed out.");
+      }
       setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw e;
@@ -200,6 +204,10 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
+      if (Thread.interrupted()) {
+        LOGGER.warn(
+            "The thread was interrupted, and the confignode subtask being executed has timed out.");
+      }
       setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw new PipeException(

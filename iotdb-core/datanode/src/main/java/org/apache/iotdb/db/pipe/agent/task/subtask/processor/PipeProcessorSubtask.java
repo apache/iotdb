@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
@@ -97,6 +98,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
       final ExecutorService ignored,
+      final ScheduledExecutorService timeoutExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
@@ -106,7 +108,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
         if (subtaskWorkerManager.get() == null) {
           subtaskWorkerManager.set(
-              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor));
+              new PipeProcessorSubtaskWorkerManager(
+                  subtaskWorkerThreadPoolExecutor, timeoutExecutor));
         }
       }
     }
