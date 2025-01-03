@@ -17,49 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.access;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.relational.access.Record;
-import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.LocalDate;
-import java.util.Iterator;
 import java.util.List;
 
-public class RecordIterator implements Iterator<Record> {
+public class MaskedRecordIterator extends RecordIterator {
+  private final int[] selectedPositions;
 
-  protected final List<Column> childrenColumns;
-  protected final List<org.apache.tsfile.read.common.type.Type> dataTypes;
-  protected final int positionCount;
-  protected int currentIndex;
-
-  public RecordIterator(
-      List<Column> childrenColumns,
-      List<org.apache.tsfile.read.common.type.Type> dataTypes,
-      int positionCount) {
-    this.childrenColumns = childrenColumns;
-    this.dataTypes = dataTypes;
-    this.positionCount = positionCount;
-    if (childrenColumns.size() != dataTypes.size()) {
-      throw new IllegalArgumentException(
-          "The size of childrenColumns and dataTypes should be the same.");
-    }
-  }
-
-  @Override
-  public boolean hasNext() {
-    return currentIndex < positionCount;
+  public MaskedRecordIterator(
+      List<Column> childrenColumns, List<Type> dataTypes, AggregationMask mask) {
+    super(childrenColumns, dataTypes, mask.getSelectedPositionCount());
+    this.selectedPositions = mask.getSelectedPositions();
   }
 
   @Override
   public Record next() {
-    final int index = currentIndex++;
+    final int index = selectedPositions[currentIndex++];
     return new Record() {
       @Override
       public int getInt(int columnIndex) {
@@ -105,7 +89,7 @@ public class RecordIterator implements Iterator<Record> {
       }
 
       @Override
-      public Type getDataType(int columnIndex) {
+      public org.apache.iotdb.udf.api.type.Type getDataType(int columnIndex) {
         return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
       }
 
