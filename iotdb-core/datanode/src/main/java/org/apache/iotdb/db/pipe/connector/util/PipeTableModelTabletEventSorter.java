@@ -29,8 +29,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PipeTableModelTabletEventSorter {
 
@@ -136,17 +138,79 @@ public class PipeTableModelTabletEventSorter {
     sortAndDeduplicateValuesAndBitMaps();
   }
 
-  private void sortTimestamps(int startIndex, int endIndex) {
+  public void sortAndDeduplicateByTimestamp() {
+    if (tablet == null || tablet.getRowSize() == 0) {
+      return;
+    }
+
+    for (int i = 1, size = tablet.getRowSize(); i < size; ++i) {
+      final long currentTimestamp = tablet.timestamps[i];
+      final long previousTimestamp = tablet.timestamps[i - 1];
+
+      if (currentTimestamp < previousTimestamp) {
+        isUnSorted = true;
+        break;
+      }
+      if (currentTimestamp == previousTimestamp) {
+        hasDuplicates = true;
+      }
+    }
+
+    if (!isUnSorted && hasDuplicates) {
+      return;
+    }
+
+    index = new Integer[tablet.getRowSize()];
+    for (int i = 0, size = tablet.getRowSize(); i < size; i++) {
+      index[i] = i;
+    }
+
+    if (!isUnSorted) {
+      sortTimestamps(0, tablet.getRowSize());
+
+      // Do deduplicate anyway.
+      // isDeduplicated may be false positive when isSorted is false.
+      deduplicateTimestampsAndDeviceId(0, tablet.getRowSize());
+      hasDuplicates = false;
+    }
+
+    if (hasDuplicates) {
+      deduplicateTimestampsAndDeviceId(0, tablet.getRowSize());
+    }
+
+    sortAndDeduplicateValuesAndBitMaps();
+  }
+
+  private void sortTimestamps(final int startIndex, final int endIndex) {
     Arrays.sort(
         this.index, startIndex, endIndex, Comparator.comparingLong(i -> tablet.timestamps[i]));
   }
 
-  private void deduplicateTimestamps(int startIndex, int endIndex) {
+  private void deduplicateTimestamps(final int startIndex, final int endIndex) {
     long lastTime = tablet.timestamps[index[startIndex]];
     index[deduplicatedSize++] = index[startIndex];
     for (int i = startIndex + 1; i < endIndex; i++) {
       if (lastTime != (lastTime = tablet.timestamps[index[i]])) {
         index[deduplicatedSize++] = index[i];
+      }
+    }
+  }
+
+  private void deduplicateTimestampsAndDeviceId(final int startIndex, final int endIndex) {
+    long lastTime = tablet.timestamps[index[startIndex]];
+    IDeviceID deviceID = tablet.getDeviceID(index[startIndex]);
+    final Set<IDeviceID> deviceIDSet = new HashSet<>();
+    deviceIDSet.add(deviceID);
+    index[deduplicatedSize++] = index[startIndex];
+    for (int i = startIndex + 1; i < endIndex; i++) {
+      deviceID = tablet.getDeviceID(index[i]);
+      if ((lastTime == (lastTime = tablet.timestamps[index[i]]))
+          && !deviceIDSet.contains(deviceID)) {
+        index[deduplicatedSize++] = index[i];
+        deviceIDSet.add(deviceID);
+      } else {
+        index[deduplicatedSize++] = index[i];
+        deviceIDSet.clear();
       }
     }
   }
