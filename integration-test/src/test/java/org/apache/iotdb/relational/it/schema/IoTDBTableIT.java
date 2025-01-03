@@ -583,13 +583,13 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.a.b");
-      statement.execute("create timeSeries root.a.b.c.d.s1 int32");
-      statement.execute("create timeSeries root.a.b.c.d.s2 string");
       statement.execute("create timeSeries root.a.b.c.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.s2 string");
+      statement.execute("create timeSeries root.a.b.s1 int32");
       statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
 
       // Put schema cache
-      statement.execute("select s1, s2 from root.a.b.c.d");
+      statement.execute("select s1, s2 from root.a.b.c");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -626,13 +626,13 @@ public class IoTDBTableIT {
                   "s1,INT32,FIELD,",
                   "s2,STRING,FIELD,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from tree_table where tag1 = 'c'"),
+          statement.executeQuery("show devices from tree_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("c,d,", "c,null,")));
+          new HashSet<>(Arrays.asList("b,c,", "b,null,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from tree_table where tag1 = 'c' and tag2 is null"),
+          statement.executeQuery("show devices from tree_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
-          Collections.singleton("c,null,"));
+          Collections.singleton("b,null,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tree_table"),
           "count(devices),",
